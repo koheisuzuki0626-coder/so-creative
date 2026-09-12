@@ -10768,11 +10768,15 @@ async def _handle_orchestrator(message, cid):
     # クロードの下書きをGeminiが精査して締める（＝二人で1つの返事にする）。
     # 出す声はオーケストレーターひとつなので、誰が書いたかで混乱しない。
     answer, reviewed = await _review_reply(answer, history)
-    answer = _drop_false_progress(answer, cid)
+    # 文章の直しは、この返事そのものが成果物。裏で何も動いていないのが正常なので、
+    # 「動いていないのに作業を宣言した」の守り手を通さない（2026-09-13）。
+    if not _is_text_edit_ask(latest):
+        answer = _drop_false_progress(answer, cid)
     answer = _drop_false_denial(answer, cid)
     answer = _drop_false_file_claim(answer, cid)
     # 言い方を見ずに、状態だけで「動いていない」を明記する（最後の砦）
-    answer += _reality_note(cid, latest)
+    if not _is_text_edit_ask(latest):
+        answer += _reality_note(cid, latest)
     # 実際に書いたのが誰かで名乗る。クロードが枠切れでGeminiが代打に入ると
     # 文体が変わるので、「クロード2」と名乗ったままだと別人が混ざって見える。
     _who = _wrote.get("name") or CLAUDE2_NAME
@@ -10995,6 +10999,43 @@ def _reality_note(cid, user_said):
     return ("\n\n⚠️ **この返事の時点では、まだ何も動いていません。**"
             "「**やって**」と送れば始めます"
             "（素材が要るものは、写真や動画を添付してください）。")
+
+
+# 文章の直しの依頼。返事そのものが成果物なので、裏で何も動いていないのが正常。
+# 事故（2026-09-13 05:58）：「社員インタビューで、がいらない」と頼んだのに、
+# 直した文がそのまま返ってきた。原因は返事の作り方ではなく、返事の後処理。
+# 「了解。直しました。」の『直しました』を _drop_false_progress が
+# 【動いていないのに作業を宣言した嘘】として落とし、答えの骨格が消えていた。
+# 文章の直し・要約・言い換えは、ジョブを立てずにその場で返すのが正しい形なので、
+# この守り手を通してはいけない。
+_TEXT_EDIT_ASK_RE = re.compile(
+    r"(いらない|要らない|不要|消して|削って|外して|抜いて|取って|"
+    r"短く|長く|簡潔|詳しく|分かりやすく|わかりやすく|読みやすく|"
+    r"書き直|言い直|まとめ直|要約|直して|変えて|足して|加えて)")
+_TEXT_TARGET_RE = re.compile(
+    r"(文|文章|文言|項目|質問|見出し|タイトル|コピー|表現|言い方|"
+    r"シート|案|リスト|箇条書き|ここ|この行|のところ)")
+# 直前の文言を引用して「この部分がいらない」と言う形。
+# 実例（2026-09-13）：「社員インタビューで伝えたい、の社員インタビューで、がいらない」
+# 引用した語句＋助詞＋不要の合図。対象の名詞が出てこないので上の一覧では拾えない。
+_TEXT_QUOTE_EDIT_RE = re.compile(
+    r"[、,]\s*[^、,。\n]{2,30}[、,]?\s*が?\s*"
+    r"(いらない|要らない|不要|いりません)"
+    r"|の\s*[^、,。\n]{2,30}\s*[、,]\s*が?\s*(いらない|要らない|不要)")
+# 生成物（絵・動画）への注文は、文章の直しではない。ここを外すと
+# 「背景を消して」まで文章扱いになり、守り手が効かなくなる。
+_VISUAL_EDIT_RE = re.compile(
+    r"動画|映像|画像|絵|写真|サムネ|背景|ロゴ|色|フォント|BGM|音|カット")
+
+
+def _is_text_edit_ask(said):
+    """本人の発言が『文章をこう直して』か（＝返事そのものが成果物）。"""
+    s = _strip_media_context(said or "")
+    if not s or _VISUAL_EDIT_RE.search(s):
+        return False
+    if _TEXT_QUOTE_EDIT_RE.search(s):
+        return True
+    return bool(_TEXT_EDIT_ASK_RE.search(s) and _TEXT_TARGET_RE.search(s))
 
 
 def _drop_false_progress(text, cid):
