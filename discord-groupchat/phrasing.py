@@ -487,6 +487,10 @@ def _strip_media_context(text):
 # 引用の始まり：ボットの名乗り（**クロード2（PM）**: など）か、行頭の引用記号。
 _QUOTED_HEAD_RE = re.compile(
     r"^\*{0,2}(クロード|Claude|Gemini|ジェミニ)\s*\d?(（[^）]*）)?\*{0,2}\s*[:：]")
+# 宛名を付けた指示行。「クロード2（PM）:」のような引用の名乗りとは、
+# 名前の直後が【宛先の助詞】かどうかで見分ける（引用は「（」や「:」が来る）。
+_ADDRESSED_RE = re.compile(
+    r"^\*{0,2}(クロード|Claude)\s*[0-9０-９]\s*\*{0,2}\s*(へ|に|、|,)")
 
 
 def _instruction_part(text):
@@ -507,6 +511,15 @@ def _instruction_part(text):
         s = ln.strip()
         if _QUOTED_HEAD_RE.match(s) or s.startswith(">"):
             return "\n".join(lines[:i]).strip() or t
+    # 宛名を付けた指示行（「クロード2へ、〜作成して」）。貼り付けた資料の
+    # 【後ろ】に置かれることが多い。上の引用判定は前にある引用しか落とせない。
+    # 事故（2026-09-13 06:26）：記入したヒアリングシートを貼って最後に
+    # 「クロード2へ、このヒアリングシートを元に構成案を作成して」と書いたら、
+    # シート内の「動画」の語で【作り直し】と判定され、8月に作った動画の
+    # 完成報告が返ってきた。
+    for i, ln in enumerate(lines):
+        if i and _ADDRESSED_RE.match(ln.strip()):
+            return "\n".join(lines[i:]).strip()
     # 「以下の〜」と書いてあり空行で区切られているなら、その前までが指示
     if lines and re.search(r"(以下|下記|次)の", lines[0]):
         for i, ln in enumerate(lines):
