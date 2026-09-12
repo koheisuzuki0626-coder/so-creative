@@ -6214,7 +6214,32 @@ ORCH_PERSONA = (
 )
 
 
+# 文章の直しを頼まれた時だけ渡す指示。
+# 事故（2026-09-13 05:58・06:06）：「社員インタビューで伝えたい、の
+# 社員インタビューで、がいらない」に対して、元の文をそのまま返し続けた。
+# 後処理は無実で、生成の段階で直っていなかった。
+# CLAUDE.md の作法どおり「〜の時だけ守れ」を文章でAIに守らせず、
+# 渡すかどうかをコード（_is_text_edit_ask）で決める。
+TEXT_EDIT_RULES = (
+    "\n【いま頼まれているのは文章の手直しです】\n"
+    "・直した【後】の文だけを書くこと。元の文をそのまま返してはいけない。\n"
+    "・「〜がいらない」と言われた語句は、実際に取り除いた形で書く。\n"
+    "・直したのが1行なら、その1行だけを書く。前置きは1文まで。\n"
+    "・他の項目まで書き直さない。指定された箇所だけ直す。\n"
+)
+
+
+def _text_edit_guide(history):
+    """直前の発言が文章の直しなら、その指示だけを返す（普段は空）。"""
+    try:
+        said = _latest_user_msg(history)
+    except Exception:  # noqa: BLE001
+        return ""
+    return TEXT_EDIT_RULES if _is_text_edit_ask(said) else ""
+
+
 def _answer_prompt(who, history, extra=""):
+    extra = (extra + _text_edit_guide(history)).strip()
     return (
         f"あなたは{who}。次の会話の最後の要求に、正確で役立つ回答を日本語で簡潔に述べる。"
         "前置きや名乗りは不要、回答本体のみ。" + topic_guide(history) + "\n\n"
