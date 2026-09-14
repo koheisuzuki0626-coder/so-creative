@@ -117,8 +117,10 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         (await rm.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 0);
     check('実際に納品した2本の尺と時間単価が載っている',
         /59秒/.test(t) && /15秒/.test(t) && /¥29,333\/h/.test(t) && /¥40,000\/h/.test(t));
-    check('定価と実際の提示額を分けて書いている',
-        /¥189,750/.test(t) && /¥80,000/.test(t) && /料金表から出た金額ではない/.test(t));
+    check('料金表どおりの金額を出している',
+        /¥647,100/.test(t) && /¥520,000/.test(t));
+    check('追加尺が料金表の2本目にあたると書いている',
+        /¥65,000/.test(t) && /¥189,750/.test(t) && /上乗せ/.test(t));
     check('追加尺がほぼ純利益だと書いている', /純利益/.test(t) && /2時間/.test(t));
     check('2本・架空案件だけの数字だと断っている', /2本/.test(t) && /架空/.test(t));
     check('営業ロープレであって実案件でないと明記', /ロープレ/.test(t) && /架空/.test(t));
