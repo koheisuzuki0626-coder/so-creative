@@ -115,6 +115,9 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         /138/.test(t) && /1\.2/.test(t) && /0\.4/.test(t) && /277\.6/.test(t));
     check('原価の大半がリフレームだと書いている', /99\.4%/.test(t));
     check('プラン上限への影響が載っている', /2\.3本/.test(t) && /5,400/.test(t));
+    check('4工程の出力を検証した記録がある',
+        /3840×2160/.test(t) && /1080×1920/.test(t) && /1440×1440/.test(t));
+    check('仕様を下げる必要がないと結論している', /仕様を下げる必要はない/.test(t));
     check('社内用なので検索に出さない',
         (await rm.evaluate(() => document.querySelector('meta[name="robots"]')?.content || '')).includes('noindex'));
     check('ロードマップで横溢れなし',
