@@ -344,12 +344,53 @@
             </p>
         </div>
 
-        <div class="flag">
-            <b>ただし、測ったのは松ではない。</b>
+        <h3>松の4工程を実際に通した（9/14）</h3>
+        <p class="lead">
+            生成54本はすべて 1080p・16:9・音声なしで、松が約束している4工程は通っていなかった。
+            そこで納品済みの<b>15秒版を対象に、4工程を1回ずつ実行</b>して原価を測った。
+            59秒版は Drive に88MBあり、取り込み上限50MBを超えるため対象にしていない。
+        </p>
+        <div class="wrap-x"><table class="t-wide">
+            <thead><tr><th>工程</th><th>使ったもの</th><th class="num">15秒での実測</th><th class="num">59秒へ換算</th></tr></thead>
+            <tbody>
+                <tr><td>縦型に書き出し</td><td>Reframe 9:16</td><td class="num">138</td><td class="num">543</td></tr>
+                <tr><td>正方形に書き出し</td><td>Reframe 1:1</td><td class="num">138</td><td class="num">543</td></tr>
+                <tr><td>4K化＋高精細化・ちらつき除去</td><td>Bytedance Video Upscale（aigcプリセット）</td><td class="num"><b>1.2</b></td><td class="num">4.7</td></tr>
+                <tr><td>ナレーション（声を選ぶ・話し方の調整）</td><td>Seed Audio 1.0</td><td class="num"><b>0.4</b></td><td class="num">1.6</td></tr>
+            </tbody>
+            <tfoot><tr><td>4工程 合計</td><td>—</td><td class="num">277.6</td><td class="num"><b>約1,092</b></td></tr></tfoot>
+        </table></div>
+
+        <div class="flag" style="border-color:rgba(47,107,79,.3);background:rgba(47,107,79,.05)">
+            <b style="color:var(--ok)">予想は外れた。4Kはタダ同然で、金を食うのは縦横の書き出し。</b>
             <p>
-                54本すべてが 1080p・16:9・音声なしで、アップスケール／リフレーム／音声生成の取引が1件もない。
-                松が約束している4工程（4K・ちらつき除去・縦横3形式・声の調整）は<b>今回通っていない</b>。
-                15時間はこの4工程を含まない数字。
+                <b>4K化は1.2クレジット、ナレーションは0.4。</b>合わせても全体の0.6%しかない。
+                <b>松の原価の99.4%は縦型・正方形のリフレーム</b>だった。<br>
+                売り方が変わる。4K・高精細化・声の調整は<b>原価がないので気前よく付けられる</b>。
+                一方で<b>3形式の書き出しだけは本当にコストがかかる</b>ので、ここを安売りしてはいけない。
+            </p>
+        </div>
+
+        <div class="wrap-x"><table class="t-wide">
+            <thead><tr><th>59秒の松1本あたり</th><th class="num">クレジット</th><th class="num">実費（1c＝¥1.9〜5.6）</th></tr></thead>
+            <tbody>
+                <tr><td>生成（実測）</td><td class="num">1,221</td><td class="num">¥2,300〜6,800</td></tr>
+                <tr><td>仕上げ4工程（換算）</td><td class="num">1,092</td><td class="num">¥2,100〜6,100</td></tr>
+            </tbody>
+            <tfoot><tr><td><b>合計</b></td><td class="num"><b>2,313</b></td><td class="num"><b>¥4,400〜13,000</b></td></tr></tfoot>
+        </table></div>
+        <p class="lead" style="margin-top:14px">
+            価格 ¥482,350 に対して原価は最大でも2.7%。<b>利益率への影響は無視できる。</b><br>
+            ただし<b>プランの上限には効く。</b>Max は月5,400クレジットなので、
+            仕上げまで入れた松は<b>月2.3本が限界</b>。計画の月2件はぎりぎり収まるが、
+            撮り直しが増えた月は足りなくなる。
+        </p>
+        <div class="flag">
+            <b>納期にも効く。リフレームは遅い。</b>
+            <p>
+                4K化は1分半、ナレーションは1分弱で終わったが、<b>リフレームは15秒の動画で12分以上</b>かかっている。
+                59秒なら単純計算で1形式あたり50分近く。3形式そろえる日は、その時間が作業を止める。
+                <b>着手日を前倒しする理由になる。</b>
             </p>
         </div>
 

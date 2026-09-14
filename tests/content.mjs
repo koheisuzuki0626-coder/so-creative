@@ -109,8 +109,12 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     check('クレジット残高とプランが最新', /2,970/.test(t) && /Max/.test(t));
     check('松2本の実測が記録されている',
         /2,442/.test(t) && /1,221/.test(t) && /15時間未満/.test(t));
-    check('測ったのが松の全工程でないと明記している',
-        /4K/.test(t) && /未実施|通っていない/.test(t));
+    check('松の4工程を実際に通した記録がある',
+        /4K化/.test(t) && /Reframe 9:16/.test(t) && /Seed Audio/.test(t));
+    check('4工程の原価の内訳が載っている',
+        /138/.test(t) && /1\.2/.test(t) && /0\.4/.test(t) && /277\.6/.test(t));
+    check('原価の大半がリフレームだと書いている', /99\.4%/.test(t));
+    check('プラン上限への影響が載っている', /2\.3本/.test(t) && /5,400/.test(t));
     check('社内用なので検索に出さない',
         (await rm.evaluate(() => document.querySelector('meta[name="robots"]')?.content || '')).includes('noindex'));
     check('ロードマップで横溢れなし',
