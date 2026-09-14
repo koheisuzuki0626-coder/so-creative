@@ -115,8 +115,10 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         (await rm.evaluate(() => document.querySelector('meta[name="robots"]')?.content || '')).includes('noindex'));
     check('ロードマップで横溢れなし',
         (await rm.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 0);
-    check('実測にもとづく時間単価が載っている',
-        /¥19,300\/h/.test(t) && /¥32,600\/h/.test(t));
+    check('実際に納品した2本の尺と時間単価が載っている',
+        /59秒/.test(t) && /15秒/.test(t) && /¥32,157\/h/.test(t) && /¥12,650\/h/.test(t));
+    check('短尺が目標割れしやすいと書いている', /12\.7/.test(t));
+    check('営業ロープレであって実案件でないと明記', /ロープレ/.test(t) && /架空/.test(t));
     check('P0 から計測用テスト制作へリンクしている',
         await rm.locator('.stage a[href="#test-build"]').count() >= 1);
     for (const f of ['index.html', 'about.html']) {
