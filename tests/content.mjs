@@ -106,13 +106,17 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     check('ロードマップの四半期計が計画と一致',
         /¥1,800,000/.test(t) && /¥2,745,000/.test(t) && /¥3,375,000/.test(t) && /¥11,295,000/.test(t));
     check('未開業であることを書いている', /未開業/.test(t));
-    check('無料プランが止まっていると書いている', /無料プラン/.test(t) && /12\.36/.test(t));
+    check('クレジット残高とプランが最新', /2,970/.test(t) && /Max/.test(t));
+    check('松2本の実測が記録されている',
+        /2,442/.test(t) && /1,221/.test(t) && /15時間未満/.test(t));
+    check('測ったのが松の全工程でないと明記している',
+        /4K/.test(t) && /未実施|通っていない/.test(t));
     check('社内用なので検索に出さない',
         (await rm.evaluate(() => document.querySelector('meta[name="robots"]')?.content || '')).includes('noindex'));
     check('ロードマップで横溢れなし',
         (await rm.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 0);
-    check('計測用テスト制作の仕様が載っている',
-        /60秒/.test(t) && /32\.2h/.test(t) && /720/.test(t));
+    check('実測にもとづく時間単価が載っている',
+        /¥19,300\/h/.test(t) && /¥32,600\/h/.test(t));
     check('P0 から計測用テスト制作へリンクしている',
         await rm.locator('.stage a[href="#test-build"]').count() >= 1);
     for (const f of ['index.html', 'about.html']) {
