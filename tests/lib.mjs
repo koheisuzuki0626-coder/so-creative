@@ -18,27 +18,33 @@ export const PW = process.env.PW || '/opt/node22/lib/node_modules/playwright/ind
 
 /* 料金と工数のモデル。index.html のコメントと同じもの。
    ここを書き換えるときは index.html も必ず合わせること */
-export const PRICE = { base: 90000, perExtra: 65000 };
+export const PRICE = { base: 90000, perExtra: 65000, narration: 30000 };
 export const TIERS = [
-    { id: 'ume',   label: '梅', perSec: 3500, hours: 1.0 },
-    { id: 'take',  label: '竹', perSec: 4900, hours: 1.25 },
-    { id: 'matsu', label: '松', perSec: 6650, hours: 1.55 },
+    { id: 'ume',   label: '梅', perSec: 3500, hours: 1.0,  narration: false },
+    { id: 'take',  label: '竹', perSec: 4900, hours: 1.22, narration: false },
+    { id: 'matsu', label: '松', perSec: 6650, hours: 1.36, narration: true },
 ];
 export const LENGTHS = [15, 30, 45, 60, 90, 120, 180, 300];
 export const countCap = (sec) => (sec <= 30 ? 2 : sec <= 90 ? 4 : 6);
-export const price = (t, sec, n) => PRICE.base + t.perSec * sec + PRICE.perExtra * (n - 1);
+/* nar … 梅・竹でナレーションを追加したか。松は込みなので加算しない */
+export const narCount = (t, n, nar) => (t.narration || !nar ? 0 : n);
+export const price = (t, sec, n, nar = false) =>
+    PRICE.base + t.perSec * sec + PRICE.perExtra * (n - 1) + PRICE.narration * narCount(t, n, nar);
 /* 工数モデル（2026-09-16 に実測へ合わせた）。
-     工数 = 3.0h + 0.15h × 倍率 × 秒数 + 1.5h × (本数−1)
+     工数 = 3.0h + 0.15h × 倍率 × 秒数 + 1.5h × (本数−1) + 1.0h × ナレーション本数
    実測（下の MEASURED）に、実案件の打合せ・素材待ち・要件の揺れぶんとして
-   約1.5倍の安全率をかけてある。60秒の松で 17.0h（実測 10.5h）。
-   段の倍率 1.0 / 1.25 / 1.55 は工程別の実測から:
+   約1.5倍の安全率をかけてある。60秒の松で 15.2h（実測 10.5h）。
+   段の倍率 1.0 / 1.22 / 1.36 は工程別の実測から:
      竹 ＝ 梅 ＋ キャラクターシート 1.0h ＋ 修正1回 0.6h
-     松 ＝ 竹 ＋ ナレーション 1.0h ＋ 修正2回 1.25h
+     松 ＝ 竹 ＋ ナレーション 1.0h（修正は竹と同じ3回）
+   ナレーションの追加（梅・竹）は実測 1.0h → ¥30,000。
    価格の倍率（1.0 / 1.4 / 1.9）は据え置きなので、上の段ほど時間単価が高い。
    index.html の HOURS / TIERS[].hours と同じ値にすること */
-export const HOURS = { base: 3.0, perSec: 0.15, perExtra: 1.5 };
-export const hours = (t, sec, n) => HOURS.base + HOURS.perSec * t.hours * sec + HOURS.perExtra * (n - 1);
-export const leadWeeks = (t, sec) => Math.max(2, Math.round((HOURS.base + HOURS.perSec * t.hours * sec) / 25 + 1));
+export const HOURS = { base: 3.0, perSec: 0.15, perExtra: 1.5, narration: 1.0 };
+export const hours = (t, sec, n, nar = false) =>
+    HOURS.base + HOURS.perSec * t.hours * sec + HOURS.perExtra * (n - 1) + HOURS.narration * narCount(t, n, nar);
+export const leadWeeks = (t, sec, nar = false) =>
+    Math.max(2, Math.round((HOURS.base + HOURS.perSec * t.hours * sec + (narCount(t, 1, nar) ? HOURS.narration : 0)) / 25 + 1));
 /* 目標の時間単価。以前の ¥14,900 は「60秒の松が32h かかる」という重いモデルからの
    逆算だった。モデルを実測に合わせた結果、同じ価格で ¥23,000/h を下回らない */
 export const RATE = 23000;
@@ -50,7 +56,8 @@ export const MEASURED = [
     /* 2026-09-15 に工程別で実測。合計11.5h の内訳は
        構成1.0 / キャラシート1.0 / 生成・選別3.0 / つなぎ2.0 /
        ナレーション1.0 / 15秒版1.0 / 修正4往復2.5。
-       本編ぶんは 15秒版の1.0h を除いた 10.5h として扱う */
+       本編ぶんは 15秒版の1.0h を除いた 10.5h として扱う。
+       （修正4往復は現行の松の上限3回より1回多い。上限どおりなら 9.9h） */
     { label: '本編',   sec: 59, tier: 'matsu', workHours: 10.5 },
     { label: '追加尺', sec: 15, tier: 'matsu', workHours: 1 },
 ];

@@ -1,7 +1,8 @@
 /* 料金シミュレーター。
    「お客様にどの組み合わせを選ばせても採算が崩れない」ことの担保がここ。
    金額・工数のどれかを動かしたら必ずこれを通すこと。 */
-import { check, report, PW, open, pick, PRICE, TIERS, LENGTHS, countCap, price, hours, leadWeeks, RATE, MEASURED, REVISION_HOURS, CREDITS_PER_SEC } from './lib.mjs';
+import { check, report, PW, open, pick, PRICE, HOURS, TIERS, LENGTHS, countCap, price, hours, leadWeeks, RATE, MEASURED, REVISION_HOURS, CREDITS_PER_SEC } from './lib.mjs';
+const HOURS_NARRATION = () => HOURS.narration;
 const pwmod = (await import(PW)).default;
 
 const browser = await pwmod.chromium.launch();
@@ -15,25 +16,48 @@ check('段の名前が梅竹松',
     (await page.locator('#calc-tier .calc-opt').allInnerTexts()).join('|') === '梅 標準|竹 上|松 特上');
 check('尺が8つ', (await page.locator('#calc-len .calc-opt').count()) === LENGTHS.length);
 check('本数が6つ', (await page.locator('#calc-cnt .calc-opt').count()) === 6);
+check('ナレーションが2択', (await page.locator('#calc-nar .calc-opt').count()) === 2);
 check('操作の順番を番号で示している',
-    (await page.locator('.calc-step').allInnerTexts()).join('') === '123');
+    (await page.locator('.calc-step').allInnerTexts()).join('') === '1234');
 check('実物のラジオで組んである',
-    (await page.locator('.calc input[type="radio"]').count()) === 3 + 8 + 6);
+    (await page.locator('.calc input[type="radio"]').count()) === 3 + 8 + 6 + 2);
 
 /* ---- 段の説明は客先向けの言葉か ---- */
-for (const [t, must, use] of [['ume', '登場人物なし', 'SNS'], ['take', '2人まで', '採用'], ['matsu', 'ナレーション', '展示会']]) {
+for (const [t, must, use, rev] of [['ume', '登場人物なし', 'SNS', 2], ['take', '2人まで', '採用', 3], ['matsu', 'ナレーション込み', '展示会', 3]]) {
     await page.locator(`#calc-tier .calc-opt[data-tier="${t}"]`).click();
     const h = await page.locator('#calc-tier-hint').innerText();
     check(`${t} の中身が納品物の言葉で出る`, h.includes(must) && /納品/.test(h), h.slice(0, 34));
     check(`${t} の向いている用途が出る`, h.includes('向いている用途') && h.includes(use));
-    check(`${t} の修正回数が出る`, /修正\d回まで/.test(h), (h.match(/修正\d回まで/) || [''])[0]);
+    check(`${t} の修正回数が出る（${rev}回）`, h.includes(`修正${rev}回まで`), (h.match(/修正\d回まで/) || [''])[0]);
+    /* 4K は全段で無料。ナレーションは梅・竹が追加、松が込み */
+    check(`${t} で 4K 納品を案内している`, /4K/.test(h));
+    check(`${t} のナレーションの扱いが出る`, t === 'matsu' ? /ナレーション込み/.test(h) : /ナレーションは1本 ¥30,000/.test(h));
 }
 const plansText = await page.locator('#plans').innerText();
 check('生成回数など内部の手順を出していない',
     !/カットにつき|回まで生成|回以上生成/.test(plansText));
-/* 実証で使えないと分かったものを売り文句に残していないか */
+/* 実証で使えないと分かったものを売り文句に残していないか（4K は無料で出すことにしたので除外） */
 check('落とした仕様が段の説明に残っていない',
-    !/4K|ちらつき|高精細|正方形|3形式|2形式|720p/.test(plansText), plansText.slice(0, 40));
+    !/ちらつき|正方形|3形式|2形式|720p/.test(plansText), plansText.slice(0, 40));
+check('修正回数が5回に戻っていない', !/5回/.test(plansText));
+
+/* ---- ナレーションの選択 ---- */
+await page.locator('#calc-tier .calc-opt[data-tier="matsu"]').click();
+check('松では「なし」が選べず「あり」に固定',
+    (await page.locator('#calc-nar input[data-nar="off"]').isDisabled())
+    && (await page.locator('#calc-nar input[data-nar="on"]').isChecked()));
+check('松の内訳にナレーションは加算されない',
+    /松に込み/.test(await page.locator('#calc-nar-dt').innerText())
+    && (await page.locator('#calc-narfee').innerText()) === '¥0');
+await page.locator('#calc-tier .calc-opt[data-tier="ume"]').click();
+check('梅では「なし」が選べる', !(await page.locator('#calc-nar input[data-nar="off"]').isDisabled()));
+await page.locator('#calc-nar .calc-opt[data-nar="on"]').click();
+await page.locator('#calc-cnt .calc-opt[data-count="2"]').click();
+check('梅のナレーションは本数ぶん加算',
+    (await page.locator('#calc-narfee').innerText()) === `¥${(PRICE.narration * 2).toLocaleString('ja-JP')}`
+    && Number((await page.locator('#calc-total').innerText()).replace(/[^\d]/g, '')) === price(TIERS[0], 30, 2, true));
+await page.locator('#calc-nar .calc-opt[data-nar="off"]').click();
+await page.locator('#calc-cnt .calc-opt[data-count="1"]').click();
 
 
 /* ---- 全組み合わせの金額・上限・時間単価 ---- */
@@ -49,10 +73,15 @@ for (const t of TIERS) {
         }
         for (let n = 1; n <= cap; n += 1) {
             await page.locator(`#calc-cnt .calc-opt[data-count="${n}"]`).click();
-            const shown = Number((await page.locator('#calc-total').innerText()).replace(/[^\d]/g, ''));
-            const want = price(t, sec, n);
-            if (shown !== want) wrong.push(`${t.label}${sec}秒×${n}本: ${shown}≠${want}`);
-            rates.push({ c: `${t.label}${sec}秒×${n}本`, rate: shown / hours(t, sec, n) });
+            for (const nar of (t.narration ? [false] : [false, true])) {
+                if (!t.narration) await page.locator(`#calc-nar .calc-opt[data-nar="${nar ? 'on' : 'off'}"]`).click();
+                const shown = Number((await page.locator('#calc-total').innerText()).replace(/[^\d]/g, ''));
+                const want = price(t, sec, n, nar);
+                const c = `${t.label}${sec}秒×${n}本${nar ? '+ナレ' : ''}`;
+                if (shown !== want) wrong.push(`${c}: ${shown}≠${want}`);
+                rates.push({ c, rate: shown / hours(t, sec, n, nar) });
+            }
+            if (!t.narration) await page.locator('#calc-nar .calc-opt[data-nar="off"]').click();
         }
         await page.locator('#calc-cnt .calc-opt[data-count="1"]').click();
         const lead = await page.locator('#calc-lead-v').innerText();
@@ -110,7 +139,7 @@ for (const m of MEASURED) {
 check('クレジット原価が梅の秒単価の 10% 未満',
     CREDITS_PER_SEC * 7.7 < TIERS[0].perSec * 0.10, `¥${Math.round(CREDITS_PER_SEC * 7.7)}/秒 vs ¥${TIERS[0].perSec}`);
 
-/* 実測できた唯一の係数。段の差（修正2/3/5回）はこれを根拠にしている */
+/* 実測できた唯一の係数。段の差（修正2/3/3回）はこれを根拠にしている */
 check('修正1往復の係数が実測と合っている', Math.abs(REVISION_HOURS - 0.62) < 0.05,
     `実測 ${REVISION_HOURS}h / モデル 0.62h`);
 
@@ -122,6 +151,11 @@ check('納期は尺について単調に増える',
 check('段が上がると納期も延びるか同じ',
     LENGTHS.every((s) => leadWeeks(TIERS[0], s) <= leadWeeks(TIERS[1], s)
                       && leadWeeks(TIERS[1], s) <= leadWeeks(TIERS[2], s)));
+check('ナレーションを足しても納期は延びないか1週だけ',
+    LENGTHS.every((s) => leadWeeks(TIERS[0], s, true) - leadWeeks(TIERS[0], s) <= 1));
+/* ナレーション追加の時間単価。¥30,000 ÷ 1.0h ＝ ¥30,000/h で目標を割らない */
+check('ナレーション追加が時間単価の目標を割らない', PRICE.narration / HOURS_NARRATION() >= RATE * 0.95,
+    `¥${Math.round(PRICE.narration / HOURS_NARRATION())}/h`);
 
 /* ---- 段の順序と独立性 ---- */
 const ladder = [];
@@ -145,18 +179,26 @@ for (const [t, sec] of [['ume', 30], ['take', 90], ['matsu', 180]]) {
 
 /* ---- メール本文 ---- */
 await pick(page, 'take', 90, 2);
-const href = await page.locator('#calc-mail').getAttribute('href');
+const mailLink = () => page.locator('#calc-mail').getAttribute('href');
+const href = await mailLink();
 const q = new URLSearchParams(href.split('?')[1]);
 const body = q.get('body') || '';
 check('相談ボタンがメールを開く', href.startsWith('mailto:bonvoyage.ti@icloud.com?'));
 check('件名に段と尺と本数が入る', /竹・90秒 × 2本/.test(q.get('subject') || ''), q.get('subject'));
 check('本文に選んだ内容が入る',
-    /・仕上げ：竹（上）/.test(body) && /・合計の尺：90秒/.test(body) && /・本数：2本/.test(body)
+    /・仕上げ：竹（上）/.test(body) && /・合計の尺：90秒/.test(body) && /・本数：2本/.test(body) && /・ナレーション：なし/.test(body)
     && new RegExp(`・概算金額：¥${price(TIERS[1], 90, 2).toLocaleString('ja-JP')}（税別）`).test(body)
     && new RegExp(`・納品目安：約${leadWeeks(TIERS[1], 90)}週間`).test(body));
 check('本文に内訳も入る', /・基本料金：¥90,000/.test(body) && /・尺 90秒 × ¥4,900（竹）/.test(body));
 check('先方に書いてもらう欄がある',
     /会社名 \/ お名前：/.test(body) && /映像の用途：/.test(body) && /ご希望の公開時期：/.test(body));
+await pick(page, 'ume', 60, 2);
+await page.locator('#calc-nar .calc-opt[data-nar="on"]').click();
+await page.waitForTimeout(60);
+const narBody = new URLSearchParams((await mailLink()).split('?')[1]).get('body') || '';
+check('ナレーションを足すと本文に本数と金額が入る',
+    /・ナレーション：あり/.test(narBody) && new RegExp(`・ナレーション 2本：¥${(PRICE.narration * 2).toLocaleString('ja-JP')}`).test(narBody));
+await page.locator('#calc-nar .calc-opt[data-nar="off"]').click();
 // mailto はクライアント側の長さ制限があるので、最長の組み合わせでも収まること
 await pick(page, 'matsu', 300, 6);
 const longest = await page.locator('#calc-mail').getAttribute('href');
