@@ -117,7 +117,13 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     check('プラン上限への影響が載っている', /2\.3本/.test(t) && /5,400/.test(t));
     check('4工程の出力を検証した記録がある',
         /3840×2160/.test(t) && /1080×1920/.test(t) && /1440×1440/.test(t));
-    check('仕様を下げる必要がないと結論している', /仕様を下げる必要はない/.test(t));
+    check('縦型リフレームが使えないと結論している',
+        /リフレームはテロップを組み直さない/.test(t) && /使えない/.test(t));
+    check('松から落とす仕様を明示している',
+        /落とす/.test(t) && /4K/.test(t) && /3形式/.test(t));
+    check('縦型は追加本数で作ると書いている',
+        /追加の1本|追加本数/.test(t) && /¥32,500\/h/.test(t));
+    check('1,080クレジットを授業料として記録している', /1,080クレジットは授業料/.test(t));
     check('社内用なので検索に出さない',
         (await rm.evaluate(() => document.querySelector('meta[name="robots"]')?.content || '')).includes('noindex'));
     check('ロードマップで横溢れなし',
