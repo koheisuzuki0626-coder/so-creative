@@ -21,15 +21,20 @@ check('実物のラジオで組んである',
     (await page.locator('.calc input[type="radio"]').count()) === 3 + 8 + 6);
 
 /* ---- 段の説明は客先向けの言葉か ---- */
-for (const [t, must, use] of [['ume', '720p', 'SNS'], ['take', '1080p', 'サイト'], ['matsu', '4K', '展示会']]) {
+for (const [t, must, use] of [['ume', '登場人物なし', 'SNS'], ['take', '2人まで', '採用'], ['matsu', 'ナレーション', '展示会']]) {
     await page.locator(`#calc-tier .calc-opt[data-tier="${t}"]`).click();
     const h = await page.locator('#calc-tier-hint').innerText();
     check(`${t} の中身が納品物の言葉で出る`, h.includes(must) && /納品/.test(h), h.slice(0, 34));
     check(`${t} の向いている用途が出る`, h.includes('向いている用途') && h.includes(use));
+    check(`${t} の修正回数が出る`, /修正\d回まで/.test(h), (h.match(/修正\d回まで/) || [''])[0]);
 }
 const plansText = await page.locator('#plans').innerText();
 check('生成回数など内部の手順を出していない',
     !/カットにつき|回まで生成|回以上生成/.test(plansText));
+/* 実証で使えないと分かったものを売り文句に残していないか */
+check('落とした仕様が段の説明に残っていない',
+    !/4K|ちらつき|高精細|正方形|3形式|2形式|720p/.test(plansText), plansText.slice(0, 40));
+
 
 /* ---- 全組み合わせの金額・上限・時間単価 ---- */
 const wrong = [], capBad = [], rates = [], leadBad = [];
@@ -101,7 +106,7 @@ const body = q.get('body') || '';
 check('相談ボタンがメールを開く', href.startsWith('mailto:bonvoyage.ti@icloud.com?'));
 check('件名に段と尺と本数が入る', /竹・90秒 × 2本/.test(q.get('subject') || ''), q.get('subject'));
 check('本文に選んだ内容が入る',
-    /・仕上げ：竹（上）／/.test(body) && /・合計の尺：90秒/.test(body) && /・本数：2本/.test(body)
+    /・仕上げ：竹（上）/.test(body) && /・合計の尺：90秒/.test(body) && /・本数：2本/.test(body)
     && new RegExp(`・概算金額：¥${price(TIERS[1], 90, 2).toLocaleString('ja-JP')}（税別）`).test(body)
     && new RegExp(`・納品目安：約${leadWeeks(TIERS[1], 90)}週間`).test(body));
 check('本文に内訳も入る', /・基本料金：¥90,000/.test(body) && /・尺 90秒 × ¥4,900（竹）/.test(body));

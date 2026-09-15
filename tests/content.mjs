@@ -23,6 +23,11 @@ check('FAQ の文言が画面と構造化データで一致',
     faqUi.every((u, i) => faqLd[i]?.name === u.q && faqLd[i]?.acceptedAnswer?.text === u.a),
     JSON.stringify(faqUi.map((u, i) => faqLd[i]?.name === u.q)));
 check('閉じていても本文が読める(クローラ対策)', faqUi.every(u => u.a.length > 30));
+/* 縦型は段の特典ではなく別の1本。機械で切らないことを明記しているか */
+check('縦型の扱いを FAQ で説明している',
+    faqUi.some(u => /縦型/.test(u.q) && /設計し直します/.test(u.a) && /2本/.test(u.a)));
+check('サイト本文に落とした仕様が残っていない',
+    !/4K|ちらつき除去|高精細化|正方形/.test(idx), (idx.match(/4K|ちらつき除去|高精細化|正方形/) || [''])[0]);
 
 const org = ld.find(d => d['@graph'])?.['@graph']?.find(x => x['@type'] === 'Organization') || {};
 check('構造化データに代表者', org.founder?.name === '鈴木 宏平');
