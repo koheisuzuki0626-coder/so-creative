@@ -1,8 +1,8 @@
 /* ヘッダー。
    広い画面では項目をロゴの右に左寄せ、狭い画面では2段目で横に流す。
    黒帯との境目で読めなくならないことも、ここで担保する。 */
-import { check, report, open } from './lib.mjs';
-import pwmod from '/opt/node22/lib/node_modules/playwright/index.js';
+import { check, report, open, PW } from './lib.mjs';
+const pwmod = (await import(PW)).default;
 const browser = await pwmod.chromium.launch();
 
 /* ---- 広い画面：ロゴの隣に1行で並ぶ ---- */

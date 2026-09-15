@@ -14,8 +14,10 @@ node tests/run.mjs
 個別に走らせるなら `node tests/pricing.mjs` など。
 配信先を変えるなら `BASE=http://127.0.0.1:8899 node tests/run.mjs`。
 
-Playwright は `/opt/node22/lib/node_modules/playwright` を直接参照している。
-環境が変わったら `tests/lib.mjs` の `PW` と各スイートの import を直すこと。
+Playwright は既定で `/opt/node22/lib/node_modules/playwright` を見る。
+別の場所にあるときは `PW=/path/to/playwright/index.js node tests/run.mjs`。
+Mac では `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm i playwright@<venvのplaywrightと同じ版>` を
+どこかに入れて、その `index.js` を `PW` で指す（ブラウザは `~/Library/Caches/ms-playwright` の共用）。
 
 ## 何を見ているか
 

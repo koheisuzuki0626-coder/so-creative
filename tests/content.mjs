@@ -1,10 +1,11 @@
 /* 文言と実装がズレていないか。
    同じことを複数箇所に書いているので、片方だけ直すと嘘になる。
    ここはその突き合わせ専用。 */
-import { check, report, open, BASE, TIERS, LENGTHS, leadWeeks } from './lib.mjs';
+import { check, report, open, BASE, PW, TIERS, LENGTHS, leadWeeks } from './lib.mjs';
 import { readFileSync } from 'node:fs';
-import pwmod from '/opt/node22/lib/node_modules/playwright/index.js';
-const ROOT = '/home/user/so-portfolio';
+import { fileURLToPath } from 'node:url';
+const pwmod = (await import(PW)).default;
+const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
 const browser = await pwmod.chromium.launch();
 const page = await open(browser, {});
 const idx = readFileSync(`${ROOT}/index.html`, 'utf8');
@@ -59,12 +60,15 @@ check('外部サービスの学習利用を明記', /AI モデルの学習）に
 check('相対参照(前項など)を使っていない', !/前項|次項/.test(pv));
 
 /* ---- 納期の文言が計算と合っているか ---- */
-const leadProse = `30秒で約${leadWeeks(TIERS[0], 30)}週間`;
-check('本文の納期が計算結果と一致(30秒)', idx.includes(leadProse), leadProse);
-const r90 = [leadWeeks(TIERS[0], 90), leadWeeks(TIERS[2], 90)];
-check('本文の納期が計算結果と一致(90秒)', idx.includes(`90秒で約${r90[0]}〜${r90[1]}週間`), `約${r90[0]}〜${r90[1]}週間`);
-const r300 = [leadWeeks(TIERS[0], 300), leadWeeks(TIERS[2], 300)];
-check('本文の納期が計算結果と一致(5分)', idx.includes(`5分で約${r300[0]}〜${r300[1]}週間`), `約${r300[0]}〜${r300[1]}週間`);
+/* 梅〜松の幅。段で差が出ない尺は「約2週間」のように1つの数字で書く */
+const rng = (sec) => {
+    const [a, b] = [leadWeeks(TIERS[0], sec), leadWeeks(TIERS[2], sec)];
+    return a === b ? `約${a}週間` : `約${a}〜${b}週間`;
+};
+for (const [label, sec] of [['30秒', 30], ['90秒', 90], ['3分', 180], ['5分', 300]]) {
+    const want = `${label}で${rng(sec)}`;
+    check(`本文の納期が計算結果と一致(${label})`, idx.includes(want), want);
+}
 check('タイトルの「最短2週間」が実態と合う',
     /最短2週間/.test(idx) && Math.min(...TIERS.flatMap(t => LENGTHS.map(s => leadWeeks(t, s)))) === 2);
 

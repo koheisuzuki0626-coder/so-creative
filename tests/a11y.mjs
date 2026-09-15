@@ -1,6 +1,6 @@
 /* 読みやすさ。全テキストのコントラストと、日本語の折り返し。 */
-import { check, report, open } from './lib.mjs';
-import pwmod from '/opt/node22/lib/node_modules/playwright/index.js';
+import { check, report, open, PW } from './lib.mjs';
+const pwmod = (await import(PW)).default;
 const browser = await pwmod.chromium.launch();
 for (const file of ['index.html', 'about.html', 'privacy.html', 'funnel.html', 'roadmap.html']) {
     const page = await open(browser, { page: file });

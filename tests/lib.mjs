@@ -13,31 +13,39 @@ export function report() {
     process.exit(state.fail ? 1 : 0);
 }
 export const BASE = process.env.BASE || 'http://127.0.0.1:8899';
-export const PW = '/opt/node22/lib/node_modules/playwright/index.js';
+/* Playwright の場所。環境が違うときは PW=/path/to/playwright/index.js で差し替える */
+export const PW = process.env.PW || '/opt/node22/lib/node_modules/playwright/index.js';
 
 /* 料金と工数のモデル。index.html のコメントと同じもの。
    ここを書き換えるときは index.html も必ず合わせること */
 export const PRICE = { base: 90000, perExtra: 65000 };
 export const TIERS = [
     { id: 'ume',   label: '梅', perSec: 3500, hours: 1.0 },
-    { id: 'take',  label: '竹', perSec: 4900, hours: 1.4 },
-    { id: 'matsu', label: '松', perSec: 6650, hours: 1.9 },
+    { id: 'take',  label: '竹', perSec: 4900, hours: 1.25 },
+    { id: 'matsu', label: '松', perSec: 6650, hours: 1.55 },
 ];
 export const LENGTHS = [15, 30, 45, 60, 90, 120, 180, 300];
 export const countCap = (sec) => (sec <= 30 ? 2 : sec <= 90 ? 4 : 6);
 export const price = (t, sec, n) => PRICE.base + t.perSec * sec + PRICE.perExtra * (n - 1);
-/* 工数には絵コンテぶんを上乗せしてある(固定 +1h・本数 +0.5h)。
-   ※ t.hours の 1.0/1.4/1.9 は「モデル」であって実測ではない。
-      実測は下の MEASURED の2点だけで、モデルはその約2倍を見積もっている。
-      納期はこのモデルから出しているので、長めに出る側に倒れている(安全側)。
-      実測が揃うまで倍率は動かさない。判断の経緯は README の「工数の根拠」に。 */
-export const hours = (t, sec, n) => 5.8 + 0.24 * t.hours * sec + 4.5 * (n - 1);
-export const leadWeeks = (t, sec) => Math.max(2, Math.round((4.8 + 0.24 * t.hours * sec) / 25 + 1));
-export const RATE = 14900;
+/* 工数モデル（2026-09-16 に実測へ合わせた）。
+     工数 = 3.0h + 0.15h × 倍率 × 秒数 + 1.5h × (本数−1)
+   実測（下の MEASURED）に、実案件の打合せ・素材待ち・要件の揺れぶんとして
+   約1.5倍の安全率をかけてある。60秒の松で 17.0h（実測 10.5h）。
+   段の倍率 1.0 / 1.25 / 1.55 は工程別の実測から:
+     竹 ＝ 梅 ＋ キャラクターシート 1.0h ＋ 修正1回 0.6h
+     松 ＝ 竹 ＋ ナレーション 1.0h ＋ 修正2回 1.25h
+   価格の倍率（1.0 / 1.4 / 1.9）は据え置きなので、上の段ほど時間単価が高い。
+   index.html の HOURS / TIERS[].hours と同じ値にすること */
+export const HOURS = { base: 3.0, perSec: 0.15, perExtra: 1.5 };
+export const hours = (t, sec, n) => HOURS.base + HOURS.perSec * t.hours * sec + HOURS.perExtra * (n - 1);
+export const leadWeeks = (t, sec) => Math.max(2, Math.round((HOURS.base + HOURS.perSec * t.hours * sec) / 25 + 1));
+/* 目標の時間単価。以前の ¥14,900 は「60秒の松が32h かかる」という重いモデルからの
+   逆算だった。モデルを実測に合わせた結果、同じ価格で ¥23,000/h を下回らない */
+export const RATE = 23000;
 
-/* 実測値（2026-09-13〜14・営業ロープレ1件）。
+/* 実測値（2026-09-13〜15・営業ロープレ1件）。
    架空クライアントのため、素材待ち・返信待ち・要件の揺れが入っていない。
-   実案件で測り直すまでは上限の目安として扱う */
+   実案件で測り直すまでは下限の目安として扱う */
 export const MEASURED = [
     /* 2026-09-15 に工程別で実測。合計11.5h の内訳は
        構成1.0 / キャラシート1.0 / 生成・選別3.0 / つなぎ2.0 /
@@ -48,6 +56,9 @@ export const MEASURED = [
 ];
 /* 修正1往復あたりの実測。モデルの係数 0.62h とほぼ一致した唯一の項目 */
 export const REVISION_HOURS = 0.625;
+/* クレジット原価の実測（Seedance 2.5 1080p 5秒＝45cr、採用率35%）。
+   60秒で 2,462cr ≒ 41cr/秒。追加購入単価 $0.0475〜0.05/cr × ¥154 ≒ ¥310/秒 */
+export const CREDITS_PER_SEC = 41;
 
 export async function open(pw, { width = 1280, height = 900, mobile = false, page: file = 'index.html' } = {}) {
     const { mockFonts, mockYtimg } = await import('./route.mjs');

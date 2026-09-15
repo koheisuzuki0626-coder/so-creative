@@ -1,7 +1,7 @@
 /* 料金計算機の段差(ファネル計測)と、それを見るページ。
    料金表を公開している以上、価格で諦めた人はここにしか残らない。 */
-import { check, report, open, BASE } from './lib.mjs';
-import pwmod from '/opt/node22/lib/node_modules/playwright/index.js';
+import { check, report, open, BASE, PW } from './lib.mjs';
+const pwmod = (await import(PW)).default;
 const browser = await pwmod.chromium.launch();
 const log = (p) => p.evaluate(() => window.soFunnel.raw().map(r => r.name));
 const rows = (p) => p.evaluate(() => window.soFunnel.raw());

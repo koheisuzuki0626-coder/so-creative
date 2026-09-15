@@ -1,8 +1,8 @@
 /* 料金シミュレーター。
    「お客様にどの組み合わせを選ばせても採算が崩れない」ことの担保がここ。
    金額・工数のどれかを動かしたら必ずこれを通すこと。 */
-import { check, report, PW, open, pick, PRICE, TIERS, LENGTHS, countCap, price, hours, leadWeeks, RATE, MEASURED, REVISION_HOURS } from './lib.mjs';
-import pwmod from '/opt/node22/lib/node_modules/playwright/index.js';
+import { check, report, PW, open, pick, PRICE, TIERS, LENGTHS, countCap, price, hours, leadWeeks, RATE, MEASURED, REVISION_HOURS, CREDITS_PER_SEC } from './lib.mjs';
+const pwmod = (await import(PW)).default;
 
 const browser = await pwmod.chromium.launch();
 const page = await open(browser, {});
@@ -96,6 +96,19 @@ for (const m of MEASURED) {
     check(`工数モデルが実測より短くない（${m.label} ${m.sec}秒）`, model >= m.workHours,
         `モデル ${model.toFixed(1)}h / 実測 ${m.workHours}h（${(model / m.workHours).toFixed(1)}倍の余裕）`);
 }
+
+/* 逆に、実測から離れて重すぎてもいけない。以前は 3.1倍で、納期が長く出すぎ
+   （5分の松で7週）、時間単価の目標 ¥14,900 も見かけ上のものになっていた。
+   本編1本の安全率は 1.3〜2.0倍に収める（打合せ・素材待ちのぶん） */
+{
+    const m = MEASURED[0];
+    const ratio = hours(TIERS.find((x) => x.id === m.tier), m.sec, 1) / m.workHours;
+    check('工数モデルの安全率が実測の 1.3〜2.0倍', ratio >= 1.3 && ratio <= 2.0, `${ratio.toFixed(2)}倍`);
+}
+
+/* クレジット原価は秒単価に対して小さいこと（超えるなら秒単価に原価項を足す） */
+check('クレジット原価が梅の秒単価の 10% 未満',
+    CREDITS_PER_SEC * 7.7 < TIERS[0].perSec * 0.10, `¥${Math.round(CREDITS_PER_SEC * 7.7)}/秒 vs ¥${TIERS[0].perSec}`);
 
 /* 実測できた唯一の係数。段の差（修正2/3/5回）はこれを根拠にしている */
 check('修正1往復の係数が実測と合っている', Math.abs(REVISION_HOURS - 0.62) < 0.05,
