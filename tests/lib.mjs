@@ -39,9 +39,15 @@ export const RATE = 14900;
    架空クライアントのため、素材待ち・返信待ち・要件の揺れが入っていない。
    実案件で測り直すまでは上限の目安として扱う */
 export const MEASURED = [
-    { label: '本編',   sec: 59, tier: 'matsu', workHours: 15 },
-    { label: '追加尺', sec: 15, tier: 'matsu', workHours: 2 },
+    /* 2026-09-15 に工程別で実測。合計11.5h の内訳は
+       構成1.0 / キャラシート1.0 / 生成・選別3.0 / つなぎ2.0 /
+       ナレーション1.0 / 15秒版1.0 / 修正4往復2.5。
+       本編ぶんは 15秒版の1.0h を除いた 10.5h として扱う */
+    { label: '本編',   sec: 59, tier: 'matsu', workHours: 10.5 },
+    { label: '追加尺', sec: 15, tier: 'matsu', workHours: 1 },
 ];
+/* 修正1往復あたりの実測。モデルの係数 0.62h とほぼ一致した唯一の項目 */
+export const REVISION_HOURS = 0.625;
 
 export async function open(pw, { width = 1280, height = 900, mobile = false, page: file = 'index.html' } = {}) {
     const { mockFonts, mockYtimg } = await import('./route.mjs');

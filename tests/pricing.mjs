@@ -1,7 +1,7 @@
 /* 料金シミュレーター。
    「お客様にどの組み合わせを選ばせても採算が崩れない」ことの担保がここ。
    金額・工数のどれかを動かしたら必ずこれを通すこと。 */
-import { check, report, PW, open, pick, PRICE, TIERS, LENGTHS, countCap, price, hours, leadWeeks, RATE, MEASURED } from './lib.mjs';
+import { check, report, PW, open, pick, PRICE, TIERS, LENGTHS, countCap, price, hours, leadWeeks, RATE, MEASURED, REVISION_HOURS } from './lib.mjs';
 import pwmod from '/opt/node22/lib/node_modules/playwright/index.js';
 
 const browser = await pwmod.chromium.launch();
@@ -96,6 +96,10 @@ for (const m of MEASURED) {
     check(`工数モデルが実測より短くない（${m.label} ${m.sec}秒）`, model >= m.workHours,
         `モデル ${model.toFixed(1)}h / 実測 ${m.workHours}h（${(model / m.workHours).toFixed(1)}倍の余裕）`);
 }
+
+/* 実測できた唯一の係数。段の差（修正2/3/5回）はこれを根拠にしている */
+check('修正1往復の係数が実測と合っている', Math.abs(REVISION_HOURS - 0.62) < 0.05,
+    `実測 ${REVISION_HOURS}h / モデル 0.62h`);
 
 /* ---- 納期の形 ---- */
 check('15秒は据え置きで2週間', leadWeeks(TIERS[0], 15) === 2 && leadWeeks(TIERS[2], 15) === 2);
