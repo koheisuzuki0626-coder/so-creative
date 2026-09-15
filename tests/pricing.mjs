@@ -46,9 +46,15 @@ await page.locator('#calc-tier .calc-opt[data-tier="matsu"]').click();
 check('松では「なし」が選べず「あり」に固定',
     (await page.locator('#calc-nar input[data-nar="off"]').isDisabled())
     && (await page.locator('#calc-nar input[data-nar="on"]').isChecked()));
-check('松の内訳にナレーションは加算されない',
+check('松は1本目のナレーションが込み（¥0）',
     /松に込み/.test(await page.locator('#calc-nar-dt').innerText())
     && (await page.locator('#calc-narfee').innerText()) === '¥0');
+/* 2本目以降は梅・竹と同じく加算される（松が「竹＋ナレ」より安くなるのを防ぐ） */
+await page.locator('#calc-cnt .calc-opt[data-count="2"]').click();
+check('松の2本目以降は内訳に出る',
+    /追加1本/.test(await page.locator('#calc-nar-dt').innerText())
+    && (await page.locator('#calc-narfee').innerText()) === '¥30,000');
+await page.locator('#calc-cnt .calc-opt[data-count="1"]').click();
 await page.locator('#calc-tier .calc-opt[data-tier="ume"]').click();
 check('梅では「なし」が選べる', !(await page.locator('#calc-nar input[data-nar="off"]').isDisabled()));
 await page.locator('#calc-nar .calc-opt[data-nar="on"]').click();
@@ -157,6 +163,34 @@ check('ナレーションを足しても納期は延びないか1週だけ',
 check('ナレーション追加が時間単価の目標を割らない', PRICE.narration / HOURS_NARRATION() >= RATE * 0.95,
     `¥${Math.round(PRICE.narration / HOURS_NARRATION())}/h`);
 
+/* ---- 段のはしごが逆転していないか ----
+   松は「竹＋ナレーション」の上位互換（3人目・ナレ込み・修正は同じ3回）なので、
+   松のほうが安くなる組み合わせがあると、高い金を払って下位の仕様を買う選択肢ができる。
+   ナレーションを本数課金にする前は 5通りで逆転していた（15秒×1本〜90秒×6本） */
+{
+    const take = TIERS.find((t) => t.id === 'take');
+    const matsu = TIERS.find((t) => t.id === 'matsu');
+    const inverted = [];
+    for (const sec of LENGTHS) {
+        for (let n = 1; n <= 6; n++) {
+            if (sec / n < 15) continue;
+            if (price(take, sec, n, true) > price(matsu, sec, n)) inverted.push(`${sec}秒×${n}本`);
+        }
+    }
+    /* 残る1件は、松の秒単価に溶けているナレーション1本ぶん（1,750×秒）が
+       ¥30,000 に届かない最短の尺だけ。ここは松のほうが時間単価が高いので放置する */
+    check('竹＋ナレが松を上回るのは15秒×1本だけ', inverted.join(',') === '15秒×1本', inverted.join(',') || 'なし');
+    check('その1件は松のほうが時間単価が高い',
+        price(matsu, 15, 1) / hours(matsu, 15, 1) > price(take, 15, 1, true) / hours(take, 15, 1, true),
+        `松 ¥${Math.round(price(matsu, 15, 1) / hours(matsu, 15, 1))}/h vs 竹＋ナレ ¥${Math.round(price(take, 15, 1, true) / hours(take, 15, 1, true))}/h`);
+    check('松も2本目以降のナレーションは加算される',
+        price(matsu, 30, 2) - price(matsu, 30, 1) === PRICE.perExtra + PRICE.narration,
+        `¥${price(matsu, 30, 2) - price(matsu, 30, 1)}`);
+    check('松の工数もナレーション本数ぶん増える',
+        Math.abs(hours(matsu, 30, 2) - hours(matsu, 30, 1) - (1.5 + 1.0)) < 1e-9,
+        `${(hours(matsu, 30, 2) - hours(matsu, 30, 1)).toFixed(2)}h`);
+}
+
 /* ---- 段の順序と独立性 ---- */
 const ladder = [];
 for (const t of TIERS) ladder.push(await pick(page, t.id, 90, 1));
@@ -186,10 +220,13 @@ const body = q.get('body') || '';
 check('相談ボタンがメールを開く', href.startsWith('mailto:bonvoyage.ti@icloud.com?'));
 check('件名に段と尺と本数が入る', /竹・90秒 × 2本/.test(q.get('subject') || ''), q.get('subject'));
 check('本文に選んだ内容が入る',
-    /・仕上げ：竹（上）/.test(body) && /・合計の尺：90秒/.test(body) && /・本数：2本/.test(body) && /・ナレーション：なし/.test(body)
+    /・仕上げ：竹（上）/.test(body) && /・ナレーション：なし/.test(body)
     && new RegExp(`・概算金額：¥${price(TIERS[1], 90, 2).toLocaleString('ja-JP')}（税別）`).test(body)
     && new RegExp(`・納品目安：約${leadWeeks(TIERS[1], 90)}週間`).test(body));
-check('本文に内訳も入る', /・基本料金：¥90,000/.test(body) && /・尺 90秒 × ¥4,900（竹）/.test(body));
+check('本文に内訳も入る', /・基本料金：¥90,000/.test(body) && /・尺 90秒 × ¥4,900（竹）/.test(body)
+    && /・本数 2本：/.test(body));
+/* 尺と本数は件名と内訳にあるので、選んだ内容では繰り返さない（mailto の長さ対策） */
+check('選んだ内容で尺と本数を繰り返していない', !/・合計の尺：/.test(body) && !/・本数：2本/.test(body));
 check('先方に書いてもらう欄がある',
     /会社名 \/ お名前：/.test(body) && /映像の用途：/.test(body) && /ご希望の公開時期：/.test(body));
 await pick(page, 'ume', 60, 2);

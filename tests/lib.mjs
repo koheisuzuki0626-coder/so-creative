@@ -27,7 +27,9 @@ export const TIERS = [
 export const LENGTHS = [15, 30, 45, 60, 90, 120, 180, 300];
 export const countCap = (sec) => (sec <= 30 ? 2 : sec <= 90 ? 4 : 6);
 /* nar … 梅・竹でナレーションを追加したか。松は込みなので加算しない */
-export const narCount = (t, n, nar) => (t.narration || !nar ? 0 : n);
+/* ナレーションは尺ではなく本数で手間が増える。松の秒単価に含まれるのは1本ぶんなので、
+   2本目以降は梅・竹と同じく課金する（そうしないと「竹＋ナレ」が「松」を上回る） */
+export const narCount = (t, n, nar) => (t.narration ? n - 1 : nar ? n : 0);
 export const price = (t, sec, n, nar = false) =>
     PRICE.base + t.perSec * sec + PRICE.perExtra * (n - 1) + PRICE.narration * narCount(t, n, nar);
 /* 工数モデル（2026-09-16 に実測へ合わせた）。
@@ -43,8 +45,8 @@ export const price = (t, sec, n, nar = false) =>
 export const HOURS = { base: 3.0, perSec: 0.15, perExtra: 1.5, narration: 1.0 };
 export const hours = (t, sec, n, nar = false) =>
     HOURS.base + HOURS.perSec * t.hours * sec + HOURS.perExtra * (n - 1) + HOURS.narration * narCount(t, n, nar);
-export const leadWeeks = (t, sec, nar = false) =>
-    Math.max(2, Math.round((HOURS.base + HOURS.perSec * t.hours * sec + (narCount(t, 1, nar) ? HOURS.narration : 0)) / 25 + 1));
+export const leadWeeks = (t, sec, nar = false, n = 1) =>
+    Math.max(2, Math.round((HOURS.base + HOURS.perSec * t.hours * sec + HOURS.narration * narCount(t, n, nar)) / 25 + 1));
 /* 目標の時間単価。以前の ¥14,900 は「60秒の松が32h かかる」という重いモデルからの
    逆算だった。モデルを実測に合わせた結果、同じ価格で ¥23,000/h を下回らない */
 export const RATE = 23000;
