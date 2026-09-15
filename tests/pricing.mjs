@@ -29,16 +29,17 @@ for (const [t, must, use, rev] of [['ume', '登場人物なし', 'SNS', 2], ['ta
     check(`${t} の中身が納品物の言葉で出る`, h.includes(must) && /納品/.test(h), h.slice(0, 34));
     check(`${t} の向いている用途が出る`, h.includes('向いている用途') && h.includes(use));
     check(`${t} の修正回数が出る（${rev}回）`, h.includes(`修正${rev}回まで`), (h.match(/修正\d回まで/) || [''])[0]);
-    /* 4K は全段で無料。ナレーションは梅・竹が追加、松が込み */
-    check(`${t} で 4K 納品を案内している`, /4K/.test(h));
+    /* 4K は売り文句にしない（中身は1080pの引き伸ばしなので）。FAQ にだけ正直に書く */
+    check(`${t} は 1080p 納品と書いてある`, /1080p（フルHD）で納品/.test(h));
+    check(`${t} の説明に 4K を出していない`, !/4K/.test(h));
     check(`${t} のナレーションの扱いが出る`, t === 'matsu' ? /ナレーション込み/.test(h) : /ナレーションは1本 ¥30,000/.test(h));
 }
 const plansText = await page.locator('#plans').innerText();
 check('生成回数など内部の手順を出していない',
     !/カットにつき|回まで生成|回以上生成/.test(plansText));
-/* 実証で使えないと分かったものを売り文句に残していないか（4K は無料で出すことにしたので除外） */
+/* 実証で使えないと分かったものを売り文句に残していないか */
 check('落とした仕様が段の説明に残っていない',
-    !/ちらつき|正方形|3形式|2形式|720p/.test(plansText), plansText.slice(0, 40));
+    !/ちらつき|正方形|3形式|2形式|720p|4K/.test(plansText), plansText.slice(0, 40));
 check('修正回数が5回に戻っていない', !/5回/.test(plansText));
 
 /* ---- ナレーションの選択 ---- */
