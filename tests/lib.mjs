@@ -26,10 +26,22 @@ export const TIERS = [
 export const LENGTHS = [15, 30, 45, 60, 90, 120, 180, 300];
 export const countCap = (sec) => (sec <= 30 ? 2 : sec <= 90 ? 4 : 6);
 export const price = (t, sec, n) => PRICE.base + t.perSec * sec + PRICE.perExtra * (n - 1);
-/* 工数には絵コンテぶんを上乗せしてある(固定 +1h・本数 +0.5h) */
+/* 工数には絵コンテぶんを上乗せしてある(固定 +1h・本数 +0.5h)。
+   ※ t.hours の 1.0/1.4/1.9 は「モデル」であって実測ではない。
+      実測は下の MEASURED の2点だけで、モデルはその約2倍を見積もっている。
+      納期はこのモデルから出しているので、長めに出る側に倒れている(安全側)。
+      実測が揃うまで倍率は動かさない。判断の経緯は README の「工数の根拠」に。 */
 export const hours = (t, sec, n) => 5.8 + 0.24 * t.hours * sec + 4.5 * (n - 1);
 export const leadWeeks = (t, sec) => Math.max(2, Math.round((4.8 + 0.24 * t.hours * sec) / 25 + 1));
 export const RATE = 14900;
+
+/* 実測値（2026-09-13〜14・営業ロープレ1件）。
+   架空クライアントのため、素材待ち・返信待ち・要件の揺れが入っていない。
+   実案件で測り直すまでは上限の目安として扱う */
+export const MEASURED = [
+    { label: '本編',   sec: 59, tier: 'matsu', workHours: 15 },
+    { label: '追加尺', sec: 15, tier: 'matsu', workHours: 2 },
+];
 
 export async function open(pw, { width = 1280, height = 900, mobile = false, page: file = 'index.html' } = {}) {
     const { mockFonts, mockYtimg } = await import('./route.mjs');

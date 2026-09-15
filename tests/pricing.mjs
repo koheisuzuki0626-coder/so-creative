@@ -1,7 +1,7 @@
 /* 料金シミュレーター。
    「お客様にどの組み合わせを選ばせても採算が崩れない」ことの担保がここ。
    金額・工数のどれかを動かしたら必ずこれを通すこと。 */
-import { check, report, PW, open, pick, PRICE, TIERS, LENGTHS, countCap, price, hours, leadWeeks, RATE } from './lib.mjs';
+import { check, report, PW, open, pick, PRICE, TIERS, LENGTHS, countCap, price, hours, leadWeeks, RATE, MEASURED } from './lib.mjs';
 import pwmod from '/opt/node22/lib/node_modules/playwright/index.js';
 
 const browser = await pwmod.chromium.launch();
@@ -64,10 +64,38 @@ check('表示金額が計算式と一致する', wrong.length === 0, JSON.string
 check('本数の上限が尺に応じて効く', capBad.length === 0, JSON.stringify(capBad.slice(0, 3)));
 check('納期が工数から出た値と一致する', leadBad.length === 0, JSON.stringify(leadBad.slice(0, 3)));
 
-const dev = rates.map((r) => ({ ...r, d: Math.abs(r.rate - RATE) / RATE }));
-const worst = dev.slice().sort((a, b) => b.d - a.d)[0];
-check(`どの組み合わせでも時間単価が ¥${RATE}±5%`, dev.every((r) => r.d <= 0.05),
-    `最悪 ${worst.c} ¥${Math.round(worst.rate)}/h (${(worst.d * 100).toFixed(1)}%) 範囲 ¥${Math.round(Math.min(...rates.map(r => r.rate)))}〜${Math.round(Math.max(...rates.map(r => r.rate)))} / ${rates.length}通り`);
+/* かつては「どの組み合わせでも時間単価が一定」を検証していたが、
+   段の特典を「人が出るか／声が入るか」に絞ったことで工数の伸びが価格より
+   緩くなり、一定にはならなくなった。守るべきはもともと一定であることではなく
+   「目標を割らないこと」なので、不変条件をそちらに変えた。 */
+const lo = rates.slice().sort((a, b) => a.rate - b.rate)[0];
+const hi = rates.slice().sort((a, b) => b.rate - a.rate)[0];
+/* 基本料金と本数料金は工数に比例しないので、端の組み合わせで数%ぶれる。
+   問題なのは「大きく割ること」なので、下側だけ5%の幅を持たせる */
+check(`どの組み合わせでも時間単価が ¥${RATE} の95%を下回らない`, lo.rate >= RATE * 0.95,
+    `最低 ${lo.c} ¥${Math.round(lo.rate)}/h（目標比 ${(lo.rate / RATE * 100).toFixed(1)}%） / ${rates.length}通り`);
+check('時間単価が現実離れしていない（計算式の壊れ検知）', hi.rate <= RATE * 3,
+    `最高 ${hi.c} ¥${Math.round(hi.rate)}/h`);
+
+/* 上位の段ほど儲からない、という並びになっていないか。
+   以前これが起きていて（松がいちばん薄い）、特典を組み直す理由になった */
+const byTier = TIERS.map((t) => {
+    const rs = rates.filter((r) => r.c.startsWith(t.label)).map((r) => r.rate);
+    return { label: t.label, avg: rs.reduce((a, b) => a + b, 0) / rs.length };
+});
+/* 誤差ではなく「実質的に逆転している」ことだけを拾いたいので 2% の幅を持たせる */
+check('上の段ほど時間単価が実質的に下がらない',
+    byTier.every((x, i) => i === 0 || x.avg >= byTier[i - 1].avg * 0.98),
+    byTier.map((x) => `${x.label} ¥${Math.round(x.avg)}`).join(' / '));
+
+/* モデルが実測より短く見積もっていないこと。
+   短い側に倒れると納期に遅れる。倍率を下げるなら実測を伴わせる */
+for (const m of MEASURED) {
+    const t = TIERS.find((x) => x.id === m.tier);
+    const model = hours(t, m.sec, 1);
+    check(`工数モデルが実測より短くない（${m.label} ${m.sec}秒）`, model >= m.workHours,
+        `モデル ${model.toFixed(1)}h / 実測 ${m.workHours}h（${(model / m.workHours).toFixed(1)}倍の余裕）`);
+}
 
 /* ---- 納期の形 ---- */
 check('15秒は据え置きで2週間', leadWeeks(TIERS[0], 15) === 2 && leadWeeks(TIERS[2], 15) === 2);
