@@ -1456,3 +1456,8 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
 .sample-sw:hover { border-color: var(--ink-dim); color: var(--ink); }
 .sample-sw.is-on { border-color: var(--accent); color: var(--ink); background: rgba(176,141,87,.08); font-weight: 600; }
 .sample-sw:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* ジャンル01のカードに入れたサンプル映像。カードの余白に合わせる */
+.genre .sample { margin: 22px 0 0; }
+.genre .sample-cap { margin-top: 12px; }
+.genre .sample-title { font-size: .95rem; }
