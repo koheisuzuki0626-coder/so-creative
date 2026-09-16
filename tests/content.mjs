@@ -49,7 +49,14 @@ check('画質は 1080p と書いてある', /1080p（フルHD）/.test(bodyText)
 {
     const works = await page.locator('#genres').innerText();
     const v = page.locator('.sample-video');
-    check('サンプル映像を1本置いている', (await v.count()) === 1);
+    check('ジャンルのカードにサンプル映像が入っている', (await v.count()) >= 1);
+    /* 06 展示会は、同じ案件を無音・テロップ主体で別設計した1本。
+       「短く切っただけではない」という主張の裏づけとして置いている */
+    check('展示会のカードにもサンプルがある',
+        (await page.locator('#genre-event .sample-video').count()) === 1);
+    check('展示会のサンプルは無音だと書いてある',
+        /15秒・無音/.test(await page.locator('#genre-event').innerText()));
+    check('展示会のサンプルは実際に音が入っていない', await page.locator('#genre-event .sample-video').evaluate((v) => v.muted === true));
     check('サンプルは「01 会社紹介」のカードの中にある',
         (await page.locator('#genre-company .sample-video').count()) === 1
         && (await page.locator('#works .sample-video').count()) === 0);
