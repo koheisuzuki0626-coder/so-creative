@@ -66,7 +66,8 @@ export const MEASURED = [
 /* 修正1往復あたりの実測。モデルの係数 0.62h とほぼ一致した唯一の項目 */
 export const REVISION_HOURS = 0.625;
 /* クレジット原価の実測（Seedance 2.5 1080p 5秒＝45cr、採用率35%）。
-   60秒で 2,462cr ≒ 41cr/秒。追加購入単価 $0.0475〜0.05/cr × ¥154 ≒ ¥310/秒 */
+   納品物 2,462cr ÷ 74秒（本編59秒＋展示会用15秒）＝ 33cr/秒。本編の尺だけで割ると 41cr/秒 で、
+   ここは安全側の 41 を使う。追加購入単価 $0.0475〜0.05/cr × ¥154 ≒ ¥310/秒 */
 export const CREDITS_PER_SEC = 41;
 
 export async function open(pw, { width = 1280, height = 900, mobile = false, page: file = 'index.html' } = {}) {
