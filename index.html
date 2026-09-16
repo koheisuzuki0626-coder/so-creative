@@ -593,9 +593,13 @@
                        aria-label="会社紹介のサンプル映像 60秒">
                     お使いのブラウザでは再生できません。
                 </video>
+                <div class="sample-switch" role="group" aria-label="ナレーションの有無を切り替える">
+                    <button type="button" class="sample-sw is-on" data-file="company-60s-telop.mp4" aria-pressed="true">ナレーションなし（テロップのみ）</button>
+                    <button type="button" class="sample-sw" data-file="company-60s-narration.mp4" aria-pressed="false">ナレーションあり</button>
+                </div>
                 <figcaption class="sample-cap">
-                    <p class="sample-title">サンプル：会社紹介 60秒（テロップのみ）</p>
-                    <p class="sample-note">架空の製造業を題材に、実際の進め方そのままで制作したものです。登場人物2人、撮影も出演者の手配もなし。ナレーションは入れず、メッセージはテロップでお伝えする構成です（梅・竹の仕上げ）。</p>
+                    <p class="sample-title">サンプル：会社紹介 60秒</p>
+                    <p class="sample-note">架空の製造業を題材に、実際の進め方そのままで制作したものです。登場人物2人、撮影も出演者の手配もなし。<strong>同じ映像で、ナレーションの有無を聴き比べられます</strong>（ナレーションは松に含まれ、梅・竹では1本 ¥30,000 で追加できます）。</p>
                 </figcaption>
             </figure>
 
@@ -734,6 +738,37 @@
             <p class="f-meta" id="footer-meta" hidden></p>
         </div>
     </footer>
+
+    <script>
+        /* 会社紹介サンプルの「ナレーションあり／なし」切り替え。
+           同じ映像で音だけ違うので、再生位置と再生状態を保ったまま差し替える。
+           段の違い（松はナレーション込み、梅・竹は1本 ¥30,000）を
+           納品物そのもので確かめてもらうための仕掛け */
+        (() => {
+            const video = document.getElementById('sample-video');
+            if (!video) return;
+            for (const btn of document.querySelectorAll('.sample-sw')) {
+                btn.addEventListener('click', () => {
+                    if (btn.classList.contains('is-on')) return;
+                    const at = video.currentTime;
+                    const playing = !video.paused && !video.ended;
+                    video.src = 'assets/works/' + btn.dataset.file;
+                    video.load();
+                    const restore = () => {
+                        video.removeEventListener('loadedmetadata', restore);
+                        try { video.currentTime = at; } catch (e) { /* 巻き戻せない環境では先頭から */ }
+                        if (playing) video.play().catch(() => {});
+                    };
+                    video.addEventListener('loadedmetadata', restore);
+                    for (const b of document.querySelectorAll('.sample-sw')) {
+                        const on = b === btn;
+                        b.classList.toggle('is-on', on);
+                        b.setAttribute('aria-pressed', String(on));
+                    }
+                });
+            }
+        })();
+    </script>
 
     <script>
         const nav = document.getElementById('nav');
