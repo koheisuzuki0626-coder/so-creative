@@ -104,7 +104,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
        たたんだ見出しに数字が出ていないと、開かないと何も分からない資料になる */
     const folded = await rm.locator('body').innerText();
     check('たたんだままでも年商・年収が読める',
-        /¥11,295,000/.test(folded) && /¥10,695,000/.test(folded));
+        /¥11,295,000/.test(folded) && /¥10,408,605/.test(folded));
     check('たたんだままでも天井と必要な問い合わせ数が読める',
         /1,950万/.test(folded) && /6\.7件/.test(folded));
 
