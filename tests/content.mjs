@@ -122,9 +122,11 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     check('ロードマップの四半期計が計画と一致',
         /¥1,800,000/.test(t) && /¥2,745,000/.test(t) && /¥3,375,000/.test(t) && /¥11,295,000/.test(t));
     check('未開業であることを書いている', /未開業/.test(t));
-    check('クレジット残高とプランが最新', /2,970/.test(t) && /Max/.test(t));
+    check('クレジット残高とプランが最新', /1,592/.test(t) && /Max/.test(t));
+    /* 実工数は工程別に測り直して 11.5h（本編10.5 ＋ 15秒版1.0）。
+       以前の「17.0h」は内訳を取る前の概算だった（2026-09-16 訂正） */
     check('松2本の実測が記録されている',
-        /2,442/.test(t) && /1,221/.test(t) && /15時間未満/.test(t));
+        /2,442/.test(t) && /1,221/.test(t) && /11\.5時間/.test(t));
     check('松の4工程を実際に通した記録がある',
         /4K化/.test(t) && /Reframe 9:16/.test(t) && /Seed Audio/.test(t));
     check('4工程の原価の内訳が載っている',
@@ -138,14 +140,14 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     check('松から落とす仕様を明示している',
         /落とす/.test(t) && /4K/.test(t) && /3形式/.test(t));
     check('縦型は追加本数で作ると書いている',
-        /追加の1本|追加本数/.test(t) && /¥32,500\/h/.test(t));
+        /追加の1本|追加本数/.test(t) && /¥65,000\/h/.test(t));
     check('1,080クレジットを授業料として記録している', /1,080クレジットは授業料/.test(t));
     check('社内用なので検索に出さない',
         (await rm.evaluate(() => document.querySelector('meta[name="robots"]')?.content || '')).includes('noindex'));
     check('ロードマップで横溢れなし',
         (await rm.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 0);
     check('実際に納品した2本の尺と時間単価が載っている',
-        /59秒/.test(t) && /15秒/.test(t) && /¥29,333\/h/.test(t) && /¥40,000\/h/.test(t));
+        /59秒/.test(t) && /15秒/.test(t) && /¥41,905\/h/.test(t) && /¥80,000\/h/.test(t));
     check('料金表どおりの金額を出している',
         /¥647,100/.test(t) && /¥520,000/.test(t));
     check('追加尺が料金表の2本目にあたると書いている',
