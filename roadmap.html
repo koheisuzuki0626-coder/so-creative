@@ -49,8 +49,30 @@
         td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
         tfoot td { font-weight: 500; border-bottom: 0; }
         .wrap-x { overflow-x: auto; }
-        /* 文字の列が3つ以上ある表は、狭い画面で潰さずに横スクロールさせる */
+        /* 文字の列が3つ以上ある表は、広い画面ではそのまま横に並べる */
         .wrap-x table.t-wide { min-width: 560px; }
+
+        /* スマホでは横スクロールをやめ、1行を1枚のカードとして縦に積む。
+           見出しは thead ではなく各セルの data-label（下の script が付ける）で出す。
+           以前は min-width 560px を強制していたため、表が画面からはみ出して
+           指で横に送らないと読めなかった（2026-09-16 に修正） */
+        @media (max-width: 560px) {
+            .wrap-x table.t-wide { min-width: 0; }
+            table.t-wide thead { display: none; }
+            table.t-wide tr { display: block; padding: 10px 0; border-bottom: 1px solid var(--line); }
+            table.t-wide tbody tr:last-child { border-bottom: 0; }
+            /* セルの中に <b> などが入るので、grid で横に並べると崩れる。
+               見出しを1行目、中身を2行目に置く素直な積み方にする */
+            table.t-wide td { display: block; border: 0; padding: 4px 0 6px; }
+            table.t-wide td::before { content: attr(data-label); display: block;
+                                      color: var(--ink-dim); font-size: .74rem; line-height: 1.6; }
+            table.t-wide td[data-label=""]::before { display: none; }
+            table.t-wide td:first-child { font-weight: 600; }
+            table.t-wide td.num { text-align: left; }
+            /* 数字の列が並ぶ表（月ごとの資金繰りなど）は縦積みにすると読みにくいので、
+               横のままで余白と文字を詰める。それでも収まらないぶんは .wrap-x が横スクロールする */
+            table:not(.t-wide) th, table:not(.t-wide) td { padding: 9px 5px; font-size: .82rem; }
+        }
 
         .stage { border-left: 2px solid var(--line); padding: 0 0 4px 22px; margin-top: 26px; position: relative; }
         .stage::before { content: ""; position: absolute; left: -7px; top: 8px; width: 12px; height: 12px;
@@ -268,6 +290,10 @@
             15秒版は本編を詰めたものではなく<b>別設計</b>（観客も文言も文字サイズも違う）。工数は尺に比例しない。
         </p>
 
+        <details class="fold" style="margin:14px 0">
+            <summary><span class="fold-t">使ったもの・消費クレジットの内訳</span>
+                <span class="fold-s">動画54回・静止画6枚で2,442クレジット。残高と1円単位で一致</span></summary>
+            <div class="fold-body">
         <h3>使ったもの</h3>
         <div class="wrap-x"><table class="t-wide">
             <thead><tr><th>項目</th><th class="num">2本合計</th><th class="num">1本あたり</th><th>内訳</th></tr></thead>
@@ -289,6 +315,10 @@
             1080p の生成単価は <b>45クレジット／5秒＝9クレジット／秒</b>。これが唯一の実測単価。
         </p>
 
+            </div>
+        </details>
+
+
         <h3>読み方：予測の半分以下。いちばん儲かるのは追加の短尺</h3>
         <div class="wrap-x"><table class="t-wide">
             <thead><tr><th>尺</th><th class="num">料金表の定価</th><th class="num">実際の提示額</th><th class="num">実工数</th><th class="num">時間単価</th><th class="num">目標比</th></tr></thead>
@@ -303,6 +333,10 @@
             工数が減れば時間単価は<b>上がる</b>ので、これは「松が安すぎる」ではなく<b>「松は十分に儲かる」</b>という結果。
             定価を2割引いた提示額でも目標の2倍。クレジット原価は価格の1〜2%で無視できる。<b>値下げの理由はない。</b>
         </p>
+        <details class="fold" style="margin:14px 0">
+            <summary><span class="fold-t">検証の中身（料金表との突き合わせ・4工程・出力の確認）</span>
+                <span class="fold-s">クレジットの99.4%はリフレーム。縦型は中身を見たら使えなかった</span></summary>
+            <div class="fold-body">
         <h3>料金表どおりならいくらだったか</h3>
         <p class="lead">
             計算機の「尺」は<b>合計の尺</b>（全本数のトータル）で、2本目以降は尺の料金がかからず ¥65,000 の定額。
@@ -447,6 +481,14 @@
             </p>
         </div>
 
+            </div>
+        </details>
+
+
+        <details class="fold" style="margin:14px 0">
+            <summary><span class="fold-t">この実測で決めたこと・残っている宿題</span>
+                <span class="fold-s">松の仕様を組み直し、工数モデルを実測へ。一人での天井は年収およそ1,950万→3,200万に</span></summary>
+            <div class="fold-body">
         <h3>だから松の仕様はこう変える<span style="font-weight:400;color:var(--ink-dim)">（9/16 にサイトへ反映済み）</span></h3>
         <div class="wrap-x"><table class="t-wide">
             <thead><tr><th>いままでの松の約束</th><th>実測して分かったこと</th><th>どうしたか</th></tr></thead>
@@ -524,6 +566,9 @@
                 <tr><td>実案件でも同じ工数で済むか</td><td>今回は架空のクライアント。実際は返信待ち・要件の揺れ・素材待ちが乗る</td><td>初受注の1本目で、待ち時間を除いた実働だけを測る</td></tr>
             </tbody>
         </table></div>
+            </div>
+        </details>
+
     </section>
 
     <div class="act"><p class="act-label"><b>3</b><span>数字の裏づけ ／ 必要なときだけ開く</span>
@@ -592,84 +637,56 @@
 
     <details class="fold">
         <summary><span class="fold-t">クレジットの実態</span>
-            <span class="fold-s">Max の月5,400は月164秒ぶん。Q2 から足りなくなる</span></summary>
+            <span class="fold-s">ツール代は月¥57,835。Max の枠は月164秒ぶんで、Q2 から足りない</span></summary>
         <div class="fold-body">
-            <p class="lead">
-                納品した尺あたり <b>33クレジット/秒</b>（今回の実績 2,462 ÷ 74秒）。
-                Max の枠は月5,400なので、<b>月164秒ぶん</b>しか作れない。
-            </p>
-            <div class="wrap-x"><table class="t-wide">
-                <thead><tr><th>四半期</th><th>月の納品尺</th><th class="num">必要クレジット</th><th>5,400 に対して</th><th class="num">買い足し</th></tr></thead>
+            <h3 style="margin-top:6px">ツール代（実額・2026-09）</h3>
+            <div class="wrap-x"><table>
+                <thead><tr><th>もの</th><th class="num">月額</th></tr></thead>
                 <tbody>
-                    <tr><td>Q1／1〜3ヶ月</td><td>90秒 ＋ 30秒＝120秒</td><td class="num">3,960</td><td>収まる（73%）</td><td class="num">—</td></tr>
-                    <tr><td>Q2／4〜6ヶ月</td><td>3分 ＋ 30秒＝210秒</td><td class="num">6,930</td><td><b>1,530 超過</b></td><td class="num">¥11,475／月</td></tr>
-                    <tr><td>Q3・Q4／7〜12ヶ月</td><td>3分 ＋ 90秒＝270秒</td><td class="num">8,910</td><td><b>3,510 超過</b></td><td class="num">¥26,325／月</td></tr>
-                </tbody>
-                <tfoot><tr><td>年間</td><td>—</td><td class="num">—</td><td>—</td><td class="num"><b>約¥192,000</b></td></tr></tfoot>
-            </table></div>
-            <p class="lead" style="margin-top:14px">
-                買い足しは <b>¥7.5/クレジット</b>（$0.0475〜0.05 × ¥154）で、プラン内の単価（¥1.9〜5.6）より高い。
-                <b>上位プランがあるなら、買い足す前に単価を比べること。</b>
-                Q3・Q4 の不足は3,510で、買い足すと月¥26,325。仮に Max が月¥19,200なら、
-                同じ5,400の枠をもう1つ足すほうが安い計算になる（上位プランの有無と単価を確認する）。<br>
-                利益率そのものは脅かされない。3分1件（¥720,000）のクレジットは5,940で、全部買い足しでも
-                ¥44,550＝売上の6.2%。壊れるのは「<b>ツール代は月5万の定額</b>」という前提のほう。<br>
-                <b>手元資金の底（11月末）は変わらない。</b>底は Q1 の中で、そこは枠の73%に収まる。効き始めるのは売上が立つ Q2 から。
-            </p>
-            <div class="flag">
-                <b>クレジットは繰り越せない（公開情報・自分の画面で要確認）。</b>
-                Q1 は枠の73%しか使わないが、余る1,440／月は翌月に貯まらず消える。
-                <b>「Q1 のうちに貯めて Q2 に備える」ができない</b>ので、Q2 の不足はその月に払うしかない。
-                買い足しパックの単価も大口ほど安く（1,700で$80＝¥7.25、80で$5＝¥9.6）、
-                上の ¥7.5 は<b>大口で買った場合の楽観値</b>。小口で刻むと2〜3割高くつく。
-            </div>
-            <h3>月のツール代の内訳</h3>
-            <div class="wrap-x"><table class="t-wide">
-                <thead><tr><th>もの</th><th class="num">月額</th><th>性質</th></tr></thead>
-                <tbody>
-                    <tr><td>Claude Max（$200）</td><td class="num">約¥30,680</td>
-                        <td>基本は定額だが<b>上限がある</b>（5時間のセッション枠と週の枠）。
-                            <b>使用クレジット（従量）をオンにしてある</b>ので、超えたぶんは買い足して続けられる。
-                            <b>残高は0</b>なので、当たった時点で「買う」か「待つ」かを選ぶことになる</td></tr>
-                    <tr><td>Higgsfield Max<br>（月5,400クレジット）</td><td class="num"><b>¥27,155</b></td>
-                        <td><b>実額（9/12 の請求・月払い）</b>。Max は1,800〜5,400のスライダーで、いまは上限。
-                            <b>1クレジット ¥5.03</b>。上位は Team（5席最低）しかないので、これがひとりで買える上限</td></tr>
-                    <tr><td>クレジットの買い足し</td><td class="num">0 → ¥26,325</td><td><b>尺に比例して増える</b>。Q1 は0、Q3以降で月2.6万</td></tr>
+                    <tr><td>Higgsfield Max<br><span style="color:var(--ink-dim)">5,400クレジット・月払い</span></td><td class="num">¥27,155</td></tr>
+                    <tr><td>Claude Max<br><span style="color:var(--ink-dim)">$200</span></td><td class="num">約¥30,680</td></tr>
+                    <tr><td><b>合計</b><br><span style="color:var(--ink-dim)">年 ¥694,020</span></td><td class="num"><b>¥57,835</b></td></tr>
                 </tbody>
             </table></div>
-            <div class="wrap-x"><table class="t-wide">
-                <thead><tr><th>ツール代（実額・2026-09）</th><th class="num">月</th><th class="num">年</th><th>性質</th></tr></thead>
+            <p class="lead" style="margin-top:12px">
+                想定していた「月5万」より <b>年 ¥94,020 多い</b>。Higgsfield は1クレジット <b>¥5.03</b>。<br>
+                <span style="color:var(--ink-dim)">※9/12 にもう1件 ¥4,632（≒$30）の請求あり。用途が未確認で、毎月なら年 ¥55,584 増える。</span>
+            </p>
+
+            <h3>クレジットは Q2 から足りない</h3>
+            <p class="lead">納品した尺あたり <b>33クレジット/秒</b>（実績 2,462 ÷ 74秒）。枠5,400は <b>月164秒ぶん</b>。</p>
+            <div class="wrap-x"><table>
+                <thead><tr><th>四半期／月の尺</th><th class="num">必要</th><th class="num">買い足し</th></tr></thead>
                 <tbody>
-                    <tr><td>Higgsfield Max（5,400・月払い）</td><td class="num">¥27,155</td><td class="num">¥325,860</td><td>枠は固定。1クレジット ¥5.03</td></tr>
-                    <tr><td>同 ＋ 9/12 のもう1件</td><td class="num">¥4,632</td><td class="num">要確認</td><td><b>用途が未確認</b>（≒$30）。プラン変更の日割りか買い足しなら一度きり、毎月なら年 ¥55,584 増える</td></tr>
-                    <tr><td>Claude Max（$200）</td><td class="num">約¥30,680</td><td class="num">約¥368,160</td>
-                        <td>上限を超えたら使用クレジットを買い足せる（いま残高0）。9/16 時点の使用は<b>週17%</b>・セッション11%</td></tr>
-                    <tr><td><b>合計（¥4,632 を一度きりとみる）</b></td><td class="num"><b>¥57,835</b></td><td class="num"><b>¥694,020</b></td><td><b>想定の¥600,000に対して ＋¥94,020</b></td></tr>
+                    <tr><td>Q1　120秒</td><td class="num">3,960</td><td class="num">—</td></tr>
+                    <tr><td>Q2　210秒</td><td class="num">6,930</td><td class="num">¥11,475／月</td></tr>
+                    <tr><td>Q3・Q4　270秒</td><td class="num">8,910</td><td class="num">¥26,325／月</td></tr>
+                </tbody>
+                <tfoot><tr><td>年間</td><td class="num">—</td><td class="num"><b>約¥192,000</b></td></tr></tfoot>
+            </table></div>
+            <p class="lead" style="margin-top:12px">
+                <b>繰り越せない。</b>Q1 に余る1,440／月は消えるので、貯めて Q2 に備えることはできない。
+                買い足しは大口ほど安い（1,700で$80＝¥7.25、80で$5＝¥9.6）。
+                手元資金の底（11月末）は Q1 の中なので影響しない。
+            </p>
+
+            <h3>2つの上限は、効き方が違う</h3>
+            <div class="wrap-x"><table class="t-wide">
+                <thead><tr><th></th><th>何に比例するか</th><th>足りなくなったら</th></tr></thead>
+                <tbody>
+                    <tr><td><b>Higgsfield</b></td><td>納品する尺（33クレジット/秒）</td>
+                        <td>買い足す。受注が決まれば必要量も決まるので<b>読める費用</b></td></tr>
+                    <tr><td><b>Claude</b></td><td>自分の作業量（制作より資料・調べもの）</td>
+                        <td>使用クレジットで続行できるが<b>残高0</b>。9/16 は週17%・セッション11%で、当面は届かない</td></tr>
                 </tbody>
             </table></div>
+
             <div class="flag">
-                <b>どちらも上限があり、超えたら買い足しになる。</b>違うのは<b>何に比例するか</b>。<br>
-                Higgsfield は<b>納品する尺に比例</b>する（33クレジット/秒）。だから月の受注が決まれば必要量も決まり、
-                Q2 から確実に超える＝<b>読める費用</b>。<br>
-                Claude は<b>自分がどれだけ使うかに比例</b>する。制作そのものより、サイト・資料・調べものの作業量で動く。
-                <b>9/16 時点で週17%（全モデル）・セッション11%</b>なので、いまの使い方なら当面は届かない。
-                ただし<b>使用クレジットの残高は0</b>なので、当たった日は作業が止まる。
-                月2件が回り始めたら、この2つの数字（週の%）を月1回見て、
-                <b>50%を超える月が続いたら残高を用意する</b>。
+                <b>効く打ち手は年払いへの切り替え（年 ¥68,000〜85,000）。</b>
+                21〜26%引きで、同じ5,400枠が月 ¥20,095〜21,452 になる。買い足し（年¥192,000）の検討より先に決める額。
+                ただし1年ぶんのコミットなので、切り替えどきは初入金（11/30想定）の直後。<br>
+                枠は5,400で打ち止め。上は Team（5席最低）しかないので、Q3・Q4 の不足は買い足しで賄うしかない。
             </div>
-            <div class="flag">
-                <b>いちばん効く打ち手は年払いへの切り替え。</b>年払いは 21〜26% 引きなので、同じ5,400枠で
-                月 ¥20,095〜21,452、<b>年 ¥68,000〜85,000 浮く</b>。クレジット買い足しの検討（年¥192,000）より先に決めるべき額。<br>
-                ただし<b>年払いは1年ぶんのコミット</b>。受注ゼロで手元資金の底が11月末なので、
-                「初入金が立つまで月払いで粘る」のも筋が通る。<b>初入金（11/30想定）の直後が切り替えどき。</b><br>
-                <b>枠の上限は5,400で打ち止め。</b>Max の上は Team（5席最低）しかないので、ひとりでは増やせない。
-                Q3・Q4 の不足3,510は<b>買い足しで賄うしかない</b>（月¥25,448）。
-            </div>
-            <p class="lead" style="margin-top:14px">
-                性質の違うものを「月5万」の1行に丸めていたのが問題だった。
-                <b>定額（Claude）と、尺に比例するぶん（クレジット）は分けて持つ。</b>
-                前者は件数が増えても変わらず、後者は売上と一緒に増える。
-            </p>
         </div>
     </details>
 
@@ -792,6 +809,18 @@
         見積書・契約書の作成は案件ごとの作業なので基本料金（¥90,000）に含み、空き時間の表には重ねて数えていない。<br>
         年収は額面（売上 − 経費）で、税・社会保険を引く前の数字。
     </p>
+
+    <script>
+        /* スマホで表を縦積みにするとき、各セルに列の見出しを持たせる。
+           CSS だけでは thead の文字を読めないので、ここで data-label に写す */
+        for (const t of document.querySelectorAll('table')) {
+            const heads = [...t.querySelectorAll('thead th')].map((th) => th.textContent.trim());
+            if (!heads.length) continue;
+            for (const tr of t.querySelectorAll('tbody tr, tfoot tr')) {
+                [...tr.children].forEach((td, i) => { if (heads[i]) td.dataset.label = heads[i]; });
+            }
+        }
+    </script>
 
     <script>
         // 「すべて開く」。開いたあとは「すべて閉じる」に変わる
