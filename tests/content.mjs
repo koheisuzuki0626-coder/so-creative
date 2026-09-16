@@ -34,6 +34,16 @@ check('サイト本文に落とした仕様が残っていない',
 const bodyText = await page.locator('body').innerText();
 check('画面のどこにも 4K と書いていない', !/4K/.test(bodyText), (bodyText.match(/.{0,20}4K.{0,20}/) || [''])[0]);
 check('画質は 1080p と書いてある', /1080p（フルHD）/.test(bodyText));
+/* 制作の流れに置いた実例は、工数記録の実測とずれていないこと。
+   数字を大きく見せたくなる場所なので、記録と一致しているかを機械で見る */
+{
+    const proc = await page.locator('#process').innerText();
+    check('実例の数字が工数記録と一致している',
+        /3日間/.test(proc) && /54回生成して19カットを採用/.test(proc) && /4往復/.test(proc), proc.slice(-120));
+    check('実例を架空クライアントの実績として出していない',
+        !/想工業/.test(proc) && /自社で制作/.test(proc));
+    check('実例に実工数（時間）を書いていない', !/11\.5|時間/.test(proc.split('実例')[1] || ''));
+}
 check('ナレーションの追加料金が FAQ と計算機で同じ',
     /1本 ¥30,000 で追加/.test(idx) && /narration: 30000/.test(idx));
 
