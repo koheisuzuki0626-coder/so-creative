@@ -44,6 +44,20 @@ check('画質は 1080p と書いてある', /1080p（フルHD）/.test(bodyText)
         !/想工業/.test(proc) && /自社で制作/.test(proc));
     check('実例に実工数（時間）を書いていない', !/11\.5|時間/.test(proc.split('実例')[1] || ''));
 }
+/* 実績の先頭に置いた会社紹介のサンプル。自前ホスティングで、
+   架空の題材だと分かる書き方になっていること（クライアント実績に見せない） */
+{
+    const works = await page.locator('#works').innerText();
+    const v = page.locator('.sample-video');
+    check('サンプル映像を1本置いている', (await v.count()) === 1);
+    check('サンプルは自前で配信している（YouTube 埋め込みではない）',
+        /assets\/works\/company-60s\.mp4/.test(idx) && !/youtube\.com\/embed/.test(idx));
+    check('ポスター画像を指定している（読み込み前に真っ黒にしない）',
+        /poster="assets\/works\/company-60s\.jpg"/.test(idx));
+    check('サンプルだと分かる見出しになっている', /サンプル：会社紹介 60秒/.test(works));
+    check('架空の題材だと書いてある', /架空の製造業を題材に/.test(works));
+    check('架空クライアントの名前を出していない', !/想工業/.test(works));
+}
 check('ナレーションの追加料金が FAQ と計算機で同じ',
     /1本 ¥30,000 で追加/.test(idx) && /narration: 30000/.test(idx));
 

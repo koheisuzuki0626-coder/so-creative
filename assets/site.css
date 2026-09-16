@@ -1418,3 +1418,23 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
     .card.enter { animation: none; }
     .hero-inner, .hero-mosaic, .stage-copy, .stack, .stage-bg, .stage-mark { transform: none !important; opacity: 1 !important; }
 }
+
+/* 会社紹介のサンプル（自前ホスティング）。実績グリッドの上に1本だけ置く */
+.sample { margin: 0 0 34px; }
+.sample-video {
+    width: 100%;
+    display: block;
+    border-radius: 18px;
+    border: 1px solid var(--line);
+    background: #000;
+    /* 再生できないブラウザ向けの代替テキストが黒背景に黒で出ないように */
+    color: #fff;
+    aspect-ratio: 16 / 9;
+}
+.sample-cap { margin-top: 14px; }
+.sample-title { font-weight: 600; margin: 0 0 4px; }
+.sample-note { color: var(--ink-dim); margin: 0; max-width: 60ch; line-height: 1.8; font-size: .95rem; }
+@media (max-width: 700px) {
+    .sample { margin-bottom: 26px; }
+    .sample-note { font-size: .9rem; }
+}

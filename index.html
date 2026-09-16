@@ -584,6 +584,21 @@
                 <h2 class="headline">制作実績。</h2>
                 <p class="body-text measure">実際に AI で制作した映像です。すべて撮影を行わずにつくっています。クリックするとその場で再生します。</p>
             </div>
+            <!-- 会社紹介のサンプル。YouTube ではなく自前で置いている（他社の関連動画が出ない・
+                 チャンネルの他の作品に飛ばない）。9.4MB・faststart なので途中から再生が始まる -->
+            <figure class="sample reveal">
+                <video class="sample-video" controls preload="none" playsinline
+                       poster="assets/works/company-60s.jpg"
+                       aria-label="会社紹介のサンプル映像 60秒">
+                    <source src="assets/works/company-60s.mp4" type="video/mp4">
+                    お使いのブラウザでは再生できません。
+                </video>
+                <figcaption class="sample-cap">
+                    <p class="sample-title">サンプル：会社紹介 60秒（ナレーションあり）</p>
+                    <p class="sample-note">架空の製造業を題材に、実際の進め方そのままで制作したものです。登場人物2人、ナレーション込み。撮影も出演者の手配も行っていません。</p>
+                </figcaption>
+            </figure>
+
             <!-- 読み込み前はスケルトン。成功すれば実データに、失敗すればメッセージに置き換わる -->
             <div class="grid" id="works-grid">
                 <article class="card skeleton" aria-hidden="true"><div class="thumb"></div><div class="card-body"><div class="bar short"></div><div class="bar long"></div></div></article>
