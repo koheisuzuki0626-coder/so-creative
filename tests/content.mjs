@@ -47,14 +47,17 @@ check('画質は 1080p と書いてある', /1080p（フルHD）/.test(bodyText)
 /* 実績の先頭に置いた会社紹介のサンプル。自前ホスティングで、
    架空の題材だと分かる書き方になっていること（クライアント実績に見せない） */
 {
-    const works = await page.locator('#works').innerText();
+    const works = await page.locator('#genres').innerText();
     const v = page.locator('.sample-video');
     check('サンプル映像を1本置いている', (await v.count()) === 1);
+    check('サンプルはつくれる動画の節にある',
+        (await page.locator('#genres .sample-video').count()) === 1
+        && (await page.locator('#works .sample-video').count()) === 0);
     check('サンプルは自前で配信している（YouTube 埋め込みではない）',
         /assets\/works\/company-60s-telop\.mp4/.test(idx) && !/youtube\.com\/embed/.test(idx));
     check('ポスター画像を指定している（読み込み前に真っ黒にしない）',
         /poster="assets\/works\/company-60s\.jpg"/.test(idx));
-    check('サンプルだと分かる見出しになっている', /サンプル：会社紹介 60秒/.test(works));
+    check('サンプルだと分かる見出しになっている', /例：01 会社紹介（60秒）/.test(works));
     /* 段の差（松はナレーション込み・梅竹は¥30,000で追加）を納品物そのもので確かめられる。
        同じ映像で音だけ差し替える。ナレーションは最終版（2026-09-17 差し替え） */
     check('ナレーションあり／なしを切り替えられる',
