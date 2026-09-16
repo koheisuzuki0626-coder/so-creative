@@ -1438,3 +1438,20 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
     .sample { margin-bottom: 26px; }
     .sample-note { font-size: .9rem; }
 }
+
+/* サンプルの「ナレーションあり／なし」切り替え */
+.sample-switch { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.sample-sw {
+    font: inherit;
+    font-size: .88rem;
+    padding: 9px 16px;
+    border-radius: 980px;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink-dim);
+    cursor: pointer;
+    transition: border-color .2s ease, color .2s ease, background .2s ease;
+}
+.sample-sw:hover { border-color: var(--ink-dim); color: var(--ink); }
+.sample-sw.is-on { border-color: var(--accent); color: var(--ink); background: rgba(176,141,87,.08); font-weight: 600; }
+.sample-sw:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }

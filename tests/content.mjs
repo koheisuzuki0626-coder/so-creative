@@ -55,6 +55,21 @@ check('画質は 1080p と書いてある', /1080p（フルHD）/.test(bodyText)
     check('ポスター画像を指定している（読み込み前に真っ黒にしない）',
         /poster="assets\/works\/company-60s\.jpg"/.test(idx));
     check('サンプルだと分かる見出しになっている', /サンプル：会社紹介 60秒/.test(works));
+    /* 段の差（松はナレーション込み・梅竹は¥30,000で追加）を、納品物そのもので
+       確かめられるようにしてある。同じ映像で音だけ差し替える */
+    check('ナレーションあり／なしを切り替えられる',
+        (await page.locator('.sample-sw').count()) === 2);
+    check('切り替えで実際に音源が変わる', await (async () => {
+        const v = page.locator('#sample-video');
+        const before = await v.getAttribute('src');
+        await page.locator('.sample-sw', { hasText: 'ナレーションなし' }).click();
+        await page.waitForTimeout(400);
+        const after = await v.evaluate((e) => e.getAttribute('src'));
+        await page.locator('.sample-sw', { hasText: 'ナレーションあり' }).click();
+        await page.waitForTimeout(200);
+        return before !== after && /telop/.test(after);
+    })());
+    check('ナレーションの値段が実績でも料金表と同じ', /1本 ¥30,000 で追加/.test(works));
     check('架空の題材だと書いてある', /架空の製造業を題材に/.test(works));
     check('架空クライアントの名前を出していない', !/想工業/.test(works));
 }
