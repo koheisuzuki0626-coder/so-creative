@@ -193,6 +193,67 @@ def bell(name, n, level=0.16, oct_up=12):
     return x / 1.6 * level
 
 
+def rhodes(chord, n, level=0.16, decay=1.9):
+    """エレピ風のFM。搬送波の位相を2倍音で揺らし、揺れ幅だけ速く減衰させる。
+
+    アタックだけ鐘のように鳴って、あとは丸い正弦に落ち着く。lo-fi の和音はこれ。
+    """
+    t = _t(n)
+    out = np.zeros(n)
+    for i, name in enumerate(chord):
+        f = note_hz(NOTE[name])
+        idx = 2.6 * np.exp(-t * 7.0)           # FM の変調指数
+        x = np.sin(2 * np.pi * f * t + idx * np.sin(2 * np.pi * f * 2 * t))
+        out += x * np.exp(-t * decay) * (0.86 ** i)
+    out = fft_filter(out / len(chord), 3200, "lp")
+    a = int(0.014 * SR)
+    out[:a] *= np.linspace(0, 1, a)            # 指で押さえた感じの立ち上がり
+    return out * level
+
+
+def rim(n, level=0.2, seed=11):
+    """クロススティック。lo-fi はスネアを叩かずこれで2・4を取る。"""
+    ln = min(n, int(0.09 * SR))
+    t = _t(ln)
+    x = fft_filter(noise(ln, seed), 1700, "hp") * np.exp(-t * 70)
+    x += np.sin(2 * np.pi * 330 * t) * np.exp(-t * 90) * 0.5
+    out = np.zeros(n)
+    out[:ln] = x * level
+    return out
+
+
+def kick_soft(n, level=0.45):
+    """クリックを入れず、低いまま長く伸ばすキック。4つ打ちのキックとは別物。"""
+    ln = min(n, int(0.34 * SR))
+    t = _t(ln)
+    f = 54 * np.exp(-t * 14) + 38
+    out = np.zeros(n)
+    out[:ln] = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t * 7.5) * level
+    return fft_filter(out, 220, "lp")
+
+
+def vinyl(n, level=0.05, seed=17):
+    """レコードのヒスとパチパチ。lo-fi の手触りはほぼこれで決まる。"""
+    g = np.random.default_rng(seed)
+    out = fft_filter(fft_filter(noise(n, seed) * 0.35, 5200, "lp"), 900, "hp")
+    for p in g.integers(0, n, int(n / SR * 26)):
+        ln = min(int(0.004 * SR), n - p)
+        if ln <= 0:
+            continue
+        out[p:p + ln] += (g.normal(0, 1, ln) * np.exp(-_t(ln) * 900)
+                          * g.uniform(0.4, 1.6))
+    return out * level
+
+
+def wow(x, rate=0.7, depth=0.0016, seed=9):
+    """テープの揺れ。読み出し位置をゆっくり前後させてピッチを微妙に狂わせる。"""
+    n = len(x)
+    t = _t(n)
+    mod = np.sin(2 * np.pi * rate * t) + 0.4 * np.sin(2 * np.pi * rate * 2.7 * t + 1.1)
+    idx = np.clip(np.arange(n) + mod * depth * SR, 0, n - 1)
+    return np.interp(idx, np.arange(n), x)
+
+
 def shaker(n, level=0.07, seed=31):
     """薄いシェイカー。キックを入れずに軽快さを出す。"""
     g = np.random.default_rng(seed)
@@ -348,57 +409,89 @@ def build_04(dur=15.0):
 
 
 def build_05(dur=15.0):
-    """05 SNSショート（縦型）。BPM120・1小節2.0秒×7.5小節。進行 D - A - G - A
+    """05 SNSショート（縦型）。BPM78 の lo-fi。進行 Dmaj7 - Bm7 - Gmaj7 - A7
 
-    夜のコインランドリーなので lo-fi 寄り。4つ打ちは入れるが強く叩かず、
-    LPF を深めに掛けてリバーブを多くする。SNS は音を切って見られることも多いので、
-    鳴っていても邪魔にならない音量に収める。
+    前は BPM120 の4つ打ちに LPF を掛けただけで、house を暗くした音だった。
+    lo-fi は速さと手触りで決まるので、組み直す。
+
+      - BPM78・ハーフタイム。キックは1拍目と3拍半だけ、2・4はリムショット
+      - 8分はスウィング（裏を18%後ろへ）。機械的に等分しない
+      - 和音は Rhodes 風の FM に 7th を積む。**この本だけ短調の色を入れる**
+        （ほかの本は Bm7 を避けて明るさを保っているが、夜の画なので外す）
+      - レコードのヒスとパチパチを敷き、旋律側にテープの揺れを掛ける
+      - 高域は 3.4kHz で落とす。SNS は音を切って見られるので音量は控えめ
     """
     n = int(dur * SR)
-    bar = 2.0
-    beat = bar / 4
-    prog = [["D4", "F#4", "A4"], ["A3", "C#4", "E4"],
-            ["G3", "B3", "D4"], ["A3", "C#4", "E4"]] * 2
-    roots = ["D4", "A3", "G3", "A3"] * 2
-    mix = np.zeros(n)
+    beat = 60.0 / 78
+    bar = beat * 4
+    sw = beat * 0.5 * 0.18            # スウィングで裏を後ろへずらす量
+    prog = [["D4", "F#4", "A4", "C#5"], ["B3", "D4", "F#4", "A4"],
+            ["G3", "B3", "D4", "F#4"], ["A3", "C#4", "E4", "G4"]] * 2
+    roots = ["D4", "B3", "G3", "A3"] * 2
+    # 4小節でひと回りする、抑えた旋律。鳴りっぱなしにしない
+    motif = [("F#5", 0.0, 1.5), ("E5", 2.0, 1.0), (None, 0, 0), ("D5", 1.0, 1.0),
+             ("B4", 0.0, 1.5), ("D5", 2.5, 0.75), (None, 0, 0), ("C#5", 1.5, 1.5)]
+
+    keys = np.zeros(n)                # 旋律・和音（揺らす側）
+    drums = np.zeros(n)               # ドラム（揺らさない側）
     kicks = []
     for i, ch in enumerate(prog):
         p0 = int(i * bar * SR)
         if p0 >= n:
             break
         ln = min(int(bar * SR), n - p0)
-        mix[p0:p0 + ln] += pad(ch, ln, level=0.24)[:ln]
-        # 8分のアルペジオを高めに置く（ループ感）
-        mix[p0:p0 + ln] += arp(ch, ln, beat / 2, level=0.13)[:ln]
-        for b in range(4):
-            q = p0 + int(b * beat * SR)
-            if q >= n:
-                break
-            kicks.append(q)
-            mix[q:] += kick(n - q, level=0.26)
-            # ベースは8分
-            for sub in (0, 0.5):
-                r = q + int(sub * beat * SR)
-                ln2 = min(int(beat * 0.45 * SR), n - r)
-                if ln2 > 0 and r < n:
-                    mix[r:r + ln2] += bass(roots[i], ln2, level=0.16)[:ln2]
-            # ハットは8分裏、クラップは2・4拍
-            r = q + int(0.5 * beat * SR)
+        # 和音は小節頭と2拍半に置く。2発目は弱く、短く
+        keys[p0:p0 + ln] += rhodes(ch, ln, level=0.30)[:ln]
+        q = p0 + int(2.5 * beat * SR + sw * SR)
+        if q < n:
+            ln2 = n - q
+            keys[q:] += rhodes(ch, ln2, level=0.15, decay=3.2)
+        # ベースは根音を1拍目と3拍半に、長めに伸ばす
+        for at, lv in ((0.0, 0.26), (2.5, 0.18)):
+            r = p0 + int((at * beat + (sw if at % 1 else 0)) * SR)
+            ln3 = min(int(beat * 1.2 * SR), n - r)
+            if r < n and ln3 > 0:
+                keys[r:r + ln3] += bass(roots[i], ln3, level=lv)[:ln3]
+        # ドラム。キックは1と3半、リムは2と4
+        for at in (0.0, 2.5):
+            r = p0 + int((at * beat + (sw if at % 1 else 0)) * SR)
             if r < n:
-                mix[r:] += hat(n - r, level=0.11, open_=(b == 3), seed=71 + b)
-            if b in (1, 3):
-                mix[q:] += clap(n - q, level=0.14, seed=73 + b)
-        # 小節頭にベル（夜の静けさに合う）
-        lnb = min(int(1.2 * SR), n - p0)
-        mix[p0:p0 + lnb] += bell(["A4", "E5", "D5", "C#5"][i % 4], lnb, level=0.12)[:lnb]
-    mix = duck(mix, kicks, n, depth=0.5, dur=0.16)
-    mix = fft_filter(mix, 34, "hp", rolloff=3.0)
-    mix = fft_filter(mix, 6200, "lp")        # lo-fi 寄りに高域を落とす
-    mix = reverb(mix, mix=0.3)
-    mix[:int(0.06 * SR)] *= np.linspace(0, 1, int(0.06 * SR))
-    tail = int(1.2 * SR)
+                kicks.append(r)
+                drums[r:] += kick_soft(n - r, level=0.42)
+        for at in (1.0, 3.0):
+            r = p0 + int(at * beat * SR)
+            if r < n:
+                drums[r:] += rim(n - r, level=0.20, seed=11 + i * 2 + int(at))
+        # ハットは8分。裏をスウィングさせ、音量を1つずつ変えて機械臭さを消す
+        for e in range(8):
+            at = e * 0.5 * beat + (sw if e % 2 else 0)
+            r = p0 + int(at * SR)
+            if r >= n:
+                break
+            lv = 0.085 if e % 2 else 0.055      # 裏を強く（ハーフタイムの推進力）
+            drums[r:] += hat(n - r, level=lv, open_=(e == 7), seed=41 + e)
+        # 旋律
+        name, at, hold = motif[i % len(motif)]
+        if name:
+            r = p0 + int(at * beat * SR)
+            ln4 = min(int(hold * beat * SR), n - r)
+            if r < n and ln4 > 0:
+                f = note_hz(NOTE[name])
+                seg = (tri(f, ln4) * 0.6 + sine(f, ln4) * 0.4)
+                keys[r:r + ln4] += (fft_filter(seg, 2600, "lp")
+                                    * adsr(ln4, 0.03, 0.25, 0, 0.3, sus=0.5) * 0.15)
+
+    keys = wow(keys)                   # 揺れは旋律側だけ。ドラムに掛けると芯がぼける
+    mix = keys + drums
+    mix = duck(mix, kicks, n, depth=0.34, dur=0.26)
+    mix += vinyl(n, level=0.055)
+    mix = fft_filter(mix, 38, "hp", rolloff=3.0)
+    mix = fft_filter(mix, 3400, "lp")  # lo-fi の肝。ここを開けると普通のBGMに戻る
+    mix = reverb(mix, mix=0.34)
+    mix[:int(0.10 * SR)] *= np.linspace(0, 1, int(0.10 * SR))
+    tail = int(1.4 * SR)
     mix[-tail:] *= np.linspace(1, 0, tail)
-    return normalize(np.tanh(mix * 1.8), 0.88)
+    return normalize(np.tanh(mix * 1.5), 0.86)
 
 
 def build_03(dur=180.0):
