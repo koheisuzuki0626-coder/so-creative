@@ -103,11 +103,17 @@ TELOPS_V = {
     "05_2": ("まだ、空いてる。", "空いてる", "emo"),
     "05_3": ("乾燥、30分。", "30分", "emo"),
     "05_4": ("畳んで、帰る。", "帰る", "emo"),
-    "05_5": ("待つ場所も、ある。", "ある", "emo"),
-    "05_6": ("24時間・年中無休", "24時間", "emo"),
+    # 長い2本は2行に割る。1行のままだと文字を小さくするしかなく、
+    # 縦型の画面では他のカットより一段小さく見えていた
+    "05_5": ("待つ場所も、\nある。", "ある", "emo"),
+    "05_6": ("24時間\n年中無休", "24時間", "emo"),
 }
 
 SIZE = 132
+# emo（縦型）は大きく置く。SNSの縦型は画面幅をほぼ使うのが普通で、
+# 98px では小さかった。幅の上限は左右50pxの余白ぶんを残した値
+EMO_SIZE = 124
+EMO_MAX_W = 980
 LEFT = 100
 BOTTOM = 112
 PAD_X, PAD_T, PAD_B = 30, 22, 26
@@ -173,6 +179,22 @@ def split_accent(text, accent):
 MAX_BLOCK_W = 1700
 
 
+def row_width(row, f, track):
+    """描くときと同じ送りで1行の幅を測る。
+
+    約物のツメを入れずに測ると実際より広く見積もり、収まる字を
+    必要もなく小さくしてしまう（05の「待つ場所も、ある。」が
+    他のカットより一段小さかった原因）。
+    """
+    flat = [ch for t, _ in row for ch in t]
+    w = 0.0
+    for j, ch in enumerate(flat):
+        w += f.getlength(ch) + track
+        if ch in TIGHTEN and j < len(flat) - 1:
+            w -= f.getlength(ch) * TIGHTEN[ch]
+    return max(0.0, w - track)
+
+
 def band_telop(key, text, accent, style):
     """文字だけのPNGを書き、下敷き（ブロック／帯）の矩形を返す。
 
@@ -188,7 +210,7 @@ def band_telop(key, text, accent, style):
     #   scrim/block … 132px・左寄せ（16:9）
     #   sns         … 104px・中央寄せ（縦型は横幅が狭い）
     #   step        … 96px・左寄せ。左端のSTEP番号ブロック(268px)を避けて 330px から
-    size = {"emo": 98, "step": 96, "white_band": 96}.get(style, SIZE)
+    size = {"emo": EMO_SIZE, "step": 96, "white_band": 96}.get(style, SIZE)
     left = {"step": 330}.get(style, LEFT)
     bottom = {"emo": int(H * 0.32), "step": 118, "white_band": 118}.get(style, BOTTOM)
     # emo は字間を空ける。明朝を大きく置くと詰まって見えるのを開く
@@ -196,10 +218,15 @@ def band_telop(key, text, accent, style):
     face = MINCHO if style == "emo" else ZEN
     while size > 84:
         f = ImageFont.truetype(face, size)
-        w = max(sum(f.getlength(t) for t, _ in r) + track * (len(lines[i]) - 1)
-                for i, r in enumerate(rows)) + PAD_X * 2 + left - 70
-        if w <= (W - 120 if style == "emo" else MAX_BLOCK_W):
-            break
+        if style == "emo":
+            # 縦型は中央寄せなので左マージンは関係ない。実際の送り幅だけ見る
+            if max(row_width(r, f, track) for r in rows) <= EMO_MAX_W:
+                break
+        else:
+            w = max(sum(f.getlength(t) for t, _ in r) + track * (len(lines[i]) - 1)
+                    for i, r in enumerate(rows)) + PAD_X * 2 + left - 70
+            if w <= MAX_BLOCK_W:
+                break
         size -= 4
     f = ImageFont.truetype(face, size)
     lead = int(size * 1.44)     # 行送り
@@ -212,10 +239,15 @@ def band_telop(key, text, accent, style):
 
     ac_col = EMO_ACCENT if style == "emo" else ACCENT
 
+    # emo は行ごとに中央へ寄せる。中央寄せのデザインで2行目を左に揃えると、
+    # 短い行だけ左に流れて見える
+    widths = [row_width(r, f, track) for r in rows]
+    nudge = [int((max(widths) - w) / 2) if style == "emo" else 0 for w in widths]
+
     def draw(d, ox, oy):
         # 1文字ずつ置く。約物を詰めるのと字間を空けるのに、まとめ描きだと足りない
         for i, row in enumerate(rows):
-            x, y = ox + (indent if i else 0), oy + i * lead
+            x, y = ox + (indent if i else 0) + nudge[i], oy + i * lead
             flat = [(ch, is_ac) for t, is_ac in row for ch in t]
             for j, (ch, is_ac) in enumerate(flat):
                 d.text((x, y), ch, font=f, fill=(ac_col if is_ac else body) + (255,))
@@ -233,13 +265,23 @@ def band_telop(key, text, accent, style):
     # 暗い映像の上では黒ブロックの上に灰色の帯が乗ったように見えていた。
     # 209/255 の黒ブロックに白文字なら、それだけで十分に読める
     if style == "emo":
-        # 文字そのものを光らせる。02で嫌われた「黒フチ＋重ねぼかし」とは別物で、
-        # フチを作らず、広く薄いぼかしを2段重ねるだけ。夜の画で文字が浮く
+        # 明るい背景（畳んだタオル、自販機の光る面）では白い発光が効かず、
+        # 白文字が背景に沈んでいた。先に黒をぼかして敷き、文字と背景の間に
+        # 段を作る。02で嫌われたのは黒フチ（stroke）＋重ねぼかしで、
+        # ここはフチを作らないので輪郭が汚れない
+        sil = Image.composite(Image.new("RGBA", (W, H), (0, 0, 0, 255)),
+                              blank(), txt.split()[3])
+        for blur, k in ((34, 0.92), (13, 0.86), (5, 0.7)):
+            img.alpha_composite(dim_alpha(sil.filter(ImageFilter.GaussianBlur(blur)), k))
+        # そのうえで文字そのものを光らせる。フチを作らず、
+        # 広く薄いぼかしを2段重ねるだけ。夜の画で文字が浮く
         img.alpha_composite(dim_alpha(txt.filter(ImageFilter.GaussianBlur(34)), 0.62))
         img.alpha_composite(dim_alpha(txt.filter(ImageFilter.GaussianBlur(10)), 0.5))
         # 本文の上に細い暖色の線を1本。装飾はこれ1つに絞る。
-        # 均一な棒だとハイフンに見えるので、両端を落として光の筋にする
-        rw, rh, gap = 230, 4, 48
+        # 均一な棒だとハイフンに見えるので、両端を落として光の筋にする。
+        # 長さは本文の幅に連れる（固定だと大きい字の上で頼りない）
+        rw = int(min(max((bb[2] - bb[0]) * 0.34, 230), 430))
+        rh, gap = 5, 52
         cx = (bb[0] + bb[2]) // 2
         ry = bb[1] - gap
         ramp = np.zeros((H, W), dtype=np.uint8)
@@ -330,6 +372,11 @@ def build_set(table, label=""):
 
     for g in {group_of(k) for k in boxes}:
         members = [k for k in boxes if group_of(k) == g]
+        # emo は揃えない。下敷きが縁の無いぼかした暗がりなので、カットごとに
+        # 大きさが違っても段差に見えない。揃えると1行のカットに2行ぶんの
+        # 空いた暗がりが乗って、文字の上が間延びする
+        if boxes[members[0]]["style"] == "emo":
+            continue
         top = min(boxes[k]["y"] for k in members)
         bot = max(boxes[k]["y"] + boxes[k]["h"] for k in members)
         for k in members:
@@ -353,11 +400,11 @@ def build_set(table, label=""):
         elif b["style"] == "emo":
             # 角丸ブロックをやめ、ぼかした暗がりを敷く。縁が出ないので
             # 夜の画に馴染み、それでいて明朝の白文字が沈まない
-            pad_x, pad_y = 96, 88
+            pad_x, pad_y = 112, 104
             d.rounded_rectangle([b["x"] - pad_x, b["y"] - pad_y,
                                  b["x"] + b["w"] + pad_x,
                                  b["y"] + b["h"] + pad_y],
-                                radius=180, fill=(3, 6, 14, 168))
+                                radius=190, fill=(3, 6, 14, 206))
             blk = blk.filter(ImageFilter.GaussianBlur(64))
         elif b["style"] == "step":
             d.rectangle([0, b["y"], W, b["y"] + b["h"]], fill=(255, 255, 255, 249))
