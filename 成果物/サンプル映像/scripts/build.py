@@ -30,20 +30,25 @@ TXT_LAG = 0.13      # 文字はブロックより遅れて出す
 TXT_IN, TXT_OUT = 0.22, 0.24
 
 
-def layer(idx, st, en, is_text):
-    """下敷き／文字のレイヤー。基本はどちらも同じ y 式で動かす。"""
+def layer(idx, st, en, is_text, b=None):
+    """下敷き／文字のレイヤー。基本はどちらも同じ y 式で動かす。
+
+    フェードの長さはテロップごとに上書きできる（05 の emo だけ倍近く遅い）。
+    """
+    b = b or {}
+    out_d = b.get("txt_out", TXT_OUT)
     if is_text:
-        fi, d_in = st + TXT_LAG, TXT_IN
+        fi, d_in = st + b.get("txt_lag", TXT_LAG), b.get("txt_in", TXT_IN)
     else:
-        fi, d_in = st, BLK_IN
-    fo = en - TXT_OUT
+        fi, d_in = st, b.get("blk_in", BLK_IN)
+    fo = en - out_d
     return (f"[{idx}:v]format=rgba,"
             f"fade=t=in:st={fi}:d={d_in}:alpha=1,"
-            f"fade=t=out:st={fo}:d={TXT_OUT}:alpha=1[t{idx}]")
+            f"fade=t=out:st={fo}:d={out_d}:alpha=1[t{idx}]")
 
 
-def overlay_y(st):
-    return f"'{RISE}*max(0,1-(t-{st})/{RISE_D})'"
+def overlay_y(st, rise=RISE, rise_d=RISE_D):
+    return f"'{rise}*max(0,1-(t-{st})/{rise_d})'"
 
 
 def measure(path, tp=-2.0):
@@ -88,8 +93,9 @@ def render_silent(path, cuts, telops, dim, logo, logo_at, dim_at, canvas):
             layers.insert(0, (f"{k}_blk", False, B[k].get("static_underlay", False)))
         for suffix, is_text, static in layers:
             ins += ["-loop", "1", "-t", str(total), "-i", f"{TELOP}/{suffix}.png"]
-            fc.append(layer(idx, st, en, is_text))
-            tex.append((idx, None if static else st))
+            fc.append(layer(idx, st, en, is_text, B[k]))
+            tex.append((idx, None if static else st,
+                        B[k].get("rise", RISE), B[k].get("rise_d", RISE_D)))
             idx += 1
     # 締め（暗転＋ロゴ）は本によって無い（07 研修は STEP 3 で終わる）
     ending = []
@@ -104,9 +110,9 @@ def render_silent(path, cuts, telops, dim, logo, logo_at, dim_at, canvas):
         ending.append("lg")
 
     cur = "[bg]"
-    for n, (i, st) in enumerate(tex):
+    for n, (i, st, rise, rise_d) in enumerate(tex):
         nxt = f"[o{n}]"
-        pos = "0:0" if st is None else f"0:y={overlay_y(st)}"
+        pos = "0:0" if st is None else f"0:y={overlay_y(st, rise, rise_d)}"
         fc.append(f"{cur}[t{i}]overlay={pos}{nxt}")
         cur = nxt
     for n, lab in enumerate(ending):

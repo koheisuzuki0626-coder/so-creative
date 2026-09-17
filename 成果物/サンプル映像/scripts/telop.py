@@ -23,9 +23,12 @@ def set_canvas(w, h):
 FONTS = os.environ.get("SO_FONTS", "/tmp/fonts")
 ZEN = f"{FONTS}/ZenKakuNew-Black.ttf"
 GOTHIC = f"{FONTS}/NotoSansJP-Black.ttf"
+# 明朝は 05（縦型）だけで使う。ゴシックより「読ませる」より「効かせる」向き
+MINCHO = f"{FONTS}/NotoSerifJP-Black.ttf"
 
 ACCENT = (245, 181, 42)       # 山吹。04ブロックの縦バーに残す1色
 NAVY = (15, 33, 64)           # 02の帯
+LAMP = (238, 212, 168)        # 05の罫と差し色。夜のランドリーの灯りに寄せた暖色
 OUT = os.path.dirname(os.path.abspath(__file__)) + "/telop"
 os.makedirs(OUT, exist_ok=True)
 
@@ -42,8 +45,10 @@ SHOP_SUB = "コインランドリー ／ 24時間・年中無休"
 #   scrim … 文字は純白のまま、画面下部を黒のグラデーションで落とす（02・03）。
 #           映画の字幕の作り。文字自体には影もフチも付けない
 #   block … 黒ブロック＋白文字＋山吹の縦バー（04）。文字幅ぶんのブロック
-#   sns   … 縦型（05）。画面の下から1/3あたりに中央揃えで、黒の半透明ブロック＋
-#           太い白文字。SNSは音を切って見られるので大きく出す
+#   emo   … 縦型（05）。明朝の極太＋字間広め＋文字の背後にやわらかい発光。
+#           下敷きは角丸ブロックをやめ、ぼかした暗がりにして縁を出さない。
+#           文字の上に細い暖色の罫を1本置く。夜の画に合わせた「効かせる」作り
+#           （前身の sns は角丸ブロック＋ゴシックでポップに寄りすぎていた）
 #   step  … 白帯＋黒文字＋左に大きなSTEP番号（07）。研修用なので可読性を最優先
 #   white_band … 白帯＋黒文字（03の3分版の第4章）。STEP番号は無い。
 #           数字を出すカットだけ本文と別扱いにして「事実」だと分かるようにする
@@ -94,18 +99,26 @@ TELOPS_3MIN = {
 
 # 05 SNSショート（9:16・sns）。キャンバスが違うので別に持つ
 TELOPS_V = {
-    "05_1": ("夜11時。", None, "sns"),
-    "05_2": ("まだ、開いてる。", None, "sns"),
-    "05_3": ("乾燥、30分。", None, "sns"),
-    "05_4": ("畳んで、帰る。", None, "sns"),
-    "05_5": ("待つ場所も、ある。", None, "sns"),
-    "05_6": ("24時間・年中無休", None, "sns"),
+    "05_1": ("夜11時。", None, "emo"),
+    "05_2": ("まだ、開いてる。", None, "emo"),
+    "05_3": ("乾燥、30分。", None, "emo"),
+    "05_4": ("畳んで、帰る。", None, "emo"),
+    "05_5": ("待つ場所も、ある。", None, "emo"),
+    "05_6": ("24時間・年中無休", None, "emo"),
 }
 
 SIZE = 132
 LEFT = 100
 BOTTOM = 112
 PAD_X, PAD_T, PAD_B = 30, 22, 26
+TRACK = 11          # emo の字間(px)
+
+
+def dim_alpha(img, k):
+    """alpha だけ k 倍する。発光を重ねるときに濃さを決める。"""
+    a = np.array(img)
+    a[:, :, 3] = (a[:, :, 3] * k).astype(np.uint8)
+    return Image.fromarray(a)
 
 
 def blank():
@@ -166,16 +179,20 @@ def band_telop(key, text, accent, style):
     #   scrim/block … 132px・左寄せ（16:9）
     #   sns         … 104px・中央寄せ（縦型は横幅が狭い）
     #   step        … 96px・左寄せ。左端のSTEP番号ブロック(268px)を避けて 330px から
-    size = {"sns": 104, "step": 96, "white_band": 96}.get(style, SIZE)
+    size = {"emo": 98, "step": 96, "white_band": 96}.get(style, SIZE)
     left = {"step": 330}.get(style, LEFT)
-    bottom = {"sns": int(H * 0.30), "step": 118, "white_band": 118}.get(style, BOTTOM)
+    bottom = {"emo": int(H * 0.32), "step": 118, "white_band": 118}.get(style, BOTTOM)
+    # emo は字間を空ける。明朝を大きく置くと詰まって見えるのを開く
+    track = TRACK if style == "emo" else 0
+    face = MINCHO if style == "emo" else ZEN
     while size > 84:
-        f = ImageFont.truetype(ZEN, size)
-        w = sum(f.getlength(t) for t, _ in parts) + PAD_X * 2 + left - 70
-        if w <= (W - 120 if style == "sns" else MAX_BLOCK_W):
+        f = ImageFont.truetype(face, size)
+        w = (sum(f.getlength(t) for t, _ in parts) + track * (len(text) - 1)
+             + PAD_X * 2 + left - 70)
+        if w <= (W - 120 if style == "emo" else MAX_BLOCK_W):
             break
         size -= 4
-    f = ImageFont.truetype(ZEN, size)
+    f = ImageFont.truetype(face, size)
     # 白帯に乗る step だけ黒文字。ほかは白
     body = (17, 17, 17) if style in ("step", "white_band") else (255, 255, 255)
 
@@ -183,15 +200,37 @@ def band_telop(key, text, accent, style):
         x = ox
         for t, is_ac in parts:
             col = ACCENT if is_ac else body
-            d.text((x, oy), t, font=f, fill=col + (255,))
-            x += d.textlength(t, font=f)
+            if track:
+                # 1文字ずつ置かないと字間を空けられない
+                for ch in t:
+                    d.text((x, oy), ch, font=f, fill=col + (255,))
+                    x += d.textlength(ch, font=f) + track
+            else:
+                d.text((x, oy), t, font=f, fill=col + (255,))
+                x += d.textlength(t, font=f)
 
-    txt = place(draw, left=left, bottom=bottom, center_x=(style == "sns"))
+    txt = place(draw, left=left, bottom=bottom,
+                center_x=(style == "emo"))
     bb = real_bbox(txt)
     img = blank()
     if style == "block":
         # 黒ブロックから浮かせるための軽い影
         img.alpha_composite(txt.filter(ImageFilter.GaussianBlur(12)))
+    if style == "emo":
+        # 文字そのものを光らせる。02で嫌われた「黒フチ＋重ねぼかし」とは別物で、
+        # フチを作らず、広く薄いぼかしを2段重ねるだけ。夜の画で文字が浮く
+        img.alpha_composite(dim_alpha(txt.filter(ImageFilter.GaussianBlur(26)), 0.55))
+        img.alpha_composite(dim_alpha(txt.filter(ImageFilter.GaussianBlur(9)), 0.45))
+        # 本文の上に細い暖色の罫を1本。装飾はこれ1つに絞る
+        rule = blank()
+        rw, rh, gap = 132, 3, 40
+        cx = (bb[0] + bb[2]) // 2
+        ry = bb[1] - gap
+        ImageDraw.Draw(rule).rectangle(
+            [cx - rw // 2, ry, cx + rw // 2, ry + rh], fill=LAMP + (255,))
+        img.alpha_composite(dim_alpha(rule.filter(ImageFilter.GaussianBlur(7)), 0.7))
+        img.alpha_composite(rule)
+        bb = (bb[0], ry, bb[2], bb[3])
     img.alpha_composite(txt)
     img.save(f"{OUT}/{key}.png")
     box = {"x": max(0, bb[0] - PAD_X), "y": bb[1] - PAD_T,
@@ -273,17 +312,27 @@ def build_set(table, label=""):
         b["underlay"] = True
         # グラデーションは動かさない（下から持ち上げると下端に隙間ができる）
         b["static_underlay"] = b["style"] == "scrim"
+        if b["style"] == "emo":
+            # 下敷きはぼかした暗がりなので動かさない（動くと明るさが波打つ）。
+            # 文字は 190px の持ち上げをやめ、28px をゆっくり浮かせる
+            b["static_underlay"] = True
+            b["rise"], b["rise_d"] = 28, 0.9
+            b["blk_in"], b["txt_lag"] = 0.5, 0.18
+            b["txt_in"], b["txt_out"] = 0.7, 0.5
         blk = blank()
         d = ImageDraw.Draw(blk)
         if b["style"] == "white_band":
             d.rectangle([0, b["y"], W, b["y"] + b["h"]], fill=(255, 255, 255, 249))
             d.rectangle([0, b["y"], 24, b["y"] + b["h"]], fill=NAVY + (255,))
-        elif b["style"] == "sns":
-            pad_x, pad_t, pad_b = 34, 26, 30
-            d.rounded_rectangle([b["x"] - pad_x + PAD_X, b["y"] - pad_t + PAD_T,
-                                 b["x"] + b["w"] + pad_x - PAD_X,
-                                 b["y"] + b["h"] + pad_b - PAD_B],
-                                radius=14, fill=(0, 0, 0, 196))
+        elif b["style"] == "emo":
+            # 角丸ブロックをやめ、ぼかした暗がりを敷く。縁が出ないので
+            # 夜の画に馴染み、それでいて明朝の白文字が沈まない
+            pad_x, pad_y = 96, 88
+            d.rounded_rectangle([b["x"] - pad_x, b["y"] - pad_y,
+                                 b["x"] + b["w"] + pad_x,
+                                 b["y"] + b["h"] + pad_y],
+                                radius=180, fill=(3, 6, 14, 168))
+            blk = blk.filter(ImageFilter.GaussianBlur(64))
         elif b["style"] == "step":
             d.rectangle([0, b["y"], W, b["y"] + b["h"]], fill=(255, 255, 255, 249))
             d.rectangle([0, b["y"], 268, b["y"] + b["h"]], fill=NAVY + (255,))
