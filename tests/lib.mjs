@@ -20,7 +20,12 @@ export const PW = process.env.PW || '/opt/node22/lib/node_modules/playwright/ind
    ここを書き換えるときは index.html も必ず合わせること */
 /* narrationAi は 0。AIナレーションは料金に含める（2026-09-17）。
    工数（1本 1.0h）はかかるので、時間単価はそのぶん下がる。下限は下の検査で見ている */
-export const PRICE = { base: 90000, perExtra: 65000, narrationAi: 0, narrationHuman: 70000 };
+export const PRICE = { base: 90000, perExtra: 65000, narrationAi: 0, narrationHuman: 70000,
+    /* AIナレーションは料金に含まれている。使わない（テロップのみ）なら返す。
+       梅・竹だけ。松は人物ナレーションが込みで、これは秒単価に溶けているので対象外。
+       3万にすると梅15秒×1本だけが ¥21,429/h（目標の93.2%）で下限を割る。
+       2.75万でも95.2%しか残らないので、余白を見て2.5万にした（97.3%）。 */
+    noNarration: 25000 };
 export const TIERS = [
     { id: 'ume',   label: '梅', perSec: 3500, hours: 1.0,  narration: false },
     { id: 'take',  label: '竹', perSec: 4900, hours: 1.22, narration: false },
@@ -53,8 +58,12 @@ export const narFee = (t, n, nar) =>
    松が工数として足すのは2本目以降。ここを n にすると 60秒松の 15.2h が動く */
 export const narTracks = (t, n, nar) =>
     (t.narration ? n - 1 : nar === 'none' ? 0 : n);
+/* ナレーションを使わないときの引き。松は対象外（人物が込み） */
+export const narDiscount = (t, nar) =>
+    (!t.narration && nar === 'none' ? PRICE.noNarration : 0);
 export const price = (t, sec, n, nar = 'none') =>
-    PRICE.base + t.perSec * sec + PRICE.perExtra * (n - 1) + narFee(t, n, nar);
+    PRICE.base + t.perSec * sec + PRICE.perExtra * (n - 1)
+    + narFee(t, n, nar) - narDiscount(t, nar);
 /* 工数モデル（2026-09-16 に実測へ合わせた）。
      工数 = 3.0h + 0.15h × 倍率 × 秒数 + 1.5h × (本数−1) + 1.0h × ナレーション本数
    実測（下の MEASURED）に、実案件の打合せ・素材待ち・要件の揺れぶんとして

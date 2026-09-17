@@ -51,6 +51,9 @@ check('AIナレーションが合成音声だと分かる書き方になって�
     /合成音声なので機械の声だと分かる/.test(await page.locator('.calc-why').innerText()));
 check('AIナレーションが追加料金なしだと分かる',
     /AIナレーション 追加料金なし/.test(await page.locator('.calc-why').innerText()));
+check('使わないと差し引かれることが書いてある',
+    /使わない（テロップのみ）場合は ¥25,000 を差し引きます/
+        .test(await page.locator('.calc-why').innerText()));
 await page.locator('#calc-tier .calc-opt[data-tier="matsu"]').click();
 check('松では「人物ナレーション」に固定され、ほかが選べない',
     (await page.locator('#calc-nar input[data-nar="none"]').isDisabled())
@@ -71,12 +74,22 @@ check('梅では3択すべて選べる',
 /* AIは料金に含む（¥0）。人物だけ加算される。違いを画面で確かめる */
 await page.locator('#calc-nar .calc-opt[data-nar="ai"]').click();
 await page.locator('#calc-cnt .calc-opt[data-count="2"]').click();
-check('AIナレーションは料金に含まれ、合計が「なし」と同じ',
+check('AIナレーションは追加料金なし（内訳が ¥0）',
     (await page.locator('#calc-narfee').innerText()) === '¥0'
     && /料金に含まれます/.test(await page.locator('#calc-nar-dt').innerText())
     && Number((await page.locator('#calc-total').innerText()).replace(/[^\d]/g, '')) === price(TIERS[0], 30, 2, 'ai')
-    && price(TIERS[0], 30, 2, 'ai') === price(TIERS[0], 30, 2, 'none')
     && !/〜/.test(await page.locator('#calc-total').innerText()));
+/* AIを込みにした以上、使わない案件から同じ額は取らない。
+   松は人物ナレーションが込みなので対象外 */
+await page.locator('#calc-nar .calc-opt[data-nar="none"]').click();
+check('ナレーションなしは差し引きが内訳に出る',
+    (await page.locator('#calc-narfee').innerText()) === `−¥${PRICE.noNarration.toLocaleString('ja-JP')}`
+    && /差し引き/.test(await page.locator('#calc-nar-dt').innerText())
+    && Number((await page.locator('#calc-total').innerText()).replace(/[^\d]/g, '')) === price(TIERS[0], 30, 2, 'none'));
+check('差し引きは AI を選ぶより安い',
+    price(TIERS[0], 30, 2, 'none') === price(TIERS[0], 30, 2, 'ai') - PRICE.noNarration);
+check('松は差し引きの対象外', price(TIERS[2], 30, 2) === price(TIERS[2], 30, 2, 'human'));
+await page.locator('#calc-nar .calc-opt[data-nar="ai"]').click();
 await page.locator('#calc-nar .calc-opt[data-nar="human"]').click();
 check('人物ナレーションは本数で増えず「〜」が付く',
     (await page.locator('#calc-narfee').innerText()) === `¥${PRICE.narrationHuman.toLocaleString('ja-JP')}〜`

@@ -148,6 +148,9 @@ check('人物ナレーションの追加料金が FAQ と計算機で同じ',
     /1名 ¥70,000〜/.test(idx) && /narrationHuman: 70000/.test(idx));
 /* AIを有料に戻すときは、ここと計算機と文言を必ず一緒に直す */
 check('AIナレーションが計算機でも ¥0 になっている', /narrationAi: 0/.test(idx));
+/* AIを込みにした代わりに、使わないときは引く。額は3か所で揃っていること */
+check('ナレーションなしの差し引きが計算機と文言で同じ',
+    /noNarration: 25000/.test(idx) && /−¥25,000/.test(idx) && /−\u00a525,000|¥25,000 を差し引き/.test(idx));
 
 const org = ld.find(d => d['@graph'])?.['@graph']?.find(x => x['@type'] === 'Organization') || {};
 check('構造化データに代表者', org.founder?.name === '鈴木 宏平');
