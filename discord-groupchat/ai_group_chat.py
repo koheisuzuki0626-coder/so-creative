@@ -6094,11 +6094,48 @@ def _genres_of(query):
     return [g for g in _GENRE_SPLIT_RE.split((query or "").strip()) if g]
 
 
+# 2本目以降を回す前に Gemini の枠が戻るのを待つ上限（既定90分）。
+# クールダウンは GEMINI_COOLDOWN_SEC（既定30分）なので、その2〜3倍を見ておく。
+TREND_WAIT_GEMINI_SEC = int(os.getenv("TREND_WAIT_GEMINI_SEC", "5400"))
+
+
+async def _wait_for_gemini(cid, max_wait=None):
+    """Gemini の枠が戻るまで待つ。空いていれば待たない。
+    本人の指摘（2026-09-18）：「無料枠が空いてるときの方がいいから時間をずらす？」。
+    固定の時刻でずらすより、実際に枠が戻ったかを見るほうが確実。"""
+    max_wait = TREND_WAIT_GEMINI_SEC if max_wait is None else max_wait
+    if not _gemini_all_cooling():
+        return True
+    # 待っている間はボットが動いていないので、進捗（⏳）を流さず実測にも混ぜない
+    _pause_for_reply()
+    try:
+        try:
+            await send_as(orch, cid,
+                          "🕒 Gemini の無料枠が戻るのを待ってから次のジャンルを見ます"
+                          f"（{_cooldown_note(GEMINI_MODELS)}）。"
+                          "動画を実際に見て分析するためです。")
+        except Exception:  # noqa: BLE001
+            pass
+        waited = 0
+        while waited < max_wait:
+            await asyncio.sleep(300)      # 5分おきに様子を見る
+            waited += 300
+            if not _gemini_all_cooling():
+                return True
+        return False                      # 戻らなかった（メタ情報だけで分析する）
+    finally:
+        _resume_after_reply()
+
+
 async def _run_trend_all(cid, genres):
     """設定されたジャンルを順に1つずつ調べる。1つ失敗しても残りは続ける。
     同時に走らせない理由：動画の分析は Gemini の無料枠を使うので、
-    並列にすると1ジャンル目でクールダウンに入り、2つ目が空振りする。"""
-    for g in (genres or [None]):
+    並列にすると1ジャンル目でクールダウンに入り、2つ目が空振りする。
+    2本目からは、枠が戻るのを待ってから始める（待たずに始めると
+    タイトルと説明文だけの分析になり、実際に動画を見られない）。"""
+    for i, g in enumerate(genres or [None]):
+        if i:
+            await _wait_for_gemini(cid)
         try:
             await _run_trend_study(cid, g or None, skip_analyzed=True)
         except asyncio.CancelledError:

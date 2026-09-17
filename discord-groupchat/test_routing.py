@@ -1499,11 +1499,22 @@ def run():
     check("毎日の実行に全ジャンルを渡す",
           "_run_trend_all(cid, _genres)" in _srcK, True)
     check("全ジャンルは順番に回す（同時に走らせない）",
-          "for g in (genres or [None]):" in _srcK
+          "for i, g in enumerate(genres or [None]):" in _srcK
           and "await _run_trend_study(cid, g or None, skip_analyzed=True)" in _srcK,
           True)
     check("1ジャンルが失敗しても残りを続ける",
           "残りのジャンルは続けます" in _srcK, True)
+    # 本人の指摘（2026-09-18）：「Geminiの無料枠が空いてるときの方がいい」。
+    # 固定の時刻でずらすのではなく、枠が戻ったかを見てから2本目を始める。
+    check("2本目からは枠が戻るのを待つ",
+          "if i:\n            await _wait_for_gemini(cid)" in _srcK, True)
+    check("枠が空いていれば待たない",
+          "if not _gemini_all_cooling():\n        return True" in _srcK, True)
+    check("待っている間は進捗を流さない（実測にも混ぜない）",
+          "_pause_for_reply()" in _srcK.split("async def _wait_for_gemini")[1][:900],
+          True)
+    check("待ちの上限がある（無期限に止まらない）",
+          "TREND_WAIT_GEMINI_SEC" in _srcK, True)
     check("毎日の実行では分析済みを飛ばす",
           "skip_analyzed=True" in _srcK, True)
     check("お題指定でも飛ばすかを選べる",
