@@ -53,15 +53,15 @@ check('松は1本目のナレーションが込み（¥0）',
 /* 2本目以降は梅・竹と同じく加算される（松が「竹＋ナレ」より安くなるのを防ぐ） */
 await page.locator('#calc-cnt .calc-opt[data-count="2"]').click();
 check('松の2本目以降は内訳に出る',
-    /追加1本/.test(await page.locator('#calc-nar-dt').innerText())
-    && (await page.locator('#calc-narfee').innerText()) === '¥30,000');
+    /松に1名込み/.test(await page.locator('#calc-nar-dt').innerText())
+    && (await page.locator('#calc-narfee').innerText()) === '¥0');
 await page.locator('#calc-cnt .calc-opt[data-count="1"]').click();
 await page.locator('#calc-tier .calc-opt[data-tier="ume"]').click();
 check('梅では「なし」が選べる', !(await page.locator('#calc-nar input[data-nar="off"]').isDisabled()));
 await page.locator('#calc-nar .calc-opt[data-nar="on"]').click();
 await page.locator('#calc-cnt .calc-opt[data-count="2"]').click();
 check('梅のナレーションは本数ぶん加算',
-    (await page.locator('#calc-narfee').innerText()) === `¥${(PRICE.narration * 2).toLocaleString('ja-JP')}`
+    (await page.locator('#calc-narfee').innerText()) === `¥${PRICE.narration.toLocaleString('ja-JP')}〜`
     && Number((await page.locator('#calc-total').innerText()).replace(/[^\d]/g, '')) === price(TIERS[0], 30, 2, true));
 await page.locator('#calc-nar .calc-opt[data-nar="off"]').click();
 await page.locator('#calc-cnt .calc-opt[data-count="1"]').click();
@@ -160,9 +160,15 @@ check('段が上がると納期も延びるか同じ',
                       && leadWeeks(TIERS[1], s) <= leadWeeks(TIERS[2], s)));
 check('ナレーションを足しても納期は延びないか1週だけ',
     LENGTHS.every((s) => leadWeeks(TIERS[0], s, true) - leadWeeks(TIERS[0], s) <= 1));
-/* ナレーション追加の時間単価。¥30,000 ÷ 1.0h ＝ ¥30,000/h で目標を割らない */
-check('ナレーション追加が時間単価の目標を割らない', PRICE.narration / HOURS_NARRATION() >= RATE * 0.95,
-    `¥${Math.round(PRICE.narration / HOURS_NARRATION())}/h`);
+/* ¥70,000 は大半がナレーターへの外注費なので、「÷1.0h」を自分の時間単価としては使わない。
+   工数が 1.0h 増えるぶんで単価が落ちないことだけを、ナレーションありの組み合わせで見る */
+{
+    const narRates = rates.filter((r) => r.c.includes('ナレ'));
+    const nlo = narRates.slice().sort((a, b) => a.rate - b.rate)[0];
+    check('ナレーションありでも時間単価の目標を割らない', nlo.rate >= RATE * 0.95,
+        `最低 ${nlo.c} ¥${Math.round(nlo.rate)}/h / ${narRates.length}通り`);
+}
+check('ナレーションの工数は1名 1.0h のまま', HOURS_NARRATION() === 1.0);
 
 /* ---- 段のはしごが逆転していないか ----
    松は「竹＋ナレーション」の上位互換（3人目・ナレ込み・修正は同じ3回）なので、
@@ -178,18 +184,41 @@ check('ナレーション追加が時間単価の目標を割らない', PRICE.n
             if (price(take, sec, n, true) > price(matsu, sec, n)) inverted.push(`${sec}秒×${n}本`);
         }
     }
-    /* 残る1件は、松の秒単価に溶けているナレーション1本ぶん（1,750×秒）が
-       ¥30,000 に届かない最短の尺だけ。ここは松のほうが時間単価が高いので放置する */
-    check('竹＋ナレが松を上回るのは15秒×1本だけ', inverted.join(',') === '15秒×1本', inverted.join(',') || 'なし');
-    check('その1件は松のほうが時間単価が高い',
-        price(matsu, 15, 1) / hours(matsu, 15, 1) > price(take, 15, 1, true) / hours(take, 15, 1, true),
-        `松 ¥${Math.round(price(matsu, 15, 1) / hours(matsu, 15, 1))}/h vs 竹＋ナレ ¥${Math.round(price(take, 15, 1, true) / hours(take, 15, 1, true))}/h`);
-    check('松も2本目以降のナレーションは加算される',
-        price(matsu, 30, 2) - price(matsu, 30, 1) === PRICE.perExtra + PRICE.narration,
+    /* ナレーションを「1名 ¥70,000〜」にした（2026-09-17）ことで逆転が3件に増えた。
+       松の秒単価に溶けているナレーション相当（竹との差 1,750×秒）が
+       ¥70,000 に届かない 15秒・30秒だけ。しかも今回は
+       **竹＋ナレのほうが時間単価が高い**（＝松が安い）ので、
+       以前の「松のほうが時間単価が高いから放置」という理由は成り立たない。
+       価格は動かさず、計算機がその場で「松のほうが安い」と出して潰す（下の検査） */
+    check('竹＋ナレが松を上回るのは15秒・30秒だけ',
+        inverted.join(',') === '15秒×1本,30秒×1本,30秒×2本', inverted.join(',') || 'なし');
+    check('松は本数が増えてもナレーション料は増えない',
+        price(matsu, 30, 2) - price(matsu, 30, 1) === PRICE.perExtra,
         `¥${price(matsu, 30, 2) - price(matsu, 30, 1)}`);
-    check('松の工数もナレーション本数ぶん増える',
-        Math.abs(hours(matsu, 30, 2) - hours(matsu, 30, 1) - (1.5 + 1.0)) < 1e-9,
+    check('松の工数も本数ぶんだけ増える（ナレーションは増えない）',
+        Math.abs(hours(matsu, 30, 2) - hours(matsu, 30, 1) - 1.5) < 1e-9,
         `${(hours(matsu, 30, 2) - hours(matsu, 30, 1)).toFixed(2)}h`);
+
+    /* 逆転する組み合わせでは、計算機が「松のほうが安い」と言うこと。
+       言わないまま出すと、下位の仕様を高く買う選択肢が残る */
+    const warnBad = [];
+    for (const t of TIERS.filter((x) => !x.narration)) {
+        for (const sec of LENGTHS) {
+            const cap = countCap(sec);
+            for (let n = 1; n <= cap; n += 1) {
+                const want = price(t, sec, n, true) > price(matsu, sec, n);
+                await pick(page, t.id, sec, n);
+                await page.locator('#calc-nar .calc-opt[data-nar="on"]').click();
+                await page.waitForTimeout(40);
+                const hint = await page.locator('#calc-nar-hint').innerText();
+                const shown = /松（ナレーション1名込み/.test(hint);
+                if (shown !== want) warnBad.push(`${t.label}${sec}秒×${n}本: ${shown}≠${want}`);
+                await page.locator('#calc-nar .calc-opt[data-nar="off"]').click();
+            }
+        }
+    }
+    check('松のほうが安いときだけ、その旨が出る', warnBad.length === 0,
+        JSON.stringify(warnBad.slice(0, 3)));
 }
 
 /* ---- 段の順序と独立性 ---- */
@@ -235,7 +264,8 @@ await page.locator('#calc-nar .calc-opt[data-nar="on"]').click();
 await page.waitForTimeout(60);
 const narBody = new URLSearchParams((await mailLink()).split('?')[1]).get('body') || '';
 check('ナレーションを足すと本文に本数と金額が入る',
-    /・ナレーション：あり/.test(narBody) && new RegExp(`・ナレーション 2本：¥${(PRICE.narration * 2).toLocaleString('ja-JP')}`).test(narBody));
+    /・ナレーション：あり/.test(narBody)
+    && new RegExp(`・ナレーション 1名：¥${PRICE.narration.toLocaleString('ja-JP')}〜`).test(narBody));
 await page.locator('#calc-nar .calc-opt[data-nar="off"]').click();
 // mailto はクライアント側の長さ制限があるので、最長の組み合わせでも収まること
 await pick(page, 'matsu', 300, 6);

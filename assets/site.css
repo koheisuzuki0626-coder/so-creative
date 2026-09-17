@@ -1057,6 +1057,8 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
 .calc-opt:has(input:disabled):hover { border-color: var(--line); }
 .calc-opt:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 3px; }
 .calc-hint { margin: 11px 0 0; font-size: 0.86rem; color: var(--ink-dim); min-height: 1.4em; }
+/* 「松のほうが安い」の注意。色だけで伝えないよう、文言でも言い切っている */
+.calc-hint-warn { color: var(--ink); font-weight: 600; }
 
 .calc-presets {
     margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--line);

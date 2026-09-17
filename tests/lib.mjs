@@ -18,7 +18,7 @@ export const PW = process.env.PW || '/opt/node22/lib/node_modules/playwright/ind
 
 /* 料金と工数のモデル。index.html のコメントと同じもの。
    ここを書き換えるときは index.html も必ず合わせること */
-export const PRICE = { base: 90000, perExtra: 65000, narration: 30000 };
+export const PRICE = { base: 90000, perExtra: 65000, narration: 70000 };
 export const TIERS = [
     { id: 'ume',   label: '梅', perSec: 3500, hours: 1.0,  narration: false },
     { id: 'take',  label: '竹', perSec: 4900, hours: 1.22, narration: false },
@@ -26,10 +26,15 @@ export const TIERS = [
 ];
 export const LENGTHS = [15, 30, 45, 60, 90, 120, 180, 300];
 export const countCap = (sec) => (sec <= 30 ? 2 : sec <= 90 ? 4 : 6);
-/* nar … 梅・竹でナレーションを追加したか。松は込みなので加算しない */
-/* ナレーションは尺ではなく本数で手間が増える。松の秒単価に含まれるのは1本ぶんなので、
-   2本目以降は梅・竹と同じく課金する（そうしないと「竹＋ナレ」が「松」を上回る） */
-export const narCount = (t, n, nar) => (t.narration ? n - 1 : nar ? n : 0);
+/* nar … 梅・竹でナレーションを追加したか。松は1名込みなので加算しない。
+   2026-09-17 に「1本 ¥30,000」から「1名 ¥70,000〜」へ変更した。
+   合成音声の日本語が使えず（4エンジン×9声を試して不採用。
+   `成果物/サンプル映像/工数記録_サンプル映像03_05_07.md`）、実案件では
+   人のナレーターを手配する前提になったため。
+   **単位が「本」から「名」に変わったので、本数では増えない。**
+   1人が同じ収録で2本読んでも手配は1回で、費用もほぼ変わらない。
+   声を2人使うなら2名ぶん。計算機は1名までしか選べない（複数名は個別見積）。 */
+export const narCount = (t, n, nar) => (t.narration ? 0 : nar ? 1 : 0);
 export const price = (t, sec, n, nar = false) =>
     PRICE.base + t.perSec * sec + PRICE.perExtra * (n - 1) + PRICE.narration * narCount(t, n, nar);
 /* 工数モデル（2026-09-16 に実測へ合わせた）。
@@ -39,7 +44,9 @@ export const price = (t, sec, n, nar = false) =>
    段の倍率 1.0 / 1.22 / 1.36 は工程別の実測から:
      竹 ＝ 梅 ＋ キャラクターシート 1.0h ＋ 修正1回 0.6h
      松 ＝ 竹 ＋ ナレーション 1.0h（修正は竹と同じ3回）
-   ナレーションの追加（梅・竹）は実測 1.0h → ¥30,000。
+   ナレーションの工数は実測 1.0h（原稿・声の選定・配置）。
+   ¥70,000 のうち大半はナレーターへの外注費なので、
+   **この 1.0h で割った値は自分の時間単価ではない。**
    価格の倍率（1.0 / 1.4 / 1.9）は据え置きなので、上の段ほど時間単価が高い。
    index.html の HOURS / TIERS[].hours と同じ値にすること */
 export const HOURS = { base: 3.0, perSec: 0.15, perExtra: 1.5, narration: 1.0 };
