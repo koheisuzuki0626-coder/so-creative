@@ -219,16 +219,21 @@ def band_telop(key, text, accent, style):
     if style == "emo":
         # 文字そのものを光らせる。02で嫌われた「黒フチ＋重ねぼかし」とは別物で、
         # フチを作らず、広く薄いぼかしを2段重ねるだけ。夜の画で文字が浮く
-        img.alpha_composite(dim_alpha(txt.filter(ImageFilter.GaussianBlur(26)), 0.55))
-        img.alpha_composite(dim_alpha(txt.filter(ImageFilter.GaussianBlur(9)), 0.45))
-        # 本文の上に細い暖色の罫を1本。装飾はこれ1つに絞る
-        rule = blank()
-        rw, rh, gap = 132, 3, 40
+        img.alpha_composite(dim_alpha(txt.filter(ImageFilter.GaussianBlur(34)), 0.62))
+        img.alpha_composite(dim_alpha(txt.filter(ImageFilter.GaussianBlur(10)), 0.5))
+        # 本文の上に細い暖色の線を1本。装飾はこれ1つに絞る。
+        # 均一な棒だとハイフンに見えるので、両端を落として光の筋にする
+        rw, rh, gap = 230, 4, 48
         cx = (bb[0] + bb[2]) // 2
         ry = bb[1] - gap
-        ImageDraw.Draw(rule).rectangle(
-            [cx - rw // 2, ry, cx + rw // 2, ry + rh], fill=LAMP + (255,))
-        img.alpha_composite(dim_alpha(rule.filter(ImageFilter.GaussianBlur(7)), 0.7))
+        ramp = np.zeros((H, W), dtype=np.uint8)
+        x0, x1 = cx - rw // 2, cx + rw // 2
+        # 中央は濃いまま、端の2割だけで落とす（全体を丸めると線が消える）
+        prof = np.clip(np.sin(np.linspace(0, np.pi, x1 - x0)) * 2.6, 0, 1) * 255
+        ramp[ry:ry + rh, x0:x1] = prof.astype(np.uint8)
+        rule = Image.composite(Image.new("RGBA", (W, H), LAMP + (255,)),
+                               blank(), Image.fromarray(ramp))
+        img.alpha_composite(dim_alpha(rule.filter(ImageFilter.GaussianBlur(11)), 1.0))
         img.alpha_composite(rule)
         bb = (bb[0], ry, bb[2], bb[3])
     img.alpha_composite(txt)
