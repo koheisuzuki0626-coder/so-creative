@@ -119,6 +119,12 @@ check('画質は 1080p と書いてある', /1080p（フルHD）/.test(bodyText)
        同じ映像で音だけ差し替える。ナレーションは最終版（2026-09-17 差し替え） */
     check('ナレーションあり／なしを切り替えられる',
         (await page.locator('.sample-sw').count()) === 2);
+    /* この音声は合成音声。人が読んだものと誤解されると、
+       人物ナレーション（1名 ¥70,000〜）の見積りがずれる */
+    check('サンプルの音声がAIだとボタンに書いてある',
+        /AIナレーションあり/.test(await page.locator('.sample-switch').innerText()));
+    check('サンプルの音声がAIだと注釈にも書いてある',
+        /このナレーションはAI音声です/.test(await page.locator('#genre-company').innerText()));
     check('初期表示はテロップ版', /company-60s-telop\.mp4"/.test(idx));
     check('切り替えで実際に音源が変わる', await (async () => {
         const v = page.locator('#sample-video');

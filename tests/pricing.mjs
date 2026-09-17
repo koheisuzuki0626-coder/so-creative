@@ -22,7 +22,7 @@ check('実物のラジオで組んである',
     (await page.locator('.calc input[type="radio"]').count()) === 3 + 8 + 6 + 3);
 
 /* ---- 段の説明は客先向けの言葉か ---- */
-for (const [t, must, use, rev] of [['ume', '登場人物なし', 'SNS', 2], ['take', '2人まで', '採用', 3], ['matsu', 'ナレーション込み（人が読む1名', '展示会', 3]]) {
+for (const [t, must, use, rev] of [['ume', '登場人物なし', 'SNS', 2], ['take', '2人まで', '採用', 3], ['matsu', '人物ナレーション込み（1名', '展示会', 3]]) {
     await page.locator(`#calc-tier .calc-opt[data-tier="${t}"]`).click();
     const h = await page.locator('#calc-tier-hint').innerText();
     check(`${t} の中身が納品物の言葉で出る`, h.includes(must) && /納品/.test(h), h.slice(0, 34));
@@ -32,8 +32,8 @@ for (const [t, must, use, rev] of [['ume', '登場人物なし', 'SNS', 2], ['ta
     check(`${t} は 1080p 納品と書いてある`, /1080p（フルHD）で納品/.test(h));
     check(`${t} の説明に 4K を出していない`, !/4K/.test(h));
     check(`${t} のナレーションの扱いが出る`, t === 'matsu'
-        ? /ナレーション込み（人が読む1名/.test(h)
-        : /AI音声 1本 ¥30,000／人が読む 1名 ¥70,000〜/.test(h));
+        ? /人物ナレーション込み（1名/.test(h)
+        : /AIナレーションは料金に含まれます（人物ナレーションは1名 ¥70,000〜）/.test(h));
 }
 const plansText = await page.locator('#plans').innerText();
 check('生成回数など内部の手順を出していない',
@@ -47,15 +47,17 @@ check('修正回数が5回に戻っていない', !/5回/.test(plansText));
 check('ナレーションが3択', (await page.locator('#calc-nar .calc-opt').count()) === 3);
 /* AI音声を売るなら、合成音声だと分かる書き方にしておく。
    4エンジン×9声を試して不採用にしたものを、期待値を伏せて売らないため */
-check('AI音声が機械の声だと分かる書き方になっている',
-    /機械の声だと分かる/.test(await page.locator('.calc-why').innerText()));
+check('AIナレーションが合成音声だと分かる書き方になっている',
+    /合成音声なので機械の声だと分かる/.test(await page.locator('.calc-why').innerText()));
+check('AIナレーションが追加料金なしだと分かる',
+    /AIナレーション 追加料金なし/.test(await page.locator('.calc-why').innerText()));
 await page.locator('#calc-tier .calc-opt[data-tier="matsu"]').click();
-check('松では「人が読む」に固定され、ほかが選べない',
+check('松では「人物ナレーション」に固定され、ほかが選べない',
     (await page.locator('#calc-nar input[data-nar="none"]').isDisabled())
     && (await page.locator('#calc-nar input[data-nar="ai"]').isDisabled())
     && (await page.locator('#calc-nar input[data-nar="human"]').isChecked()));
 check('松はナレーションが込み（¥0）',
-    /松に1名込み/.test(await page.locator('#calc-nar-dt').innerText())
+    /人物（松に1名込み）/.test(await page.locator('#calc-nar-dt').innerText())
     && (await page.locator('#calc-narfee').innerText()) === '¥0');
 await page.locator('#calc-cnt .calc-opt[data-count="2"]').click();
 check('松は本数が増えてもナレーション料は¥0のまま',
@@ -66,15 +68,17 @@ check('梅では3択すべて選べる',
     !(await page.locator('#calc-nar input[data-nar="none"]').isDisabled())
     && !(await page.locator('#calc-nar input[data-nar="ai"]').isDisabled())
     && !(await page.locator('#calc-nar input[data-nar="human"]').isDisabled()));
-/* AI音声は本数ぶん増える。人は増えない。単位の違いを画面で確かめる */
+/* AIは料金に含む（¥0）。人物だけ加算される。違いを画面で確かめる */
 await page.locator('#calc-nar .calc-opt[data-nar="ai"]').click();
 await page.locator('#calc-cnt .calc-opt[data-count="2"]').click();
-check('AI音声は本数ぶん加算され「〜」が付かない',
-    (await page.locator('#calc-narfee').innerText()) === `¥${(PRICE.narrationAi * 2).toLocaleString('ja-JP')}`
+check('AIナレーションは料金に含まれ、合計が「なし」と同じ',
+    (await page.locator('#calc-narfee').innerText()) === '¥0'
+    && /料金に含まれます/.test(await page.locator('#calc-nar-dt').innerText())
     && Number((await page.locator('#calc-total').innerText()).replace(/[^\d]/g, '')) === price(TIERS[0], 30, 2, 'ai')
+    && price(TIERS[0], 30, 2, 'ai') === price(TIERS[0], 30, 2, 'none')
     && !/〜/.test(await page.locator('#calc-total').innerText()));
 await page.locator('#calc-nar .calc-opt[data-nar="human"]').click();
-check('人が読むは本数で増えず「〜」が付く',
+check('人物ナレーションは本数で増えず「〜」が付く',
     (await page.locator('#calc-narfee').innerText()) === `¥${PRICE.narrationHuman.toLocaleString('ja-JP')}〜`
     && Number((await page.locator('#calc-total').innerText()).replace(/[^\d]/g, '')) === price(TIERS[0], 30, 2, 'human')
     && /〜/.test(await page.locator('#calc-total').innerText()));
@@ -207,8 +211,12 @@ check('ナレーションの工数は1本 1.0h（AI・人で同じ）', HOURS_NA
        価格は動かさず、計算機がその場で「松のほうが安い」と出して潰す（下の検査） */
     /* 1本あたり15秒未満は選べないので、この一覧に 15秒×2本 は出てこない
        （計算機でも選べない。下の「松のほうが安い」の検査は countCap で回している） */
-    check('竹＋人が松を上回るのは15秒・30秒だけ',
+    check('竹＋人物が松を上回るのは15秒・30秒だけ',
         inverted.join(',') === '15秒×1本,30秒×1本,30秒×2本', inverted.join(',') || 'なし');
+    /* AIは料金に含むので、どの組み合わせでも松を上回らない */
+    check('AIナレーションでは逆転しない',
+        LENGTHS.every((sec) => Array.from({ length: countCap(sec) }, (_, i) => i + 1)
+            .every((n) => price(take, sec, n, 'ai') <= price(matsu, sec, n))));
     check('松は本数が増えてもナレーション料は増えない',
         price(matsu, 30, 2) - price(matsu, 30, 1) === PRICE.perExtra,
         `¥${price(matsu, 30, 2) - price(matsu, 30, 1)}`);
@@ -231,7 +239,7 @@ check('ナレーションの工数は1本 1.0h（AI・人で同じ）', HOURS_NA
                     await page.locator(`#calc-nar .calc-opt[data-nar="${mode}"]`).click();
                     await page.waitForTimeout(40);
                     const hint = await page.locator('#calc-nar-hint').innerText();
-                    const shown = /松（人のナレーション1名込み/.test(hint);
+                    const shown = /松（人物ナレーション1名込み/.test(hint);
                     if (shown !== want) warnBad.push(`${t.label}${sec}秒×${n}本/${mode}: ${shown}≠${want}`);
                     await page.locator('#calc-nar .calc-opt[data-nar="none"]').click();
                 }
@@ -284,16 +292,15 @@ await pick(page, 'ume', 60, 2);
 await page.locator('#calc-nar .calc-opt[data-nar="human"]').click();
 await page.waitForTimeout(60);
 const narBody = new URLSearchParams((await mailLink()).split('?')[1]).get('body') || '';
-check('人が読むを足すと本文に単位と金額が入る',
-    /・ナレーション：人が読む/.test(narBody)
-    && new RegExp(`・ナレーション 人が読む 1名：¥${PRICE.narrationHuman.toLocaleString('ja-JP')}〜`).test(narBody));
+check('人物ナレーションを足すと本文に単位と金額が入る',
+    /・ナレーション：人物 1名/.test(narBody)
+    && new RegExp(`・ナレーション 人物 1名：¥${PRICE.narrationHuman.toLocaleString('ja-JP')}〜`).test(narBody));
 await page.locator('#calc-nar .calc-opt[data-nar="ai"]').click();
 await page.waitForTimeout(60);
 const aiBody = new URLSearchParams((await mailLink()).split('?')[1]).get('body') || '';
 /* 直前で 60秒×2本 を選んでいる。AI は本数ぶん増えるので 2本ぶんの額が出る */
-check('AI音声を足すと本文に本数と金額が入る',
-    /・ナレーション：AI音声/.test(aiBody)
-    && new RegExp(`・ナレーション AI音声 2本：¥${(PRICE.narrationAi * 2).toLocaleString('ja-JP')}`).test(aiBody));
+check('AIを選ぶと本文に「料金に含まれます」と入り、金額行は出ない',
+    /・ナレーション：AI（料金に含まれます）/.test(aiBody) && !/・ナレーション 人物/.test(aiBody));
 await page.locator('#calc-nar .calc-opt[data-nar="none"]').click();
 // mailto はクライアント側の長さ制限があるので、最長の組み合わせでも収まること
 await pick(page, 'matsu', 300, 6);
