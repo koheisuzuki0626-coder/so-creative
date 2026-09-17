@@ -45,6 +45,8 @@ SHOP_SUB = "コインランドリー ／ 24時間・年中無休"
 #   sns   … 縦型（05）。画面の下から1/3あたりに中央揃えで、黒の半透明ブロック＋
 #           太い白文字。SNSは音を切って見られるので大きく出す
 #   step  … 白帯＋黒文字＋左に大きなSTEP番号（07）。研修用なので可読性を最優先
+#   white_band … 白帯＋黒文字（03の3分版の第4章）。STEP番号は無い。
+#           数字を出すカットだけ本文と別扱いにして「事実」だと分かるようにする
 # 02は帯 → 影 → グラデーションと3回変えた。影は黒フチと重ねぼかしが汚れて見えた。
 TELOPS = {
     "02_1": ("現場で、その場で。", None, "scrim"),
@@ -62,6 +64,32 @@ TELOPS = {
     "07_1": ("入る前に、装備を確認。", "STEP 1", "step"),
     "07_2": ("通路では、必ず止まる。", "STEP 2", "step"),
     "07_3": ("声に出して、指で差す。", "STEP 3", "step"),
+}
+
+# 03 採用・3分版（16:9）。本文は scrim、第4章の数字だけ white_band にして
+# 「事実」だと分かるようにする。インタビューは鍵カッコ付き（本人の発言だと示す）
+TELOPS_3MIN = {
+    "r3_03": ("朝は8時。朝礼は5分で終わる。", None, "scrim"),
+    "r3_05": ("つくっているのは、機械の中に入る部品です。", None, "scrim"),
+    "r3_08": ("1個あたり、数分。", None, "scrim"),
+    "r3_10": ("図面の指示は 0.01mm 単位。", None, "scrim"),
+    "r3_11": ("ここから検査に回ります。", None, "scrim"),
+    "r3_13": ("記録は全部残します。", None, "scrim"),
+    "r3_15": ("分からないことは、その場で聞けます。", None, "scrim"),
+    "r3_17": ("「最初の半年は、ずっと先輩の隣でした」", None, "scrim"),
+    "r3_18": ("「3年目の今は、一人で段取りまでやります」", None, "scrim"),
+    "r3_19": ("「教えるのは、手が空いた人。担当は決めていません」", None, "scrim"),
+    "r3_22": ("「子どもの送りがあるので、始業を30分ずらしています」", None, "scrim"),
+    "r3_24": ("教わった人が、教える側になる。", None, "scrim"),
+    "r3_25": ("「1年目でも、機械は触らせてもらえます」", None, "scrim"),
+    "r3_27": ("社員 24人。平均年齢 38歳。", None, "white_band"),
+    "r3_28": ("設備は5年で3台入れ替えました。", None, "white_band"),
+    "r3_29": ("検査室は空調完備。", None, "white_band"),
+    "r3_30": ("作業着は会社支給。洗濯も会社で。", None, "white_band"),
+    "r3_31": ("昼は40分。弁当の注文もできます。", None, "white_band"),
+    "r3_32": ("残業は月平均 12時間。", None, "white_band"),
+    "r3_34": ("「見学だけでも、来てもらえたら分かります」", None, "scrim"),
+    "r3_35": ("まず、見に来てください。", None, "scrim"),
 }
 
 # 05 SNSショート（9:16・sns）。キャンバスが違うので別に持つ
@@ -138,9 +166,9 @@ def band_telop(key, text, accent, style):
     #   scrim/block … 132px・左寄せ（16:9）
     #   sns         … 104px・中央寄せ（縦型は横幅が狭い）
     #   step        … 96px・左寄せ。左端のSTEP番号ブロック(268px)を避けて 330px から
-    size = {"sns": 104, "step": 96}.get(style, SIZE)
+    size = {"sns": 104, "step": 96, "white_band": 96}.get(style, SIZE)
     left = {"step": 330}.get(style, LEFT)
-    bottom = {"sns": int(H * 0.30), "step": 118}.get(style, BOTTOM)
+    bottom = {"sns": int(H * 0.30), "step": 118, "white_band": 118}.get(style, BOTTOM)
     while size > 84:
         f = ImageFont.truetype(ZEN, size)
         w = sum(f.getlength(t) for t, _ in parts) + PAD_X * 2 + left - 70
@@ -149,7 +177,7 @@ def band_telop(key, text, accent, style):
         size -= 4
     f = ImageFont.truetype(ZEN, size)
     # 白帯に乗る step だけ黒文字。ほかは白
-    body = (17, 17, 17) if style == "step" else (255, 255, 255)
+    body = (17, 17, 17) if style in ("step", "white_band") else (255, 255, 255)
 
     def draw(d, ox, oy):
         x = ox
@@ -247,7 +275,10 @@ def build_set(table, label=""):
         b["static_underlay"] = b["style"] == "scrim"
         blk = blank()
         d = ImageDraw.Draw(blk)
-        if b["style"] == "sns":
+        if b["style"] == "white_band":
+            d.rectangle([0, b["y"], W, b["y"] + b["h"]], fill=(255, 255, 255, 249))
+            d.rectangle([0, b["y"], 24, b["y"] + b["h"]], fill=NAVY + (255,))
+        elif b["style"] == "sns":
             pad_x, pad_t, pad_b = 34, 26, 30
             d.rounded_rectangle([b["x"] - pad_x + PAD_X, b["y"] - pad_t + PAD_T,
                                  b["x"] + b["w"] + pad_x - PAD_X,
@@ -290,6 +321,9 @@ if __name__ == "__main__":
     for a, name in ((88, "dim34"), (74, "dim29")):
         Image.new("RGBA", (W, H), (0, 0, 0, a)).save(f"{OUT}/{name}.png")
 
+    boxes_r3 = build_set(TELOPS_3MIN, "16:9 / 採用3分")
+    logo_card("募集中", "機械加工 ／ 検査 ／ 出荷", f"{OUT}/r3_logo.png", mark="none")
+
     # 05 は縦型なのでキャンバスを切り替えて作り直す
     set_canvas(1080, 1920)
     boxes_v = build_set(TELOPS_V, "9:16")
@@ -297,4 +331,5 @@ if __name__ == "__main__":
     Image.new("RGBA", (W, H), (0, 0, 0, 74)).save(f"{OUT}/dim29v.png")
 
     with open(f"{OUT}/boxes.json", "w") as fp:
-        json.dump({"boxes": {**boxes, **boxes_v}}, fp, ensure_ascii=False, indent=1)
+        json.dump({"boxes": {**boxes, **boxes_r3, **boxes_v}}, fp,
+                  ensure_ascii=False, indent=1)

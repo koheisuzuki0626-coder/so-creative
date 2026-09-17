@@ -401,6 +401,92 @@ def build_05(dur=15.0):
     return normalize(np.tanh(mix * 1.8), 0.88)
 
 
+def build_03(dur=180.0):
+    """03 採用の3分版。BPM100・1小節2.4秒。章に合わせて厚みを変える。
+
+    15秒版（build_02）と同じ進行・同じ音色を使い、
+    セクションごとにどの楽器を鳴らすかだけを変える。
+    ループを聞かせるのではなく、章の切り替わりで景色が変わるようにする。
+
+      0-20   朝      パッドとベルだけ
+      20-68  仕事    ベースとアルペジオが入る
+      68-128 人      いちばん厚い。リードのメロディを足す
+      128-160 職場   一度落として、数字のカットで持ち上げる
+      160-180 締め   全部入り → 最後にリリース
+    """
+    n = int(dur * SR)
+    bar = 2.4
+    beat = bar / 4
+    prog = [["D4", "F#4", "A4", "E5"], ["G3", "B3", "D4", "A4"],
+            ["A3", "C#4", "E4", "B4"], ["D4", "F#4", "A4", "E5"],
+            ["G3", "B3", "D4", "A4"], ["A3", "C#4", "E4", "B4"]]
+    roots = ["D4", "G3", "A3", "D4", "G3", "A3"]
+    tops = ["A4", "B4", "C#5", "D5", "B4", "C#5"]
+    leads = ["F#5", "D5", "E5", "F#5", "A5", "E5"]
+
+    def layers_at(t):
+        """その時刻でどの層を鳴らすか。"""
+        if t < 20:                      # 朝
+            return dict(pad=0.26, bell=0.18, arp=0.0, bass=0.0, shaker=0.0, lead=0.0)
+        if t < 68:                      # 仕事
+            return dict(pad=0.24, bell=0.12, arp=0.12, bass=0.16, shaker=0.05, lead=0.0)
+        if t < 128:                     # 人
+            return dict(pad=0.26, bell=0.16, arp=0.14, bass=0.18, shaker=0.07, lead=0.13)
+        if t < 143:                     # 職場（前半・落とす）
+            return dict(pad=0.22, bell=0.10, arp=0.07, bass=0.10, shaker=0.03, lead=0.0)
+        if t < 160:                     # 職場（数字で持ち上げる）
+            return dict(pad=0.26, bell=0.18, arp=0.14, bass=0.18, shaker=0.07, lead=0.10)
+        return dict(pad=0.28, bell=0.20, arp=0.15, bass=0.19, shaker=0.08, lead=0.15)
+
+    mix = np.zeros(n)
+    i = 0
+    while True:
+        p0 = int(i * bar * SR)
+        if p0 >= n:
+            break
+        t = i * bar
+        L = layers_at(t)
+        k = i % 6
+        ch, root, top, lead = prog[k], roots[k], tops[k], leads[k]
+        ln = min(int(bar * SR), n - p0)
+        if L["pad"]:
+            mix[p0:p0 + ln] += pad(ch, ln, level=L["pad"])[:ln]
+        if L["arp"]:
+            mix[p0:p0 + ln] += arp(ch, ln, beat / 2, level=L["arp"])[:ln]
+        if L["bell"]:
+            lnb = min(int(1.4 * SR), n - p0)
+            mix[p0:p0 + lnb] += bell(top, lnb, level=L["bell"])[:lnb]
+        if L["lead"]:
+            # リードは2小節に1回、長めに伸ばす
+            if i % 2 == 0:
+                lnl = min(int(1.9 * SR), n - p0)
+                mix[p0:p0 + lnl] += bell(lead, lnl, level=L["lead"], oct_up=0)[:lnl]
+        if L["bass"]:
+            for m in range(8):
+                q = p0 + int(m * beat / 2 * SR)
+                ln2 = min(int(beat * 0.45 * SR), n - q)
+                if ln2 > 0 and q < n:
+                    mix[q:q + ln2] += bass(root, ln2, level=L["bass"])[:ln2]
+        if L["shaker"]:
+            for m in range(8):
+                q = p0 + int((m + 0.5) * beat / 2 * SR)
+                if q < n:
+                    mix[q:] += shaker(n - q, level=L["shaker"])
+        i += 1
+
+    # 章の変わり目にクラッシュを置いて切り替えを聞かせる
+    for at, lv in ((20.0, 0.10), (68.0, 0.13), (128.0, 0.09), (160.0, 0.14)):
+        q = int(at * SR)
+        if q < n:
+            mix[q:] += crash(n - q, level=lv)
+    mix = fft_filter(mix, 34, "hp", rolloff=3.0)
+    mix = reverb(mix, mix=0.26)
+    mix[:int(0.4 * SR)] *= np.linspace(0, 1, int(0.4 * SR))
+    tail = int(3.0 * SR)
+    mix[-tail:] *= np.linspace(1, 0, tail)
+    return normalize(np.tanh(mix * 2.2), 0.86)
+
+
 def write_wav(path, mono, width=0.12):
     """わずかにステレオに広げて 16bit で書く。"""
     d = int(width * 0.004 * SR)
@@ -439,4 +525,7 @@ if __name__ == "__main__":
     c = build_05()
     write_wav(f"{OUT}/bgm_05.wav", c)
     rms_report("05", c, [(0, 4), (4, 8), (8, 12), (12, 15)])
-    print("wrote bgm_02.wav / bgm_04.wav / bgm_05.wav")
+    d = build_03()
+    write_wav(f"{OUT}/bgm_03_3min.wav", d)
+    rms_report("03(3分)", d, [(0, 20), (20, 68), (68, 128), (128, 143), (143, 160), (160, 180)])
+    print("wrote bgm_02 / bgm_04 / bgm_05 / bgm_03_3min")

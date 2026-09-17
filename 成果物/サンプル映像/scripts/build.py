@@ -64,6 +64,7 @@ def measure(path, tp=-2.0):
 def build(name, cuts, telops, dim, logo, logo_at, dim_at, audio,
           canvas=(1920, 1080), tp=-2.0, limit=0.82, loudnorm=True):
     """cuts: [(file, in, dur)] / telops: [(key, st, en)]"""
+    total = sum(d for _, _, d in cuts)   # 15秒とは限らない（3分版がある）
     cw, ch = canvas
     ar = f"{cw}/{ch}"
     ins, fc = [], []
@@ -87,19 +88,19 @@ def build(name, cuts, telops, dim, logo, logo_at, dim_at, audio,
             # グラデーションの下敷きは動かさない（下端に隙間ができる）
             layers.insert(0, (f"{k}_blk", False, B[k].get("static_underlay", False)))
         for suffix, is_text, static in layers:
-            ins += ["-loop", "1", "-t", "15", "-i", f"{TELOP}/{suffix}.png"]
+            ins += ["-loop", "1", "-t", str(total), "-i", f"{TELOP}/{suffix}.png"]
             fc.append(layer(idx, st, en, is_text))
             tex.append((idx, None if static else st))
             idx += 1
     # 締め（暗転＋ロゴ）は本によって無い（07 研修は STEP 3 で終わる）
     ending = []
     if dim:
-        ins += ["-loop", "1", "-t", "15", "-i", f"{TELOP}/{dim}.png"]
+        ins += ["-loop", "1", "-t", str(total), "-i", f"{TELOP}/{dim}.png"]
         fc.append(f"[{idx}:v]format=rgba,fade=t=in:st={dim_at}:d=0.5:alpha=1[dim]")
         ending.append("dim")
         idx += 1
     if logo:
-        ins += ["-loop", "1", "-t", "15", "-i", f"{TELOP}/{logo}.png"]
+        ins += ["-loop", "1", "-t", str(total), "-i", f"{TELOP}/{logo}.png"]
         fc.append(f"[{idx}:v]format=rgba,fade=t=in:st={logo_at}:d=0.5:alpha=1[lg]")
         ending.append("lg")
 
@@ -206,6 +207,20 @@ if __name__ == "__main__":
               [("07_1", 0.35, 4.05), ("07_2", 4.60, 9.45), ("07_3", 10.00, 14.95)],
               None, None, 0, 0, f"{HERE}/audio_07.wav",
               loudnorm=False, limit=0.72)
+
+    if wanted("03_recruit_3min"):
+        # 全36カット × 5.0秒 = 180秒。構成案では17・18・34・35・36 を
+        # 6〜7秒にしていたが、素材が5.04秒なので全カット等尺に直した
+        R3 = os.environ.get("SO_R3", f"{GEN}/r3")
+        cuts = [(f"{R3}/v{i:02d}.mp4", 0.02, 5.0) for i in range(1, 37)]
+        # テロップはカット頭から0.45秒後に出て、カット終わりの0.35秒前に消える
+        tel = []
+        for i in (3, 5, 8, 10, 11, 13, 15, 17, 18, 19, 22, 24, 25,
+                  27, 28, 29, 30, 31, 32, 34, 35):
+            st = (i - 1) * 5.0
+            tel.append((f"r3_{i:02d}", st + 0.45, st + 4.65))
+        build("03_recruit_3min", cuts, tel,
+              "dim34", "r3_logo", 176.2, 175.8, f"{HERE}/audio_03_3min.wav")
 
     # 訴求B（時短）は取りやめ。名前を明示したときだけ作る
     if "04b_time_15s" in sys.argv[1:]:

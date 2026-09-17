@@ -334,6 +334,69 @@ def se_07(dur=15.0):
     return out
 
 
+def se_03_3min(dur=180.0):
+    """03 採用・3分版。全36カット × 5.0秒。
+
+    工場の機械音を通して敷き、章とカットに合わせて強弱を付ける。
+    インタビューのカット（17・19・22・25・34）は機械音を大きく下げる
+    ―― 声が聞こえる画なので、音数を減らして「話している」ことを示す。
+    """
+    n = int(dur * SR)
+    out = np.zeros(n)
+    cut = lambda i: (i - 1) * 5.0          # カット番号 → 開始秒
+
+    # 屋外（1・36）と室内（それ以外）のベース
+    out += ambience_outdoor(n, 0.24, 201) * (seg(n, 0, 5.2) + seg(n, cut(36) - 0.2, dur))
+    out += machine_hum(n, 0.30, 203) * seg(n, 4.8, cut(36) + 0.2)
+    # インタビューと休憩は機械音を落とす（上から薄いベースを重ねて相対的に下げる）
+    for i in (17, 19, 22, 25, 34):
+        a, b = cut(i), cut(i) + 5.0
+        out[int(a * SR):int(b * SR)] *= 0.34
+        out += machine_hum(n, 0.07, 205 + i) * seg(n, a, b)
+    for i in (20, 21):                      # 休憩スペースと自販機
+        a, b = cut(i), cut(i) + 5.0
+        out[int(a * SR):int(b * SR)] *= 0.5
+        out += ambience_room(n, 0.10, 231 + i) * seg(n, a, b)
+
+    # 第1章 朝
+    out += footsteps(n, cut(1) + 2.6, 3, 0.12)            # 自転車を降りて歩く
+    out += tool_clink(n, cut(2) + 1.6, 0.16, 2400, 241)   # 名札の金具
+    out += footsteps(n, cut(3) + 0.4, 5, 0.10)            # 朝礼に集まる
+    out += tool_clink(n, cut(4) + 1.2, 0.2, 2800, 243)    # 電源スイッチ
+
+    # 第2章 仕事
+    out += tool_clink(n, cut(6) + 2.4, 0.18, 3000, 245)   # 材料を抜く
+    out += tool_clink(n, cut(7) + 1.8, 0.26, 2600, 247)   # チャックを締める
+    out += tool_clink(n, cut(7) + 3.1, 0.2, 2600, 249)
+    out += tool_clink(n, cut(9) + 1.4, 0.14, 3600, 251)   # 部品を持ち替える
+    out += tool_clink(n, cut(10) + 1.6, 0.2, 4200, 253)   # ノギス
+    out += tool_clink(n, cut(11) + 2.2, 0.22, 2200, 255)  # トレイの受け渡し
+    out += tool_clink(n, cut(12) + 2.6, 0.12, 3800, 257)
+    out += tool_clink(n, cut(14) + 1.2, 0.16, 1800, 259)  # 箱を閉じる
+    out += tool_clink(n, cut(14) + 3.4, 0.14, 1600, 261)
+
+    # 第3章 人
+    out += tool_clink(n, cut(15) + 1.8, 0.14, 3200, 263)
+    out += footsteps(n, cut(20) + 0.3, 3, 0.10)
+    out += tool_clink(n, cut(21) + 2.2, 0.18, 2000, 265)  # 缶を置く
+    out += footsteps(n, cut(23) + 2.4, 4, 0.16)           # 帰る足音
+    out += tool_clink(n, cut(24) + 2.0, 0.14, 3200, 267)
+
+    # 第4章 職場
+    out += forklift_beep(n, cut(28) + 1.4, 0.10, 2)       # 奥で機械が動く合図
+    out += ambience_room(n, 0.12, 269) * seg(n, cut(29), cut(31) + 5.0)
+    out += footsteps(n, cut(30) + 1.0, 3, 0.10)
+    for k, at in enumerate((0.8, 1.9, 3.2)):              # 食堂の食器
+        out += clink(n, cut(31) + at, 0.12, 1600 + k * 300, 271 + k)
+    out += tool_clink(n, cut(32) + 1.6, 0.24, 2400, 275)  # タイムカード
+    out += tool_clink(n, cut(32) + 3.0, 0.2, 2200, 277)
+
+    # 第5章 締め
+    out += footsteps(n, cut(35) + 2.0, 4, 0.12)
+    out += ambience_outdoor(n, 0.10, 279) * seg(n, cut(35) + 2.5, dur)
+    return out
+
+
 def mix(bgm, se, se_level=0.9, path=None, peak=0.9, drive=1.15):
     """drive を上げるとサチュレーションが強まり、足音や金具のような
     突出したトランジェントが潰れてピークとRMSの差が縮む。"""
@@ -350,14 +413,15 @@ def rms_db(x):
 
 
 if __name__ == "__main__":
-    from bgm import build_05
+    from bgm import build_05, build_03
     b02, b04, b05 = build_02(), build_04(), build_05()
     s02, s04a, s04b = se_02(), se_04a(), se_04b()
     # 03 は 02 の BGM を流用（構成案どおり）。07 は BGM なしで SE だけ
     silent = np.zeros(len(b02))
     for name, b, s in (("02", b02, s02), ("04a", b04, s04a), ("04b", b04, s04b),
                        ("03", b02, se_03()), ("05", b05, se_05()),
-                       ("07", silent, se_07())):
+                       ("07", silent, se_07()),
+                       ("03_3min", build_03(), se_03_3min())):
         # 07 は BGM が無いので SE を上げる。ただし足音や金具の
         # トランジェントが多く AAC 変換でピークが張り付くので、
         # レベルは控えめにして書き出しのピークも下げる
