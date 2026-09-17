@@ -20,7 +20,7 @@ OUT = os.environ.get("SO_OUT", f"{HERE}/out")
 os.makedirs(OUT, exist_ok=True)
 
 BOX = json.load(open(f"{TELOP}/boxes.json"))
-COLOR = BOX["block_color"]
+
 B = BOX["boxes"]
 
 RISE = 190          # 下から持ち上げる量(px)。ブロックの高さぶん
@@ -46,13 +46,29 @@ def overlay_y(st):
     return f"'{RISE}*max(0,1-(t-{st})/{RISE_D})'"
 
 
-def build(name, cuts, telops, dim, logo, logo_at, dim_at, bgm, measured):
+def measure(path):
+    """loudnorm の1パス目。2パスにしないと AAC 変換でピークが 0dB に張り付く。"""
+    out = subprocess.run(
+        [FF, "-hide_banner", "-i", path, "-af",
+         "loudnorm=I=-16:TP=-2.0:print_format=json", "-f", "null", "-"],
+        capture_output=True, text=True).stderr
+    keys = ("input_i", "input_tp", "input_lra", "input_thresh", "target_offset")
+    vals = {}
+    for line in out.splitlines():
+        for k in keys:
+            if f'"{k}"' in line:
+                vals[k] = line.split(":")[1].strip().strip('",')
+    return tuple(vals[k] for k in keys)
+
+
+def build(name, cuts, telops, dim, logo, logo_at, dim_at, audio):
     """cuts: [(file, in, dur)] / telops: [(key, st, en)]"""
     ins, fc = [], []
     for i, (f, tin, dur) in enumerate(cuts):
         ins += ["-i", f]
         fc.append(f"[{i}:v]trim={tin}:{tin + dur},setpts=PTS-STARTPTS,"
-                  f"scale=1920:1080:flags=lanczos,fps=24[v{i}]")
+                  "crop='min(iw,ih*16/9)':'min(ih,iw*9/16)',"
+                  f"scale=1920:1080:flags=lanczos,setsar=1,fps=24[v{i}]")
     fc.append("".join(f"[v{i}]" for i in range(len(cuts)))
               + f"concat=n={len(cuts)}:v=1:a=0[cat]")
 
@@ -87,10 +103,10 @@ def build(name, cuts, telops, dim, logo, logo_at, dim_at, bgm, measured):
         "-movflags", "+faststart", silent]
     subprocess.run(cmd, check=True)
 
-    mi, mtp, mlra, mth, off = measured
+    mi, mtp, mlra, mth, off = measure(audio)
     master = f"{OUT}/{name}_master.mp4"
     subprocess.run([
-        FF, "-loglevel", "error", "-y", "-i", silent, "-i", bgm,
+        FF, "-loglevel", "error", "-y", "-i", silent, "-i", audio,
         "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy",
         "-af", (f"loudnorm=I=-16:TP=-2.0:LRA=11:measured_I={mi}:measured_TP={mtp}:"
                 f"measured_LRA={mlra}:measured_thresh={mth}:offset={off}:linear=true,"
@@ -109,24 +125,28 @@ def build(name, cuts, telops, dim, logo, logo_at, dim_at, bgm, measured):
 
 
 if __name__ == "__main__":
-    M02 = ("-12.90", "-1.16", "2.50", "-23.09", "-0.76")
-    M04 = ("-13.06", "-0.27", "2.70", "-23.16", "-0.31")
-    b02, b04 = f"{HERE}/bgm_02.wav", f"{HERE}/bgm_04.wav"
+    # BGM と SE をミックス済みのトラック（se.py が書き出す）
+    a02 = f"{HERE}/audio_02.wav"
+    a04a = f"{HERE}/audio_04a.wav"
+    a04b = f"{HERE}/audio_04b.wav"
+    # 04 C1 は kling3_0 の素材。餃子自体が動く（seedance は静止画起点だと動かない）
+    C1 = os.environ.get("SO_C1", f"{GEN}/04_c1_kling.mp4")
+    C1_IN = float(os.environ.get("SO_C1_IN", "0.0"))
 
     build("02_service_15s",
           [(f"{GEN}/02_c1.mp4", 0.04, 5.0), (f"{GEN}/02_c2_v2.mp4", 0.04, 5.0),
            (f"{GEN}/02_c3.mp4", 0.04, 5.0)],
           [("02_1", 0.45, 4.70), ("02_2", 5.40, 9.70), ("02_3", 10.35, 12.50)],
-          "dim34", "02_logo", 12.75, 12.45, b02, M02)
+          "dim34", "02_logo", 12.75, 12.45, a02)
 
     build("04a_taste_15s",
-          [(f"{HERE}/04_c1_slow.mp4", 0.0, 6.0), (f"{GEN}/04_c2.mp4", 0.04, 5.0),
-           (f"{GEN}/04_c3_v2.mp4", 1.04, 4.0)],
+          [(C1, C1_IN, 6.0), (f"{GEN}/04_c2.mp4", 0.04, 5.0),
+           (f"{GEN}/04_c3_v3m.mp4", 0.6, 4.0)],
           [("04a_1", 0.45, 5.70), ("04a_2", 6.35, 10.70)],
-          "dim29", "04_logo", 11.4, 11.1, b04, M04)
+          "dim29", "04_logo", 11.4, 11.1, a04a)
 
     build("04b_time_15s",
-          [(f"{GEN}/04_c3_v2.mp4", 0.04, 5.0), (f"{HERE}/04_c1_slow.mp4", 0.0, 6.0),
+          [(f"{GEN}/04_c3_v3m.mp4", 0.04, 5.0), (C1, C1_IN, 6.0),
            (f"{GEN}/04_c2.mp4", 1.04, 4.0)],
           [("04b_1", 0.45, 4.65), ("04b_2", 5.40, 10.70)],
-          "dim29", "04_logo_top", 11.4, 11.1, b04, M04)
+          "dim29", "04_logo_top", 11.4, 11.1, a04b)

@@ -19,8 +19,8 @@ FONTS = os.environ.get("SO_FONTS", "/tmp/fonts")
 ZEN = f"{FONTS}/ZenKakuNew-Black.ttf"
 GOTHIC = f"{FONTS}/NotoSansJP-Black.ttf"
 
-ACCENT = (245, 181, 42)       # 山吹。キーワードに差す1色
-BLOCK = "black@0.82"          # drawbox に渡す色
+ACCENT = (245, 181, 42)       # 山吹。04のキーワードに差す1色
+NAVY = (15, 33, 64)           # 02の縦帯
 OUT = os.path.dirname(os.path.abspath(__file__)) + "/telop"
 os.makedirs(OUT, exist_ok=True)
 
@@ -30,15 +30,18 @@ SERVICE_SUB = "現場の日報アプリ"
 PRODUCT_NAME = "こがね餃子"
 PRODUCT_SUB = "羽根つき 冷凍餃子"
 
-# テロップ本文と、山吹にするキーワード
+# 本文 / 色を差すキーワード / デザイン
+# 02（業務ソフト）と04（食品CM）でテロップのデザインを作り分ける。
+#   white … 白帯＋黒文字＋紺の縦帯（02）。帯は画面全幅で、キーワードの色差しはしない
+#   block … 黒ブロック＋白文字、キーワードだけ山吹（04）
 TELOPS = {
-    "02_1": ("現場で、その場で。", "その場で"),
-    "02_2": ("事務所には、もう届いている。", "もう届いている"),
-    "02_3": ("日報の転記を、なくす。", "なくす"),
-    "04a_1": ("音が、ちがう。", "ちがう"),
-    "04a_2": ("肉汁、そのまま。", "そのまま"),
-    "04b_1": ("今日は、もう決まり。", "もう決まり"),
-    "04b_2": ("フライパンひとつ、10分。", "10分"),
+    "02_1": ("現場で、その場で。", None, "white"),
+    "02_2": ("事務所には、もう届いている。", None, "white"),
+    "02_3": ("日報の転記を、なくす。", None, "white"),
+    "04a_1": ("音が、ちがう。", "ちがう", "block"),
+    "04a_2": ("肉汁、そのまま。", "そのまま", "block"),
+    "04b_1": ("今日は、もう決まり。", "もう決まり", "block"),
+    "04b_2": ("フライパンひとつ、10分。", "10分", "block"),
 }
 
 SIZE = 132
@@ -95,10 +98,10 @@ def split_accent(text, accent):
 MAX_BLOCK_W = 1700
 
 
-def band_telop(key, text, accent):
-    """文字だけのPNGを書き、黒ブロックの矩形を返す。
+def band_telop(key, text, accent, style):
+    """文字だけのPNGを書き、下敷き（ブロック／帯）の矩形を返す。
 
-    長い行はブロックが画面幅を超えるので、収まるまで文字を小さくする。
+    長い行は下敷きが画面幅を超えるので、収まるまで文字を小さくする。
     """
     parts = split_accent(text, accent)
     size = SIZE
@@ -109,19 +112,21 @@ def band_telop(key, text, accent):
             break
         size -= 4
     f = ImageFont.truetype(ZEN, size)
+    body = (17, 17, 17) if style == "white" else (255, 255, 255)
 
     def draw(d, ox, oy):
         x = ox
         for t, is_ac in parts:
-            d.text((x, oy), t, font=f, fill=(ACCENT if is_ac else (255, 255, 255)) + (255,))
+            col = ACCENT if (is_ac and style == "block") else body
+            d.text((x, oy), t, font=f, fill=col + (255,))
             x += d.textlength(t, font=f)
 
     txt = place(draw, left=LEFT, bottom=BOTTOM)
     bb = real_bbox(txt)
-    # 文字に軽く影を付けてブロックから浮かせる
-    sh = txt.filter(ImageFilter.GaussianBlur(12))
     img = blank()
-    img.alpha_composite(sh)
+    if style == "block":
+        # 黒ブロックから浮かせるための軽い影。白帯の黒文字には要らない
+        img.alpha_composite(txt.filter(ImageFilter.GaussianBlur(12)))
     img.alpha_composite(txt)
     img.save(f"{OUT}/{key}.png")
     box = {"x": max(0, bb[0] - PAD_X), "y": bb[1] - PAD_T,
@@ -170,19 +175,26 @@ def logo_card(name, sub, path, mark="check", tint=(255, 255, 255), cy_ratio=0.46
 
 if __name__ == "__main__":
     boxes = {}
-    for key, (text, accent) in TELOPS.items():
-        boxes[key] = band_telop(key, text, accent)
-    # ブロックの天地は全カットで揃える（行ごとに違うとカット替わりでチラつく）
+    for key, (text, accent, style) in TELOPS.items():
+        boxes[key] = band_telop(key, text, accent, style)
+        boxes[key]["style"] = style
+    # 下敷きの天地は全カットで揃える（行ごとに違うとカット替わりでチラつく）
     top = min(b["y"] for b in boxes.values())
     bot = max(b["y"] + b["h"] for b in boxes.values())
     for key, b in boxes.items():
         b["y"], b["h"] = top, bot - top
         blk = blank()
         d = ImageDraw.Draw(blk)
-        d.rectangle([b["x"], b["y"], b["x"] + b["w"], b["y"] + b["h"]],
-                    fill=(0, 0, 0, 209))
-        # 左端に山吹の縦バー。ブロックの端を締める
-        d.rectangle([b["x"], b["y"], b["x"] + 10, b["y"] + b["h"]], fill=ACCENT + (255,))
+        if b["style"] == "white":
+            # 白帯は画面全幅。左端に紺の縦帯
+            d.rectangle([0, b["y"], W, b["y"] + b["h"]], fill=(255, 255, 255, 247))
+            d.rectangle([0, b["y"], 28, b["y"] + b["h"]], fill=NAVY + (255,))
+        else:
+            d.rectangle([b["x"], b["y"], b["x"] + b["w"], b["y"] + b["h"]],
+                        fill=(0, 0, 0, 209))
+            # 左端に山吹の縦バー。ブロックの端を締める
+            d.rectangle([b["x"], b["y"], b["x"] + 10, b["y"] + b["h"]],
+                        fill=ACCENT + (255,))
         blk.save(f"{OUT}/{key}_blk.png")
     logo_card(SERVICE_NAME, SERVICE_SUB, f"{OUT}/02_logo.png", mark="check")
     logo_card(PRODUCT_NAME, PRODUCT_SUB, f"{OUT}/04_logo.png", mark="none",
@@ -193,5 +205,5 @@ if __name__ == "__main__":
     for a, name in ((88, "dim34"), (74, "dim29")):
         Image.new("RGBA", (W, H), (0, 0, 0, a)).save(f"{OUT}/{name}.png")
     with open(f"{OUT}/boxes.json", "w") as fp:
-        json.dump({"block_color": BLOCK, "boxes": boxes}, fp, ensure_ascii=False, indent=1)
+        json.dump({"boxes": boxes}, fp, ensure_ascii=False, indent=1)
     print(json.dumps(boxes, ensure_ascii=False, indent=1))
