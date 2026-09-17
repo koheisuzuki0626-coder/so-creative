@@ -118,7 +118,7 @@ def build(name, cuts, telops, dim, logo, logo_at, dim_at, audio,
 
     silent = f"{OUT}/{name}_silent.mp4"
     cmd = [FF, "-loglevel", "error", "-y"] + ins + [
-        "-filter_complex", ";".join(fc), "-map", "[vout]", "-t", "15", "-an",
+        "-filter_complex", ";".join(fc), "-map", "[vout]", "-t", str(total), "-an",
         "-c:v", "libx264", "-crf", "16", "-preset", "slow",
         "-movflags", "+faststart", silent]
     subprocess.run(cmd, check=True)
