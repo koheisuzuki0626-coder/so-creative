@@ -1,0 +1,9 @@
+# サンプル映像の中間生成物（telop.py / bgm.py / build.py から再生成できる）
+成果物/サンプル映像/scripts/out/
+成果物/サンプル映像/scripts/telop/
+成果物/サンプル映像/scripts/*.wav
+成果物/サンプル映像/scripts/04_c1_slow.mp4
+
+# Python のキャッシュ
+__pycache__/
+*.pyc
