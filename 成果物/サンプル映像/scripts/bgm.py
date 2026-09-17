@@ -4,7 +4,8 @@
 Higgsfield の generate_audio はスピーチ専用で音楽に使えないため自前で作る。
 音源が完全オリジナルなので著作権処理が要らない（会社紹介と同じ方針）。
 
-- 02 サービス紹介：静かめ・遅い（BPM 80）。パッドとアルペジオ中心、打ち込みは薄く
+- 02 サービス紹介：BPM 100。明るくテンポを上げた版（初版は BPM 80 で
+  構成案どおり「静かめ・テンポ遅め」だったが、明るくしたいとの指摘で作り直した）
 - 04 広告CM：軽快（BPM 128）。キック・クラップ・ベース・スタブ。訴求A/B で同じ曲
 """
 import numpy as np
@@ -108,7 +109,7 @@ def pad(chord, n, level=0.16):
         for det in (-0.004, 0.0, 0.005):
             out += saw(f, n, det)
     out /= (len(chord) * 3)
-    out = fft_filter(out, 5200, "lp")
+    out = fft_filter(out, 6400, "lp")
     return out * adsr(n, 0.45, 0.3, 0, 0.7, sus=0.85) * level
 
 
@@ -181,6 +182,28 @@ def hat(n, level=0.14, open_=False, seed=5):
     return out
 
 
+def bell(name, n, level=0.16, oct_up=12):
+    """グロッケン風。倍音を非整数で重ねて速く減衰させる。明るさの決め手。"""
+    f = note_hz(NOTE[name] + oct_up)
+    t = _t(n)
+    x = np.zeros(n)
+    for k, a, d in ((1.0, 1.0, 5.5), (2.76, 0.42, 8.0), (5.4, 0.18, 12.0)):
+        x += np.sin(2 * np.pi * f * k * t) * np.exp(-t * d) * a
+    x += noise(n, 21) * np.exp(-t * 180) * 0.05
+    return x / 1.6 * level
+
+
+def shaker(n, level=0.07, seed=31):
+    """薄いシェイカー。キックを入れずに軽快さを出す。"""
+    g = np.random.default_rng(seed)
+    ln = min(n, int(0.06 * SR))
+    t = _t(ln)
+    x = fft_filter(g.uniform(-1, 1, ln), 6500, "hp")
+    out = np.zeros(n)
+    out[:ln] = normalize(x, 1.0) * np.exp(-t * 60) * level
+    return out
+
+
 def riser(n, level=0.13):
     t = _t(n)
     x = fft_filter(noise(n, 11), 900, "hp")
@@ -213,43 +236,55 @@ def duck(sig, trig_positions, n, depth=0.38, dur=0.22):
 
 
 def build_02(dur=15.0):
-    """静かめ・BPM80。1小節3.0秒 × 5小節。進行 D - A - G - A - D"""
+    """明るめ・BPM100。1小節2.4秒 × 6小節。進行 D - G - A - D - G - A
+
+    初版は BPM80 の D-A-G-A-D だったが、明るさが足りなかった。
+    テンポを上げ、G と A を多く通して上向きに聞こえるようにし、
+    アルペジオを16分に細かくして、小節頭にベルを置いた。
+    キックは入れない（構成案の「打ち込みは薄く」は残す）。代わりに薄いシェイカー。
+    """
     n = int(dur * SR)
-    bar = 3.0
-    prog = [["D4", "F#4", "A4", "E5"], ["A3", "C#4", "E4", "B4"],
-            ["G3", "B3", "D4", "A4"], ["A3", "C#4", "E4", "B4"],
-            ["D4", "F#4", "A4", "E5"]]
-    roots = ["D4", "A3", "G3", "A3", "D4"]
+    bar = 2.4
+    beat = bar / 4
+    prog = [["D4", "F#4", "A4", "E5"], ["G3", "B3", "D4", "A4"],
+            ["A3", "C#4", "E4", "B4"], ["D4", "F#4", "A4", "E5"],
+            ["G3", "B3", "D4", "A4"], ["A3", "C#4", "E4", "B4"]]
+    roots = ["D4", "G3", "A3", "D4", "G3", "A3"]
+    tops = ["A4", "B4", "C#5", "D5", "B4", "C#5"]
     mix = np.zeros(n)
     for i, ch in enumerate(prog):
         p0 = int(i * bar * SR)
-        ln = min(int(bar * SR), n - p0)
-        if ln <= 0:
+        if p0 >= n:
             break
-        mix[p0:p0 + ln] += pad(ch, ln, level=0.3 if i == 0 else 0.22)[:ln]
-        # アルペジオは頭から。1小節目だけ薄くして静かに入る
-        mix[p0:p0 + ln] += arp(ch, ln, 0.375, level=0.14 if i == 0 else 0.26)[:ln]
-        # 中域を埋めるため、1拍目に短いスタブを置く（打ち込みは薄いまま）
+        ln = min(int(bar * SR), n - p0)
+        mix[p0:p0 + ln] += pad(ch, ln, level=0.26)[:ln]
+        # 16分のアルペジオ。1小節目だけ薄く入る
+        mix[p0:p0 + ln] += arp(ch, ln, beat / 2, level=0.12 if i else 0.07)[:ln]
+        # 小節頭のベル（明るさの決め手）
+        lnb = min(int(1.4 * SR), n - p0)
+        mix[p0:p0 + lnb] += bell(tops[i], lnb, level=0.2 if i else 0.13)[:lnb]
+        # ベースは8分。軽く刻む
         if i >= 1:
-            ln3 = min(int(0.5 * SR), n - p0)
-            mix[p0:p0 + ln3] += stab(ch, ln3, level=0.2)[:ln3]
-        # ベースは薄く、1小節に2回
-        if i >= 1:
-            for k in (0, 0.5):
-                q = p0 + int(k * bar * SR)
-                ln2 = min(int(1.2 * SR), n - q)
-                if ln2 > 0:
-                    mix[q:q + ln2] += bass(roots[i], ln2, level=0.16)[:ln2]
-    # 締め（ロゴ）に合わせて 12.4 秒に小さなクラッシュ
+            for k in range(8):
+                q = p0 + int(k * beat / 2 * SR)
+                ln2 = min(int(beat * 0.45 * SR), n - q)
+                if ln2 > 0 and q < n:
+                    mix[q:q + ln2] += bass(roots[i], ln2, level=0.17)[:ln2]
+        # シェイカーは8分の裏
+        for k in range(8):
+            q = p0 + int((k + 0.5) * beat / 2 * SR)
+            if q < n:
+                mix[q:] += shaker(n - q, level=0.06 if i else 0.03)
+    # 締め（ロゴ）に合わせて 12.4 秒でベルとクラッシュを重ねる
     q = int(12.4 * SR)
-    mix[q:] += crash(n - q, level=0.12)
+    mix[q:] += crash(n - q, level=0.13)
+    mix[q:] += bell("D5", n - q, level=0.22)
     mix = fft_filter(mix, 34, "hp", rolloff=3.0)
-    mix = reverb(mix, mix=0.3)
-    # 頭と尻をなじませる
-    mix[:int(0.25 * SR)] *= np.linspace(0, 1, int(0.25 * SR))
-    tail = int(1.6 * SR)
+    mix = reverb(mix, mix=0.26)
+    mix[:int(0.2 * SR)] *= np.linspace(0, 1, int(0.2 * SR))
+    tail = int(1.5 * SR)
     mix[-tail:] *= np.linspace(1, 0, tail)
-    return normalize(np.tanh(mix * 2.6), 0.86)
+    return normalize(np.tanh(mix * 2.2), 0.86)
 
 
 def build_04(dur=15.0):
