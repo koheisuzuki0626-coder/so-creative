@@ -1,96 +1,167 @@
 # -*- coding: utf-8 -*-
-"""テロップ・ロゴの PNG を作る。ffmpeg に drawtext が無いので overlay 用の素材を焼く。"""
+"""テロップとロゴの素材を作る（B案：黒ブロック＋色差し）。
+
+ffmpeg に drawtext が無いので、文字は透過PNGに焼いて overlay する。
+ブロックと文字を別のPNGに分ける。ffmpeg の drawbox は x/w に時間変数 t を持たない
+（一度しか評価されない）ので、動きは overlay の y 時間式で付ける。
+ブロックと文字を同じ y 式で動かし、文字だけ遅れてフェードインさせる。
+
+フォントは Google Fonts の Zen Kaku Gothic New 900 / Noto Sans JP 900。
+IPAGothic には太字が無く、細くて弱いので使わない。
+"""
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
+import numpy as np
+import json
 import os
 
 W, H = 1920, 1080
-FONT = "/usr/share/fonts/opentype/ipafont-gothic/ipagp.ttf"
-NAVY = (15, 33, 64)          # #0f2140
-BAND_ALPHA = 217             # 85%
+FONTS = os.environ.get("SO_FONTS", "/tmp/fonts")
+ZEN = f"{FONTS}/ZenKakuNew-Black.ttf"
+GOTHIC = f"{FONTS}/NotoSansJP-Black.ttf"
+
+ACCENT = (245, 181, 42)       # 山吹。キーワードに差す1色
+BLOCK = "black@0.82"          # drawbox に渡す色
 OUT = os.path.dirname(os.path.abspath(__file__)) + "/telop"
 os.makedirs(OUT, exist_ok=True)
 
-# 差し替え用の架空名
-SERVICE_NAME = "現場ノート"
-SERVICE_SUB  = "日報アプリ"
+# 架空の名前（差し替え用）
+SERVICE_NAME = "そのまま日報"
+SERVICE_SUB = "現場の日報アプリ"
 PRODUCT_NAME = "こがね餃子"
-PRODUCT_SUB  = "羽根つき 冷凍餃子"
+PRODUCT_SUB = "羽根つき 冷凍餃子"
+
+# テロップ本文と、山吹にするキーワード
+TELOPS = {
+    "02_1": ("現場で、その場で。", "その場で"),
+    "02_2": ("事務所には、もう届いている。", "もう届いている"),
+    "02_3": ("日報の転記を、なくす。", "なくす"),
+    "04a_1": ("音が、ちがう。", "ちがう"),
+    "04a_2": ("肉汁、そのまま。", "そのまま"),
+    "04b_1": ("今日は、もう決まり。", "もう決まり"),
+    "04b_2": ("フライパンひとつ、10分。", "10分"),
+}
+
+SIZE = 132
+LEFT = 100
+BOTTOM = 112
+PAD_X, PAD_T, PAD_B = 30, 22, 26
 
 
-def band_telop(text, path, size=76):
-    """下1/4にネイビーの帯を敷き、左に白の縦バー、本文は左寄せ。"""
-    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    band_h = 250
-    y0 = H - band_h
-    d.rectangle([0, y0, W, H], fill=NAVY + (BAND_ALPHA,))
-    f = ImageFont.truetype(FONT, size)
-    bbox = f.getbbox(text)
-    tx, ty = 170, y0 + (band_h - (bbox[3] - bbox[1])) // 2 - bbox[1]
-    # 白の縦バー（本文の天地に合わせる）
-    bar_h = bbox[3] - bbox[1] + 16
-    bar_y = y0 + (band_h - bar_h) // 2
-    d.rectangle([120, bar_y, 126, bar_y + bar_h], fill=(255, 255, 255, 255))
-    d.text((tx, ty), text, font=f, fill=(255, 255, 255, 255), stroke_width=1,
-           stroke_fill=(255, 255, 255, 255))
-    img.save(path)
+def blank():
+    return Image.new("RGBA", (W, H), (0, 0, 0, 0))
+
+
+def real_bbox(img):
+    """実際に描かれた範囲を alpha から測る。極太フォントは getbbox が当てにならない。"""
+    a = np.array(img)[:, :, 3]
+    ys, xs = np.nonzero(a > 8)
+    if len(xs) == 0:
+        return None
+    return int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())
+
+
+def place(draw_fn, left=None, bottom=None, center_x=False):
+    """一度描いて実寸を測り、目標位置に合わせて描き直す。"""
+    probe = blank()
+    draw_fn(ImageDraw.Draw(probe), 0, 0)
+    bb = real_bbox(probe)
+    if bb is None:
+        return probe
+    x0, y0, x1, y1 = bb
+    tx = ((W - (x1 - x0)) // 2 - x0) if center_x else (left - x0)
+    ty = (H - bottom - (y1 - y0)) - y0
+    out = blank()
+    draw_fn(ImageDraw.Draw(out), tx, ty)
+    return out
+
+
+def split_accent(text, accent):
+    parts, rest = [], text
+    while rest:
+        if accent and rest.startswith(accent):
+            parts.append((accent, True))
+            rest = rest[len(accent):]
+        else:
+            i = rest.find(accent) if accent else -1
+            if i < 0:
+                parts.append((rest, False))
+                rest = ""
+            else:
+                parts.append((rest[:i], False))
+                rest = rest[i:]
+    return parts
+
+
+MAX_BLOCK_W = 1700
+
+
+def band_telop(key, text, accent):
+    """文字だけのPNGを書き、黒ブロックの矩形を返す。
+
+    長い行はブロックが画面幅を超えるので、収まるまで文字を小さくする。
+    """
+    parts = split_accent(text, accent)
+    size = SIZE
+    while size > 92:
+        f = ImageFont.truetype(ZEN, size)
+        w = sum(f.getlength(t) for t, _ in parts) + PAD_X * 2 + LEFT - 70
+        if w <= MAX_BLOCK_W:
+            break
+        size -= 4
+    f = ImageFont.truetype(ZEN, size)
+
+    def draw(d, ox, oy):
+        x = ox
+        for t, is_ac in parts:
+            d.text((x, oy), t, font=f, fill=(ACCENT if is_ac else (255, 255, 255)) + (255,))
+            x += d.textlength(t, font=f)
+
+    txt = place(draw, left=LEFT, bottom=BOTTOM)
+    bb = real_bbox(txt)
+    # 文字に軽く影を付けてブロックから浮かせる
+    sh = txt.filter(ImageFilter.GaussianBlur(12))
+    img = blank()
+    img.alpha_composite(sh)
+    img.alpha_composite(txt)
+    img.save(f"{OUT}/{key}.png")
+    box = {"x": max(0, bb[0] - PAD_X), "y": bb[1] - PAD_T,
+           "w": (bb[2] + PAD_X) - max(0, bb[0] - PAD_X),
+           "h": (bb[3] + PAD_B) - (bb[1] - PAD_T)}
+    return box
 
 
 def logo_card(name, sub, path, mark="check", tint=(255, 255, 255), cy_ratio=0.46):
-    """締め用。帯を使わず中央寄せ、影で抜く。マークは図形で描く。"""
-    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    shadow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    ds = ImageDraw.Draw(shadow)
-    d = ImageDraw.Draw(img)
-
-    f_name = ImageFont.truetype(FONT, 96)
-    f_sub = ImageFont.truetype(FONT, 40)
+    """締め。極太ゴシックで中央に。影で抜く。"""
+    img = blank()
+    shadow = blank()
+    ds, d = ImageDraw.Draw(shadow), ImageDraw.Draw(img)
+    f_name = ImageFont.truetype(GOTHIC, 104)
+    f_sub = ImageFont.truetype(ZEN, 40)
     nb = f_name.getbbox(name)
-    sb = f_sub.getbbox(sub)
-    name_w, name_h = nb[2] - nb[0], nb[3] - nb[1]
-    mark_r = 0 if mark == "none" else 44
-    gap = 0 if mark == "none" else 34
+    name_w = nb[2] - nb[0]
+    mark_r = 0 if mark == "none" else 46
+    gap = 0 if mark == "none" else 36
     total_w = mark_r * 2 + gap + name_w
     x0 = (W - total_w) // 2
     cy = int(H * cy_ratio)
 
-    # マーク
-    mx, my = x0 + mark_r, cy
     if mark == "check":
+        mx, my = x0 + mark_r, cy
         for dr in (ds, d):
             dr.ellipse([mx - mark_r, my - mark_r, mx + mark_r, my + mark_r],
-                       outline=tint + (255,), width=6)
-    if mark == "none":
-        pass
-    elif mark == "check":
-        pts = [(mx - 20, my + 2), (mx - 6, my + 17), (mx + 22, my - 18)]
-        for dr in (ds, d):
-            dr.line(pts, fill=tint + (255,), width=8, joint="curve")
-    else:
-        # 餃子のシルエット。円の輪郭は使わず、塗りの半月＋ひだ3本
-        for dr in (ds, d):
-            dr.ellipse([mx - mark_r, my - mark_r, mx + mark_r, my + mark_r],
-                       fill=(0, 0, 0, 0), outline=(0, 0, 0, 0), width=0)
-            dr.pieslice([mx - 34, my - 30, mx + 34, my + 38], start=180, end=360,
-                        fill=tint + (255,))
-            dr.line([(mx - 34, my + 4), (mx + 34, my + 4)], fill=tint + (255,), width=6)
-            for ox in (-17, 0, 17):
-                dr.line([(mx + ox, my - 2), (mx + ox, my - 22)],
-                        fill=(0, 0, 0, 120), width=5)
+                       outline=tint + (255,), width=8)
+            dr.line([(mx - 21, my + 2), (mx - 6, my + 18), (mx + 23, my - 19)],
+                    fill=tint + (255,), width=10, joint="curve")
 
-    # 名前とサブ
     nx = x0 + mark_r * 2 + gap
-    ny = cy - name_h // 2 - nb[1]
+    # サブは画面中央ではなく「名前の中心」に合わせる（マークがあると中央だとずれる）
+    sub_cx = nx + name_w // 2
     for dr in (ds, d):
-        dr.text((nx, ny), name, font=f_name, fill=tint + (255,),
-                stroke_width=1, stroke_fill=tint + (255,))
-    sx = (W - (sb[2] - sb[0])) // 2
-    sy = cy + 86
-    for dr in (ds, d):
-        dr.text((sx, sy), sub, font=f_sub, fill=tint + (230,))
+        dr.text((nx, cy), name, font=f_name, fill=tint + (255,), anchor="lm")
+        dr.text((sub_cx, cy + 92), sub, font=f_sub, fill=tint + (225,), anchor="mm")
 
-    shadow = shadow.filter(ImageFilter.GaussianBlur(26))
-    base = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    shadow = shadow.filter(ImageFilter.GaussianBlur(28))
+    base = blank()
     base.alpha_composite(shadow)
     base.alpha_composite(shadow)
     base.alpha_composite(img)
@@ -98,18 +169,29 @@ def logo_card(name, sub, path, mark="check", tint=(255, 255, 255), cy_ratio=0.46
 
 
 if __name__ == "__main__":
-    band_telop("現場で、その場で。", f"{OUT}/02_1.png")
-    band_telop("事務所には、もう届いている。", f"{OUT}/02_2.png")
-    band_telop("日報の転記を、なくす。", f"{OUT}/02_3.png")
+    boxes = {}
+    for key, (text, accent) in TELOPS.items():
+        boxes[key] = band_telop(key, text, accent)
+    # ブロックの天地は全カットで揃える（行ごとに違うとカット替わりでチラつく）
+    top = min(b["y"] for b in boxes.values())
+    bot = max(b["y"] + b["h"] for b in boxes.values())
+    for key, b in boxes.items():
+        b["y"], b["h"] = top, bot - top
+        blk = blank()
+        d = ImageDraw.Draw(blk)
+        d.rectangle([b["x"], b["y"], b["x"] + b["w"], b["y"] + b["h"]],
+                    fill=(0, 0, 0, 209))
+        # 左端に山吹の縦バー。ブロックの端を締める
+        d.rectangle([b["x"], b["y"], b["x"] + 10, b["y"] + b["h"]], fill=ACCENT + (255,))
+        blk.save(f"{OUT}/{key}_blk.png")
     logo_card(SERVICE_NAME, SERVICE_SUB, f"{OUT}/02_logo.png", mark="check")
-
-    band_telop("音が、ちがう。", f"{OUT}/04a_1.png")
-    band_telop("肉汁、そのまま。", f"{OUT}/04a_2.png")
-    band_telop("今日は、もう決まり。", f"{OUT}/04b_1.png")
-    band_telop("フライパンひとつ、10分。", f"{OUT}/04b_2.png")
     logo_card(PRODUCT_NAME, PRODUCT_SUB, f"{OUT}/04_logo.png", mark="none",
               tint=(255, 248, 232))
-    # 訴求Bの締めは C2（箸の寄り）で、中央に餃子が来る。ロゴは上に逃がす
+    # 訴求Bの締めは C2（箸の寄り）で中央に餃子が来るのでロゴを上に逃がす
     logo_card(PRODUCT_NAME, PRODUCT_SUB, f"{OUT}/04_logo_top.png", mark="none",
               tint=(255, 248, 232), cy_ratio=0.26)
-    print("done")
+    for a, name in ((88, "dim34"), (74, "dim29")):
+        Image.new("RGBA", (W, H), (0, 0, 0, a)).save(f"{OUT}/{name}.png")
+    with open(f"{OUT}/boxes.json", "w") as fp:
+        json.dump({"block_color": BLOCK, "boxes": boxes}, fp, ensure_ascii=False, indent=1)
+    print(json.dumps(boxes, ensure_ascii=False, indent=1))
