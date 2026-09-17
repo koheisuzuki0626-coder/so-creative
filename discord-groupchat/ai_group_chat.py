@@ -41,6 +41,7 @@ MESSAGE CONTENT INTENT はオーケストレーター用にだけONにすれば�
   ・投稿後の効果測定（自分のチャンネルの実績で勝ちパターンを更新）
   ・会話中のYouTubeリンク：貼られたら中身を視聴して文脈に加える
   ・字幕が無い動画は、その場で文字起こしして字幕を作る
+  ・動かし方のモード（2026-09-18）
   ・ルーティング判定（純粋関数・テスト対象）
   ・副作用のある行き先だけ、AIに一票入れさせる
   ・Router（段階2：41個のif文を宣言的な表にした）
@@ -6348,6 +6349,41 @@ _ACTION_KINDS = ("selffix", "exec", "video", "image")
 # 本人の指示で既定オフ）。コードと分類は残すが、実行は止める。
 # 直しは Claude Code のセッションでやる。戻すなら .env に SELFFIX_ENABLED=1。
 SELFFIX_ENABLED = os.getenv("SELFFIX_ENABLED", "0") == "1"
+
+# ---------- 動かし方のモード（2026-09-18） ----------
+# 本人の判断：「相談・生成は Claude Code、Discord は定時に動く装置」。
+# 理由：作業の依頼を言葉で受ける限り、言い方の取り違えが無くならない
+# （事故から生まれたガードが87箇所まで積み上がった）。依頼を受けなければ
+# その面は当たらない。毎朝のリサーチ・記録・ログ共有はボットにしかできない。
+#
+#   scheduled … 定時の仕事と記録だけ。作るもの（生成・編集・デザイン）は断る
+#   full      … これまでどおり全部受ける
+#
+# .env の BOT_MODE で決める。Discordからは「フルモードにして」で一時的に開け、
+# 「定時モードにして」で閉じる（再起動後も保持）。
+BOT_MODE_DEFAULT = os.getenv("BOT_MODE", "scheduled")
+
+
+def _bot_mode():
+    return (gen_settings.get("bot_mode") or BOT_MODE_DEFAULT or "scheduled").lower()
+
+
+def _act_blocked():
+    """作業の依頼を受けない設定か。"""
+    return _bot_mode() != "full"
+
+
+_MODE_PHRASES = {
+    "定時モードにして": "scheduled", "定時モード": "scheduled",
+    "定時ボットにして": "scheduled", "作業モードを止めて": "scheduled",
+    "フルモードにして": "full", "フルモード": "full",
+    "全部受けて": "full", "作業モードにして": "full",
+}
+
+
+def _match_bot_mode(content):
+    """モードの切り替え。言い方を数え上げないよう、完全一致だけを見る。"""
+    return _MODE_PHRASES.get((content or "").strip().rstrip("。.!！?？ 　"))
 
 # 計画の本文が「このボットのコードを直す作業」かどうか。
 # 種別（kind）ではなく中身で見る。selffix を塞いでも、同じ作業が exec として
@@ -12866,6 +12902,12 @@ _RESTART_PHRASES = {
 }
 
 
+def _apply_bot_mode(mode):
+    """モードを保存する（再起動後も残す）。"""
+    gen_settings["bot_mode"] = mode
+    _save_gen_settings()
+
+
 def _is_restart_phrase(content):
     return content.strip().rstrip("。.!！?？ 　").lower() in _RESTART_PHRASES
 
@@ -13824,6 +13866,21 @@ async def _dispatch_message(message):
         _fired(cid, "仕切り直し", content)
         await _do_stop(message, cid, reset=True)
         return
+    # モードの切り替え（完全一致だけ。言い方を数え上げない）
+    _mode = _match_bot_mode(content)
+    if _mode:
+        _fired(cid, f"モード変更（{_mode}）", content)
+        add_history(cid, message.author.display_name, content)
+        _apply_bot_mode(_mode)
+        await message.channel.send(
+            "🌙 **定時モード**にしました。毎朝のリサーチ・記録・ログ共有は"
+            "続けます。作るものの依頼は断ります（戻すなら「フルモードにして」）。"
+            if _mode == "scheduled" else
+            "🌞 **フルモード**にしました。作るものの依頼も受けます"
+            "（戻すなら「定時モードにして」）。"
+        )
+        return
+
     if content == "!restart" or _is_restart_phrase(content):
         _fired(cid, "再起動", content)
         # 重い処理を残したまま入れ替わると、CPUを占有したままになる
@@ -13887,6 +13944,18 @@ async def _dispatch_message(message):
                                   + "→AIが依頼でないと判断したので会話")
             print(f"[route] AIが会話に差し戻し: {route} ← {content[:40]!r}")
             route = None
+
+    # 定時モードでは、作るもの（生成・編集・デザイン）の依頼は受けない。
+    # 断るだけで、何が起きたかは必ず言う（黙って無視すると壊れたように見える）。
+    if route in ACT_ROUTES and _act_blocked():
+        _fired(cid, f"定時モードのため断った（{route}）", content)
+        add_history(cid, message.author.display_name, content)
+        await message.channel.send(
+            "🌙 いまは**定時モード**です（毎朝のリサーチ・記録・ログ共有だけ）。\n"
+            "作るもの（動画・画像・デザイン・編集）は **Claude Code** でお願いします。\n"
+            "ここで受けたいときは「**フルモードにして**」と送ってください。"
+        )
+        return
 
     # 依頼待ち中に動画が添付された（キーワード無し）ケースもモーション実行に接続
     pm = _pending_motion.get(cid)

@@ -226,6 +226,9 @@ def last_call(label):
 def install_stubs(mcp_url=None):
     FIRED.clear()
     CALLS.clear()
+    # 既定は定時モード（作るものを受けない）。E2Eは作業まで見たいので開けておく。
+    # 定時モードそのものの検査は「■ 定時モード」の節で別に行う。
+    bot.gen_settings["bot_mode"] = "full"
     # テストの失敗を本物の errors.log に書かない。起動時セルフテストで
     # simulate.py が走るため、実在しないエラーが「直近のエラー」に並び、
     # 不具合調査を誤らせた（実際に「404 model not found」が2件紛れた）。
@@ -1147,6 +1150,24 @@ async def run():
     # 「ストップ」は、どの待ち方をしていても中止として効く
     for _w in ("ストップ", "stop", "中止", "キャンセル", "やめて"):
         check(f"中止の言い方が効く: {_w}", bot._is_stop_phrase(_w), True)
+
+    # --- ①'' 定時モードでは作るものを受けない（2026-09-18 の方針転換）---
+    install_stubs()
+    bot.gen_settings["bot_mode"] = "scheduled"
+    try:
+        r = await drive("猫の動画作って")
+        check("定時モード：生成を始めない",
+              not any(k.startswith("hf_") for k in r["fired"]), f"{r['fired']}")
+        check("定時モード：黙らずに理由を言う",
+              any("定時モード" in s and "Claude Code" in s for s in r["sent"]),
+              f"{r['sent'][:1]}")
+        # 記録や会話は通ったまま（装置としての仕事は止めない）
+        r2 = await drive("メモ 今日は開業届を出した")
+        check("定時モードでも記録は通る",
+              any("記録" in k or "メモ" in k for k in r2["fired"])
+              or bool(r2["sent"]), f"{r2['fired']}")
+    finally:
+        bot.gen_settings["bot_mode"] = "full"
 
     # --- ② 動画の続きは動画のまま（①の直しで巻き添えにしない）---
     install_stubs()

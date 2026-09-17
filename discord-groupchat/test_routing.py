@@ -2831,6 +2831,32 @@ def run():
           bot._todays_genre("ミュージックビデオ"), "ミュージックビデオ")
     check("未設定なら空（急上昇TOP100を見る）", bot._todays_genre(""), "")
 
+    print("■ 定時モード：作るものの依頼を受けない _bot_mode / _act_blocked")
+    # 本人の判断（2026-09-18）：「相談・生成は Claude Code、Discord は定時の装置」。
+    # 依頼を言葉で受ける限り言い方の取り違えは無くならないので、入口ごと閉じる。
+    _gsM = bot.gen_settings.get("bot_mode")
+    try:
+        bot.gen_settings["bot_mode"] = "scheduled"
+        check("既定は定時モード（作業を受けない）", bot._act_blocked(), True)
+        bot.gen_settings["bot_mode"] = "full"
+        check("フルモードなら従来どおり受ける", bot._act_blocked(), False)
+    finally:
+        if _gsM is None:
+            bot.gen_settings.pop("bot_mode", None)
+        else:
+            bot.gen_settings["bot_mode"] = _gsM
+    check("切り替えは完全一致だけ（言い方を数えない）",
+          (bot._match_bot_mode("定時モードにして"), bot._match_bot_mode("フルモードにして"),
+           bot._match_bot_mode("定時モードの話をしていた")),
+          ("scheduled", "full", None))
+    _srcM = bot_src()
+    check("断るときは黙らず理由を言う",
+          "いまは**定時モード**です" in _srcM, True)
+    check("断るのは作業ルートだけ（会話や記録は通す）",
+          "if route in ACT_ROUTES and _act_blocked():" in _srcM, True)
+    check("毎朝のリサーチは止めない",
+          "_run_trend_all(cid, _genres)" in _srcM, True)
+
     print("■ 副作用のある行き先にAIが一票入れる _ai_route_veto")
     # 正規表現の表は言い方を数え上げる作りなので必ず漏れる（2026-09-18 に2件）。
     # 表が「作業だ」と言ったときだけAIに確かめ、AIが「依頼ではない」と
