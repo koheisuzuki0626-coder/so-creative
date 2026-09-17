@@ -81,10 +81,10 @@ TELOPS_3MIN = {
     "r3_11": ("ここから検査に回ります。", None, "scrim"),
     "r3_13": ("記録は全部残します。", None, "scrim"),
     "r3_15": ("分からないことは、その場で聞けます。", None, "scrim"),
-    "r3_17": ("「最初の半年は、ずっと先輩の隣でした」", None, "scrim"),
-    "r3_18": ("「3年目の今は、一人で段取りまでやります」", None, "scrim"),
-    "r3_19": ("「教えるのは、手が空いた人。担当は決めていません」", None, "scrim"),
-    "r3_22": ("「子どもの送りがあるので、始業を30分ずらしています」", None, "scrim"),
+    "r3_17": ("「最初の半年は、\nずっと先輩の隣でした」", None, "scrim"),
+    "r3_18": ("「3年目の今は、\n一人で段取りまでやります」", None, "scrim"),
+    "r3_19": ("「教えるのは、手が空いた人。\n担当は決めていません」", None, "scrim"),
+    "r3_22": ("「子どもの送りがあるので、\n始業を30分ずらしています」", None, "scrim"),
     "r3_24": ("教わった人が、教える側になる。", None, "scrim"),
     "r3_25": ("「1年目でも、機械は触らせてもらえます」", None, "scrim"),
     "r3_27": ("社員 24人。平均年齢 38歳。", None, "white_band"),
@@ -93,7 +93,7 @@ TELOPS_3MIN = {
     "r3_30": ("作業着は会社支給。洗濯も会社で。", None, "white_band"),
     "r3_31": ("昼は40分。弁当の注文もできます。", None, "white_band"),
     "r3_32": ("残業は月平均 12時間。", None, "white_band"),
-    "r3_34": ("「見学だけでも、来てもらえたら分かります」", None, "scrim"),
+    "r3_34": ("「見学だけでも、\n来てもらえたら分かります」", None, "scrim"),
     "r3_35": ("まず、見に来てください。", None, "scrim"),
 }
 
@@ -174,7 +174,12 @@ def band_telop(key, text, accent, style):
 
     長い行は下敷きが画面幅を超えるので、収まるまで文字を小さくする。
     """
-    parts = split_accent(text, accent) if style != "step" else [(text, False)]
+    # 長い引用は2行に割る（\n で区切る）。1行のまま縮めると
+    # 下限の84pxでも画面に収まらず、右端で切れる
+    lines = text.split("\n")
+    rows = [split_accent(t, accent) if style != "step" else [(t, False)]
+            for t in lines]
+    parts = rows[0]
     # スタイルごとの文字サイズと置き場所
     #   scrim/block … 132px・左寄せ（16:9）
     #   sns         … 104px・中央寄せ（縦型は横幅が狭い）
@@ -187,27 +192,29 @@ def band_telop(key, text, accent, style):
     face = MINCHO if style == "emo" else ZEN
     while size > 84:
         f = ImageFont.truetype(face, size)
-        w = (sum(f.getlength(t) for t, _ in parts) + track * (len(text) - 1)
-             + PAD_X * 2 + left - 70)
+        w = max(sum(f.getlength(t) for t, _ in r) + track * (len(lines[i]) - 1)
+                for i, r in enumerate(rows)) + PAD_X * 2 + left - 70
         if w <= (W - 120 if style == "emo" else MAX_BLOCK_W):
             break
         size -= 4
     f = ImageFont.truetype(face, size)
+    lead = int(size * 1.44)     # 行送り
     # 白帯に乗る step だけ黒文字。ほかは白
     body = (17, 17, 17) if style in ("step", "white_band") else (255, 255, 255)
 
     def draw(d, ox, oy):
-        x = ox
-        for t, is_ac in parts:
-            col = ACCENT if is_ac else body
-            if track:
-                # 1文字ずつ置かないと字間を空けられない
-                for ch in t:
-                    d.text((x, oy), ch, font=f, fill=col + (255,))
-                    x += d.textlength(ch, font=f) + track
-            else:
-                d.text((x, oy), t, font=f, fill=col + (255,))
-                x += d.textlength(t, font=f)
+        for i, row in enumerate(rows):
+            x, y = ox, oy + i * lead
+            for t, is_ac in row:
+                col = ACCENT if is_ac else body
+                if track:
+                    # 1文字ずつ置かないと字間を空けられない
+                    for ch in t:
+                        d.text((x, y), ch, font=f, fill=col + (255,))
+                        x += d.textlength(ch, font=f) + track
+                else:
+                    d.text((x, y), t, font=f, fill=col + (255,))
+                    x += d.textlength(t, font=f)
 
     txt = place(draw, left=left, bottom=bottom,
                 center_x=(style == "emo"))
@@ -305,7 +312,9 @@ def build_set(table, label=""):
     # 本をまたいで揃えると、文字サイズと位置が違う本で帯が本文に合わなくなる
     # （07 の STEP 帯が本文を切ってしまう不具合の原因だった）
     def group_of(k):
-        return k.split("_")[0].rstrip("ab")
+        # スタイルも見て分ける。3分版は1行の白帯と2行の引用が同じ "r3" なので、
+        # まとめて揃えると白帯が2行ぶんの高さに広がってしまう
+        return k.split("_")[0].rstrip("ab") + ":" + boxes[k]["style"]
 
     for g in {group_of(k) for k in boxes}:
         members = [k for k in boxes if group_of(k) == g]
@@ -345,7 +354,8 @@ def build_set(table, label=""):
             d.text((134, b["y"] + b["h"] // 2), table[key][1], font=fs,
                    fill=(255, 255, 255, 255), anchor="mm")
         elif b["style"] == "scrim":
-            top_y = int(H * 0.574)
+            # 2行の引用は本文が上まで来るので、暗がりもその上から始める
+            top_y = min(int(H * 0.574), b["y"] - 90)
             a = np.zeros((H, W), dtype=np.uint8)
             for y in range(top_y, H):
                 a[y, :] = int(150 * (((y - top_y) / (H - top_y)) ** 1.5))
