@@ -32,13 +32,14 @@ PRODUCT_SUB = "羽根つき 冷凍餃子"
 
 # 本文 / 色を差すキーワード / デザイン
 # 02（業務ソフト）と04（食品CM）でテロップのデザインを作り分ける。
-#   shadow … 下敷きなし。白文字＋強い影だけ（02）。画を隠さない
-#   block  … 黒ブロック＋白文字＋山吹の縦バー（04）。文字幅ぶんのブロック
-# 文字はどちらも白。02は紺帯を外して影だけにした（「紺帯を無くしてシャドウ」）。
+#   scrim … 文字は純白のまま、画面下部を黒のグラデーションで落とす（02）。
+#           映画の字幕の作り。文字自体には影もフチも付けない
+#   block … 黒ブロック＋白文字＋山吹の縦バー（04）。文字幅ぶんのブロック
+# 02は帯 → 影 → グラデーションと3回変えた。影は黒フチと重ねぼかしが汚れて見えた。
 TELOPS = {
-    "02_1": ("現場で、その場で。", None, "shadow"),
-    "02_2": ("事務所には、もう届いている。", None, "shadow"),
-    "02_3": ("日報の転記を、なくす。", None, "shadow"),
+    "02_1": ("現場で、その場で。", None, "scrim"),
+    "02_2": ("事務所には、もう届いている。", None, "scrim"),
+    "02_3": ("日報の転記を、なくす。", None, "scrim"),
     "04a_1": ("音が、ちがう。", None, "block"),
     "04a_2": ("肉汁、そのまま。", None, "block"),
     "04b_1": ("今日は、もう決まり。", None, "block"),
@@ -114,8 +115,8 @@ def band_telop(key, text, accent, style):
         size -= 4
     f = ImageFont.truetype(ZEN, size)
 
-    # 下敷きが無いスタイルは、明るい背景でも読めるよう細い黒フチを入れる
-    stroke = 3 if style == "shadow" else 0
+    # グラデーションで可読性を作るので、文字には何も付けない
+    stroke = 0
 
     def draw(d, ox, oy):
         x = ox
@@ -129,16 +130,8 @@ def band_telop(key, text, accent, style):
     txt = place(draw, left=LEFT, bottom=BOTTOM)
     bb = real_bbox(txt)
     img = blank()
-    if style == "shadow":
-        # 下敷きが無いので影で抜く。広い影と締まった影を重ねる
-        wide = txt.filter(ImageFilter.GaussianBlur(38))
-        tight = txt.filter(ImageFilter.GaussianBlur(14))
-        for _ in range(2):
-            img.alpha_composite(wide)
-        for _ in range(2):
-            img.alpha_composite(tight)
-    else:
-        # 下敷きから浮かせるための軽い影
+    if style == "block":
+        # 黒ブロックから浮かせるための軽い影
         img.alpha_composite(txt.filter(ImageFilter.GaussianBlur(12)))
     img.alpha_composite(txt)
     img.save(f"{OUT}/{key}.png")
@@ -196,14 +189,19 @@ if __name__ == "__main__":
     bot = max(b["y"] + b["h"] for b in boxes.values())
     for key, b in boxes.items():
         b["y"], b["h"] = top, bot - top
-        # 下敷きを敷くかどうか。shadow スタイルは影だけなので敷かない
-        b["underlay"] = b["style"] != "shadow"
-        if not b["underlay"]:
-            continue
+        b["underlay"] = True
+        # グラデーションは動かさない（下から持ち上げると下端に隙間ができる）
+        b["static_underlay"] = b["style"] == "scrim"
         blk = blank()
         d = ImageDraw.Draw(blk)
-        if False:
-            pass
+        if b["style"] == "scrim":
+            # 画面下部を黒で落とす。上端から下端へ k^1.5 で濃くする
+            top = 620
+            a = np.zeros((H, W), dtype=np.uint8)
+            for y in range(top, H):
+                a[y, :] = int(150 * (((y - top) / (H - top)) ** 1.5))
+            blk = Image.composite(Image.new("RGBA", (W, H), (4, 8, 16, 255)),
+                                  blank(), Image.fromarray(a))
         else:
             d.rectangle([b["x"], b["y"], b["x"] + b["w"], b["y"] + b["h"]],
                         fill=(0, 0, 0, 209))

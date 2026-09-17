@@ -31,7 +31,7 @@ TXT_IN, TXT_OUT = 0.22, 0.24
 
 
 def layer(idx, st, en, is_text):
-    """ブロック／文字のレイヤー。どちらも同じ y 式で動かす。"""
+    """下敷き／文字のレイヤー。基本はどちらも同じ y 式で動かす。"""
     if is_text:
         fi, d_in = st + TXT_LAG, TXT_IN
     else:
@@ -77,13 +77,14 @@ def build(name, cuts, telops, dim, logo, logo_at, dim_at, audio):
     idx = len(cuts)
     tex = []
     for (k, st, en) in telops:
-        layers = [(k, True)]
+        layers = [(k, True, False)]
         if B[k].get("underlay", True):
-            layers.insert(0, (f"{k}_blk", False))
-        for suffix, is_text in layers:
+            # グラデーションの下敷きは動かさない（下端に隙間ができる）
+            layers.insert(0, (f"{k}_blk", False, B[k].get("static_underlay", False)))
+        for suffix, is_text, static in layers:
             ins += ["-loop", "1", "-t", "15", "-i", f"{TELOP}/{suffix}.png"]
             fc.append(layer(idx, st, en, is_text))
-            tex.append((idx, st))
+            tex.append((idx, None if static else st))
             idx += 1
     ins += ["-loop", "1", "-t", "15", "-i", f"{TELOP}/{dim}.png"]
     fc.append(f"[{idx}:v]format=rgba,fade=t=in:st={dim_at}:d=0.5:alpha=1[dim]")
@@ -94,7 +95,8 @@ def build(name, cuts, telops, dim, logo, logo_at, dim_at, audio):
     cur = "[bg]"
     for n, (i, st) in enumerate(tex):
         nxt = f"[o{n}]"
-        fc.append(f"{cur}[t{i}]overlay=0:y={overlay_y(st)}{nxt}")
+        pos = "0:0" if st is None else f"0:y={overlay_y(st)}"
+        fc.append(f"{cur}[t{i}]overlay={pos}{nxt}")
         cur = nxt
     fc.append(f"{cur}[dim]overlay=0:0[od]")
     fc.append("[od][lg]overlay=0:0,format=yuv420p[vout]")
