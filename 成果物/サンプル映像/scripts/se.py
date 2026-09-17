@@ -323,13 +323,13 @@ def se_07(dur=15.0):
     out += machine_hum(n, 0.3, 171) * seg(n, 0, dur)
     # 装備：ジッパーと金具
     out += tool_clink(n, 1.1, 0.24, 2600, 173)
-    out += tool_clink(n, 2.6, 0.18, 3800, 179)
-    out += clink(n, 3.9, 0.14, 2200, 181)
-    # 通路：フォークリフトの警告音と足音
-    out += forklift_beep(n, 5.6, 0.2, 4)
-    out += footsteps(n, 8.6, 4, 0.2)
+    out += tool_clink(n, 2.4, 0.18, 3800, 179)
+    out += clink(n, 3.5, 0.14, 2200, 181)
+    # 通路：フォークリフトの警告音と足音（映像は 4.2秒でカットが替わる）
+    out += forklift_beep(n, 4.9, 0.2, 4)
+    out += footsteps(n, 8.2, 4, 0.2)
     # 指さし確認：足音と棚の金属音
-    out += footsteps(n, 10.4, 3, 0.15)
+    out += footsteps(n, 9.9, 3, 0.15)
     out += tool_clink(n, 12.4, 0.16, 3000, 191)
     return out
 
