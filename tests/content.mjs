@@ -137,12 +137,17 @@ check('画質は 1080p と書いてある', /1080p（フルHD）/.test(bodyText)
         return before !== after && /narration/.test(after);
     })());
     check('差し替え前の古いナレーション版を残していない', !/company-60s\.mp4/.test(idx));
-    check('ナレーションの値段が実績でも料金表と同じ', /1本 ¥30,000 で追加/.test(works));
+    /* 人物ナレーションの額は、実績の注釈・FAQ・計算機の3か所に出る。
+       どれかだけ直すとここが落ちる */
+    check('人物ナレーションの値段が実績でも料金表と同じ', /1名 ¥70,000〜/.test(works));
+    check('AIナレーションが込みだと実績にも書いてある', /全段とも料金に含まれます/.test(works));
     check('架空の題材だと書いてある', /架空の製造業を題材に/.test(works));
     check('架空クライアントの名前を出していない', !/想工業/.test(works));
 }
-check('ナレーションの追加料金が FAQ と計算機で同じ',
-    /1本 ¥30,000 で追加/.test(idx) && /narration: 30000/.test(idx));
+check('人物ナレーションの追加料金が FAQ と計算機で同じ',
+    /1名 ¥70,000〜/.test(idx) && /narrationHuman: 70000/.test(idx));
+/* AIを有料に戻すときは、ここと計算機と文言を必ず一緒に直す */
+check('AIナレーションが計算機でも ¥0 になっている', /narrationAi: 0/.test(idx));
 
 const org = ld.find(d => d['@graph'])?.['@graph']?.find(x => x['@type'] === 'Organization') || {};
 check('構造化データに代表者', org.founder?.name === '鈴木 宏平');
