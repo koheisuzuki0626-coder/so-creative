@@ -16,7 +16,6 @@ check('段の名前が梅竹松',
     (await page.locator('#calc-tier .calc-opt').allInnerTexts()).join('|') === '梅 標準|竹 上|松 特上');
 check('尺が8つ', (await page.locator('#calc-len .calc-opt').count()) === LENGTHS.length);
 check('本数が6つ', (await page.locator('#calc-cnt .calc-opt').count()) === 6);
-check('ナレーションが2択', (await page.locator('#calc-nar .calc-opt').count()) === 2);
 check('操作の順番を番号で示している',
     (await page.locator('.calc-step').allInnerTexts()).join('') === '1234');
 check('実物のラジオで組んである',
@@ -206,13 +205,17 @@ check('ナレーションの工数は1本 1.0h（AI・人で同じ）', HOURS_NA
        **竹＋ナレのほうが時間単価が高い**（＝松が安い）ので、
        以前の「松のほうが時間単価が高いから放置」という理由は成り立たない。
        価格は動かさず、計算機がその場で「松のほうが安い」と出して潰す（下の検査） */
+    /* 1本あたり15秒未満は選べないので、この一覧に 15秒×2本 は出てこない
+       （計算機でも選べない。下の「松のほうが安い」の検査は countCap で回している） */
     check('竹＋人が松を上回るのは15秒・30秒だけ',
-        inverted.join(',') === '15秒×1本,15秒×2本,30秒×1本,30秒×2本', inverted.join(',') || 'なし');
+        inverted.join(',') === '15秒×1本,30秒×1本,30秒×2本', inverted.join(',') || 'なし');
     check('松は本数が増えてもナレーション料は増えない',
         price(matsu, 30, 2) - price(matsu, 30, 1) === PRICE.perExtra,
         `¥${price(matsu, 30, 2) - price(matsu, 30, 1)}`);
-    check('松の工数も本数ぶんだけ増える（ナレーションは増えない）',
-        Math.abs(hours(matsu, 30, 2) - hours(matsu, 30, 1) - 1.5) < 1e-9,
+    /* 松は料金は増えないが工数は増える。秒単価に入っているのは1本ぶんの 1.0h なので、
+       2本目のナレーション（原稿・配置）はちゃんと工数に乗る。1.5h + 1.0h */
+    check('松は料金は増えないが工数は2本目ぶん増える',
+        Math.abs(hours(matsu, 30, 2) - hours(matsu, 30, 1) - 2.5) < 1e-9,
         `${(hours(matsu, 30, 2) - hours(matsu, 30, 1)).toFixed(2)}h`);
 
     /* 逆転する組み合わせでは、計算機が「松のほうが安い」と言うこと。
@@ -287,8 +290,10 @@ check('人が読むを足すと本文に単位と金額が入る',
 await page.locator('#calc-nar .calc-opt[data-nar="ai"]').click();
 await page.waitForTimeout(60);
 const aiBody = new URLSearchParams((await mailLink()).split('?')[1]).get('body') || '';
+/* 直前で 60秒×2本 を選んでいる。AI は本数ぶん増えるので 2本ぶんの額が出る */
 check('AI音声を足すと本文に本数と金額が入る',
-    /・ナレーション：AI音声/.test(aiBody) && /・ナレーション AI音声 1本：¥30,000/.test(aiBody));
+    /・ナレーション：AI音声/.test(aiBody)
+    && new RegExp(`・ナレーション AI音声 2本：¥${(PRICE.narrationAi * 2).toLocaleString('ja-JP')}`).test(aiBody));
 await page.locator('#calc-nar .calc-opt[data-nar="none"]').click();
 // mailto はクライアント側の長さ制限があるので、最長の組み合わせでも収まること
 await pick(page, 'matsu', 300, 6);
