@@ -229,9 +229,9 @@ def band_telop(key, text, accent, style):
                 center_x=(style == "emo"))
     bb = real_bbox(txt)
     img = blank()
-    if style == "block":
-        # 黒ブロックから浮かせるための軽い影
-        img.alpha_composite(txt.filter(ImageFilter.GaussianBlur(12)))
+    # block に発光を足していたが、ぼかしがブロックの外に40px以上はみ出して、
+    # 暗い映像の上では黒ブロックの上に灰色の帯が乗ったように見えていた。
+    # 209/255 の黒ブロックに白文字なら、それだけで十分に読める
     if style == "emo":
         # 文字そのものを光らせる。02で嫌われた「黒フチ＋重ねぼかし」とは別物で、
         # フチを作らず、広く薄いぼかしを2段重ねるだけ。夜の画で文字が浮く
@@ -321,9 +321,12 @@ def build_set(table, label=""):
     # 本をまたいで揃えると、文字サイズと位置が違う本で帯が本文に合わなくなる
     # （07 の STEP 帯が本文を切ってしまう不具合の原因だった）
     def group_of(k):
-        # スタイルも見て分ける。3分版は1行の白帯と2行の引用が同じ "r3" なので、
+        # 1本の中だけで揃える。rstrip("ab") で 04a と 04b をまとめていたので、
+        # 取りやめた 04b の背の高い字（フ・1）がブロックの上端を決めてしまい、
+        # 04a の上に使われない空きが出ていた。
+        # スタイルも見る。3分版は1行の白帯と2行の引用が同じ "r3" なので、
         # まとめて揃えると白帯が2行ぶんの高さに広がってしまう
-        return k.split("_")[0].rstrip("ab") + ":" + boxes[k]["style"]
+        return k.split("_")[0] + ":" + boxes[k]["style"]
 
     for g in {group_of(k) for k in boxes}:
         members = [k for k in boxes if group_of(k) == g]
