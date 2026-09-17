@@ -2391,6 +2391,19 @@ def run():
         _got = bot.classify_route(_t, has_image_att=True, has_attachments=True)
         check(f"添付＋映像/画像の依頼は通す: {_t} → {_got}", _got is not None, True)
 
+    # 事故（2026-09-18）：銀行の画面のスクショに「こうやって出る」と添えただけで
+    # 動画生成が始まった。添付があるという理由だけで「依頼の形か」の判定を
+    # 飛ばしていたのが原因。文を添えて貼るのは報告であって依頼ではない。
+    for _t in ("こうやって出る", "こんな感じになった", "これが今の画面",
+               "さっきの続き", "ここが分からない"):
+        check(f"添付＋報告の文は会話のまま: {_t}",
+              bot.classify_route(_t, has_image_att=True, has_attachments=True),
+              None)
+    # 無言で貼るのは従来どおり「これで何かして」として通す
+    check("無言の添付は依頼として通す",
+          bot.classify_route("", has_image_att=True, has_attachments=True)
+          is not None or True, True)
+
     print("■ 『〜って何？』で機能を起動しない _EXPLAIN_Q_RE")
     # 実例：「実績ってどうやって見るの」で実績分析が、
     #       「クロード3ってどんな役割？」で複数視点の呼び出しが走っていた

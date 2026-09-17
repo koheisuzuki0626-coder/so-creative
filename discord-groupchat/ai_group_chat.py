@@ -6768,7 +6768,13 @@ def classify_route(content, **kw):
     # （事故 2026-08-21：「ok」を3回送っても制作が始まらなかった）。
     # これを拾う規則（_r_do_proposal）は直前にボットの提案があることを
     # 条件にしているので、雑談の相槌では発動しない。
-    if (route in ACT_ROUTES and not kw.get("has_attachments")
+    # 添付の例外は【本文が無いとき】だけ。無言で貼るのは「これで何かして」だが、
+    # 文を添えて貼るのは多くが「見て」「こうなった」の報告で、依頼ではない。
+    # 事故（2026-09-18）：銀行の画面のスクショに「こうやって出る」と添えただけで
+    # 動画生成が始まり、9項目の質問と進捗が流れ続けた。添付があるという理由だけで
+    # 依頼の形の判定を丸ごと飛ばしていたのが原因。
+    if (route in ACT_ROUTES
+            and not (kw.get("has_attachments") and _att_is_material(content))
             and not _wants_action(content) and not _BARE_GO_RE.search(content)):
         _route_hit["name"] = (_route_hit.get("name") or "") + "→依頼の形でないので会話"
         return None          # 頼まれていない＝会話として扱う
@@ -7691,6 +7697,21 @@ ROUTE_RULES = (
     ("提案をそのまま実行", _r_do_proposal),
     ("作り手の名指し（受け皿）", _r_maker_fallback),
 )
+
+
+# 添付に添えた文が【素材の指定】か【報告】か。
+# 素材の指定は文の途中で切れる（「この動きで」「この画像を」）。
+# 報告は述語で終わる（「こうやって出る」「こんな感じになった」「これが今の画面」）。
+# 語を数え上げず、文の終わり方で見る。
+_ATT_MATERIAL_RE = re.compile(r"(で|を|に|と|から|まで|へ|の)[。、!！]?$")
+
+
+def _att_is_material(content):
+    """添付そのものを指している文か（＝「これで何かして」と読んでよいか）。"""
+    t = (content or "").strip()
+    if not t:
+        return True                      # 無言で貼るのは、それ自体が依頼
+    return bool(_ATT_MATERIAL_RE.search(t))
 
 
 def _classify_route_raw(content, **kw):
@@ -11898,13 +11919,24 @@ async def _ask_clarify(message, cid, slots):
         "全部おまかせなら「**おまかせ**」、やめるなら「**やめて**」"
         "（10分で自動的におまかせ扱い）。"
     )
+    # ここから先は本人の返事待ち。ボットは動いていないので、進捗を流さない。
+    # 事故（2026-09-18）：9項目の聞き返しを出したまま⏳「続行中（453秒経過）」が
+    # 90秒ごとに流れ続けた。承認待ち（_gate）には同じ手当てが入っていたが、
+    # 聞き返し（_ask_clarify）には入っていなかった。
+    _pause_for_reply()
     try:
         ans = await asyncio.wait_for(fut, timeout=CLARIFY_WAIT)
     except asyncio.TimeoutError:
         _pending_clarify.pop(cid, None)
         return ""
+    finally:
+        _resume_after_reply()
     ans = (ans or "").strip()
-    if re.search("やめて|中止|キャンセル|やっぱいい|やらなくていい", ans):
+    # 中止の言い方はここで数え上げない。停止の語彙は _STOP_PHRASES と _DENY_RE に
+    # 集約してある。事故（2026-09-18）：「ストップ」がこの正規表現に無かったため、
+    # 中止のつもりの発言が【聞き返しへの補足】として読まれ、生成の確認まで進んだ。
+    if (_is_stop_phrase(ans) or _DENY_RE.match(_norm_reply(ans))
+            or re.search("やっぱいい|やらなくていい", ans)):
         await send_as(orch, cid, "🛑 やめました。")
         return None
     if _CLARIFY_SKIP_RE.search(ans) or not ans:

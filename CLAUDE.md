@@ -209,6 +209,9 @@ Mac で動いているボットは読まない。「ここで決めたのに Dis
 | 成果物は既定ブランチにも載せる（探させない） | `_save_to_main` |
 | 機械的な作業に運用マニュアルを読ませない | `run_claude_cli(neutral=True)` |
 | 戻らないジョブを待たせ続けない | `_job_is_lost` |
+| 添付に文を添えただけで作業を始めない | `_att_is_material`（末尾が助詞なら素材） |
+| 中止の言い方を場所ごとに数え直さない | `_STOP_PHRASES` / `_DENY_RE` に集約 |
+| 本人の返事待ちに進捗を流さない | `_pause_for_reply`（聞き返しにも適用） |
 | 自分のログ push で再起動しない | `CODE_PATHS`（`_remote_has_new_code`） |
 | 自動更新が無期限に止まらない | `AUTO_UPDATE_MAX_WAIT`（見送りの上限） |
 | CODE_PATHS は実行場所からの相対で書く | `_git_self` は BASE_DIR で動く |

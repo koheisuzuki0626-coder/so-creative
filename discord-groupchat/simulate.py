@@ -1133,6 +1133,21 @@ async def run():
               "画像生成して" in _req and "Higgs" not in _req, _req[:80])
         check("画像を頼まれたら画像のまま（動画にしない）", _media == "image", _media)
 
+    # --- ①' 銀行の画面のスクショで動画生成が始まった（2026-09-18 02:09 の実例）---
+    # 経緯：eco通帳の話の途中でスクショを貼り「こうやって出る」と添えただけで、
+    # 9項目の聞き返しが出て、⏳「続行中（453秒経過）」が90秒ごとに流れ続けた。
+    # さらに「ストップ」が中止として効かず、逆に生成開始の確認まで進んだ。
+    install_stubs()
+    await drive("三菱ufjでeco通帳っどうだすの？")
+    r = await drive("こうやって出る", [_FakeAttachment("IMG_1227.png")])
+    check("スクショ＋報告の文で生成を始めない",
+          not any(k.startswith("hf_") for k in r["fired"]), f"{r['fired']}")
+    check("聞き返しの9項目を出さない",
+          not any("仕上がりを決める項目" in s for s in r["sent"]), f"{r['sent'][:1]}")
+    # 「ストップ」は、どの待ち方をしていても中止として効く
+    for _w in ("ストップ", "stop", "中止", "キャンセル", "やめて"):
+        check(f"中止の言い方が効く: {_w}", bot._is_stop_phrase(_w), True)
+
     # --- ② 動画の続きは動画のまま（①の直しで巻き添えにしない）---
     install_stubs()
     bot._load_last_gen = lambda cid: {
