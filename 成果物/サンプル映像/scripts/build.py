@@ -61,14 +61,19 @@ def measure(path):
     return tuple(vals[k] for k in keys)
 
 
-def build(name, cuts, telops, dim, logo, logo_at, dim_at, audio):
+def build(name, cuts, telops, dim, logo, logo_at, dim_at, audio,
+          canvas=(1920, 1080)):
     """cuts: [(file, in, dur)] / telops: [(key, st, en)]"""
+    cw, ch = canvas
+    ar = f"{cw}/{ch}"
     ins, fc = [], []
     for i, (f, tin, dur) in enumerate(cuts):
         ins += ["-i", f]
+        # 素材のアスペクト比が出力と違うことがある（kling は 1928x1076 を返す）。
+        # 出力比でセンタークロップしてから合わせる
         fc.append(f"[{i}:v]trim={tin}:{tin + dur},setpts=PTS-STARTPTS,"
-                  "crop='min(iw,ih*16/9)':'min(ih,iw*9/16)',"
-                  f"scale=1920:1080:flags=lanczos,setsar=1,fps=24[v{i}]")
+                  f"crop='min(iw,ih*{ar})':'min(ih,iw*{ch}/{cw})',"
+                  f"scale={cw}:{ch}:flags=lanczos,setsar=1,fps=24[v{i}]")
     fc.append("".join(f"[v{i}]" for i in range(len(cuts)))
               + f"concat=n={len(cuts)}:v=1:a=0[cat]")
 
@@ -86,11 +91,17 @@ def build(name, cuts, telops, dim, logo, logo_at, dim_at, audio):
             fc.append(layer(idx, st, en, is_text))
             tex.append((idx, None if static else st))
             idx += 1
-    ins += ["-loop", "1", "-t", "15", "-i", f"{TELOP}/{dim}.png"]
-    fc.append(f"[{idx}:v]format=rgba,fade=t=in:st={dim_at}:d=0.5:alpha=1[dim]")
-    idx += 1
-    ins += ["-loop", "1", "-t", "15", "-i", f"{TELOP}/{logo}.png"]
-    fc.append(f"[{idx}:v]format=rgba,fade=t=in:st={logo_at}:d=0.5:alpha=1[lg]")
+    # 締め（暗転＋ロゴ）は本によって無い（07 研修は STEP 3 で終わる）
+    ending = []
+    if dim:
+        ins += ["-loop", "1", "-t", "15", "-i", f"{TELOP}/{dim}.png"]
+        fc.append(f"[{idx}:v]format=rgba,fade=t=in:st={dim_at}:d=0.5:alpha=1[dim]")
+        ending.append("dim")
+        idx += 1
+    if logo:
+        ins += ["-loop", "1", "-t", "15", "-i", f"{TELOP}/{logo}.png"]
+        fc.append(f"[{idx}:v]format=rgba,fade=t=in:st={logo_at}:d=0.5:alpha=1[lg]")
+        ending.append("lg")
 
     cur = "[bg]"
     for n, (i, st) in enumerate(tex):
@@ -98,8 +109,11 @@ def build(name, cuts, telops, dim, logo, logo_at, dim_at, audio):
         pos = "0:0" if st is None else f"0:y={overlay_y(st)}"
         fc.append(f"{cur}[t{i}]overlay={pos}{nxt}")
         cur = nxt
-    fc.append(f"{cur}[dim]overlay=0:0[od]")
-    fc.append("[od][lg]overlay=0:0,format=yuv420p[vout]")
+    for n, lab in enumerate(ending):
+        nxt = f"[e{n}]"
+        fc.append(f"{cur}[{lab}]overlay=0:0{nxt}")
+        cur = nxt
+    fc.append(f"{cur}null,format=yuv420p[vout]")
 
     silent = f"{OUT}/{name}_silent.mp4"
     cmd = [FF, "-loglevel", "error", "-y"] + ins + [
@@ -156,6 +170,32 @@ if __name__ == "__main__":
                (f"{GEN}/04_c3_v3m.mp4", 0.6, 4.0)],
               [("04a_1", 0.45, 5.70), ("04a_2", 6.35, 10.70)],
               "dim29", "04_logo", 11.4, 11.1, a04a)
+
+    if wanted("03_recruit_15s"):
+        build("03_recruit_15s",
+              [(f"{GEN}/03_v1.mp4", 0.1, 5.0), (f"{GEN}/03_v2.mp4", 0.1, 5.0),
+               (f"{GEN}/03_v3.mp4", 0.1, 5.0)],
+              [("03_1", 0.45, 4.70), ("03_2", 5.40, 9.70), ("03_3", 10.35, 12.50)],
+              "dim34", "03_logo", 12.75, 12.45, f"{HERE}/audio_03.wav")
+
+    if wanted("05_sns_15s"):
+        # 6カット目は1カット目の素材を別区間で使い回す（構成案の「1カット目に戻る」）
+        build("05_sns_15s",
+              [(f"{GEN}/05_v1.mp4", 0.0, 2.5), (f"{GEN}/05_v2.mp4", 0.5, 2.5),
+               (f"{GEN}/05_v3.mp4", 0.8, 2.5), (f"{GEN}/05_v4.mp4", 1.0, 2.5),
+               (f"{GEN}/05_v5.mp4", 0.5, 2.5), (f"{GEN}/05_v1.mp4", 2.4, 2.5)],
+              [("05_1", 0.30, 2.30), ("05_2", 2.80, 4.80), ("05_3", 5.30, 7.30),
+               ("05_4", 7.80, 9.80), ("05_5", 10.30, 12.30)],
+              "dim29v", "05_logo", 13.00, 12.70, f"{HERE}/audio_05.wav",
+              canvas=(1080, 1920))
+
+    if wanted("07_internal_15s"):
+        # 研修用なので締めのロゴを付けず、STEP 3 を最後まで残す
+        build("07_internal_15s",
+              [(f"{GEN}/07_v4.mp4", 0.1, 5.0), (f"{GEN}/07_v2.mp4", 0.1, 5.0),
+               (f"{GEN}/07_v3.mp4", 0.1, 5.0)],
+              [("07_1", 0.40, 4.85), ("07_2", 5.40, 9.85), ("07_3", 10.40, 14.95)],
+              None, None, 0, 0, f"{HERE}/audio_07.wav")
 
     # 訴求B（時短）は取りやめ。名前を明示したときだけ作る
     if "04b_time_15s" in sys.argv[1:]:

@@ -14,7 +14,12 @@ import numpy as np
 import json
 import os
 
-W, H = 1920, 1080
+W, H = 1920, 1080          # 既定は16:9。縦型は set_canvas() で切り替える
+
+
+def set_canvas(w, h):
+    global W, H
+    W, H = w, h
 FONTS = os.environ.get("SO_FONTS", "/tmp/fonts")
 ZEN = f"{FONTS}/ZenKakuNew-Black.ttf"
 GOTHIC = f"{FONTS}/NotoSansJP-Black.ttf"
@@ -29,12 +34,17 @@ SERVICE_NAME = "そのまま日報"
 SERVICE_SUB = "現場の日報アプリ"
 PRODUCT_NAME = "こがね餃子"
 PRODUCT_SUB = "羽根つき 冷凍餃子"
+SHOP_NAME = "コインランドリー きらら"
+SHOP_SUB = "24時間・年中無休"
 
 # 本文 / 色を差すキーワード / デザイン
 # 02（業務ソフト）と04（食品CM）でテロップのデザインを作り分ける。
-#   scrim … 文字は純白のまま、画面下部を黒のグラデーションで落とす（02）。
+#   scrim … 文字は純白のまま、画面下部を黒のグラデーションで落とす（02・03）。
 #           映画の字幕の作り。文字自体には影もフチも付けない
 #   block … 黒ブロック＋白文字＋山吹の縦バー（04）。文字幅ぶんのブロック
+#   sns   … 縦型（05）。画面の下から1/3あたりに中央揃えで、黒の半透明ブロック＋
+#           太い白文字。SNSは音を切って見られるので大きく出す
+#   step  … 白帯＋黒文字＋左に大きなSTEP番号（07）。研修用なので可読性を最優先
 # 02は帯 → 影 → グラデーションと3回変えた。影は黒フチと重ねぼかしが汚れて見えた。
 TELOPS = {
     "02_1": ("現場で、その場で。", None, "scrim"),
@@ -44,6 +54,24 @@ TELOPS = {
     "04a_2": ("肉汁、そのまま。", None, "block"),
     "04b_1": ("今日は、もう決まり。", None, "block"),
     "04b_2": ("フライパンひとつ、10分。", None, "block"),
+    # 03 採用（16:9・scrim）
+    "03_1": ("教える人が、すぐ隣にいる。", None, "scrim"),
+    "03_2": ("3年目で、任される。", None, "scrim"),
+    "03_3": ("見に来てください。", None, "scrim"),
+    # 07 社内向け（16:9・step）。STEP番号は本文と別に持つ
+    "07_1": ("入る前に、装備を確認。", "STEP 1", "step"),
+    "07_2": ("通路では、必ず止まる。", "STEP 2", "step"),
+    "07_3": ("声に出して、指で差す。", "STEP 3", "step"),
+}
+
+# 05 SNSショート（9:16・sns）。キャンバスが違うので別に持つ
+TELOPS_V = {
+    "05_1": ("夜11時。", None, "sns"),
+    "05_2": ("まだ、開いてる。", None, "sns"),
+    "05_3": ("乾燥、30分。", None, "sns"),
+    "05_4": ("畳んで、帰る。", None, "sns"),
+    "05_5": ("待つ場所も、ある。", None, "sns"),
+    "05_6": ("24時間・年中無休", None, "sns"),
 }
 
 SIZE = 132
@@ -105,29 +133,32 @@ def band_telop(key, text, accent, style):
 
     長い行は下敷きが画面幅を超えるので、収まるまで文字を小さくする。
     """
-    parts = split_accent(text, accent)
-    size = SIZE
-    while size > 92:
+    parts = split_accent(text, accent) if style != "step" else [(text, False)]
+    # スタイルごとの文字サイズと置き場所
+    #   scrim/block … 132px・左寄せ（16:9）
+    #   sns         … 104px・中央寄せ（縦型は横幅が狭い）
+    #   step        … 96px・左寄せ。左端のSTEP番号ブロック(268px)を避けて 330px から
+    size = {"sns": 104, "step": 96}.get(style, SIZE)
+    left = {"step": 330}.get(style, LEFT)
+    bottom = {"sns": int(H * 0.30), "step": 118}.get(style, BOTTOM)
+    while size > 84:
         f = ImageFont.truetype(ZEN, size)
-        w = sum(f.getlength(t) for t, _ in parts) + PAD_X * 2 + LEFT - 70
-        if w <= MAX_BLOCK_W:
+        w = sum(f.getlength(t) for t, _ in parts) + PAD_X * 2 + left - 70
+        if w <= (W - 120 if style == "sns" else MAX_BLOCK_W):
             break
         size -= 4
     f = ImageFont.truetype(ZEN, size)
-
-    # グラデーションで可読性を作るので、文字には何も付けない
-    stroke = 0
+    # 白帯に乗る step だけ黒文字。ほかは白
+    body = (17, 17, 17) if style == "step" else (255, 255, 255)
 
     def draw(d, ox, oy):
         x = ox
         for t, is_ac in parts:
-            # 文字は常に白。色差しは使わない（accent を渡せば山吹に戻せる）
-            col = ACCENT if is_ac else (255, 255, 255)
-            d.text((x, oy), t, font=f, fill=col + (255,),
-                   stroke_width=stroke, stroke_fill=(8, 14, 26, 210))
+            col = ACCENT if is_ac else body
+            d.text((x, oy), t, font=f, fill=col + (255,))
             x += d.textlength(t, font=f)
 
-    txt = place(draw, left=LEFT, bottom=BOTTOM)
+    txt = place(draw, left=left, bottom=bottom, center_x=(style == "sns"))
     bb = real_bbox(txt)
     img = blank()
     if style == "block":
@@ -179,44 +210,78 @@ def logo_card(name, sub, path, mark="check", tint=(255, 255, 255), cy_ratio=0.46
     base.save(path)
 
 
-if __name__ == "__main__":
+def build_set(table, label=""):
+    """1つのキャンバスぶんのテロップと下敷きを書き、矩形の辞書を返す。"""
     boxes = {}
-    for key, (text, accent, style) in TELOPS.items():
+    for key, (text, accent, style) in table.items():
         boxes[key] = band_telop(key, text, accent, style)
         boxes[key]["style"] = style
-    # 下敷きの天地は全カットで揃える（行ごとに違うとカット替わりでチラつく）
-    top = min(b["y"] for b in boxes.values())
-    bot = max(b["y"] + b["h"] for b in boxes.values())
+    # 下敷きの天地は「同じ本の中」で揃える（カット替わりのチラつきを防ぐ）。
+    # 本をまたいで揃えると、文字サイズと位置が違う本で帯が本文に合わなくなる
+    # （07 の STEP 帯が本文を切ってしまう不具合の原因だった）
+    def group_of(k):
+        return k.split("_")[0].rstrip("ab")
+
+    for g in {group_of(k) for k in boxes}:
+        members = [k for k in boxes if group_of(k) == g]
+        top = min(boxes[k]["y"] for k in members)
+        bot = max(boxes[k]["y"] + boxes[k]["h"] for k in members)
+        for k in members:
+            boxes[k]["y"], boxes[k]["h"] = top, bot - top
     for key, b in boxes.items():
-        b["y"], b["h"] = top, bot - top
         b["underlay"] = True
         # グラデーションは動かさない（下から持ち上げると下端に隙間ができる）
         b["static_underlay"] = b["style"] == "scrim"
         blk = blank()
         d = ImageDraw.Draw(blk)
-        if b["style"] == "scrim":
-            # 画面下部を黒で落とす。上端から下端へ k^1.5 で濃くする
-            top = 620
+        if b["style"] == "sns":
+            pad_x, pad_t, pad_b = 34, 26, 30
+            d.rounded_rectangle([b["x"] - pad_x + PAD_X, b["y"] - pad_t + PAD_T,
+                                 b["x"] + b["w"] + pad_x - PAD_X,
+                                 b["y"] + b["h"] + pad_b - PAD_B],
+                                radius=14, fill=(0, 0, 0, 196))
+        elif b["style"] == "step":
+            d.rectangle([0, b["y"], W, b["y"] + b["h"]], fill=(255, 255, 255, 249))
+            d.rectangle([0, b["y"], 268, b["y"] + b["h"]], fill=NAVY + (255,))
+            fs = ImageFont.truetype(GOTHIC, 62)
+            d.text((134, b["y"] + b["h"] // 2), table[key][1], font=fs,
+                   fill=(255, 255, 255, 255), anchor="mm")
+        elif b["style"] == "scrim":
+            top_y = int(H * 0.574)
             a = np.zeros((H, W), dtype=np.uint8)
-            for y in range(top, H):
-                a[y, :] = int(150 * (((y - top) / (H - top)) ** 1.5))
+            for y in range(top_y, H):
+                a[y, :] = int(150 * (((y - top_y) / (H - top_y)) ** 1.5))
             blk = Image.composite(Image.new("RGBA", (W, H), (4, 8, 16, 255)),
                                   blank(), Image.fromarray(a))
         else:
             d.rectangle([b["x"], b["y"], b["x"] + b["w"], b["y"] + b["h"]],
                         fill=(0, 0, 0, 209))
-            # 左端に山吹の縦バー。ブロックの端を締める
             d.rectangle([b["x"], b["y"], b["x"] + 10, b["y"] + b["h"]],
                         fill=ACCENT + (255,))
         blk.save(f"{OUT}/{key}_blk.png")
+    if label:
+        print(f"[{label}] {W}x{H}: " + ", ".join(boxes))
+    return boxes
+
+
+if __name__ == "__main__":
+    boxes = build_set(TELOPS, "16:9")
     logo_card(SERVICE_NAME, SERVICE_SUB, f"{OUT}/02_logo.png", mark="check")
     logo_card(PRODUCT_NAME, PRODUCT_SUB, f"{OUT}/04_logo.png", mark="none",
               tint=(255, 248, 232))
     # 訴求Bの締めは C2（箸の寄り）で中央に餃子が来るのでロゴを上に逃がす
     logo_card(PRODUCT_NAME, PRODUCT_SUB, f"{OUT}/04_logo_top.png", mark="none",
               tint=(255, 248, 232), cy_ratio=0.26)
+    # 03 採用の締めは職種の提示（社名は出さない）
+    logo_card("募集中", "機械加工 ／ 検査 ／ 出荷", f"{OUT}/03_logo.png", mark="none")
     for a, name in ((88, "dim34"), (74, "dim29")):
         Image.new("RGBA", (W, H), (0, 0, 0, a)).save(f"{OUT}/{name}.png")
+
+    # 05 は縦型なのでキャンバスを切り替えて作り直す
+    set_canvas(1080, 1920)
+    boxes_v = build_set(TELOPS_V, "9:16")
+    logo_card(SHOP_NAME, SHOP_SUB, f"{OUT}/05_logo.png", mark="none", cy_ratio=0.42)
+    Image.new("RGBA", (W, H), (0, 0, 0, 74)).save(f"{OUT}/dim29v.png")
+
     with open(f"{OUT}/boxes.json", "w") as fp:
-        json.dump({"boxes": boxes}, fp, ensure_ascii=False, indent=1)
-    print(json.dumps(boxes, ensure_ascii=False, indent=1))
+        json.dump({"boxes": {**boxes, **boxes_v}}, fp, ensure_ascii=False, indent=1)

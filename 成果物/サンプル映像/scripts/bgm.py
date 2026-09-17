@@ -347,6 +347,60 @@ def build_04(dur=15.0):
     return normalize(np.tanh(mix * 1.5), 0.9)
 
 
+def build_05(dur=15.0):
+    """05 SNSショート（縦型）。BPM120・1小節2.0秒×7.5小節。進行 D - A - G - A
+
+    夜のコインランドリーなので lo-fi 寄り。4つ打ちは入れるが強く叩かず、
+    LPF を深めに掛けてリバーブを多くする。SNS は音を切って見られることも多いので、
+    鳴っていても邪魔にならない音量に収める。
+    """
+    n = int(dur * SR)
+    bar = 2.0
+    beat = bar / 4
+    prog = [["D4", "F#4", "A4"], ["A3", "C#4", "E4"],
+            ["G3", "B3", "D4"], ["A3", "C#4", "E4"]] * 2
+    roots = ["D4", "A3", "G3", "A3"] * 2
+    mix = np.zeros(n)
+    kicks = []
+    for i, ch in enumerate(prog):
+        p0 = int(i * bar * SR)
+        if p0 >= n:
+            break
+        ln = min(int(bar * SR), n - p0)
+        mix[p0:p0 + ln] += pad(ch, ln, level=0.24)[:ln]
+        # 8分のアルペジオを高めに置く（ループ感）
+        mix[p0:p0 + ln] += arp(ch, ln, beat / 2, level=0.13)[:ln]
+        for b in range(4):
+            q = p0 + int(b * beat * SR)
+            if q >= n:
+                break
+            kicks.append(q)
+            mix[q:] += kick(n - q, level=0.26)
+            # ベースは8分
+            for sub in (0, 0.5):
+                r = q + int(sub * beat * SR)
+                ln2 = min(int(beat * 0.45 * SR), n - r)
+                if ln2 > 0 and r < n:
+                    mix[r:r + ln2] += bass(roots[i], ln2, level=0.16)[:ln2]
+            # ハットは8分裏、クラップは2・4拍
+            r = q + int(0.5 * beat * SR)
+            if r < n:
+                mix[r:] += hat(n - r, level=0.11, open_=(b == 3), seed=71 + b)
+            if b in (1, 3):
+                mix[q:] += clap(n - q, level=0.14, seed=73 + b)
+        # 小節頭にベル（夜の静けさに合う）
+        lnb = min(int(1.2 * SR), n - p0)
+        mix[p0:p0 + lnb] += bell(["A4", "E5", "D5", "C#5"][i % 4], lnb, level=0.12)[:lnb]
+    mix = duck(mix, kicks, n, depth=0.5, dur=0.16)
+    mix = fft_filter(mix, 34, "hp", rolloff=3.0)
+    mix = fft_filter(mix, 6200, "lp")        # lo-fi 寄りに高域を落とす
+    mix = reverb(mix, mix=0.3)
+    mix[:int(0.06 * SR)] *= np.linspace(0, 1, int(0.06 * SR))
+    tail = int(1.2 * SR)
+    mix[-tail:] *= np.linspace(1, 0, tail)
+    return normalize(np.tanh(mix * 1.8), 0.88)
+
+
 def write_wav(path, mono, width=0.12):
     """わずかにステレオに広げて 16bit で書く。"""
     d = int(width * 0.004 * SR)
@@ -382,4 +436,7 @@ if __name__ == "__main__":
     b = build_04()
     write_wav(f"{OUT}/bgm_04.wav", b)
     rms_report("04", b, [(0, 3), (3, 6), (6, 9), (9, 11.2), (11.2, 15)])
-    print("wrote bgm_02.wav / bgm_04.wav")
+    c = build_05()
+    write_wav(f"{OUT}/bgm_05.wav", c)
+    rms_report("05", c, [(0, 4), (4, 8), (8, 12), (12, 15)])
+    print("wrote bgm_02.wav / bgm_04.wav / bgm_05.wav")

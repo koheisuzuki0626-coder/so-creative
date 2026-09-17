@@ -205,6 +205,135 @@ def se_04b(dur=15.0):
     return out
 
 
+def machine_hum(n, level=0.2, seed=101):
+    """工場・倉庫の低い機械音。うなりを2つ重ねて揺らす。"""
+    x = normalize(fft_filter(pink(n, seed), 500, "lp"), 1.0)
+    t = _t(n)
+    x += np.sin(2 * np.pi * 96 * t) * 0.10
+    x += np.sin(2 * np.pi * 143 * t) * 0.06
+    return normalize(x, 1.0) * slow_am(n, 0.75, 1.0, 0.11, seed) * level
+
+
+def tool_clink(n, at, level=0.3, f0=3200, seed=103):
+    """工具・金具が当たる音。clink より高く硬い。"""
+    return clink(n, at, level, f0, seed)
+
+
+def footsteps(n, start, count=6, level=0.18, seed=107):
+    """コンクリートの上の足音。間隔をばらす。"""
+    g = np.random.default_rng(seed)
+    out = np.zeros(n)
+    at = start
+    for _ in range(count):
+        p = int(at * SR)
+        ln = int(0.11 * SR)
+        if p + ln >= n:
+            break
+        t = _t(ln)
+        body = np.sin(2 * np.pi * 120 * t) * np.exp(-t * 60) * 0.6
+        scuff = normalize(fft_filter(g.uniform(-1, 1, ln), 1600, "hp"), 1.0) * np.exp(-t * 90)
+        out[p:p + ln] += (body + scuff * 0.5) * g.uniform(0.8, 1.2) * level
+        at += g.uniform(0.42, 0.62)
+    return out
+
+
+def forklift_beep(n, at, level=0.16, count=3):
+    """電動フォークリフトの走行警告音。1kHz 前後の短い連続音。"""
+    out = np.zeros(n)
+    for k in range(count):
+        p = int((at + k * 0.62) * SR)
+        ln = int(0.22 * SR)
+        if p + ln >= n:
+            break
+        t = _t(ln)
+        env = np.minimum(1.0, t / 0.01) * np.minimum(1.0, (t[-1] - t) / 0.02)
+        out[p:p + ln] += (np.sin(2 * np.pi * 1020 * t) * 0.7
+                          + np.sin(2 * np.pi * 2040 * t) * 0.15) * env * level
+    return out
+
+
+def drum_tumble(n, level=0.26, seed=113):
+    """洗濯機のドラムが回る音。低いゴロゴロと水の層。"""
+    base = normalize(fft_filter(pink(n, seed), 900, "lp"), 1.0)
+    t = _t(n)
+    rot = 0.7 + 0.3 * np.sin(2 * np.pi * 0.8 * t)      # 1回転 1.25秒くらい
+    water = normalize(fft_filter(pink(n, seed + 1), 2400, "hp"), 0.35)
+    return (base * rot + water) * level
+
+
+def buzzer(n, at, level=0.2):
+    """乾燥機の終了ブザー。"""
+    p = int(at * SR)
+    ln = min(int(0.7 * SR), max(0, n - p))
+    if ln <= 0:
+        return np.zeros(n)
+    t = _t(ln)
+    env = np.minimum(1.0, t / 0.02) * np.exp(-t * 1.6)
+    x = (np.sin(2 * np.pi * 740 * t) * 0.6 + np.sin(2 * np.pi * 1480 * t) * 0.2)
+    out = np.zeros(n)
+    out[p:p + ln] += x * env * level
+    return out
+
+
+def rain_drip(n, level=0.12, seed=127, count=26):
+    """雨上がりの水滴。夜の屋外に置く。"""
+    g = np.random.default_rng(seed)
+    out = np.zeros(n)
+    for _ in range(count):
+        at = g.uniform(0, max(0.1, n / SR - 0.3))
+        out += drip(n, at, level * g.uniform(0.5, 1.2), seed=int(g.integers(1, 9999)))
+    return out
+
+
+def se_03(dur=15.0):
+    """03 採用。C1 教える 0-5 / C2 ノギス 5-10 / C3 引き 10-15"""
+    n = int(dur * SR)
+    out = np.zeros(n)
+    out += machine_hum(n, 0.26, 101) * seg(n, 0, dur)
+    out += tool_clink(n, 1.4, 0.2, 3400, 131)
+    out += tool_clink(n, 6.2, 0.26, 4200, 137)   # ノギスを当てる
+    out += tool_clink(n, 8.1, 0.16, 2800, 139)
+    out += footsteps(n, 10.6, 7, 0.16)           # 引きのカットで人が歩く
+    out += tool_clink(n, 12.9, 0.14, 3000, 149)
+    return out
+
+
+def se_05(dur=15.0):
+    """05 SNS。店先 0-2.5 / ドラム 2.5-5 / 乾燥機 5-7.5 /
+    畳む 7.5-10 / 店内 10-12.5 / 店先 12.5-15"""
+    n = int(dur * SR)
+    out = np.zeros(n)
+    # 夜の屋外（頭と尻）
+    out += ambience_outdoor(n, 0.2, 151) * (seg(n, 0, 2.7) + seg(n, 12.3, dur))
+    out += rain_drip(n, 0.1, 127, 10) * seg(n, 0, 2.7)
+    # 室内＋ドラム
+    out += ambience_room(n, 0.13, 153) * seg(n, 2.4, 12.6)
+    out += drum_tumble(n, 0.3, 113) * seg(n, 2.4, 5.2)
+    out += drum_tumble(n, 0.12, 157) * seg(n, 5.0, 12.6)   # 奥で回り続ける
+    out += buzzer(n, 5.15, 0.18)                            # 乾燥機が鳴る
+    out += clink(n, 7.7, 0.12, 1500, 163)                   # タオルを台に置く
+    out += clink(n, 9.1, 0.1, 1800, 167)
+    return out
+
+
+def se_07(dur=15.0):
+    """07 社内向け。装備 0-5 / 通路 5-10 / 指さし 10-15。BGMなしなのでSEだけで持たせる"""
+    n = int(dur * SR)
+    out = np.zeros(n)
+    out += machine_hum(n, 0.3, 171) * seg(n, 0, dur)
+    # 装備：ジッパーと金具
+    out += tool_clink(n, 1.1, 0.24, 2600, 173)
+    out += tool_clink(n, 2.6, 0.18, 3800, 179)
+    out += clink(n, 3.9, 0.14, 2200, 181)
+    # 通路：フォークリフトの警告音と足音
+    out += forklift_beep(n, 5.6, 0.2, 4)
+    out += footsteps(n, 8.6, 4, 0.2)
+    # 指さし確認：足音と棚の金属音
+    out += footsteps(n, 10.4, 3, 0.15)
+    out += tool_clink(n, 12.4, 0.16, 3000, 191)
+    return out
+
+
 def mix(bgm, se, se_level=0.9, path=None):
     n = min(len(bgm), len(se))
     m = bgm[:n] * 0.82 + reverb(se[:n], mix=0.1) * se_level
@@ -219,9 +348,16 @@ def rms_db(x):
 
 
 if __name__ == "__main__":
-    b02, b04 = build_02(), build_04()
+    from bgm import build_05
+    b02, b04, b05 = build_02(), build_04(), build_05()
     s02, s04a, s04b = se_02(), se_04a(), se_04b()
-    for name, b, s in (("02", b02, s02), ("04a", b04, s04a), ("04b", b04, s04b)):
-        m = mix(b, s, path=f"{HERE}/audio_{name}.wav")
+    # 03 は 02 の BGM を流用（構成案どおり）。07 は BGM なしで SE だけ
+    silent = np.zeros(len(b02))
+    for name, b, s in (("02", b02, s02), ("04a", b04, s04a), ("04b", b04, s04b),
+                       ("03", b02, se_03()), ("05", b05, se_05()),
+                       ("07", silent, se_07())):
+        # 07 は BGM が無いので SE を上げる
+        m = mix(b, s, se_level=1.6 if name == "07" else 0.9,
+                path=f"{HERE}/audio_{name}.wav")
         print(f"audio_{name}.wav  BGM {rms_db(b):6.1f}dB  SE {rms_db(s):6.1f}dB  "
               f"mix {rms_db(m):6.1f}dB  peak {np.abs(m).max():.3f}")
