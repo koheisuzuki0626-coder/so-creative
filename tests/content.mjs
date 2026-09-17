@@ -92,6 +92,21 @@ check('画質は 1080p と書いてある', /1080p（フルHD）/.test(bodyText)
     check('さらに追加した2本にもポスター画像がある',
         /poster="assets\/works\/sns-15s-vertical\.jpg"/.test(idx)
         && /poster="assets\/works\/internal-15s\.jpg"/.test(idx));
+    /* 03 採用の3分版（2026-09-17 追加）。他のサンプルが15秒〜60秒なので、
+       尺が違うことが分かる書き方になっていること */
+    check('採用のカードにサンプルがある',
+        (await page.locator('#genre-recruit .sample-video').count()) === 1);
+    check('採用のサンプルは架空の題材だと書いてある',
+        /架空の製造業/.test(await page.locator('#genre-recruit').innerText()));
+    check('採用のサンプルは3分だと書いてある',
+        /サンプル（3分）/.test(await page.locator('#genre-recruit').innerText()));
+    check('採用のサンプルも自前で配信している',
+        /assets\/works\/recruit-3min\.mp4/.test(idx));
+    check('採用のサンプルにもポスター画像がある',
+        /poster="assets\/works\/recruit-3min\.jpg"/.test(idx));
+    /* 7ジャンル全部にサンプルが入った。1つでも欠けたらここが落ちる */
+    check('7ジャンル全部にサンプルが入っている',
+        (await page.locator('.genre .sample-video').count()) === 7);
     check('サンプルは「01 会社紹介」のカードの中にある',
         (await page.locator('#genre-company .sample-video').count()) === 1
         && (await page.locator('#works .sample-video').count()) === 0);
