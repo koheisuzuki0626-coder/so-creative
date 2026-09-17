@@ -19,8 +19,8 @@ FONTS = os.environ.get("SO_FONTS", "/tmp/fonts")
 ZEN = f"{FONTS}/ZenKakuNew-Black.ttf"
 GOTHIC = f"{FONTS}/NotoSansJP-Black.ttf"
 
-ACCENT = (245, 181, 42)       # 山吹。04のキーワードに差す1色
-NAVY = (15, 33, 64)           # 02の縦帯
+ACCENT = (245, 181, 42)       # 山吹。04ブロックの縦バーに残す1色
+NAVY = (15, 33, 64)           # 02の帯
 OUT = os.path.dirname(os.path.abspath(__file__)) + "/telop"
 os.makedirs(OUT, exist_ok=True)
 
@@ -32,16 +32,18 @@ PRODUCT_SUB = "羽根つき 冷凍餃子"
 
 # 本文 / 色を差すキーワード / デザイン
 # 02（業務ソフト）と04（食品CM）でテロップのデザインを作り分ける。
-#   white … 白帯＋黒文字＋紺の縦帯（02）。帯は画面全幅で、キーワードの色差しはしない
-#   block … 黒ブロック＋白文字、キーワードだけ山吹（04）
+#   navy  … 紺帯＋白文字＋白の縦帯（02）。帯は画面全幅
+#   block … 黒ブロック＋白文字＋山吹の縦バー（04）。文字幅ぶんのブロック
+# 文字はどちらも白。第2稿では02を黒文字、04はキーワードを山吹にしていたが、
+# 「テロップは白字の方がいい」との指摘で白に統一した。色は帯とバーだけで差をつける。
 TELOPS = {
-    "02_1": ("現場で、その場で。", None, "white"),
-    "02_2": ("事務所には、もう届いている。", None, "white"),
-    "02_3": ("日報の転記を、なくす。", None, "white"),
-    "04a_1": ("音が、ちがう。", "ちがう", "block"),
-    "04a_2": ("肉汁、そのまま。", "そのまま", "block"),
-    "04b_1": ("今日は、もう決まり。", "もう決まり", "block"),
-    "04b_2": ("フライパンひとつ、10分。", "10分", "block"),
+    "02_1": ("現場で、その場で。", None, "navy"),
+    "02_2": ("事務所には、もう届いている。", None, "navy"),
+    "02_3": ("日報の転記を、なくす。", None, "navy"),
+    "04a_1": ("音が、ちがう。", None, "block"),
+    "04a_2": ("肉汁、そのまま。", None, "block"),
+    "04b_1": ("今日は、もう決まり。", None, "block"),
+    "04b_2": ("フライパンひとつ、10分。", None, "block"),
 }
 
 SIZE = 132
@@ -112,21 +114,20 @@ def band_telop(key, text, accent, style):
             break
         size -= 4
     f = ImageFont.truetype(ZEN, size)
-    body = (17, 17, 17) if style == "white" else (255, 255, 255)
 
     def draw(d, ox, oy):
         x = ox
         for t, is_ac in parts:
-            col = ACCENT if (is_ac and style == "block") else body
+            # 文字は常に白。色差しは使わない（accent を渡せば山吹に戻せる）
+            col = ACCENT if is_ac else (255, 255, 255)
             d.text((x, oy), t, font=f, fill=col + (255,))
             x += d.textlength(t, font=f)
 
     txt = place(draw, left=LEFT, bottom=BOTTOM)
     bb = real_bbox(txt)
     img = blank()
-    if style == "block":
-        # 黒ブロックから浮かせるための軽い影。白帯の黒文字には要らない
-        img.alpha_composite(txt.filter(ImageFilter.GaussianBlur(12)))
+    # 下敷きから浮かせるための軽い影
+    img.alpha_composite(txt.filter(ImageFilter.GaussianBlur(12)))
     img.alpha_composite(txt)
     img.save(f"{OUT}/{key}.png")
     box = {"x": max(0, bb[0] - PAD_X), "y": bb[1] - PAD_T,
@@ -185,10 +186,10 @@ if __name__ == "__main__":
         b["y"], b["h"] = top, bot - top
         blk = blank()
         d = ImageDraw.Draw(blk)
-        if b["style"] == "white":
-            # 白帯は画面全幅。左端に紺の縦帯
-            d.rectangle([0, b["y"], W, b["y"] + b["h"]], fill=(255, 255, 255, 247))
-            d.rectangle([0, b["y"], 28, b["y"] + b["h"]], fill=NAVY + (255,))
+        if b["style"] == "navy":
+            # 紺帯は画面全幅。左端に白の縦帯
+            d.rectangle([0, b["y"], W, b["y"] + b["h"]], fill=NAVY + (224,))
+            d.rectangle([0, b["y"], 28, b["y"] + b["h"]], fill=(255, 255, 255, 255))
         else:
             d.rectangle([b["x"], b["y"], b["x"] + b["w"], b["y"] + b["h"]],
                         fill=(0, 0, 0, 209))
