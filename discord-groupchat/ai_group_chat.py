@@ -2114,6 +2114,9 @@ def _retry_delay(e, default=8):
 
 # 枠切れモデルのクールダウン（model -> この時刻まではスキップ）。時間が来たら自動復帰。
 GEMINI_COOLDOWN_SEC = int(os.getenv("GEMINI_COOLDOWN_SEC", "1800"))  # 既定30分
+# 枠切れで「視聴なし」になったリサーチのお題。枠が戻ったらやり直す。
+# {チャンネルID: [お題, ...]}（お題が None なら急上昇TOP100）
+_trend_redo = {}
 _gemini_cooldown = {}
 _gemini_rr = {"i": 0}  # ラウンドロビン用インデックス
 
@@ -2235,11 +2238,17 @@ async def _gemini_recovery_loop():
         cid = _gemini_watch.get("outage_cid")
         if cid and not _gemini_all_cooling():
             _gemini_watch["outage_cid"] = None
+            # 枠切れで視聴を飛ばしたお題があれば、ここでやり直す（毎回）。
+            _redo = _trend_redo.pop(cid, [])
+            if _redo:
+                _spawn(_run_trend_all(cid, _redo), cid, "YouTubeリサーチ（やり直し）")
             try:
                 await send_as(
                     orch, cid,
                     "✅ Gemini が復活しました（クールダウン明け）。"
                     "動画の視聴・画像分析・リサーチがまた使えます。"
+                    + (f"\n🔁 枠切れで視聴できなかった{len(_redo)}件を、"
+                       "いまから見直します。" if _redo else "")
                 )
             except Exception as e:  # noqa: BLE001
                 print(f"[gemini_watch] 復活通知の送信失敗: {e}")
@@ -5833,10 +5842,17 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None):
         except GeminiQuotaExceeded as e:
             quota_hit = True
             _gemini_watch["outage_cid"] = cid
+            # 枠が戻ったら、このお題は視聴つきでやり直す（本人の希望・2026-09-18）。
+            # メタ情報だけの分析は「タイトルの付け方」までしか分からず、
+            # 映像そのもののヒント（カット割り・冒頭3秒の作り）が取れない。
+            _trend_redo.setdefault(cid, [])
+            if query not in _trend_redo[cid]:
+                _trend_redo[cid].append(query)
             print(f"[trend] Gemini無料枠切れ → 視聴をスキップしメタ情報分析へ: {e}")
             await channel.send(
                 "⚠️ Gemini無料枠切れのため動画の視聴はスキップし、"
                 "メタ情報（タイトル・説明文・タグ・再生数）ベースの傾向分析に切り替えます。"
+                "\n（枠が戻ったら、このお題は動画を見て分析し直します）"
             )
             break
         except Exception as e:  # noqa: BLE001

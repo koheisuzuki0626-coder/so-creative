@@ -1515,6 +1515,33 @@ def run():
           True)
     check("待ちの上限がある（無期限に止まらない）",
           "TREND_WAIT_GEMINI_SEC" in _srcK, True)
+    # 本人の希望（2026-09-18）：「クールダウンで戻ったら毎回回す」。
+    # メタ情報だけの分析では、映像そのもののヒントが取れないため。
+    check("枠切れで視聴を飛ばしたお題を覚えておく",
+          "_trend_redo.setdefault(cid, [])" in _srcK, True)
+    check("枠が戻ったらやり直しを起動する",
+          "_redo = _trend_redo.pop(cid, [])" in _srcK
+          and "_run_trend_all(cid, _redo)" in _srcK, True)
+    check("やり直すことを本人にも伝える",
+          "見直します" in _srcK, True)
+
+    print("■ 定時モードでも雑談は止めない")
+    # 本人の希望（2026-09-18）：「雑談機能は残しておいて欲しい」。
+    # 断るのは ACT_ROUTES だけなので、会話・質問・状態確認はそのまま通る。
+    _gsC = bot.gen_settings.get("bot_mode")
+    try:
+        bot.gen_settings["bot_mode"] = "scheduled"
+        for _t in ("八幡様ってどういう意味？", "今日は疲れた",
+                   "個人事業主ってレシート貯めた方がいい？", "動画って高いの？"):
+            check(f"定時モードでも会話に流れる: {_t}",
+                  bot.classify_route(_t) in (None, "plan"), True)
+        check("状態確認も通る",
+              bot.classify_route("動画できた？", has_job=True), "status")
+    finally:
+        if _gsC is None:
+            bot.gen_settings.pop("bot_mode", None)
+        else:
+            bot.gen_settings["bot_mode"] = _gsC
     check("毎日の実行では分析済みを飛ばす",
           "skip_analyzed=True" in _srcK, True)
     check("お題指定でも飛ばすかを選べる",
