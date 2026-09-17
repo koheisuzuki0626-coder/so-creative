@@ -270,8 +270,10 @@ check('ナレーションの工数は1本 1.0h（AI・人で同じ）', HOURS_NA
 }
 
 /* ---- 段の順序と独立性 ---- */
-/* 直前の全組み合わせのループが 'none' で終わるので、素の状態（AI）に戻す。
-   戻さないと差し引きが乗って「梅は従来価格を据え置き」が落ちる */
+/* 直前の「松のほうが安い」の確認ループが 'none' で終わるので、素の状態（AI）に戻す。
+   戻さないと差し引きが乗って、以降の金額の検査が全部ずれる */
+await page.locator('#calc-nar .calc-opt[data-nar="ai"]').click();
+await page.waitForTimeout(60);
 const ladder = [];
 for (const t of TIERS) ladder.push(await pick(page, t.id, 90, 1));
 check('段が上がるほど高い', ladder[0] < ladder[1] && ladder[1] < ladder[2], JSON.stringify(ladder));
@@ -302,7 +304,7 @@ const body = q.get('body') || '';
 check('相談ボタンがメールを開く', href.startsWith('mailto:bonvoyage.ti@icloud.com?'));
 check('件名に段と尺と本数が入る', /竹・90秒 × 2本/.test(q.get('subject') || ''), q.get('subject'));
 check('本文に選んだ内容が入る',
-    /・仕上げ：竹（上）/.test(body) && /・ナレーション：なし/.test(body)
+    /・仕上げ：竹（上）/.test(body) && /・ナレーション：AI（料金に含まれます）/.test(body)
     && new RegExp(`・概算金額：¥${price(TIERS[1], 90, 2).toLocaleString('ja-JP')}（税別）`).test(body)
     && new RegExp(`・納品目安：約${leadWeeks(TIERS[1], 90)}週間`).test(body));
 check('本文に内訳も入る', /・基本料金：¥90,000/.test(body) && /・尺 90秒 × ¥4,900（竹）/.test(body)
