@@ -72,6 +72,26 @@ check('画質は 1080p と書いてある', /1080p（フルHD）/.test(bodyText)
     check('追加した2本にもポスター画像がある',
         /poster="assets\/works\/service-15s\.jpg"/.test(idx)
         && /poster="assets\/works\/cm-15s-taste\.jpg"/.test(idx));
+    /* 05 SNSショートと 07 社内向けのサンプル（2026-09-17 追加）。
+       05 は最初から縦型で組んでいるので、16:9 のまま出していないことも見る */
+    check('SNSショートのカードにサンプルがある',
+        (await page.locator('#genre-sns .sample-video').count()) === 1);
+    check('SNSショートのサンプルは架空の題材だと書いてある',
+        /架空のコインランドリー/.test(await page.locator('#genre-sns').innerText()));
+    check('SNSショートのサンプルは縦型で表示している',
+        (await page.locator('#genre-sns .sample-video.is-vertical').count()) === 1
+        && await page.locator('#genre-sns .sample-video').evaluate(
+            (v) => v.clientHeight > v.clientWidth));
+    check('社内向けのカードにサンプルがある',
+        (await page.locator('#genre-internal .sample-video').count()) === 1);
+    check('社内向けのサンプルは架空の題材だと書いてある',
+        /架空の倉庫/.test(await page.locator('#genre-internal').innerText()));
+    check('さらに追加した2本も自前で配信している',
+        /assets\/works\/sns-15s-vertical\.mp4/.test(idx)
+        && /assets\/works\/internal-15s\.mp4/.test(idx));
+    check('さらに追加した2本にもポスター画像がある',
+        /poster="assets\/works\/sns-15s-vertical\.jpg"/.test(idx)
+        && /poster="assets\/works\/internal-15s\.jpg"/.test(idx));
     check('サンプルは「01 会社紹介」のカードの中にある',
         (await page.locator('#genre-company .sample-video').count()) === 1
         && (await page.locator('#works .sample-video').count()) === 0);

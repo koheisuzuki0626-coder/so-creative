@@ -61,9 +61,8 @@ def measure(path, tp=-2.0):
     return tuple(vals[k] for k in keys)
 
 
-def build(name, cuts, telops, dim, logo, logo_at, dim_at, audio,
-          canvas=(1920, 1080), tp=-2.0, limit=0.82, loudnorm=True):
-    """cuts: [(file, in, dur)] / telops: [(key, st, en)]"""
+def render_silent(path, cuts, telops, dim, logo, logo_at, dim_at, canvas):
+    """映像だけを1本に焼く。cuts: [(file, in, dur)] / telops: [(key, st, en)]"""
     total = sum(d for _, _, d in cuts)   # 15秒とは限らない（3分版がある）
     cw, ch = canvas
     ar = f"{cw}/{ch}"
@@ -116,12 +115,50 @@ def build(name, cuts, telops, dim, logo, logo_at, dim_at, audio,
         cur = nxt
     fc.append(f"{cur}null,format=yuv420p[vout]")
 
-    silent = f"{OUT}/{name}_silent.mp4"
-    cmd = [FF, "-loglevel", "error", "-y"] + ins + [
+    subprocess.run([FF, "-loglevel", "error", "-y"] + ins + [
         "-filter_complex", ";".join(fc), "-map", "[vout]", "-t", str(total), "-an",
         "-c:v", "libx264", "-crf", "16", "-preset", "slow",
-        "-movflags", "+faststart", silent]
-    subprocess.run(cmd, check=True)
+        "-movflags", "+faststart", path], check=True)
+
+
+def build(name, cuts, telops, dim, logo, logo_at, dim_at, audio,
+          canvas=(1920, 1080), tp=-2.0, limit=0.82, loudnorm=True, chunk=0):
+    """chunk を渡すとその本数ずつ別々に焼いてから連結する。
+
+    テロップは1枚につき PNG を尺いっぱい展開するので、3分 × 44枚を一度に
+    流すとメモリが 14GB を超えて止まる。章ごとに分けると同じ絵のまま収まる。
+    """
+    silent = f"{OUT}/{name}_silent.mp4"
+    if not chunk or len(cuts) <= chunk:
+        render_silent(silent, cuts, telops, dim, logo, logo_at, dim_at, canvas)
+    else:
+        parts, off = [], 0.0
+        for n in range(0, len(cuts), chunk):
+            grp = cuts[n:n + chunk]
+            dur = sum(d for _, _, d in grp)
+            # このかたまりに収まるテロップだけを、頭を0に寄せて渡す
+            tl = []
+            for (k, st, en) in telops:
+                if off <= st < off + dur:
+                    assert en <= off + dur + 1e-6, f"{k} がかたまりをまたいでいる"
+                    tl.append((k, st - off, en - off))
+            in_grp = (lambda x: off <= x < off + dur)
+            part = f"{OUT}/{name}_part{n // chunk:02d}.mp4"
+            render_silent(part, grp, tl,
+                          dim if dim and in_grp(dim_at) else None,
+                          logo if logo and in_grp(logo_at) else None,
+                          logo_at - off, dim_at - off, canvas)
+            parts.append(part)
+            print(f"  {name} part{n // chunk:02d} ok", flush=True)
+            off += dur
+        lst = f"{OUT}/{name}_parts.txt"
+        with open(lst, "w") as f:
+            f.write("".join(f"file '{p}'\n" for p in parts))
+        subprocess.run([FF, "-loglevel", "error", "-y", "-f", "concat",
+                        "-safe", "0", "-i", lst, "-c", "copy",
+                        "-movflags", "+faststart", silent], check=True)
+        for p in parts + [lst]:
+            os.remove(p)
 
     # SE だけのトラック（BGM なし）は loudnorm を通さない。
     # LUFS が低く出るぶん I=-16 に合わせようと持ち上げられ、
@@ -220,7 +257,8 @@ if __name__ == "__main__":
             st = (i - 1) * 5.0
             tel.append((f"r3_{i:02d}", st + 0.45, st + 4.65))
         build("03_recruit_3min", cuts, tel,
-              "dim34", "r3_logo", 176.2, 175.8, f"{HERE}/audio_03_3min.wav")
+              "dim34", "r3_logo", 176.2, 175.8, f"{HERE}/audio_03_3min.wav",
+              chunk=6)
 
     # 訴求B（時短）は取りやめ。名前を明示したときだけ作る
     if "04b_time_15s" in sys.argv[1:]:

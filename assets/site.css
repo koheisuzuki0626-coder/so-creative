@@ -1461,3 +1461,14 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
 .genre .sample { margin: 22px 0 0; }
 .genre .sample-cap { margin-top: 12px; }
 .genre .sample-title { font-size: .95rem; }
+
+/* 縦型（SNSショート）のサンプル。16:9のまま流すと黒帯だらけになるので、
+   比率を9:16にして幅を絞る。スマホの見え方に寄せたいので中央には置かない */
+.sample-video.is-vertical {
+    aspect-ratio: 9 / 16;
+    width: 100%;
+    max-width: 280px;
+}
+@media (max-width: 700px) {
+    .sample-video.is-vertical { max-width: 240px; }
+}
