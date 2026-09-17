@@ -46,11 +46,11 @@ def overlay_y(st):
     return f"'{RISE}*max(0,1-(t-{st})/{RISE_D})'"
 
 
-def measure(path):
+def measure(path, tp=-2.0):
     """loudnorm の1パス目。2パスにしないと AAC 変換でピークが 0dB に張り付く。"""
     out = subprocess.run(
         [FF, "-hide_banner", "-i", path, "-af",
-         "loudnorm=I=-16:TP=-2.0:print_format=json", "-f", "null", "-"],
+         f"loudnorm=I=-16:TP={tp}:print_format=json", "-f", "null", "-"],
         capture_output=True, text=True).stderr
     keys = ("input_i", "input_tp", "input_lra", "input_thresh", "target_offset")
     vals = {}
@@ -62,7 +62,7 @@ def measure(path):
 
 
 def build(name, cuts, telops, dim, logo, logo_at, dim_at, audio,
-          canvas=(1920, 1080)):
+          canvas=(1920, 1080), tp=-2.0, limit=0.82, loudnorm=True):
     """cuts: [(file, in, dur)] / telops: [(key, st, en)]"""
     cw, ch = canvas
     ar = f"{cw}/{ch}"
@@ -122,14 +122,21 @@ def build(name, cuts, telops, dim, logo, logo_at, dim_at, audio,
         "-movflags", "+faststart", silent]
     subprocess.run(cmd, check=True)
 
-    mi, mtp, mlra, mth, off = measure(audio)
+    # SE だけのトラック（BGM なし）は loudnorm を通さない。
+    # LUFS が低く出るぶん I=-16 に合わせようと持ち上げられ、
+    # ピークが 0dB に張り付く。se.py 側で正規化済みなのでそのまま使う
+    if loudnorm:
+        mi, mtp, mlra, mth, off = measure(audio, tp)
+        af = (f"loudnorm=I=-16:TP={tp}:LRA=11:measured_I={mi}:measured_TP={mtp}:"
+              f"measured_LRA={mlra}:measured_thresh={mth}:offset={off}:linear=true,"
+              f"alimiter=limit={limit}:attack=1:release=40")
+    else:
+        af = f"alimiter=limit={limit}:attack=5:release=60,volume=0.8"
     master = f"{OUT}/{name}_master.mp4"
     subprocess.run([
         FF, "-loglevel", "error", "-y", "-i", silent, "-i", audio,
         "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy",
-        "-af", (f"loudnorm=I=-16:TP=-2.0:LRA=11:measured_I={mi}:measured_TP={mtp}:"
-                f"measured_LRA={mlra}:measured_thresh={mth}:offset={off}:linear=true,"
-                "alimiter=limit=0.82:attack=1:release=40"),
+        "-af", af,
         "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-shortest",
         "-movflags", "+faststart", master], check=True)
 
@@ -197,7 +204,8 @@ if __name__ == "__main__":
               [(f"{GEN}/07_v4.mp4", 0.0, 4.2), (f"{GEN}/07_v2.mp4", 0.1, 5.4),
                (f"{GEN}/07_v3.mp4", 0.1, 5.4)],
               [("07_1", 0.35, 4.05), ("07_2", 4.60, 9.45), ("07_3", 10.00, 14.95)],
-              None, None, 0, 0, f"{HERE}/audio_07.wav")
+              None, None, 0, 0, f"{HERE}/audio_07.wav",
+              loudnorm=False, limit=0.72)
 
     # 訴求B（時短）は取りやめ。名前を明示したときだけ作る
     if "04b_time_15s" in sys.argv[1:]:

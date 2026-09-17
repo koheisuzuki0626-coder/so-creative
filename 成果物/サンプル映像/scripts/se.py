@@ -334,10 +334,12 @@ def se_07(dur=15.0):
     return out
 
 
-def mix(bgm, se, se_level=0.9, path=None):
+def mix(bgm, se, se_level=0.9, path=None, peak=0.9, drive=1.15):
+    """drive を上げるとサチュレーションが強まり、足音や金具のような
+    突出したトランジェントが潰れてピークとRMSの差が縮む。"""
     n = min(len(bgm), len(se))
     m = bgm[:n] * 0.82 + reverb(se[:n], mix=0.1) * se_level
-    m = normalize(np.tanh(m * 1.15), 0.9)
+    m = normalize(np.tanh(m * drive), peak)
     if path:
         write_wav(path, m)
     return m
@@ -356,8 +358,12 @@ if __name__ == "__main__":
     for name, b, s in (("02", b02, s02), ("04a", b04, s04a), ("04b", b04, s04b),
                        ("03", b02, se_03()), ("05", b05, se_05()),
                        ("07", silent, se_07())):
-        # 07 は BGM が無いので SE を上げる
-        m = mix(b, s, se_level=1.6 if name == "07" else 0.9,
+        # 07 は BGM が無いので SE を上げる。ただし足音や金具の
+        # トランジェントが多く AAC 変換でピークが張り付くので、
+        # レベルは控えめにして書き出しのピークも下げる
+        m = mix(b, s, se_level=1.2 if name == "07" else 0.9,
+                peak=0.62 if name == "07" else 0.9,
+                drive=3.2 if name == "07" else 1.15,
                 path=f"{HERE}/audio_{name}.wav")
         print(f"audio_{name}.wav  BGM {rms_db(b):6.1f}dB  SE {rms_db(s):6.1f}dB  "
               f"mix {rms_db(m):6.1f}dB  peak {np.abs(m).max():.3f}")
