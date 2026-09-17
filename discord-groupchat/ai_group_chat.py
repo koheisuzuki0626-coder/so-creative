@@ -5597,7 +5597,15 @@ def _trend_topic(text):
                flags=re.I).strip("　 。、")
     # 頭の「今／ちょっと／試しに／もう一回」は末尾処理より先に落とす。
     # 末尾から削ってからだと「ちょっと」が「ちょっ」の残骸になって題材に見える。
-    t = _TREND_STRIP_HEAD_RE.sub("", t).strip("　 。、")
+    # 事故（2026-09-18 02:32）：「今、試しにリサーチしてみて」で YouTube を
+    # 【試し】で検索し、裏技検証動画50本を分析して返した。この正規表現は ^ 固定で
+    # 1回しか効かないため、「今」を落とした時点で終わり「試しに」が残っていた。
+    # 副詞が続く限り繰り返し落とす。
+    for _ in range(4):
+        _before = t
+        t = _TREND_STRIP_HEAD_RE.sub("", t).strip("　 。、")
+        if t == _before:
+            break
     m = _TREND_FRAME_RE.match(t)
     if m and m.group("topic").strip():
         t = m.group("topic").strip()

@@ -120,3 +120,4 @@ chat	クロード2へ、このヒアリングシートを元に構成案を作�
 chat	こうやって出る	chat
 chat	こんな感じになった	chat
 chat	これが今の画面	chat
+chat	今、試しにリサーチしてみて	chat
