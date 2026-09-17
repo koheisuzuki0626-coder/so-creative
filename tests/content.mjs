@@ -57,6 +57,21 @@ check('画質は 1080p と書いてある', /1080p（フルHD）/.test(bodyText)
     check('展示会のサンプルは無音だと書いてある',
         /15秒・無音/.test(await page.locator('#genre-event').innerText()));
     check('展示会のサンプルは実際に音が入っていない', await page.locator('#genre-event .sample-video').evaluate((v) => v.muted === true));
+    /* 02 サービス紹介と 04 広告CM のサンプル（2026-09-17 追加）。
+       どちらも架空の題材で、クライアント実績には見せない書き方になっていること */
+    check('サービス紹介のカードにサンプルがある',
+        (await page.locator('#genre-service .sample-video').count()) === 1);
+    check('サービス紹介のサンプルは架空の題材だと書いてある',
+        /架空の業務ソフト/.test(await page.locator('#genre-service').innerText()));
+    check('広告CMのカードにサンプルがある',
+        (await page.locator('#genre-ad .sample-video').count()) === 1);
+    check('広告CMのサンプルは架空の題材だと書いてある',
+        /架空の冷凍餃子/.test(await page.locator('#genre-ad').innerText()));
+    check('追加した2本も自前で配信している',
+        /assets\/works\/service-15s\.mp4/.test(idx) && /assets\/works\/cm-15s-taste\.mp4/.test(idx));
+    check('追加した2本にもポスター画像がある',
+        /poster="assets\/works\/service-15s\.jpg"/.test(idx)
+        && /poster="assets\/works\/cm-15s-taste\.jpg"/.test(idx));
     check('サンプルは「01 会社紹介」のカードの中にある',
         (await page.locator('#genre-company .sample-video').count()) === 1
         && (await page.locator('#works .sample-video').count()) === 0);
