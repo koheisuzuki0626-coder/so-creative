@@ -276,38 +276,29 @@ for (const [f, html] of [['index.html', idx], ['about.html', about], ['privacy.h
 const rb = await (await page.request.get(`${BASE}/robots.txt`)).text();
 check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) && !/Disallow: \//.test(rb));
 
-/* ---- ロードマップ(社内用) ----
-   数字はサイトの料金表・工数モデルから出しているので、
-   料金を動かしたらここもズレる。主要な数字だけ突き合わせる */
+/* ---- ロードマップ(社内用・要約版) ----
+   9/17 に2ページに割った。roadmap.html は判断だけを短く置き、
+   根拠（各段階の中身・松2本の実測・12ヶ月の計算）は record.html に移した。
+   折りたたみを開かないと読めない資料だったのが「分かりづらい」の中身だったので、
+   要約版には fold を1つも置かない。ここではそれを検査する */
 {
     const rm = await open(browser, { page: 'roadmap.html' });
-
-    /* 折りたたむ前に、たたんだ状態のままで主要な数字が読めるかを見る。
-       たたんだ見出しに数字が出ていないと、開かないと何も分からない資料になる */
-    const folded = await rm.locator('body').innerText();
-    check('たたんだままでも年商・年収が読める',
-        /¥11,295,000/.test(folded) && /¥10,408,605/.test(folded));
-    check('たたんだままでも天井と必要な問い合わせ数が読める',
-        /1,950万/.test(folded) && /6\.7件/.test(folded));
-
-    /* 折りたたみを全部開いてから、中身の数字を突き合わせる */
-    const foldCount = await rm.evaluate(() => {
-        const d = document.querySelectorAll('details.fold');
-        d.forEach((x) => { x.open = true; });
-        return d.length;
-    });
-    check('折りたたみが存在する', foldCount >= 5);
-    check('「すべて開く」ボタンがある', await rm.locator('#openall').count() === 1);
-
     const t = await rm.locator('body').innerText();
-    check('ロードマップの目標が計画と一致', /¥10,695,000/.test(t));
-    check('ロードマップの四半期計が計画と一致',
-        /¥1,800,000/.test(t) && /¥2,745,000/.test(t) && /¥3,375,000/.test(t) && /¥11,295,000/.test(t));
-    check('未開業であることを書いている', /未開業/.test(t));
-    check('クレジット残高とプランが最新', /246\.84/.test(t) && /Max/.test(t));
+
+    check('目標が計画と一致', /¥11,295,000/.test(t) && /¥10,408,605/.test(t));
+    check('要約版に折りたたみを置いていない',
+        await rm.locator('details').count() === 0);
+    check('裏づけのページへ導線がある',
+        await rm.locator('a[href^="record.html"]').count() >= 2);
+
+    /* いまの位置。4つのタイルで、営業を始める前に押さえる数字が読める */
+    const now = await rm.locator('.now .stop b').allInnerTexts();
+    check('いまの位置が4つのタイルで読める', now.length === 4, now.join('/'));
+    check('未開業・クレジット残・事例0本・初入金までが出ている',
+        now.join('/') === '未開業/246.84/0本/約1ヶ月', now.join('/'));
+
     /* 支払条件を 9/17 に決めた（着手金50%＋納品後50%、期日は納品日から30日以内）。
-       手元資金の表はこの前提で引き直してある。以前の「月末締め・翌月末払い」の
-       数字（56万／70万／86万）が残っていたら、営業の判断材料が古いということ */
+       手元資金の表はこの前提で引き直してある */
     check('支払条件が手元資金の前提に入っている',
         /着手金50% は着手した月/.test(t) && /残金50% は納品月の翌月/.test(t));
     /* 表そのものを見る。前後の比較を書いた本文にも旧数字が出るので、
@@ -316,19 +307,71 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     check('必要な貯蓄が新しい支払条件で引き直されている',
         need.join('/') === '40万/50万/60万', need.join('/'));
     check('底が10月末になっている', /底は10月末/.test(t));
+    check('着手金を値引きの対象にしないと書いている', /着手金は値引きの対象にしない/.test(t));
+
+    /* 4段階は1行ずつの表に畳んだ。月商は計画（README の料金の考え方）と同じ */
+    const stages = await rm.locator('table.t-wide tbody tr').count();
+    check('4つの段階が表になっている', stages >= 4, String(stages));
+    check('段階ごとの月商が計画と一致',
+        /¥600,000/.test(t) && /¥915,000/.test(t) && /¥1,125,000/.test(t));
+
+    /* P0 はいま動いている段階なので、要約版に残りタスクを置く */
+    check('P0 の残りタスクが載っている',
+        ['開業届', 'ひな形', 'プロフィール', '手元資金'].every((w) => t.includes(w)));
+    check('決着ぶんが済に入っている',
+        /支払条件（9\/17）/.test(t) && /インボイスは登録しない/.test(t));
+    check('崩れるときの表がある', /この計画が崩れるとき/.test(t));
+    check('未開業であることを書いている', /未開業/.test(t));
+
+    check('社内用なので検索に出さない',
+        (await rm.evaluate(() => document.querySelector('meta[name="robots"]')?.content || '')).includes('noindex'));
+    check('ロードマップで横溢れなし',
+        (await rm.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 0);
+    /* 要約版なので長さそのものを見る。ここが膨らんだら分割した意味がなくなる */
+    check('要約版が長くなりすぎていない', t.length < 4000, String(t.length));
+    await rm.close();
+}
+
+/* ---- 実測記録と裏づけ(社内用) ----
+   もとは roadmap.html の中にあった。数字はサイトの料金表・工数モデルから
+   出しているので、料金を動かしたらここもズレる。主要な数字だけ突き合わせる */
+{
+    const rc = await open(browser, { page: 'record.html' });
+
+    /* 折りたたむ前に、たたんだ状態のままで主要な数字が読めるかを見る。
+       たたんだ見出しに数字が出ていないと、開かないと何も分からない資料になる */
+    const folded = await rc.locator('body').innerText();
+    check('たたんだままでも年商・年収が読める',
+        /¥11,295,000/.test(folded) && /¥10,408,605/.test(folded));
+    check('たたんだままでも天井と必要な問い合わせ数が読める',
+        /1,950万/.test(folded) && /6\.7件/.test(folded));
+    check('ロードマップへ戻る導線がある',
+        await rc.locator('a[href^="roadmap.html"]').count() >= 1);
+
+    /* 折りたたみを全部開いてから、中身の数字を突き合わせる */
+    const foldCount = await rc.evaluate(() => {
+        const d = document.querySelectorAll('details.fold');
+        d.forEach((x) => { x.open = true; });
+        return d.length;
+    });
+    check('折りたたみが存在する', foldCount >= 5);
+    check('「すべて開く」ボタンがある', await rc.locator('#openall').count() === 1);
+
+    const t = await rc.locator('body').innerText();
+    check('四半期計が計画と一致',
+        /¥1,800,000/.test(t) && /¥2,745,000/.test(t) && /¥3,375,000/.test(t) && /¥11,295,000/.test(t));
+    check('P1〜P3 の中身が移っている',
+        /90秒で足場をつくる/.test(t) && /3分を売れるようにする/.test(t) && /年収1,000万に乗せる/.test(t));
     /* サンプルは 9/17 に5本足して7ジャンル全部に載った。
        「01と06の2本だけ」が残っていたら実態とズレている */
     check('サンプルが7ジャンル全部に載ったと書いてある',
         /7ジャンル全部にサンプルが載った/.test(t) && /719\.30/.test(t));
     check('サンプルが架空案件だと断ってある', /全部が架空案件のもの/.test(t));
-    /* インボイスは 9/17 に「登録しない」で決着。要否を保留にしたままだと、
-       開業届と請求書のひな形が止まる */
-    check('インボイスの扱いが決まったと書いてある',
-        /決めた（9\/17・登録しない）/.test(t) && /免税事業者のまま/.test(t));
     /* 実工数は工程別に測り直して 11.5h（本編10.5 ＋ 15秒版1.0）。
        以前の「17.0h」は内訳を取る前の概算だった（2026-09-16 訂正） */
     check('松2本の実測が記録されている',
         /2,442/.test(t) && /1,221/.test(t) && /11\.5時間/.test(t));
+    check('クレジット残高とプランが最新', /246\.84/.test(t) && /Max/.test(t));
     check('松の4工程を実際に通した記録がある',
         /4K化/.test(t) && /Reframe 9:16/.test(t) && /Seed Audio/.test(t));
     check('4工程の原価の内訳が載っている',
@@ -344,10 +387,6 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     check('縦型は追加本数で作ると書いている',
         /追加の1本|追加本数/.test(t) && /¥65,000\/h/.test(t));
     check('1,080クレジットを授業料として記録している', /1,080クレジットは授業料/.test(t));
-    check('社内用なので検索に出さない',
-        (await rm.evaluate(() => document.querySelector('meta[name="robots"]')?.content || '')).includes('noindex'));
-    check('ロードマップで横溢れなし',
-        (await rm.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 0);
     check('実際に納品した2本の尺と時間単価が載っている',
         /59秒/.test(t) && /15秒/.test(t) && /¥41,905\/h/.test(t) && /¥80,000\/h/.test(t));
     check('料金表どおりの金額を出している',
@@ -357,19 +396,17 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     check('追加尺がほぼ純利益だと書いている', /純利益/.test(t) && /2時間/.test(t));
     check('2本・架空案件だけの数字だと断っている', /2本/.test(t) && /架空/.test(t));
     check('営業ロープレであって実案件でないと明記', /ロープレ/.test(t) && /架空/.test(t));
-    check('P0 から計測用テスト制作へリンクしている',
-        await rm.locator('.stage a[href="#test-build"]').count() >= 1);
-    for (const f of ['index.html', 'about.html']) {
-        check(`${f} から roadmap.html にリンクしていない`,
-            !/roadmap\.html/.test(await (await rm.request.get(`${BASE}/${f}`)).text()));
-    }
-    await rm.close();
+    check('社内用なので検索に出さない',
+        (await rc.evaluate(() => document.querySelector('meta[name="robots"]')?.content || '')).includes('noindex'));
+    check('裏づけのページで横溢れなし',
+        (await rc.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 0);
+    await rc.close();
 }
 
 /* ---- 配信できるか ---- */
 for (const f of ['assets/site.css', 'assets/logo-mark.png', 'assets/favicon.png',
                  'assets/apple-touch-icon.png', 'assets/ogp.png', 'privacy.html',
-                 'funnel.html', 'roadmap.html']) {
+                 'funnel.html', 'roadmap.html', 'record.html']) {
     const st = (await page.request.get(`${BASE}/${f}`)).status();
     check(`${f} が配信できる`, st === 200, `HTTP ${st}`);
 }
