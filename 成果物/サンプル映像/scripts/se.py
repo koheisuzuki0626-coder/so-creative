@@ -397,11 +397,81 @@ def se_03_3min(dur=180.0):
     return out
 
 
-def mix(bgm, se, se_level=0.9, path=None, peak=0.9, drive=1.15):
+VO = os.environ.get("SO_VO", f"{HERE}/vo")
+
+
+def _read_wav(path):
+    """wav を -1..1 のモノラルで読む。"""
+    with wave.open(path) as w:
+        sr, ch = w.getframerate(), w.getnchannels()
+        a = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16)
+    a = a.reshape(-1, ch).mean(axis=1) / 32768.0
+    if sr != SR:                       # 24kHz で返ってくるので 48kHz に合わせる
+        a = np.interp(np.linspace(0, len(a) - 1, int(len(a) * SR / sr)),
+                      np.arange(len(a)), a)
+    return a
+
+
+def _trim(a, thr=0.02):
+    """前後の無音を落とす。TTS は頭とお尻に 0.3〜0.5秒の間を付けてくる。"""
+    env = np.abs(a)
+    idx = np.nonzero(env > env.max() * thr)[0]
+    if len(idx) == 0:
+        return a
+    a = a[idx[0]:idx[-1] + 1]
+    nf = int(0.02 * SR)                # ぶつ切りにしない
+    a[:nf] *= np.linspace(0, 1, nf)
+    a[-nf:] *= np.linspace(1, 0, nf)
+    return a / (np.abs(a).max() + 1e-9)
+
+
+def voice_03_3min(dur=180.0, at=0.30, level=0.62):
+    """インタビュー5人ぶんの声を、それぞれのカットの頭から at 秒後に置く。
+
+    台詞は 4.0〜4.5秒に収まっているので、5秒のカットからはみ出さない。
+    """
+    n = int(dur * SR)
+    out = np.zeros(n)
+    for i in (17, 18, 19, 22, 25, 34):
+        f = f"{VO}/vo{i}.wav"
+        if not os.path.exists(f):
+            print(f"  [voice] {f} が無い")
+            continue
+        a = _trim(_read_wav(f))
+        # ピークで揃えると、間の少ない台詞だけ大きく聞こえる。
+        # RMS で合わせてからピークだけ抑える
+        a = a * (level * 0.22 / max(np.sqrt(np.mean(a ** 2)), 1e-9))
+        a = np.tanh(a * 1.6) / 1.6
+        p = int(((i - 1) * 5.0 + at) * SR)
+        ln = min(len(a), n - p)
+        out[p:p + ln] += a[:ln]
+    return out
+
+
+def duck_by(x, ctrl, depth=0.42, attack=0.12, release=0.45):
+    """ctrl が鳴っている間だけ x を下げる。台詞の下で BGM と SE を引く。"""
+    env = np.abs(ctrl)
+    na, nr = int(attack * SR), int(release * SR)
+    # 立ち上がりは速く、戻りはゆっくり（片側移動最大 → 一次で平滑化）
+    g = np.zeros(len(env))
+    hold = 0.0
+    step_up, step_dn = 1.0 / max(na, 1), 1.0 / max(nr, 1)
+    thr = env.max() * 0.04 if env.max() > 0 else 1.0
+    for i in range(0, len(env), 64):
+        on = 1.0 if env[i:i + 64].max() > thr else 0.0
+        hold = min(1.0, hold + step_up * 64) if on else max(0.0, hold - step_dn * 64)
+        g[i:i + 64] = hold
+    return x * (1.0 - depth * g)
+
+
+def mix(bgm, se, se_level=0.9, path=None, peak=0.9, drive=1.15, voice=None):
     """drive を上げるとサチュレーションが強まり、足音や金具のような
     突出したトランジェントが潰れてピークとRMSの差が縮む。"""
     n = min(len(bgm), len(se))
     m = bgm[:n] * 0.82 + reverb(se[:n], mix=0.1) * se_level
+    if voice is not None:
+        v = voice[:n]
+        m = duck_by(m, v) + v          # 台詞の下だけ音楽と環境音を引く
     m = normalize(np.tanh(m * drive), peak)
     if path:
         write_wav(path, m)
@@ -422,12 +492,14 @@ if __name__ == "__main__":
                        ("03", b02, se_03()), ("05", b05, se_05()),
                        ("07", silent, se_07()),
                        ("03_3min", build_03(), se_03_3min())):
+        vo = voice_03_3min() if name == "03_3min" else None
         # 07 は BGM が無いので SE を上げる。ただし足音や金具の
         # トランジェントが多く AAC 変換でピークが張り付くので、
         # レベルは控えめにして書き出しのピークも下げる
         m = mix(b, s, se_level=1.2 if name == "07" else 0.9,
                 peak=0.62 if name == "07" else 0.9,
                 drive=3.2 if name == "07" else 1.15,
+                voice=vo,
                 path=f"{HERE}/audio_{name}.wav")
         print(f"audio_{name}.wav  BGM {rms_db(b):6.1f}dB  SE {rms_db(s):6.1f}dB  "
               f"mix {rms_db(m):6.1f}dB  peak {np.abs(m).max():.3f}")
