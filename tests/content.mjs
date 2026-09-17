@@ -41,6 +41,36 @@ check('金額の表示は税込で揃っている',
 /* 免税事業者だと先に伝える。発注側は仕入税額控除の扱いが変わるので、
    見積りを見たあとの画面に置く。経過措置の割合や期限は時期で変わるので
    書かない（書くと古くなる） */
+/* 支払条件。着手金を取る理由（生成費が納品前に出る）と、キャンセル時の
+   段階を書いてあること。金額の割合は料金セクションと FAQ の2か所に
+   書いているので、片方だけ直すと嘘になる */
+{
+    const pay = await page.locator('.plan-pay').innerText();
+    check('着手金50%と書いてある', /着手金\s*50%/.test(pay), pay.slice(0, 40));
+    check('残金50%と納品後を書いてある', /残金\s*50%/.test(pay) && /納品後/.test(pay));
+    check('支払期日を書いてある', /納品日から30日以内/.test(pay));
+    check('キャンセルの段階を書いてある',
+        ['構成案', '絵コンテ', '初稿'].every(w => pay.includes(w)), pay);
+    const payFaq = faqUi.find(u => /お支払い/.test(u.q));
+    check('支払条件を FAQ にも置いている', !!payFaq);
+    const figures = ['50%', '80%', '100%', '30日以内'];
+    check('FAQ と料金セクションで割合・期日が揃っている',
+        figures.every(w => pay.includes(w) && payFaq.a.includes(w)),
+        figures.filter(w => !(pay.includes(w) && payFaq.a.includes(w))).join(','));
+}
+/* ロゴは「重ねる」と「映像の中の物に入れる」で難易度が違う。
+   混ぜて書くと期待がずれるので、両方に触れていることを見る */
+{
+    const logo = faqUi.find(u => /ロゴを映像/.test(u.q));
+    check('ロゴの FAQ がある', !!logo);
+    check('重ねられると書いてある', /重ねて/.test(logo.a), logo && logo.a.slice(0, 40));
+    check('映像の中の物に入れるのは苦手だと書いてある',
+        /映像の中の物にロゴが入った状態をつくるのは苦手/.test(logo.a));
+    check('苦手な例を挙げている',
+        ['看板', '車体', 'パッケージ', '名札'].every(w => logo.a.includes(w)));
+    check('理由（細かい文字を描けない）を書いてある', /細かい文字を正しく描けない/.test(logo.a));
+    check('代わりの進め方を書いてある', /無地のまま生成/.test(logo.a));
+}
 {
     const tax = await page.locator('.plan-tax').innerText();
     check('インボイス未登録を料金セクションに明記している',

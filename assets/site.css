@@ -995,6 +995,28 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     border: 1.5px solid var(--accent);
 }
 
+/* お支払いとキャンセル。plan-common と同じ箱で、中身は1列の箇条書き */
+.plan-pay {
+    margin-top: 20px;
+    padding: 26px 30px 28px;
+    border-radius: 18px;
+    background: #fff;
+    border: 1px solid var(--line);
+}
+.plan-pay-head {
+    margin: 0 0 16px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    color: var(--accent-ink);
+}
+
+/* 見た目は calc-why と同じだが、クラスは分ける。
+   金額の内訳の検査が .calc-why を1つに絞って見ているため */
+.pay-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.pay-list li { font-size: 0.95rem; color: var(--ink-dim); }
+.pay-list b { display: block; font-weight: 500; color: var(--ink); margin-bottom: 2px; }
+
 /* インボイスの注記。金額の話なので料金の最後に置く。
    目立たせすぎず、読み飛ばされない程度の扱いにする */
 .plan-tax {
