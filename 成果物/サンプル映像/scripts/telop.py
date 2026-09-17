@@ -25,6 +25,8 @@ ZEN = f"{FONTS}/ZenKakuNew-Black.ttf"
 GOTHIC = f"{FONTS}/NotoSansJP-Black.ttf"
 # 明朝は 05（縦型）だけで使う。ゴシックより「読ませる」より「効かせる」向き
 MINCHO = f"{FONTS}/NotoSerifJP-Black.ttf"
+# 締めの小さい文字。極太を小さく置くと潰れるので中細を使う
+MINCHO_M = f"{FONTS}/NotoSerifJP-Medium.ttf"
 
 ACCENT = (245, 181, 42)       # 山吹。04ブロックの縦バーに残す1色
 NAVY = (15, 33, 64)           # 02の帯
@@ -103,17 +105,11 @@ TELOPS_V = {
     "05_2": ("まだ、空いてる。", "空いてる", "emo"),
     "05_3": ("乾燥、30分。", "30分", "emo"),
     "05_4": ("畳んで、帰る。", "帰る", "emo"),
-    # 長い2本は2行に割る。1行のままだと文字を小さくするしかなく、
-    # 縦型の画面では他のカットより一段小さく見えていた
-    "05_5": ("待つ場所も、\nある。", "ある", "emo"),
-    "05_6": ("24時間\n年中無休", "24時間", "emo"),
+    "05_5": ("待つ場所も、ある。", "ある", "emo"),
+    "05_6": ("24時間・年中無休", "24時間", "emo"),
 }
 
 SIZE = 132
-# emo（縦型）は大きく置く。SNSの縦型は画面幅をほぼ使うのが普通で、
-# 98px では小さかった。幅の上限は左右50pxの余白ぶんを残した値
-EMO_SIZE = 124
-EMO_MAX_W = 980
 LEFT = 100
 BOTTOM = 112
 PAD_X, PAD_T, PAD_B = 30, 22, 26
@@ -179,22 +175,6 @@ def split_accent(text, accent):
 MAX_BLOCK_W = 1700
 
 
-def row_width(row, f, track):
-    """描くときと同じ送りで1行の幅を測る。
-
-    約物のツメを入れずに測ると実際より広く見積もり、収まる字を
-    必要もなく小さくしてしまう（05の「待つ場所も、ある。」が
-    他のカットより一段小さかった原因）。
-    """
-    flat = [ch for t, _ in row for ch in t]
-    w = 0.0
-    for j, ch in enumerate(flat):
-        w += f.getlength(ch) + track
-        if ch in TIGHTEN and j < len(flat) - 1:
-            w -= f.getlength(ch) * TIGHTEN[ch]
-    return max(0.0, w - track)
-
-
 def band_telop(key, text, accent, style):
     """文字だけのPNGを書き、下敷き（ブロック／帯）の矩形を返す。
 
@@ -210,7 +190,7 @@ def band_telop(key, text, accent, style):
     #   scrim/block … 132px・左寄せ（16:9）
     #   sns         … 104px・中央寄せ（縦型は横幅が狭い）
     #   step        … 96px・左寄せ。左端のSTEP番号ブロック(268px)を避けて 330px から
-    size = {"emo": EMO_SIZE, "step": 96, "white_band": 96}.get(style, SIZE)
+    size = {"emo": 98, "step": 96, "white_band": 96}.get(style, SIZE)
     left = {"step": 330}.get(style, LEFT)
     bottom = {"emo": int(H * 0.32), "step": 118, "white_band": 118}.get(style, BOTTOM)
     # emo は字間を空ける。明朝を大きく置くと詰まって見えるのを開く
@@ -218,15 +198,10 @@ def band_telop(key, text, accent, style):
     face = MINCHO if style == "emo" else ZEN
     while size > 84:
         f = ImageFont.truetype(face, size)
-        if style == "emo":
-            # 縦型は中央寄せなので左マージンは関係ない。実際の送り幅だけ見る
-            if max(row_width(r, f, track) for r in rows) <= EMO_MAX_W:
-                break
-        else:
-            w = max(sum(f.getlength(t) for t, _ in r) + track * (len(lines[i]) - 1)
-                    for i, r in enumerate(rows)) + PAD_X * 2 + left - 70
-            if w <= MAX_BLOCK_W:
-                break
+        w = max(sum(f.getlength(t) for t, _ in r) + track * (len(lines[i]) - 1)
+                for i, r in enumerate(rows)) + PAD_X * 2 + left - 70
+        if w <= (W - 120 if style == "emo" else MAX_BLOCK_W):
+            break
         size -= 4
     f = ImageFont.truetype(face, size)
     lead = int(size * 1.44)     # 行送り
@@ -239,15 +214,10 @@ def band_telop(key, text, accent, style):
 
     ac_col = EMO_ACCENT if style == "emo" else ACCENT
 
-    # emo は行ごとに中央へ寄せる。中央寄せのデザインで2行目を左に揃えると、
-    # 短い行だけ左に流れて見える
-    widths = [row_width(r, f, track) for r in rows]
-    nudge = [int((max(widths) - w) / 2) if style == "emo" else 0 for w in widths]
-
     def draw(d, ox, oy):
         # 1文字ずつ置く。約物を詰めるのと字間を空けるのに、まとめ描きだと足りない
         for i, row in enumerate(rows):
-            x, y = ox + (indent if i else 0) + nudge[i], oy + i * lead
+            x, y = ox + (indent if i else 0), oy + i * lead
             flat = [(ch, is_ac) for t, is_ac in row for ch in t]
             for j, (ch, is_ac) in enumerate(flat):
                 d.text((x, y), ch, font=f, fill=(ac_col if is_ac else body) + (255,))
@@ -265,23 +235,13 @@ def band_telop(key, text, accent, style):
     # 暗い映像の上では黒ブロックの上に灰色の帯が乗ったように見えていた。
     # 209/255 の黒ブロックに白文字なら、それだけで十分に読める
     if style == "emo":
-        # 明るい背景（畳んだタオル、自販機の光る面）では白い発光が効かず、
-        # 白文字が背景に沈んでいた。先に黒をぼかして敷き、文字と背景の間に
-        # 段を作る。02で嫌われたのは黒フチ（stroke）＋重ねぼかしで、
-        # ここはフチを作らないので輪郭が汚れない
-        sil = Image.composite(Image.new("RGBA", (W, H), (0, 0, 0, 255)),
-                              blank(), txt.split()[3])
-        for blur, k in ((34, 0.92), (13, 0.86), (5, 0.7)):
-            img.alpha_composite(dim_alpha(sil.filter(ImageFilter.GaussianBlur(blur)), k))
-        # そのうえで文字そのものを光らせる。フチを作らず、
-        # 広く薄いぼかしを2段重ねるだけ。夜の画で文字が浮く
+        # 文字そのものを光らせる。02で嫌われた「黒フチ＋重ねぼかし」とは別物で、
+        # フチを作らず、広く薄いぼかしを2段重ねるだけ。夜の画で文字が浮く
         img.alpha_composite(dim_alpha(txt.filter(ImageFilter.GaussianBlur(34)), 0.62))
         img.alpha_composite(dim_alpha(txt.filter(ImageFilter.GaussianBlur(10)), 0.5))
         # 本文の上に細い暖色の線を1本。装飾はこれ1つに絞る。
-        # 均一な棒だとハイフンに見えるので、両端を落として光の筋にする。
-        # 長さは本文の幅に連れる（固定だと大きい字の上で頼りない）
-        rw = int(min(max((bb[2] - bb[0]) * 0.34, 230), 430))
-        rh, gap = 5, 52
+        # 均一な棒だとハイフンに見えるので、両端を落として光の筋にする
+        rw, rh, gap = 230, 4, 48
         cx = (bb[0] + bb[2]) // 2
         ry = bb[1] - gap
         ramp = np.zeros((H, W), dtype=np.uint8)
@@ -300,6 +260,96 @@ def band_telop(key, text, accent, style):
            "w": (bb[2] + PAD_X) - max(0, bb[0] - PAD_X),
            "h": (bb[3] + PAD_B) - (bb[1] - PAD_T)}
     return box
+
+
+def _track_w(f, text, track):
+    """字間を入れた実寸。締めの行を中央に置くのに使う。"""
+    return sum(f.getlength(ch) for ch in text) + track * (len(text) - 1)
+
+
+def _track_text(d, text, f, track, cx, cy, fill):
+    """字間を空けて中央寄せで1行置く。PIL に letter-spacing が無いので1文字ずつ。"""
+    x = cx - _track_w(f, text, track) / 2
+    for ch in text:
+        d.text((x, cy), ch, font=f, fill=fill, anchor="lm")
+        x += f.getlength(ch) + track
+
+
+def end_card_v(over, name, under, path, cy_ratio=0.42):
+    """05（縦型）の締め。ロゴの組みに寄せた3段。
+
+    上に業種、中央に明朝の社名、その下に暖色の光の線と営業時間。
+    02/04 と同じ logo_card（極太ゴシックを中央に置くだけ）では、
+    夜のコインランドリーの画に対して素っ気なかった。
+    字間を大きく開け、線を1本だけ入れて「看板」に見せる。
+    """
+    n_size, s_size = 136, 40
+    n_track, o_track, u_track = 24, 18, 14
+    while n_size > 96:
+        f_name = ImageFont.truetype(MINCHO, n_size)
+        if _track_w(f_name, name, n_track) <= W - 200:
+            break
+        n_size -= 4
+    f_name = ImageFont.truetype(MINCHO, n_size)
+    f_over = ImageFont.truetype(MINCHO_M, s_size)
+    f_under = ImageFont.truetype(MINCHO_M, s_size - 2)
+    while s_size > 24:
+        f_over = ImageFont.truetype(MINCHO_M, s_size)
+        f_under = ImageFont.truetype(MINCHO_M, s_size - 2)
+        if (max(_track_w(f_over, over, o_track),
+                _track_w(f_under, under, u_track)) <= W - 160):
+            break
+        s_size -= 2
+
+    # 段の高さは文字サイズで見る。行間は「効かせる」ために広く取る
+    h_over, h_name, h_under, rh = s_size, n_size, s_size - 2, 3
+    g1, g2, g3 = 52, 54, 46
+    total = h_over + g1 + h_name + g2 + rh + g3 + h_under
+    top = int(H * cy_ratio) - total // 2
+    cx = W // 2
+    y_over = top + h_over // 2
+    y_name = top + h_over + g1 + h_name // 2
+    y_rule = top + h_over + g1 + h_name + g2
+    y_under = y_rule + rh + g3 + h_under // 2
+
+    img = blank()
+    d = ImageDraw.Draw(img)
+    # 業種は白をわずかに温かく、社名は純白、営業時間は灯りの色。
+    # 大きさの差だけでなく色の差でも段を作る
+    _track_text(d, over, f_over, o_track, cx, y_over, (238, 231, 216, 228))
+    _track_text(d, name, f_name, n_track, cx, y_name, (255, 255, 255, 255))
+    _track_text(d, under, f_under, u_track, cx, y_under, LAMP + (236,))
+
+    # 光の線。本編のテロップと同じ作り（両端を落として筋にする）
+    rw = int(min(max(_track_w(f_name, name, n_track) * 0.62, 200), 420))
+    ramp = np.zeros((H, W), dtype=np.uint8)
+    x0, x1 = cx - rw // 2, cx + rw // 2
+    prof = np.clip(np.sin(np.linspace(0, np.pi, x1 - x0)) * 2.6, 0, 1) * 255
+    ramp[y_rule:y_rule + rh, x0:x1] = prof.astype(np.uint8)
+    rule = Image.composite(Image.new("RGBA", (W, H), LAMP + (255,)),
+                           blank(), Image.fromarray(ramp))
+
+    # 文字の背後に黒のぼかしを敷く。夜の画でも建屋の白壁に文字が重なるので、
+    # 影が無いと社名の輪郭が壁に溶ける
+    sil = Image.composite(Image.new("RGBA", (W, H), (0, 0, 0, 255)),
+                          blank(), img.split()[3])
+    base = blank()
+    # 締めの帯。ぼかした暗がりを1枚敷いて、店先の灯りを中央だけ落とす。
+    # 敷かないと「24時間・年中無休」が入口の明かりに重なって読めなかった。
+    # 縁が出ないので画は壊さず、路面の照り返しと空はそのまま残る
+    band = blank()
+    ImageDraw.Draw(band).rounded_rectangle(
+        [int(W * 0.05), top - 130, int(W * 0.95),
+         y_under + h_under // 2 + 130], radius=220, fill=(3, 6, 14, 140))
+    base.alpha_composite(band.filter(ImageFilter.GaussianBlur(96)))
+    for blur, k in ((40, 0.9), (14, 0.82), (5, 0.6)):
+        base.alpha_composite(dim_alpha(sil.filter(ImageFilter.GaussianBlur(blur)), k))
+    # 社名をやわらかく光らせる（本編の emo と同じ扱いにして1本の中で揃える）
+    base.alpha_composite(dim_alpha(img.filter(ImageFilter.GaussianBlur(30)), 0.5))
+    base.alpha_composite(dim_alpha(rule.filter(ImageFilter.GaussianBlur(11)), 1.0))
+    base.alpha_composite(rule)
+    base.alpha_composite(img)
+    base.save(path)
 
 
 def logo_card(name, sub, path, mark="check", tint=(255, 255, 255), cy_ratio=0.46):
@@ -372,11 +422,6 @@ def build_set(table, label=""):
 
     for g in {group_of(k) for k in boxes}:
         members = [k for k in boxes if group_of(k) == g]
-        # emo は揃えない。下敷きが縁の無いぼかした暗がりなので、カットごとに
-        # 大きさが違っても段差に見えない。揃えると1行のカットに2行ぶんの
-        # 空いた暗がりが乗って、文字の上が間延びする
-        if boxes[members[0]]["style"] == "emo":
-            continue
         top = min(boxes[k]["y"] for k in members)
         bot = max(boxes[k]["y"] + boxes[k]["h"] for k in members)
         for k in members:
@@ -400,11 +445,11 @@ def build_set(table, label=""):
         elif b["style"] == "emo":
             # 角丸ブロックをやめ、ぼかした暗がりを敷く。縁が出ないので
             # 夜の画に馴染み、それでいて明朝の白文字が沈まない
-            pad_x, pad_y = 112, 104
+            pad_x, pad_y = 96, 88
             d.rounded_rectangle([b["x"] - pad_x, b["y"] - pad_y,
                                  b["x"] + b["w"] + pad_x,
                                  b["y"] + b["h"] + pad_y],
-                                radius=190, fill=(3, 6, 14, 206))
+                                radius=180, fill=(3, 6, 14, 168))
             blk = blk.filter(ImageFilter.GaussianBlur(64))
         elif b["style"] == "step":
             d.rectangle([0, b["y"], W, b["y"] + b["h"]], fill=(255, 255, 255, 249))
@@ -450,7 +495,8 @@ if __name__ == "__main__":
     # 05 は縦型なのでキャンバスを切り替えて作り直す
     set_canvas(1080, 1920)
     boxes_v = build_set(TELOPS_V, "9:16")
-    logo_card(SHOP_NAME, SHOP_SUB, f"{OUT}/05_logo.png", mark="none", cy_ratio=0.42)
+    end_card_v("コインランドリー", SHOP_NAME, "24時間・年中無休",
+               f"{OUT}/05_logo.png")
     Image.new("RGBA", (W, H), (0, 0, 0, 74)).save(f"{OUT}/dim29v.png")
 
     with open(f"{OUT}/boxes.json", "w") as fp:
