@@ -124,6 +124,11 @@ def build(name, cuts, telops, dim, logo, logo_at, dim_at, audio):
     print(f"{name}: {os.path.getsize(master)//1024}KB / web {os.path.getsize(web)//1024}KB")
 
 
+def wanted(name):
+    """引数で本を絞れるようにする（02だけ、04aだけ、と組み直せる）。"""
+    return len(sys.argv) < 2 or name in sys.argv[1:]
+
+
 if __name__ == "__main__":
     # BGM と SE をミックス済みのトラック（se.py が書き出す）
     a02 = f"{HERE}/audio_02.wav"
@@ -133,20 +138,24 @@ if __name__ == "__main__":
     C1 = os.environ.get("SO_C1", f"{GEN}/04_c1_kling.mp4")
     C1_IN = float(os.environ.get("SO_C1_IN", "0.0"))
 
-    build("02_service_15s",
-          [(f"{GEN}/02_c1.mp4", 0.04, 5.0), (f"{GEN}/02_c2_v2.mp4", 0.04, 5.0),
-           (f"{GEN}/02_c3.mp4", 0.04, 5.0)],
-          [("02_1", 0.45, 4.70), ("02_2", 5.40, 9.70), ("02_3", 10.35, 12.50)],
-          "dim34", "02_logo", 12.75, 12.45, a02)
+    if wanted("02_service_15s"):
+        build("02_service_15s",
+              [(f"{GEN}/02_c1.mp4", 0.04, 5.0), (f"{GEN}/02_c2_v2.mp4", 0.04, 5.0),
+               (f"{GEN}/02_c3.mp4", 0.04, 5.0)],
+              [("02_1", 0.45, 4.70), ("02_2", 5.40, 9.70), ("02_3", 10.35, 12.50)],
+              "dim34", "02_logo", 12.75, 12.45, a02)
 
-    build("04a_taste_15s",
-          [(C1, C1_IN, 6.0), (f"{GEN}/04_c2.mp4", 0.04, 5.0),
-           (f"{GEN}/04_c3_v3m.mp4", 0.6, 4.0)],
-          [("04a_1", 0.45, 5.70), ("04a_2", 6.35, 10.70)],
-          "dim29", "04_logo", 11.4, 11.1, a04a)
+    if wanted("04a_taste_15s"):
+        build("04a_taste_15s",
+              [(C1, C1_IN, 6.0), (f"{GEN}/04_c2.mp4", 0.04, 5.0),
+               (f"{GEN}/04_c3_v3m.mp4", 0.6, 4.0)],
+              [("04a_1", 0.45, 5.70), ("04a_2", 6.35, 10.70)],
+              "dim29", "04_logo", 11.4, 11.1, a04a)
 
-    build("04b_time_15s",
-          [(f"{GEN}/04_c3_v3m.mp4", 0.04, 5.0), (C1, C1_IN, 6.0),
-           (f"{GEN}/04_c2.mp4", 1.04, 4.0)],
-          [("04b_1", 0.45, 4.65), ("04b_2", 5.40, 10.70)],
-          "dim29", "04_logo_top", 11.4, 11.1, a04b)
+    # 訴求B（時短）は取りやめ。名前を明示したときだけ作る
+    if "04b_time_15s" in sys.argv[1:]:
+        build("04b_time_15s",
+              [(f"{GEN}/04_c3_v3m.mp4", 0.04, 5.0), (C1, C1_IN, 6.0),
+               (f"{GEN}/04_c2.mp4", 1.04, 4.0)],
+              [("04b_1", 0.45, 4.65), ("04b_2", 5.40, 10.70)],
+              "dim29", "04_logo_top", 11.4, 11.1, a04b)
