@@ -2830,6 +2830,36 @@ def run():
     check("1つだけなら固定のまま",
           bot._todays_genre("ミュージックビデオ"), "ミュージックビデオ")
     check("未設定なら空（急上昇TOP100を見る）", bot._todays_genre(""), "")
+
+    print("■ 副作用のある行き先にAIが一票入れる _ai_route_veto")
+    # 正規表現の表は言い方を数え上げる作りなので必ず漏れる（2026-09-18 に2件）。
+    # 表が「作業だ」と言ったときだけAIに確かめ、AIが「依頼ではない」と
+    # はっきり言った時だけ会話に落とす。曖昧・失敗・枠切れでは口を出さない。
+    import asyncio as _aioV
+
+    def _veto(answer, cooling=False):
+        _g, _c = bot._gemini_call, bot._gemini_all_cooling
+        async def _fake(prompt, tag=None, purpose=None):
+            if isinstance(answer, Exception):
+                raise answer
+            return answer
+        bot._gemini_call = _fake
+        bot._gemini_all_cooling = lambda: cooling
+        try:
+            return _aioV.run(bot._ai_route_veto("こうやって出る", "hf_auto", []))
+        finally:
+            bot._gemini_call, bot._gemini_all_cooling = _g, _c
+
+    check("AIが『いいえ』なら会話に落とす", _veto("いいえ"), True)
+    check("AIが『はい』なら表のまま", _veto("はい"), False)
+    check("曖昧な返事なら表を優先", _veto("たぶん依頼です"), False)
+    check("AIが失敗しても止めない", _veto(RuntimeError("落ちた")), False)
+    check("枠切れなら口を出さない", _veto("いいえ", cooling=True), False)
+    check("止めたいときは環境変数で切れる",
+          "AI_ROUTE_CHECK" in bot_src() and 'os.getenv("AI_ROUTE_CHECK"' in bot_src(),
+          True)
+    check("承認の返事は確かめない（提案への合意）",
+          "not _BARE_GO_RE.search(content)" in bot_src(), True)
     # 事故（2026-09-18 02:32）：「今、試しにリサーチしてみて」で YouTube を
     # 【試し】で検索し、裏技検証動画を分析して返した。副詞を落とす正規表現が
     # ^ 固定で1回しか効かず、「今」を落とした時点で「試しに」が残っていた。

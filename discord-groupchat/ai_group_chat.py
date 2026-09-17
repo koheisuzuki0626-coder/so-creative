@@ -42,6 +42,7 @@ MESSAGE CONTENT INTENT はオーケストレーター用にだけONにすれば�
   ・会話中のYouTubeリンク：貼られたら中身を視聴して文脈に加える
   ・字幕が無い動画は、その場で文字起こしして字幕を作る
   ・ルーティング判定（純粋関数・テスト対象）
+  ・副作用のある行き先だけ、AIに一票入れさせる
   ・Router（段階2：41個のif文を宣言的な表にした）
   ・直前の生成内容を記録（「もう一回作り直して」の文脈引き継ぎ用）
   ・生成物の自動検品（依頼と出来上がりをGeminiが照合）
@@ -6784,6 +6785,73 @@ ACT_ROUTES = frozenset({
     "ad", "motion", "style_learn", "clip", "virality", "slideshow",
     "hdd_analyze",
 })
+
+
+# ---------- 副作用のある行き先だけ、AIに一票入れさせる ----------
+# 正規表現の表は速くて再現性があるが、言い方を数え上げる作りなので必ず漏れる。
+# 2026-09-18 だけで2件出た（「こうやって出る」で動画生成、「今、試しに」で
+# 【試し】を検索）。どちらも人が読めば依頼でないと分かるものだった。
+#
+# 表を捨ててAIに全部やらせると、勝手に始まる事故（20件以上）が戻るので、
+# 【表が「作業だ」と言ったときだけ】AIに確かめる形にする。
+#   ・AIが「依頼ではない」と言ったら会話に落とす（＝誤発動だけを減らす）
+#   ・AIが答えない・失敗した・枠切れなら、これまでどおり表の判定を使う
+#   ・「OK」「やって」のような承認の返事は確かめない（提案への合意なので）
+# 止めたいときは環境変数 AI_ROUTE_CHECK=0。
+AI_ROUTE_CHECK = os.getenv("AI_ROUTE_CHECK", "1").lower() not in ("0", "false", "no")
+AI_ROUTE_CHECK_SEC = float(os.getenv("AI_ROUTE_CHECK_SEC", "6"))
+
+_ROUTE_CHECK_PROMPT = """あなたは、チャットの発言が【いま作業を始めてほしい依頼】か
+どうかだけを判定します。内容の良し悪しや、作業の中身は考えません。
+
+判定の基準:
+- 依頼である = 相手に何かを作る・調べる・直すことを、いま頼んでいる
+- 依頼ではない = 報告、感想、質問、独り言、雑談、状況の説明、
+  画面や結果を見せているだけ、過去の話、これからの相談
+
+例:
+「猫の動画作って」→ はい
+「この写真から動画にして」→ はい
+「さっきの直して」→ はい
+「こうやって出る」（画面のスクショを貼って）→ いいえ
+「今、試しにリサーチしてみて」→ はい
+「動画って高いの？」→ いいえ
+「昨日の動画よかった」→ いいえ
+
+【直前のやりとり】
+{history}
+
+【判定する発言】
+{text}
+
+【システムの判断】この発言を「{route}」の作業として実行しようとしています。
+
+これは、いま作業を始めてほしい依頼ですか。
+「はい」か「いいえ」の2文字だけで答えてください。"""
+
+
+async def _ai_route_veto(content, route, history):
+    """表が「作業」と判断したとき、AIに確かめる。
+    会話に落とすべきなら True。分からない・失敗したら False（表の判定を尊重）。"""
+    if not AI_ROUTE_CHECK or not content.strip():
+        return False
+    if _gemini_all_cooling():
+        return False                      # 枠切れの時は今までどおり
+    try:
+        hist = transcript_block((history or [])[-6:])[:1200]
+    except Exception:  # noqa: BLE001
+        hist = ""
+    prompt = _ROUTE_CHECK_PROMPT.format(history=hist, text=content[:400],
+                                        route=route)
+    try:
+        ans = await asyncio.wait_for(
+            _gemini_call(prompt, "route_check", purpose=PURPOSE_LIGHT),
+            timeout=AI_ROUTE_CHECK_SEC)
+    except Exception:  # noqa: BLE001
+        return False                      # 失敗したら口を出さない
+    ans = (ans or "").strip()
+    # 「いいえ」とはっきり答えた時だけ落とす。曖昧な返事は表を優先する。
+    return bool(re.match(r"^(いいえ|いえ|no)", ans, re.I))
 
 
 def classify_route(content, **kw):
@@ -13810,6 +13878,16 @@ async def _dispatch_message(message):
             and time.time() - (_lg_rec or {}).get("t", 0) < 1800
         ),
     )
+    # 副作用のある行き先に決まったら、AIに一票入れさせる（誤発動だけを減らす）。
+    # 承認の返事（「OK」「やって」）は提案への合意なので確かめない。
+    if (route in ACT_ROUTES and AI_ROUTE_CHECK
+            and not _BARE_GO_RE.search(content)):
+        if await _ai_route_veto(content, route, get_history(cid)):
+            _route_hit["name"] = ((_route_hit.get("name") or "")
+                                  + "→AIが依頼でないと判断したので会話")
+            print(f"[route] AIが会話に差し戻し: {route} ← {content[:40]!r}")
+            route = None
+
     # 依頼待ち中に動画が添付された（キーワード無し）ケースもモーション実行に接続
     pm = _pending_motion.get(cid)
     if route is None and pm and _video_att and time.time() - pm["ts"] < 900:
