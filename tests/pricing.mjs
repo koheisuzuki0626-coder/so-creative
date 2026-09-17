@@ -16,6 +16,12 @@ check('段の名前が梅竹松',
     (await page.locator('#calc-tier .calc-opt').allInnerTexts()).join('|') === '梅 標準|竹 上|松 特上');
 check('尺が8つ', (await page.locator('#calc-len .calc-opt').count()) === LENGTHS.length);
 check('本数が6つ', (await page.locator('#calc-cnt .calc-opt').count()) === 6);
+/* 初期は AI。AIは料金に含むので、これが素の状態。
+   'none' を初期にすると表示額が差し引き後になり、「AIは込み」と
+   言いながら AI を選ぶと上がる見え方になる。
+   段を触る前に見る（松を選ぶと human に固定されるため） */
+check('初期表示はAIナレーション',
+    await page.locator('#calc-nar input[data-nar="ai"]').isChecked());
 check('操作の順番を番号で示している',
     (await page.locator('.calc-step').allInnerTexts()).join('') === '1234');
 check('実物のラジオで組んである',
@@ -45,11 +51,6 @@ check('修正回数が5回に戻っていない', !/5回/.test(plansText));
 
 /* ---- ナレーションの選択（なし／AI音声／人が読む の3択） ---- */
 check('ナレーションが3択', (await page.locator('#calc-nar .calc-opt').count()) === 3);
-/* 初期は AI。AIは料金に含むので、これが素の状態。
-   'none' を初期にすると表示額が差し引き後になり、「AIは込み」と
-   言いながら AI を選ぶと上がる見え方になる */
-check('初期表示はAIナレーション',
-    await page.locator('#calc-nar input[data-nar="ai"]').isChecked());
 /* AI音声を売るなら、合成音声だと分かる書き方にしておく。
    4エンジン×9声を試して不採用にしたものを、期待値を伏せて売らないため */
 check('AIナレーションが合成音声だと分かる書き方になっている',
@@ -269,6 +270,10 @@ check('ナレーションの工数は1本 1.0h（AI・人で同じ）', HOURS_NA
 }
 
 /* ---- 段の順序と独立性 ---- */
+/* 直前の全組み合わせのループが 'none' で終わるので、素の状態（AI）に戻す。
+   戻さないと差し引きが乗って「梅は従来価格を据え置き」が落ちる */
+await page.locator('#calc-tier .calc-opt[data-tier="ume"]').click();
+await page.locator('#calc-nar .calc-opt[data-nar="ai"]').click();
 const ladder = [];
 for (const t of TIERS) ladder.push(await pick(page, t.id, 90, 1));
 check('段が上がるほど高い', ladder[0] < ladder[1] && ladder[1] < ladder[2], JSON.stringify(ladder));
