@@ -28,7 +28,8 @@ MINCHO = f"{FONTS}/NotoSerifJP-Black.ttf"
 
 ACCENT = (245, 181, 42)       # 山吹。04ブロックの縦バーに残す1色
 NAVY = (15, 33, 64)           # 02の帯
-LAMP = (238, 212, 168)        # 05の罫と差し色。夜のランドリーの灯りに寄せた暖色
+LAMP = (238, 212, 168)        # 05の罫。夜のランドリーの灯りに寄せた暖色
+EMO_ACCENT = (250, 196, 112)  # 05の差し色。山吹（04のバー）はポップに寄るので琥珀に
 OUT = os.path.dirname(os.path.abspath(__file__)) + "/telop"
 os.makedirs(OUT, exist_ok=True)
 
@@ -99,12 +100,12 @@ TELOPS_3MIN = {
 
 # 05 SNSショート（9:16・sns）。キャンバスが違うので別に持つ
 TELOPS_V = {
-    "05_1": ("夜11時。", None, "emo"),
-    "05_2": ("まだ、開いてる。", None, "emo"),
-    "05_3": ("乾燥、30分。", None, "emo"),
-    "05_4": ("畳んで、帰る。", None, "emo"),
-    "05_5": ("待つ場所も、ある。", None, "emo"),
-    "05_6": ("24時間・年中無休", None, "emo"),
+    "05_1": ("夜11時。", "11時", "emo"),
+    "05_2": ("まだ、空いてる。", "空いてる", "emo"),
+    "05_3": ("乾燥、30分。", "30分", "emo"),
+    "05_4": ("畳んで、帰る。", "帰る", "emo"),
+    "05_5": ("待つ場所も、ある。", "ある", "emo"),
+    "05_6": ("24時間・年中無休", "24時間", "emo"),
 }
 
 SIZE = 132
@@ -199,14 +200,20 @@ def band_telop(key, text, accent, style):
         size -= 4
     f = ImageFont.truetype(face, size)
     lead = int(size * 1.44)     # 行送り
+    # 2行目以降は、1行目の「かぎ括弧のぶんだけ下げて、本文の1文字目に揃える。
+    # 括弧の下に文字が来ると、引用の始まりがどこか読み取りにくい
+    indent = (f.getlength(lines[0][0]) + track
+              if len(lines) > 1 and lines[0][:1] in ("「", "『", "（", "\"") else 0)
     # 白帯に乗る step だけ黒文字。ほかは白
     body = (17, 17, 17) if style in ("step", "white_band") else (255, 255, 255)
 
+    ac_col = EMO_ACCENT if style == "emo" else ACCENT
+
     def draw(d, ox, oy):
         for i, row in enumerate(rows):
-            x, y = ox, oy + i * lead
+            x, y = ox + (indent if i else 0), oy + i * lead
             for t, is_ac in row:
-                col = ACCENT if is_ac else body
+                col = ac_col if is_ac else body
                 if track:
                     # 1文字ずつ置かないと字間を空けられない
                     for ch in t:
