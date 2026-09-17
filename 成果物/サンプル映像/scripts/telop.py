@@ -112,6 +112,10 @@ LEFT = 100
 BOTTOM = 112
 PAD_X, PAD_T, PAD_B = 30, 22, 26
 TRACK = 11          # emo の字間(px)
+# 約物のツメ。全角のまま置くと「音が、／ちがう。」の間が二字ぶん空いて見える。
+# 値は「その文字の送り幅に対して引く割合」
+TIGHTEN = {"、": 0.42, "。": 0.42, "，": 0.42, "．": 0.42,
+           "・": 0.22, "：": 0.3, "；": 0.3}
 
 
 def dim_alpha(img, k):
@@ -209,18 +213,17 @@ def band_telop(key, text, accent, style):
     ac_col = EMO_ACCENT if style == "emo" else ACCENT
 
     def draw(d, ox, oy):
+        # 1文字ずつ置く。約物を詰めるのと字間を空けるのに、まとめ描きだと足りない
         for i, row in enumerate(rows):
             x, y = ox + (indent if i else 0), oy + i * lead
-            for t, is_ac in row:
-                col = ac_col if is_ac else body
-                if track:
-                    # 1文字ずつ置かないと字間を空けられない
-                    for ch in t:
-                        d.text((x, y), ch, font=f, fill=col + (255,))
-                        x += d.textlength(ch, font=f) + track
-                else:
-                    d.text((x, y), t, font=f, fill=col + (255,))
-                    x += d.textlength(t, font=f)
+            flat = [(ch, is_ac) for t, is_ac in row for ch in t]
+            for j, (ch, is_ac) in enumerate(flat):
+                d.text((x, y), ch, font=f, fill=(ac_col if is_ac else body) + (255,))
+                x += d.textlength(ch, font=f) + track
+                # 読点・句点は全角のまま置くと後ろが二字ぶん空いて見える。
+                # 行末の1文字は下敷きの右端を決めるので詰めない
+                if ch in TIGHTEN and j < len(flat) - 1:
+                    x -= d.textlength(ch, font=f) * TIGHTEN[ch]
 
     txt = place(draw, left=left, bottom=bottom,
                 center_x=(style == "emo"))
