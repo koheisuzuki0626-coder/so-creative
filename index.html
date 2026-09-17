@@ -1244,7 +1244,10 @@
             let sec = 30;
             let count = 1;
             let tier = TIERS[0];
-            let narration = 'none';  // 'none' | 'ai' | 'human'（松は常に human 込み）
+            /* 初期は 'ai'。AIナレーションは料金に含まれているので、これが素の状態。
+               'none' を初期にすると表示額が差し引き後になり、
+               「AIは込み」と言いながら AI を選ぶと上がる見え方になる */
+            let narration = 'ai';    // 'none' | 'ai' | 'human'（松は常に human 込み）
             let summary = '';
             // 段差の状態。used=自分で条件を変えた / cta=相談ボタンまで進んだ
             let used = false, cta = false, resultTimer;

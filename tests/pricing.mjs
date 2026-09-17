@@ -33,7 +33,7 @@ for (const [t, must, use, rev] of [['ume', '登場人物なし', 'SNS', 2], ['ta
     check(`${t} の説明に 4K を出していない`, !/4K/.test(h));
     check(`${t} のナレーションの扱いが出る`, t === 'matsu'
         ? /人物ナレーション込み（1名/.test(h)
-        : /AIナレーションは料金に含まれます（人物ナレーションは1名 ¥70,000〜）/.test(h));
+        : /AIナレーションは料金に含まれます（使わないなら −¥25,000／人物ナレーションは1名 ¥70,000〜）/.test(h));
 }
 const plansText = await page.locator('#plans').innerText();
 check('生成回数など内部の手順を出していない',
@@ -45,6 +45,11 @@ check('修正回数が5回に戻っていない', !/5回/.test(plansText));
 
 /* ---- ナレーションの選択（なし／AI音声／人が読む の3択） ---- */
 check('ナレーションが3択', (await page.locator('#calc-nar .calc-opt').count()) === 3);
+/* 初期は AI。AIは料金に含むので、これが素の状態。
+   'none' を初期にすると表示額が差し引き後になり、「AIは込み」と
+   言いながら AI を選ぶと上がる見え方になる */
+check('初期表示はAIナレーション',
+    await page.locator('#calc-nar input[data-nar="ai"]').isChecked());
 /* AI音声を売るなら、合成音声だと分かる書き方にしておく。
    4エンジン×9声を試して不採用にしたものを、期待値を伏せて売らないため */
 check('AIナレーションが合成音声だと分かる書き方になっている',
@@ -267,6 +272,8 @@ check('ナレーションの工数は1本 1.0h（AI・人で同じ）', HOURS_NA
 const ladder = [];
 for (const t of TIERS) ladder.push(await pick(page, t.id, 90, 1));
 check('段が上がるほど高い', ladder[0] < ladder[1] && ladder[1] < ladder[2], JSON.stringify(ladder));
+/* 初期状態（AIナレーション）での額。AIは料金に含むので従来と同じ。
+   ここが 380,000 になったら、初期が「なし」に戻って差し引きが効いている */
 check('梅は従来価格を据え置き', ladder[0] === 405000, `¥${ladder[0]}`);
 check('短い尺でも松が選べる', (await pick(page, 'matsu', 30, 1)) === price(TIERS[2], 30, 1));
 check('長い尺でも梅が選べる', (await pick(page, 'ume', 300, 1)) === price(TIERS[0], 300, 1));
