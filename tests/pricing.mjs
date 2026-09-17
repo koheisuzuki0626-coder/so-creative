@@ -20,10 +20,10 @@ check('ナレーションが2択', (await page.locator('#calc-nar .calc-opt').co
 check('操作の順番を番号で示している',
     (await page.locator('.calc-step').allInnerTexts()).join('') === '1234');
 check('実物のラジオで組んである',
-    (await page.locator('.calc input[type="radio"]').count()) === 3 + 8 + 6 + 2);
+    (await page.locator('.calc input[type="radio"]').count()) === 3 + 8 + 6 + 3);
 
 /* ---- 段の説明は客先向けの言葉か ---- */
-for (const [t, must, use, rev] of [['ume', '登場人物なし', 'SNS', 2], ['take', '2人まで', '採用', 3], ['matsu', 'ナレーション込み', '展示会', 3]]) {
+for (const [t, must, use, rev] of [['ume', '登場人物なし', 'SNS', 2], ['take', '2人まで', '採用', 3], ['matsu', 'ナレーション込み（人が読む1名', '展示会', 3]]) {
     await page.locator(`#calc-tier .calc-opt[data-tier="${t}"]`).click();
     const h = await page.locator('#calc-tier-hint').innerText();
     check(`${t} の中身が納品物の言葉で出る`, h.includes(must) && /納品/.test(h), h.slice(0, 34));
@@ -32,7 +32,9 @@ for (const [t, must, use, rev] of [['ume', '登場人物なし', 'SNS', 2], ['ta
     /* 4K は売り文句にしない（中身は1080pの引き伸ばしなので）。FAQ にだけ正直に書く */
     check(`${t} は 1080p 納品と書いてある`, /1080p（フルHD）で納品/.test(h));
     check(`${t} の説明に 4K を出していない`, !/4K/.test(h));
-    check(`${t} のナレーションの扱いが出る`, t === 'matsu' ? /ナレーション込み/.test(h) : /ナレーションは1本 ¥30,000/.test(h));
+    check(`${t} のナレーションの扱いが出る`, t === 'matsu'
+        ? /ナレーション込み（人が読む1名/.test(h)
+        : /AI音声 1本 ¥30,000／人が読む 1名 ¥70,000〜/.test(h));
 }
 const plansText = await page.locator('#plans').innerText();
 check('生成回数など内部の手順を出していない',
@@ -42,28 +44,42 @@ check('落とした仕様が段の説明に残っていない',
     !/ちらつき|正方形|3形式|2形式|720p|4K/.test(plansText), plansText.slice(0, 40));
 check('修正回数が5回に戻っていない', !/5回/.test(plansText));
 
-/* ---- ナレーションの選択 ---- */
+/* ---- ナレーションの選択（なし／AI音声／人が読む の3択） ---- */
+check('ナレーションが3択', (await page.locator('#calc-nar .calc-opt').count()) === 3);
+/* AI音声を売るなら、合成音声だと分かる書き方にしておく。
+   4エンジン×9声を試して不採用にしたものを、期待値を伏せて売らないため */
+check('AI音声が機械の声だと分かる書き方になっている',
+    /機械の声だと分かる/.test(await page.locator('.calc-why').innerText()));
 await page.locator('#calc-tier .calc-opt[data-tier="matsu"]').click();
-check('松では「なし」が選べず「あり」に固定',
-    (await page.locator('#calc-nar input[data-nar="off"]').isDisabled())
-    && (await page.locator('#calc-nar input[data-nar="on"]').isChecked()));
-check('松は1本目のナレーションが込み（¥0）',
-    /松に込み/.test(await page.locator('#calc-nar-dt').innerText())
-    && (await page.locator('#calc-narfee').innerText()) === '¥0');
-/* 2本目以降は梅・竹と同じく加算される（松が「竹＋ナレ」より安くなるのを防ぐ） */
-await page.locator('#calc-cnt .calc-opt[data-count="2"]').click();
-check('松の2本目以降は内訳に出る',
+check('松では「人が読む」に固定され、ほかが選べない',
+    (await page.locator('#calc-nar input[data-nar="none"]').isDisabled())
+    && (await page.locator('#calc-nar input[data-nar="ai"]').isDisabled())
+    && (await page.locator('#calc-nar input[data-nar="human"]').isChecked()));
+check('松はナレーションが込み（¥0）',
     /松に1名込み/.test(await page.locator('#calc-nar-dt').innerText())
     && (await page.locator('#calc-narfee').innerText()) === '¥0');
+await page.locator('#calc-cnt .calc-opt[data-count="2"]').click();
+check('松は本数が増えてもナレーション料は¥0のまま',
+    (await page.locator('#calc-narfee').innerText()) === '¥0');
 await page.locator('#calc-cnt .calc-opt[data-count="1"]').click();
 await page.locator('#calc-tier .calc-opt[data-tier="ume"]').click();
-check('梅では「なし」が選べる', !(await page.locator('#calc-nar input[data-nar="off"]').isDisabled()));
-await page.locator('#calc-nar .calc-opt[data-nar="on"]').click();
+check('梅では3択すべて選べる',
+    !(await page.locator('#calc-nar input[data-nar="none"]').isDisabled())
+    && !(await page.locator('#calc-nar input[data-nar="ai"]').isDisabled())
+    && !(await page.locator('#calc-nar input[data-nar="human"]').isDisabled()));
+/* AI音声は本数ぶん増える。人は増えない。単位の違いを画面で確かめる */
+await page.locator('#calc-nar .calc-opt[data-nar="ai"]').click();
 await page.locator('#calc-cnt .calc-opt[data-count="2"]').click();
-check('梅のナレーションは本数ぶん加算',
-    (await page.locator('#calc-narfee').innerText()) === `¥${PRICE.narration.toLocaleString('ja-JP')}〜`
-    && Number((await page.locator('#calc-total').innerText()).replace(/[^\d]/g, '')) === price(TIERS[0], 30, 2, true));
-await page.locator('#calc-nar .calc-opt[data-nar="off"]').click();
+check('AI音声は本数ぶん加算され「〜」が付かない',
+    (await page.locator('#calc-narfee').innerText()) === `¥${(PRICE.narrationAi * 2).toLocaleString('ja-JP')}`
+    && Number((await page.locator('#calc-total').innerText()).replace(/[^\d]/g, '')) === price(TIERS[0], 30, 2, 'ai')
+    && !/〜/.test(await page.locator('#calc-total').innerText()));
+await page.locator('#calc-nar .calc-opt[data-nar="human"]').click();
+check('人が読むは本数で増えず「〜」が付く',
+    (await page.locator('#calc-narfee').innerText()) === `¥${PRICE.narrationHuman.toLocaleString('ja-JP')}〜`
+    && Number((await page.locator('#calc-total').innerText()).replace(/[^\d]/g, '')) === price(TIERS[0], 30, 2, 'human')
+    && /〜/.test(await page.locator('#calc-total').innerText()));
+await page.locator('#calc-nar .calc-opt[data-nar="none"]').click();
 await page.locator('#calc-cnt .calc-opt[data-count="1"]').click();
 
 
@@ -80,15 +96,15 @@ for (const t of TIERS) {
         }
         for (let n = 1; n <= cap; n += 1) {
             await page.locator(`#calc-cnt .calc-opt[data-count="${n}"]`).click();
-            for (const nar of (t.narration ? [false] : [false, true])) {
-                if (!t.narration) await page.locator(`#calc-nar .calc-opt[data-nar="${nar ? 'on' : 'off'}"]`).click();
+            for (const nar of (t.narration ? ['human'] : ['none', 'ai', 'human'])) {
+                if (!t.narration) await page.locator(`#calc-nar .calc-opt[data-nar="${nar}"]`).click();
                 const shown = Number((await page.locator('#calc-total').innerText()).replace(/[^\d]/g, ''));
                 const want = price(t, sec, n, nar);
-                const c = `${t.label}${sec}秒×${n}本${nar ? '+ナレ' : ''}`;
+                const c = `${t.label}${sec}秒×${n}本/${nar}`;
                 if (shown !== want) wrong.push(`${c}: ${shown}≠${want}`);
-                rates.push({ c, rate: shown / hours(t, sec, n, nar) });
+                rates.push({ c, nar, rate: shown / hours(t, sec, n, nar) });
             }
-            if (!t.narration) await page.locator('#calc-nar .calc-opt[data-nar="off"]').click();
+            if (!t.narration) await page.locator('#calc-nar .calc-opt[data-nar="none"]').click();
         }
         await page.locator('#calc-cnt .calc-opt[data-count="1"]').click();
         const lead = await page.locator('#calc-lead-v').innerText();
@@ -159,16 +175,16 @@ check('段が上がると納期も延びるか同じ',
     LENGTHS.every((s) => leadWeeks(TIERS[0], s) <= leadWeeks(TIERS[1], s)
                       && leadWeeks(TIERS[1], s) <= leadWeeks(TIERS[2], s)));
 check('ナレーションを足しても納期は延びないか1週だけ',
-    LENGTHS.every((s) => leadWeeks(TIERS[0], s, true) - leadWeeks(TIERS[0], s) <= 1));
+    LENGTHS.every((s) => leadWeeks(TIERS[0], s, 'human') - leadWeeks(TIERS[0], s) <= 1));
 /* ¥70,000 は大半がナレーターへの外注費なので、「÷1.0h」を自分の時間単価としては使わない。
    工数が 1.0h 増えるぶんで単価が落ちないことだけを、ナレーションありの組み合わせで見る */
-{
-    const narRates = rates.filter((r) => r.c.includes('ナレ'));
+for (const mode of ['ai', 'human']) {
+    const narRates = rates.filter((r) => r.nar === mode);
     const nlo = narRates.slice().sort((a, b) => a.rate - b.rate)[0];
-    check('ナレーションありでも時間単価の目標を割らない', nlo.rate >= RATE * 0.95,
+    check(`${mode} でも時間単価の目標を割らない`, nlo.rate >= RATE * 0.95,
         `最低 ${nlo.c} ¥${Math.round(nlo.rate)}/h / ${narRates.length}通り`);
 }
-check('ナレーションの工数は1名 1.0h のまま', HOURS_NARRATION() === 1.0);
+check('ナレーションの工数は1本 1.0h（AI・人で同じ）', HOURS_NARRATION() === 1.0);
 
 /* ---- 段のはしごが逆転していないか ----
    松は「竹＋ナレーション」の上位互換（3人目・ナレ込み・修正は同じ3回）なので、
@@ -181,7 +197,7 @@ check('ナレーションの工数は1名 1.0h のまま', HOURS_NARRATION() ===
     for (const sec of LENGTHS) {
         for (let n = 1; n <= 6; n++) {
             if (sec / n < 15) continue;
-            if (price(take, sec, n, true) > price(matsu, sec, n)) inverted.push(`${sec}秒×${n}本`);
+            if (price(take, sec, n, 'human') > price(matsu, sec, n)) inverted.push(`${sec}秒×${n}本`);
         }
     }
     /* ナレーションを「1名 ¥70,000〜」にした（2026-09-17）ことで逆転が3件に増えた。
@@ -190,8 +206,8 @@ check('ナレーションの工数は1名 1.0h のまま', HOURS_NARRATION() ===
        **竹＋ナレのほうが時間単価が高い**（＝松が安い）ので、
        以前の「松のほうが時間単価が高いから放置」という理由は成り立たない。
        価格は動かさず、計算機がその場で「松のほうが安い」と出して潰す（下の検査） */
-    check('竹＋ナレが松を上回るのは15秒・30秒だけ',
-        inverted.join(',') === '15秒×1本,30秒×1本,30秒×2本', inverted.join(',') || 'なし');
+    check('竹＋人が松を上回るのは15秒・30秒だけ',
+        inverted.join(',') === '15秒×1本,15秒×2本,30秒×1本,30秒×2本', inverted.join(',') || 'なし');
     check('松は本数が増えてもナレーション料は増えない',
         price(matsu, 30, 2) - price(matsu, 30, 1) === PRICE.perExtra,
         `¥${price(matsu, 30, 2) - price(matsu, 30, 1)}`);
@@ -206,14 +222,16 @@ check('ナレーションの工数は1名 1.0h のまま', HOURS_NARRATION() ===
         for (const sec of LENGTHS) {
             const cap = countCap(sec);
             for (let n = 1; n <= cap; n += 1) {
-                const want = price(t, sec, n, true) > price(matsu, sec, n);
-                await pick(page, t.id, sec, n);
-                await page.locator('#calc-nar .calc-opt[data-nar="on"]').click();
-                await page.waitForTimeout(40);
-                const hint = await page.locator('#calc-nar-hint').innerText();
-                const shown = /松（ナレーション1名込み/.test(hint);
-                if (shown !== want) warnBad.push(`${t.label}${sec}秒×${n}本: ${shown}≠${want}`);
-                await page.locator('#calc-nar .calc-opt[data-nar="off"]').click();
+                for (const mode of ['ai', 'human']) {
+                    const want = price(t, sec, n, mode) > price(matsu, sec, n);
+                    await pick(page, t.id, sec, n);
+                    await page.locator(`#calc-nar .calc-opt[data-nar="${mode}"]`).click();
+                    await page.waitForTimeout(40);
+                    const hint = await page.locator('#calc-nar-hint').innerText();
+                    const shown = /松（人のナレーション1名込み/.test(hint);
+                    if (shown !== want) warnBad.push(`${t.label}${sec}秒×${n}本/${mode}: ${shown}≠${want}`);
+                    await page.locator('#calc-nar .calc-opt[data-nar="none"]').click();
+                }
             }
         }
     }
@@ -260,13 +278,18 @@ check('選んだ内容で尺と本数を繰り返していない', !/・合計�
 check('先方に書いてもらう欄がある',
     /会社名 \/ お名前：/.test(body) && /映像の用途：/.test(body) && /ご希望の公開時期：/.test(body));
 await pick(page, 'ume', 60, 2);
-await page.locator('#calc-nar .calc-opt[data-nar="on"]').click();
+await page.locator('#calc-nar .calc-opt[data-nar="human"]').click();
 await page.waitForTimeout(60);
 const narBody = new URLSearchParams((await mailLink()).split('?')[1]).get('body') || '';
-check('ナレーションを足すと本文に本数と金額が入る',
-    /・ナレーション：あり/.test(narBody)
-    && new RegExp(`・ナレーション 1名：¥${PRICE.narration.toLocaleString('ja-JP')}〜`).test(narBody));
-await page.locator('#calc-nar .calc-opt[data-nar="off"]').click();
+check('人が読むを足すと本文に単位と金額が入る',
+    /・ナレーション：人が読む/.test(narBody)
+    && new RegExp(`・ナレーション 人が読む 1名：¥${PRICE.narrationHuman.toLocaleString('ja-JP')}〜`).test(narBody));
+await page.locator('#calc-nar .calc-opt[data-nar="ai"]').click();
+await page.waitForTimeout(60);
+const aiBody = new URLSearchParams((await mailLink()).split('?')[1]).get('body') || '';
+check('AI音声を足すと本文に本数と金額が入る',
+    /・ナレーション：AI音声/.test(aiBody) && /・ナレーション AI音声 1本：¥30,000/.test(aiBody));
+await page.locator('#calc-nar .calc-opt[data-nar="none"]').click();
 // mailto はクライアント側の長さ制限があるので、最長の組み合わせでも収まること
 await pick(page, 'matsu', 300, 6);
 const longest = await page.locator('#calc-mail').getAttribute('href');

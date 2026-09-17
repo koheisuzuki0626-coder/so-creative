@@ -18,7 +18,7 @@ export const PW = process.env.PW || '/opt/node22/lib/node_modules/playwright/ind
 
 /* 料金と工数のモデル。index.html のコメントと同じもの。
    ここを書き換えるときは index.html も必ず合わせること */
-export const PRICE = { base: 90000, perExtra: 65000, narration: 70000 };
+export const PRICE = { base: 90000, perExtra: 65000, narrationAi: 30000, narrationHuman: 70000 };
 export const TIERS = [
     { id: 'ume',   label: '梅', perSec: 3500, hours: 1.0,  narration: false },
     { id: 'take',  label: '竹', perSec: 4900, hours: 1.22, narration: false },
@@ -26,17 +26,31 @@ export const TIERS = [
 ];
 export const LENGTHS = [15, 30, 45, 60, 90, 120, 180, 300];
 export const countCap = (sec) => (sec <= 30 ? 2 : sec <= 90 ? 4 : 6);
-/* nar … 梅・竹でナレーションを追加したか。松は1名込みなので加算しない。
-   2026-09-17 に「1本 ¥30,000」から「1名 ¥70,000〜」へ変更した。
-   合成音声の日本語が使えず（4エンジン×9声を試して不採用。
-   `成果物/サンプル映像/工数記録_サンプル映像03_05_07.md`）、実案件では
-   人のナレーターを手配する前提になったため。
-   **単位が「本」から「名」に変わったので、本数では増えない。**
-   1人が同じ収録で2本読んでも手配は1回で、費用もほぼ変わらない。
-   声を2人使うなら2名ぶん。計算機は1名までしか選べない（複数名は個別見積）。 */
-export const narCount = (t, n, nar) => (t.narration ? 0 : nar ? 1 : 0);
-export const price = (t, sec, n, nar = false) =>
-    PRICE.base + t.perSec * sec + PRICE.perExtra * (n - 1) + PRICE.narration * narCount(t, n, nar);
+/* nar … 'none' | 'ai' | 'human'。松は human が込み。
+   2026-09-17 に2段階の変更をした。
+
+   1. 「1本 ¥30,000」（合成音声の前提）→「1名 ¥70,000〜」（人のナレーター）。
+      合成音声の日本語が使えなかったため（4エンジン×9声を試して不採用。
+      `成果物/サンプル映像/工数記録_サンプル映像03_05_07.md`）
+   2. AI と人を**選べる**ようにした。AI は以前の額を引き継いで 1本 ¥30,000
+
+   **料金の単位が違う。**
+     AI   … 1本 ¥30,000。本数ぶん増える（原稿・声の選定・配置が本数ぶん要る）
+     人   … 1名 ¥70,000〜。本数では増えない（1人が同じ収録で複数本を読んでも
+            手配は1回で、費用もほぼ変わらない）。声を2人使うなら別途見積り
+
+   **工数はどちらも 1本 1.0h。**原稿と配置は本数ぶん要るので、AI でも人でも同じ。
+   人の ¥70,000 のうち大半はナレーターへの外注費で、これは工数ではなく原価。 */
+export const narFee = (t, n, nar) =>
+    t.narration ? 0
+        : nar === 'ai' ? PRICE.narrationAi * n
+        : nar === 'human' ? PRICE.narrationHuman : 0;
+/* 松の秒単価（倍率 1.36）にはナレーション1本ぶんの 1.0h が入っているので、
+   松が工数として足すのは2本目以降。ここを n にすると 60秒松の 15.2h が動く */
+export const narTracks = (t, n, nar) =>
+    (t.narration ? n - 1 : nar === 'none' ? 0 : n);
+export const price = (t, sec, n, nar = 'none') =>
+    PRICE.base + t.perSec * sec + PRICE.perExtra * (n - 1) + narFee(t, n, nar);
 /* 工数モデル（2026-09-16 に実測へ合わせた）。
      工数 = 3.0h + 0.15h × 倍率 × 秒数 + 1.5h × (本数−1) + 1.0h × ナレーション本数
    実測（下の MEASURED）に、実案件の打合せ・素材待ち・要件の揺れぶんとして
@@ -44,16 +58,16 @@ export const price = (t, sec, n, nar = false) =>
    段の倍率 1.0 / 1.22 / 1.36 は工程別の実測から:
      竹 ＝ 梅 ＋ キャラクターシート 1.0h ＋ 修正1回 0.6h
      松 ＝ 竹 ＋ ナレーション 1.0h（修正は竹と同じ3回）
-   ナレーションの工数は実測 1.0h（原稿・声の選定・配置）。
-   ¥70,000 のうち大半はナレーターへの外注費なので、
+   ナレーションの工数は実測 1.0h（原稿・声の選定・配置）で、AI でも人でも同じ。
+   人の ¥70,000 は大半がナレーターへの外注費なので、
    **この 1.0h で割った値は自分の時間単価ではない。**
    価格の倍率（1.0 / 1.4 / 1.9）は据え置きなので、上の段ほど時間単価が高い。
    index.html の HOURS / TIERS[].hours と同じ値にすること */
 export const HOURS = { base: 3.0, perSec: 0.15, perExtra: 1.5, narration: 1.0 };
-export const hours = (t, sec, n, nar = false) =>
-    HOURS.base + HOURS.perSec * t.hours * sec + HOURS.perExtra * (n - 1) + HOURS.narration * narCount(t, n, nar);
-export const leadWeeks = (t, sec, nar = false, n = 1) =>
-    Math.max(2, Math.round((HOURS.base + HOURS.perSec * t.hours * sec + HOURS.narration * narCount(t, n, nar)) / 25 + 1));
+export const hours = (t, sec, n, nar = 'none') =>
+    HOURS.base + HOURS.perSec * t.hours * sec + HOURS.perExtra * (n - 1) + HOURS.narration * narTracks(t, n, nar);
+export const leadWeeks = (t, sec, nar = 'none', n = 1) =>
+    Math.max(2, Math.round((HOURS.base + HOURS.perSec * t.hours * sec + HOURS.narration * narTracks(t, n, nar)) / 25 + 1));
 /* 目標の時間単価。以前の ¥14,900 は「60秒の松が32h かかる」という重いモデルからの
    逆算だった。モデルを実測に合わせた結果、同じ価格で ¥23,000/h を下回らない */
 export const RATE = 23000;
