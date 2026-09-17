@@ -34,6 +34,10 @@ check('サイト本文に落とした仕様が残っていない',
 const bodyText = await page.locator('body').innerText();
 check('画面のどこにも 4K と書いていない', !/4K/.test(bodyText), (bodyText.match(/.{0,20}4K.{0,20}/) || [''])[0]);
 check('画質は 1080p と書いてある', /1080p（フルHD）/.test(bodyText));
+/* 適格請求書発行事業者の登録をしていないので、消費税を別途請求しない。
+   表示額がそのまま総額。「税別」が1つでも残っていたら落とす */
+check('金額の表示は税込で揃っている',
+    !/税別|税抜/.test(await (await page.request.get(`${BASE}/index.html`)).text()));
 /* 制作の流れに置いていた「実例」（3日間・54回生成・4往復）は外した（2026-09-17）。
    代わりに、内部の生成回数や工数を客先の画面に出していないことだけを見る */
 {
