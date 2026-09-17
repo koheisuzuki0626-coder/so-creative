@@ -61,7 +61,10 @@ export const narTracks = (t, n, nar) =>
 /* ナレーションを使わないときの引き。松は対象外（人物が込み） */
 export const narDiscount = (t, nar) =>
     (!t.narration && nar === 'none' ? PRICE.noNarration : 0);
-export const price = (t, sec, n, nar = 'none') =>
+/* 既定は 'ai'。計算機の初期状態（AIナレーション）と揃える。
+   ここを 'none' にすると差し引きが既定になり、
+   4引数を省いた検査が計算機の表示と食い違う */
+export const price = (t, sec, n, nar = 'ai') =>
     PRICE.base + t.perSec * sec + PRICE.perExtra * (n - 1)
     + narFee(t, n, nar) - narDiscount(t, nar);
 /* 工数モデル（2026-09-16 に実測へ合わせた）。
@@ -77,9 +80,9 @@ export const price = (t, sec, n, nar = 'none') =>
    価格の倍率（1.0 / 1.4 / 1.9）は据え置きなので、上の段ほど時間単価が高い。
    index.html の HOURS / TIERS[].hours と同じ値にすること */
 export const HOURS = { base: 3.0, perSec: 0.15, perExtra: 1.5, narration: 1.0 };
-export const hours = (t, sec, n, nar = 'none') =>
+export const hours = (t, sec, n, nar = 'ai') =>
     HOURS.base + HOURS.perSec * t.hours * sec + HOURS.perExtra * (n - 1) + HOURS.narration * narTracks(t, n, nar);
-export const leadWeeks = (t, sec, nar = 'none', n = 1) =>
+export const leadWeeks = (t, sec, nar = 'ai', n = 1) =>
     Math.max(2, Math.round((HOURS.base + HOURS.perSec * t.hours * sec + HOURS.narration * narTracks(t, n, nar)) / 25 + 1));
 /* 目標の時間単価。以前の ¥14,900 は「60秒の松が32h かかる」という重いモデルからの
    逆算だった。モデルを実測に合わせた結果、同じ価格で ¥23,000/h を下回らない */

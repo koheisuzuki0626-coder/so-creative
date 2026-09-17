@@ -126,7 +126,7 @@ for (const t of TIERS) {
                 if (shown !== want) wrong.push(`${c}: ${shown}≠${want}`);
                 rates.push({ c, nar, rate: shown / hours(t, sec, n, nar) });
             }
-            if (!t.narration) await page.locator('#calc-nar .calc-opt[data-nar="none"]').click();
+            if (!t.narration) await page.locator('#calc-nar .calc-opt[data-nar="ai"]').click();
         }
         await page.locator('#calc-cnt .calc-opt[data-count="1"]').click();
         const lead = await page.locator('#calc-lead-v').innerText();
@@ -197,7 +197,7 @@ check('段が上がると納期も延びるか同じ',
     LENGTHS.every((s) => leadWeeks(TIERS[0], s) <= leadWeeks(TIERS[1], s)
                       && leadWeeks(TIERS[1], s) <= leadWeeks(TIERS[2], s)));
 check('ナレーションを足しても納期は延びないか1週だけ',
-    LENGTHS.every((s) => leadWeeks(TIERS[0], s, 'human') - leadWeeks(TIERS[0], s) <= 1));
+    LENGTHS.every((s) => leadWeeks(TIERS[0], s, 'human') - leadWeeks(TIERS[0], s, 'none') <= 1));
 /* ¥70,000 は大半がナレーターへの外注費なので、「÷1.0h」を自分の時間単価としては使わない。
    工数が 1.0h 増えるぶんで単価が落ちないことだけを、ナレーションありの組み合わせで見る */
 for (const mode of ['ai', 'human']) {
@@ -272,8 +272,6 @@ check('ナレーションの工数は1本 1.0h（AI・人で同じ）', HOURS_NA
 /* ---- 段の順序と独立性 ---- */
 /* 直前の全組み合わせのループが 'none' で終わるので、素の状態（AI）に戻す。
    戻さないと差し引きが乗って「梅は従来価格を据え置き」が落ちる */
-await page.locator('#calc-tier .calc-opt[data-tier="ume"]').click();
-await page.locator('#calc-nar .calc-opt[data-nar="ai"]').click();
 const ladder = [];
 for (const t of TIERS) ladder.push(await pick(page, t.id, 90, 1));
 check('段が上がるほど高い', ladder[0] < ladder[1] && ladder[1] < ladder[2], JSON.stringify(ladder));
