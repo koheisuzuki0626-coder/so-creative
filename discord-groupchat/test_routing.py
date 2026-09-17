@@ -1494,10 +1494,16 @@ def run():
               "毎朝8時の自動リサーチを、日替わりでAI動画生成とミュージックビデオの2テーマに切り替えて"),
           ("set", "AI動画生成とミュージックビデオ"))
     _srcK = bot_src()
-    # 2026-08-25：ジャンルを日替わりで回せるようにしたので、
-    # 生の設定ではなく「今日のジャンル」を渡す形に変わった
-    check("毎日の実行にジャンルを渡す",
-          '_todays_genre(gen_settings.get("trend_query"))' in _srcK, True)
+    # 2026-09-18：日替わりで1ジャンルではなく、毎日すべてのジャンルを順に見る
+    # （本人の希望「1日おきじゃなくて毎日してほしい」）
+    check("毎日の実行に全ジャンルを渡す",
+          "_run_trend_all(cid, _genres)" in _srcK, True)
+    check("全ジャンルは順番に回す（同時に走らせない）",
+          "for g in (genres or [None]):" in _srcK
+          and "await _run_trend_study(cid, g or None, skip_analyzed=True)" in _srcK,
+          True)
+    check("1ジャンルが失敗しても残りを続ける",
+          "残りのジャンルは続けます" in _srcK, True)
     check("毎日の実行では分析済みを飛ばす",
           "skip_analyzed=True" in _srcK, True)
     check("お題指定でも飛ばすかを選べる",

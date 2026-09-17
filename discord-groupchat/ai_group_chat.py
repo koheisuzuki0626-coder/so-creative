@@ -6070,16 +6070,37 @@ _TREND_GENRE_NG_RE = re.compile(
     r"読みやすく|端的|まとめ直|要約|書き直)")
 
 
-# 毎日のリサーチのジャンルは、区切って書けば日替わりで回る。
+# 毎日のリサーチのジャンルは、区切って書けば複数指定できる。
 # 例：「リサーチのジャンルをミュージックビデオとAI動画生成にして」
 # 本人の希望（2026-08-25）：「aiで動画生成してる映像を定期的に分析したい」。
 # 1つに固定すると、学べる幅がその題材に閉じてしまう。
+# 2026-09-18 に日替わりをやめ、【毎日すべてのジャンルを順に見る】ようにした
+# （「1日おきじゃなくて毎日してほしい」）。_todays_genre は手動の1回実行で使う。
 _GENRE_SPLIT_RE = re.compile(r"\s*(?:、|,|/|・|と|および|&)\s*")
 
 
 def _genres_of(query):
     """設定されたジャンル文字列を、個々のジャンルの一覧にする。"""
     return [g for g in _GENRE_SPLIT_RE.split((query or "").strip()) if g]
+
+
+async def _run_trend_all(cid, genres):
+    """設定されたジャンルを順に1つずつ調べる。1つ失敗しても残りは続ける。
+    同時に走らせない理由：動画の分析は Gemini の無料枠を使うので、
+    並列にすると1ジャンル目でクールダウンに入り、2つ目が空振りする。"""
+    for g in (genres or [None]):
+        try:
+            await _run_trend_study(cid, g or None, skip_analyzed=True)
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:  # noqa: BLE001
+            _log_error(f"trend:{g or '急上昇'}", e)
+            try:
+                await send_as(orch, cid,
+                              f"⚠️ 「{g}」のリサーチでつまずきました（記録済み）。"
+                              "残りのジャンルは続けます。")
+            except Exception:  # noqa: BLE001
+                pass
 
 
 def _todays_genre(query, day=None):
@@ -6179,20 +6200,19 @@ async def _daily_trend_loop():
             _who = gen_settings.get("trend_who", "claude1")
             _wname = {"claude1": CLAUDE1_NAME, "claude2": CLAUDE2_NAME,
                       "claude3": CLAUDE3_NAME}.get(_who, CLAUDE1_NAME)
+            # ジャンルを複数設定してあるときは、日替わりで1つではなく
+            # 【毎日その全部】を順に見る（2026-09-18 の要望）。
+            # 同時に走らせると Gemini の枠をすぐ使い切るので、1つずつ順番に。
+            _genres = _genres_of(gen_settings.get("trend_query"))
             await send_as(
                 orch, cid,
                 f"📊 毎日の自動リサーチ（{now.strftime('%m/%d %H:%M')}）"
                 f"：{_wname}が"
-                + (f"「{_todays_genre(gen_settings['trend_query'])}」で"
-                   "伸びている動画"
-                   if gen_settings.get("trend_query") else "YouTube急上昇TOP100")
+                + ("／".join(f"「{g}」" for g in _genres) + "で伸びている動画"
+                   if _genres else "YouTube急上昇TOP100")
                 + "を見てきます…"
             )
-            _spawn(_run_trend_study(cid,
-                                    _todays_genre(gen_settings.get("trend_query"))
-                                    or None,
-                                    skip_analyzed=True),
-                   cid, "YouTubeリサーチ")
+            _spawn(_run_trend_all(cid, _genres), cid, "YouTubeリサーチ")
         except Exception as e:  # noqa: BLE001
             print(f"[trend] 自動リサーチ失敗: {str(e)[:300]}")
 
@@ -13582,13 +13602,13 @@ async def _dispatch_message(message):
         _q = gen_settings.get("trend_query") or ""
         _gs = _genres_of(_q)
         _what = (f"「**{_q}**」で伸びている動画"
-                 + ("（日替わりで切り替え）" if len(_gs) > 1 else "")
+                 + (f"（{len(_gs)}ジャンルとも毎日）" if len(_gs) > 1 else "")
                  if _q else "YouTube急上昇**TOP100**")
         await message.channel.send(
             f"📊 毎日 **{_h}:{_m:02d}（JST）** に {_what}を"
             "リサーチして、このチャンネルに結果を投稿します。\n"
-            + (f"・今日の対象は「**{_todays_genre(_q)}**」です\n"
-               if len(_gs) > 1 else "")
+            + ("・" + "／".join(f"「{g}」" for g in _gs)
+               + " を毎朝この順で見ます\n" if len(_gs) > 1 else "")
             + "・上位数本は実際に視聴して分析し、前に見た動画は飛ばします\n"
             "・勝ちパターンは学習して以降の企画に反映\n"
             "・無料です（YouTube APIとGeminiの無料枠のみ／クレジットは使いません）\n"
