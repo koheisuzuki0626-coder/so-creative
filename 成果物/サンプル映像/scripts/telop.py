@@ -32,14 +32,13 @@ PRODUCT_SUB = "羽根つき 冷凍餃子"
 
 # 本文 / 色を差すキーワード / デザイン
 # 02（業務ソフト）と04（食品CM）でテロップのデザインを作り分ける。
-#   navy  … 紺帯＋白文字＋白の縦帯（02）。帯は画面全幅
-#   block … 黒ブロック＋白文字＋山吹の縦バー（04）。文字幅ぶんのブロック
-# 文字はどちらも白。第2稿では02を黒文字、04はキーワードを山吹にしていたが、
-# 「テロップは白字の方がいい」との指摘で白に統一した。色は帯とバーだけで差をつける。
+#   shadow … 下敷きなし。白文字＋強い影だけ（02）。画を隠さない
+#   block  … 黒ブロック＋白文字＋山吹の縦バー（04）。文字幅ぶんのブロック
+# 文字はどちらも白。02は紺帯を外して影だけにした（「紺帯を無くしてシャドウ」）。
 TELOPS = {
-    "02_1": ("現場で、その場で。", None, "navy"),
-    "02_2": ("事務所には、もう届いている。", None, "navy"),
-    "02_3": ("日報の転記を、なくす。", None, "navy"),
+    "02_1": ("現場で、その場で。", None, "shadow"),
+    "02_2": ("事務所には、もう届いている。", None, "shadow"),
+    "02_3": ("日報の転記を、なくす。", None, "shadow"),
     "04a_1": ("音が、ちがう。", None, "block"),
     "04a_2": ("肉汁、そのまま。", None, "block"),
     "04b_1": ("今日は、もう決まり。", None, "block"),
@@ -115,19 +114,32 @@ def band_telop(key, text, accent, style):
         size -= 4
     f = ImageFont.truetype(ZEN, size)
 
+    # 下敷きが無いスタイルは、明るい背景でも読めるよう細い黒フチを入れる
+    stroke = 3 if style == "shadow" else 0
+
     def draw(d, ox, oy):
         x = ox
         for t, is_ac in parts:
             # 文字は常に白。色差しは使わない（accent を渡せば山吹に戻せる）
             col = ACCENT if is_ac else (255, 255, 255)
-            d.text((x, oy), t, font=f, fill=col + (255,))
+            d.text((x, oy), t, font=f, fill=col + (255,),
+                   stroke_width=stroke, stroke_fill=(8, 14, 26, 210))
             x += d.textlength(t, font=f)
 
     txt = place(draw, left=LEFT, bottom=BOTTOM)
     bb = real_bbox(txt)
     img = blank()
-    # 下敷きから浮かせるための軽い影
-    img.alpha_composite(txt.filter(ImageFilter.GaussianBlur(12)))
+    if style == "shadow":
+        # 下敷きが無いので影で抜く。広い影と締まった影を重ねる
+        wide = txt.filter(ImageFilter.GaussianBlur(38))
+        tight = txt.filter(ImageFilter.GaussianBlur(14))
+        for _ in range(2):
+            img.alpha_composite(wide)
+        for _ in range(2):
+            img.alpha_composite(tight)
+    else:
+        # 下敷きから浮かせるための軽い影
+        img.alpha_composite(txt.filter(ImageFilter.GaussianBlur(12)))
     img.alpha_composite(txt)
     img.save(f"{OUT}/{key}.png")
     box = {"x": max(0, bb[0] - PAD_X), "y": bb[1] - PAD_T,
@@ -184,12 +196,14 @@ if __name__ == "__main__":
     bot = max(b["y"] + b["h"] for b in boxes.values())
     for key, b in boxes.items():
         b["y"], b["h"] = top, bot - top
+        # 下敷きを敷くかどうか。shadow スタイルは影だけなので敷かない
+        b["underlay"] = b["style"] != "shadow"
+        if not b["underlay"]:
+            continue
         blk = blank()
         d = ImageDraw.Draw(blk)
-        if b["style"] == "navy":
-            # 紺帯は画面全幅。左端に白の縦帯
-            d.rectangle([0, b["y"], W, b["y"] + b["h"]], fill=NAVY + (224,))
-            d.rectangle([0, b["y"], 28, b["y"] + b["h"]], fill=(255, 255, 255, 255))
+        if False:
+            pass
         else:
             d.rectangle([b["x"], b["y"], b["x"] + b["w"], b["y"] + b["h"]],
                         fill=(0, 0, 0, 209))

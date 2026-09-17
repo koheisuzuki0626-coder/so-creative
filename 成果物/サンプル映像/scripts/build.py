@@ -77,7 +77,10 @@ def build(name, cuts, telops, dim, logo, logo_at, dim_at, audio):
     idx = len(cuts)
     tex = []
     for (k, st, en) in telops:
-        for suffix, is_text in ((f"{k}_blk", False), (k, True)):
+        layers = [(k, True)]
+        if B[k].get("underlay", True):
+            layers.insert(0, (f"{k}_blk", False))
+        for suffix, is_text in layers:
             ins += ["-loop", "1", "-t", "15", "-i", f"{TELOP}/{suffix}.png"]
             fc.append(layer(idx, st, en, is_text))
             tex.append((idx, st))
