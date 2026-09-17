@@ -995,6 +995,19 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     border: 1.5px solid var(--accent);
 }
 
+/* インボイスの注記。金額の話なので料金の最後に置く。
+   目立たせすぎず、読み飛ばされない程度の扱いにする */
+.plan-tax {
+    margin-top: 20px;
+    padding: 20px 26px 22px;
+    border-radius: 18px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--ink-dim);
+}
+.plan-tax p { margin: 0; font-size: 0.94rem; color: var(--ink-dim); line-height: 1.85; }
+.plan-tax strong { color: var(--ink); font-weight: 600; }
+
 /* ---------- 料金シミュレーター ---------- */
 .calc {
     display: grid;
