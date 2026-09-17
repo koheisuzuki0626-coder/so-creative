@@ -34,8 +34,8 @@ SERVICE_NAME = "そのまま日報"
 SERVICE_SUB = "現場の日報アプリ"
 PRODUCT_NAME = "こがね餃子"
 PRODUCT_SUB = "羽根つき 冷凍餃子"
-SHOP_NAME = "コインランドリー きらら"
-SHOP_SUB = "24時間・年中無休"
+SHOP_NAME = "きらら"
+SHOP_SUB = "コインランドリー ／ 24時間・年中無休"
 
 # 本文 / 色を差すキーワード / デザイン
 # 02（業務ソフト）と04（食品CM）でテロップのデザインを作り分ける。
@@ -177,8 +177,21 @@ def logo_card(name, sub, path, mark="check", tint=(255, 255, 255), cy_ratio=0.46
     img = blank()
     shadow = blank()
     ds, d = ImageDraw.Draw(shadow), ImageDraw.Draw(img)
-    f_name = ImageFont.truetype(GOTHIC, 104)
-    f_sub = ImageFont.truetype(ZEN, 40)
+    # キャンバス幅に収まるまで縮める（縦型だと 104px では長い名前が切れる）
+    n_size, s_size = 104, 40
+    while n_size > 56:
+        f_name = ImageFont.truetype(GOTHIC, n_size)
+        mark_w = 0 if mark == "none" else 46 * 2 + 36
+        if mark_w + f_name.getlength(name) <= W - 180:
+            break
+        n_size -= 4
+    while s_size > 24:
+        f_sub = ImageFont.truetype(ZEN, s_size)
+        if f_sub.getlength(sub) <= W - 160:
+            break
+        s_size -= 2
+    f_name = ImageFont.truetype(GOTHIC, n_size)
+    f_sub = ImageFont.truetype(ZEN, s_size)
     nb = f_name.getbbox(name)
     name_w = nb[2] - nb[0]
     mark_r = 0 if mark == "none" else 46
