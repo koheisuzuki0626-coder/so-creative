@@ -248,6 +248,27 @@ check('内訳の秒単価が段の幅で書いてある',
 check('制作にかかる日数が何で変わるか書いてある',
     /尺と仕上げの段階によって前後します/.test(await page.locator('#process').innerText()));
 
+/* ---- 修正回数 ----
+   段によって違う（梅2・竹3・松3）。about.html が「3回まで調整できる」と
+   言い切っていて、梅（標準）で受注したら約束を破る状態だった（2026-09-17 に直した）。
+   index.html は全箇所「段階に応じて2〜3回」で揃えているので、about も揃える */
+check('about: 修正回数に段の限定が付いている', /仕上げの段階に応じて2〜3回まで/.test(about));
+check('index: 修正回数に段の限定が付いている', /段階に応じて2〜3回/.test(idx));
+check('段ごとの回数を FAQ に書いている',
+    faqUi.some(u => /修正は何回/.test(u.q) && /梅は2回、竹と松は3回/.test(u.a)));
+{
+    /* 画面に出る文字で見る。許すのは「2〜3回まで」「竹と松は3回まで」と、
+       竹・松の段カードの中の「修正3回まで」だけ。それ以外の言い切りは落とす */
+    const ok = /2〜3回まで|竹と松は3回まで|修正3回まで/;
+    for (const f of ['index.html', 'about.html']) {
+        const pg = await open(browser, { page: f });
+        const body = await pg.locator('body').innerText();
+        const bad = [...body.matchAll(/.{0,8}3回まで/g)].map(m => m[0]).filter(t => !ok.test(t));
+        check(`${f}: 段の限定なしに「3回まで」と書いていない`, bad.length === 0, bad.join(' / '));
+        await pg.close();
+    }
+}
+
 /* ---- 公開範囲 ---- */
 for (const [f, html] of [['index.html', idx], ['about.html', about], ['privacy.html', privacy]]) {
     check(`${f} は検索結果に出さない`, /name="robots" content="noindex/.test(html));
