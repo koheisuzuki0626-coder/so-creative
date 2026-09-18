@@ -1519,39 +1519,37 @@ def run():
     # メタ情報だけの分析では、映像そのもののヒントが取れないため。
     check("枠切れで視聴を飛ばしたお題を覚えておく",
           "_trend_redo.setdefault(cid, [])" in _srcK, True)
-    check("枠が戻ったらやり直しを起動する",
-          "_redo = _trend_redo.pop(cid, [])" in _srcK
-          and "_run_trend_all(cid, _redo)" in _srcK, True)
-    check("やり直すことを本人にも伝える",
-          "見直します" in _srcK, True)
-    # 自動更新で再起動するとメモリ上のやり直し記録は消える。消えていても、
-    # 保存してある「今日回せたお題」から残りを割り出して回す（2026-09-18）。
+    check("やり直しの記憶は毎回捨てる（回数で管理するため）",
+          "_trend_redo.pop(cid, None)" in _srcK, True)
+    check("回すことを本人にも伝える（何回目／上限）",
+          "リサーチを回します" in _srcK and "上限" in _srcK, True)
+    # 本人の希望（2026-09-18）「ずっと、定期的に」。枠が戻るたびに回す。
+    # 止まらないと困るのは YouTube Data API の1日の枠なので、回数で止める。
     _gsT = dict(bot.gen_settings)
     _saveT = bot._save_gen_settings
     try:
         bot._save_gen_settings = lambda: None
-        bot.gen_settings["trend_query"] = "会社紹介動画 制作事例、ミュージックビデオ"
-        bot.gen_settings.pop("trend_done", None)
-        check("今日まだのお題を割り出せる",
-              bot._trend_pending_today(),
-              ["会社紹介動画 制作事例", "ミュージックビデオ"])
-        bot._mark_trend_done("会社紹介動画 制作事例")
-        check("視聴つきで回したお題は除かれる",
-              bot._trend_pending_today(), ["ミュージックビデオ"])
-        bot._mark_trend_done("ミュージックビデオ")
-        check("全部回したら空（同じ日に二度回さない）",
-              bot._trend_pending_today(), [])
+        bot.gen_settings.pop("trend_runs", None)
+        check("最初は回せる", bot._trend_can_run(), True)
+        check("回した数を数える", (bot._mark_trend_run(), bot._trend_runs_today())[1], 1)
+        for _ in range(bot.TREND_MAX_RUNS_PER_DAY):
+            bot._mark_trend_run()
+        check("上限に達したら止まる", bot._trend_can_run(), False)
         check("記録は今日のぶんだけ残す",
-              list(bot.gen_settings["trend_done"].keys()),
+              list(bot.gen_settings["trend_runs"].keys()),
               [__import__("datetime").datetime.now(bot.JST).strftime("%Y-%m-%d")])
     finally:
         bot._save_gen_settings = _saveT
         bot.gen_settings.clear()
         bot.gen_settings.update(_gsT)
-    check("視聴できた時だけ札を立てる",
-          "if reports and not quota_hit:" in _srcK, True)
-    check("リサーチが止めてある時は回さない",
-          "if _redo and _trend_conf()[0]:" in _srcK, True)
+    check("1日の上限は環境変数で変えられる",
+          'os.getenv("TREND_MAX_RUNS_PER_DAY"' in _srcK, True)
+    check("枠が戻るたびに設定した全ジャンルを回す",
+          "_genres_now = _genres_of(gen_settings.get(\"trend_query\")) or [None]"
+          in _srcK and "_run_trend_all(cid, _genres_now)" in _srcK, True)
+    check("リサーチが止めてある時・上限超過では回さない",
+          "if _trend_conf()[0] and _trend_can_run():" in _srcK, True)
+    check("回すたびに1回ぶん数える", "_mark_trend_run()" in _srcK, True)
 
     print("■ 定時モードでも雑談は止めない")
     # 本人の希望（2026-09-18）：「雑談機能は残しておいて欲しい」。

@@ -2119,35 +2119,30 @@ GEMINI_COOLDOWN_SEC = int(os.getenv("GEMINI_COOLDOWN_SEC", "1800"))  # 既定30�
 _trend_redo = {}
 
 
-def _trend_done_today():
-    """今日、動画を視聴して分析まで終えたお題の一覧（再起動しても残す）。
-    メモリだけに置くと、コードの自動更新で再起動した時点で消えてしまい、
-    「復活したのに回らない」になる（2026-09-18 に実際に起きた）。"""
-    rec = gen_settings.get("trend_done") or {}
-    today = datetime.now(JST).strftime("%Y-%m-%d")
-    return rec.get(today, []) if isinstance(rec, dict) else []
+# 枠が戻るたびに回し続ける（本人の希望・2026-09-18「ずっと、定期的に」）。
+# 止まらないと困るのは YouTube Data API の1日の枠（10,000ユニット）。
+# 1回の検索で約100〜200ユニット使うので、1日12回までにしておく。
+# 分析済みの動画は飛ばすので、回すたびにリストの奥へ進む（同じ動画は見ない）。
+TREND_MAX_RUNS_PER_DAY = int(os.getenv("TREND_MAX_RUNS_PER_DAY", "12"))
 
 
-def _mark_trend_done(query):
-    """視聴つきで回せたお題を記録する。同じ日に二度回さないための札。"""
+def _trend_runs_today():
+    """今日すでに回した回数（再起動しても残す）。"""
+    rec = gen_settings.get("trend_runs") or {}
     today = datetime.now(JST).strftime("%Y-%m-%d")
-    rec = gen_settings.get("trend_done")
-    if not isinstance(rec, dict):
-        rec = {}
-    done = rec.get(today) or []
-    key = query or ""
-    if key not in done:
-        done.append(key)
-    # 今日のぶんだけ残す（古い日付を溜めない）
-    gen_settings["trend_done"] = {today: done}
+    return rec.get(today, 0) if isinstance(rec, dict) else 0
+
+
+def _mark_trend_run():
+    """1回まわしたことを記録する。今日のぶんだけ残す。"""
+    today = datetime.now(JST).strftime("%Y-%m-%d")
+    gen_settings["trend_runs"] = {today: _trend_runs_today() + 1}
     _save_gen_settings()
 
 
-def _trend_pending_today():
-    """今日まだ視聴つきで回せていないお題。設定が空なら急上昇（""）1件。"""
-    genres = _genres_of(gen_settings.get("trend_query")) or [""]
-    done = _trend_done_today()
-    return [g for g in genres if g not in done]
+def _trend_can_run():
+    """まだ回してよいか（枠を使い切っていないか）。"""
+    return _trend_runs_today() < TREND_MAX_RUNS_PER_DAY
 _gemini_cooldown = {}
 _gemini_rr = {"i": 0}  # ラウンドロビン用インデックス
 
@@ -2269,19 +2264,24 @@ async def _gemini_recovery_loop():
         cid = _gemini_watch.get("outage_cid")
         if cid and not _gemini_all_cooling():
             _gemini_watch["outage_cid"] = None
-            # 枠が戻ったら、今日まだ視聴つきで回せていないお題を回す。
-            # _trend_redo はメモリなので再起動で消える。消えていても、
-            # 保存してある「今日回せたお題」から残りを割り出せる。
-            _redo = _trend_redo.pop(cid, []) or _trend_pending_today()
-            if _redo and _trend_conf()[0]:
-                _spawn(_run_trend_all(cid, _redo), cid, "YouTubeリサーチ（やり直し）")
+            # 枠が戻るたびに、設定してあるジャンルを回す（1日の上限まで）。
+            # 分析済みは飛ばすので、回すたびにリストの奥へ進む。
+            _trend_redo.pop(cid, None)
+            _genres_now = _genres_of(gen_settings.get("trend_query")) or [None]
+            if _trend_conf()[0] and _trend_can_run():
+                _spawn(_run_trend_all(cid, _genres_now), cid,
+                       "YouTubeリサーチ（枠の復活）")
             try:
                 await send_as(
                     orch, cid,
                     "✅ Gemini が復活しました（クールダウン明け）。"
                     "動画の視聴・画像分析・リサーチがまた使えます。"
-                    + (f"\n🔁 枠切れで視聴できなかった{len(_redo)}件を、"
-                       "いまから見直します。" if _redo else "")
+                    + (f"\n🔁 リサーチを回します"
+                       f"（本日{_trend_runs_today() + 1}回目／上限"
+                       f"{TREND_MAX_RUNS_PER_DAY}回）。"
+                       if _trend_conf()[0] and _trend_can_run() else
+                       "\n（本日のリサーチは上限に達しました）"
+                       if _trend_conf()[0] else "")
                 )
             except Exception as e:  # noqa: BLE001
                 print(f"[gemini_watch] 復活通知の送信失敗: {e}")
@@ -5983,8 +5983,7 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None):
     elif quota_hit:
         text += "\n\n（本日はGemini無料枠切れのためメタ情報ベースの分析です）"
     await send_long(channel, text)
-    if reports and not quota_hit:
-        _mark_trend_done(query)      # 今日はこのお題を視聴つきで回せた
+    _mark_trend_run()                # YouTube の枠を使ったので1回ぶん数える
     add_history(cid, "🎬映像リサーチ", f"（YouTube{label}リサーチ {today}）\n{digest}")
     # 会話ログに流れて散らばるだけだった知見を、読み返せる形で溜める。
     # 「YouTubeリサーチのデータは蓄積されてる？」に「散らばったまま」と
