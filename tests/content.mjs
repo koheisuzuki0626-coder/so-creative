@@ -341,7 +341,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     /* 件数を手で書いているので、実際のチェック数とズレたら落とす。
        数えるのは P0 のぶんだけ（「このあとの宿題」は別勘定） */
     check('進捗の数字が実際のチェック数と合っている',
-        t.includes(`${ckAll}項目中${ckDone}つ完了`), `${ckDone}/${ckAll}`);
+        t.includes(`${ckAll}項目中 ${ckDone}件 完了`), `${ckDone}/${ckAll}`);
     check('残りは未チェックで置いてある', ckLeft === 3, String(ckLeft));
 
     /* このあとの宿題。いま動かせないものなので、全部未チェックで始まる。
@@ -374,6 +374,43 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         doneTxt.every((d) => /\d+\/\d+/.test(d)), doneTxt.find((d) => !/\d+\/\d+/.test(d)) || '');
     check('崩れるときの表がある', /この計画が崩れるとき/.test(t));
     check('未開業であることを書いている', /未開業/.test(t));
+
+    /* 9/18 にチェックを押せるようにした。押したぶんはこの端末の localStorage にだけ
+       残り、リポジトリには入らない。だから「何件ズレているか」を必ず画面に出す。
+       確定させるときは HTML を直してコミットする（＝ズレが0に戻る） */
+    check('チェックを押せる',
+        await rm.locator('.ck li .box[role="checkbox"]').count() === ckAll + next.length,
+        String(await rm.locator('.ck li .box[role="checkbox"]').count()));
+    check('押す前はズレの知らせが出ていない', await rm.locator('#ck-local').isVisible() === false);
+    await rm.locator('[data-id="p0-kaigyo"] .box').click();
+    check('押すとチェックが付く',
+        await rm.locator('[data-id="p0-kaigyo"]').evaluate((el) => el.classList.contains('done')));
+    check('押すと件数が増える',
+        (await rm.locator('#ck-count').innerText()).includes(`${ckDone + 1}件`),
+        await rm.locator('#ck-count').innerText());
+    check('押すとズレの知らせが出る',
+        await rm.locator('#ck-local').isVisible()
+        && (await rm.locator('#ck-local').innerText()).includes('1件'));
+    await rm.reload({ waitUntil: 'networkidle' });
+    check('押した状態が再読込のあとも残る',
+        await rm.locator('[data-id="p0-kaigyo"]').evaluate((el) => el.classList.contains('done')));
+    await rm.locator('#ck-reset').click();
+    check('「記録の状態に戻す」で元に戻る',
+        await rm.locator('#ck-local').isVisible() === false
+        && (await rm.locator('#ck-count').innerText()).includes(`${ckDone}件`));
+    /* プライベートブラウズなどで localStorage が触れないことがある。
+       そこで例外が出るとページ全体が止まるので、落ちずに表示だけ出ることを見る */
+    {
+        const np = await open(browser, { page: 'roadmap.html' });
+        await np.addInitScript(() => {
+            Object.defineProperty(window, 'localStorage', { get() { throw new Error('denied'); } });
+        });
+        await np.reload({ waitUntil: 'networkidle' });
+        check('localStorage が使えなくても表示が壊れない',
+            await np.locator('.ck.p0 li.done').count() === ckDone && np.__errors.length === 0,
+            JSON.stringify(np.__errors));
+        await np.close();
+    }
 
     check('社内用なので検索に出さない',
         (await rm.evaluate(() => document.querySelector('meta[name="robots"]')?.content || '')).includes('noindex'));

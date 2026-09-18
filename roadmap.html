@@ -114,7 +114,13 @@
         .ck > li > div em { display: block; font-style: normal; font-size: .85rem;
                             color: var(--ink-dim); margin-top: 3px; }
         .ck .box { width: 17px; height: 17px; margin-top: 5px; border-radius: 5px;
-                   border: 1.5px solid var(--ink-dim); position: relative; }
+                   border: 1.5px solid var(--ink-dim); position: relative;
+                   padding: 0; background: none; cursor: pointer; appearance: none;
+                   -webkit-appearance: none; transition: border-color .12s ease, background .12s ease; }
+        /* 指で押せる大きさにする。見た目は17pxのまま、当たり判定だけ広げる */
+        .ck .box::before { content: ""; position: absolute; inset: -10px; }
+        .ck .box:hover { border-color: var(--ink); }
+        .ck .box:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 3px; }
         .ck li.done .box { background: var(--ok); border-color: var(--ok); }
         .ck li.done .box::after { content: ""; position: absolute; left: 5px; top: 1px;
                                   width: 4px; height: 9px; border-right: 2px solid #fff;
@@ -123,6 +129,14 @@
         .ck-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 26px; }
         .ck-head .eyebrow { margin: 0; }
         .ck-count { font-size: .82rem; color: var(--ink-dim); white-space: nowrap; }
+        /* この端末だけで変えているぶんの知らせ。押せるようにした以上、
+           リポジトリの記録とズレたまま気づかない状態をつくらない */
+        .ck-local { margin-top: 14px; padding: 11px 15px; background: var(--bg-alt); border-radius: 9px;
+                    font-size: .85rem; color: var(--ink-2); }
+        .ck-local b { color: var(--ink); font-weight: 500; }
+        .ck-local button { font: inherit; font-size: .85rem; color: var(--accent-ink); background: none;
+                           border: 0; padding: 0; margin-left: 6px; cursor: pointer;
+                           text-decoration: underline; text-underline-offset: 3px; }
 
         /* 折りたたみ */
         details.fold { border-bottom: 1px solid var(--line); }
@@ -163,16 +177,21 @@
 
     <div class="ck-head">
         <p class="eyebrow">残っていること</p>
-        <p class="ck-count">P0 は 12項目中9つ完了</p>
+        <p class="ck-count" id="ck-count">P0 は 12項目中 9件 完了</p>
     </div>
     <ul class="ck p0">
-        <li><span class="box" aria-hidden="true"></span><div>声かけを始める
+        <li data-id="p0-eigyo"><button type="button" class="box" role="checkbox" aria-checked="false"></button><div>声かけを始める
             <em>制作は動きだした。止まっているのは営業のほうで、初入金の遅れが直接そこに効く</em></div></li>
-        <li><span class="box" aria-hidden="true"></span><div>開業届を出す
+        <li data-id="p0-kaigyo"><button type="button" class="box" role="checkbox" aria-checked="false"></button><div>開業届を出す
             <em>ひな形も支払条件も決まったので、受注できない理由はこれだけになった</em></div></li>
-        <li><span class="box" aria-hidden="true"></span><div>手元資金と月の生活費を確定させる
+        <li data-id="p0-shikin"><button type="button" class="box" role="checkbox" aria-checked="false"></button><div>手元資金と月の生活費を確定させる
             <em>いつまで無収入で持つかを日付で押さえる。必要な貯蓄は40〜60万（下の表）</em></div></li>
     </ul>
+
+    <p class="ck-local" id="ck-local" hidden>
+        この端末だけで <b id="ck-local-n">0件</b> 変えています。リポジトリには入っていないので、
+        他の端末では元のままです。<button type="button" id="ck-reset">記録の状態に戻す</button>
+    </p>
 
     <div class="act"><p class="act-label"><b>1</b><span>いまの位置</span></p></div>
 
@@ -237,25 +256,25 @@
             <h3>済んだこと</h3>
             <p class="when">残り3つはページ上部。開業届が出れば受注できる</p>
             <ul class="ck p0">
-                <li class="done"><span class="box" aria-hidden="true"></span><div>有料プランに入る
+                <li class="done" data-id="p0-plan"><button type="button" class="box" role="checkbox" aria-checked="true"></button><div>有料プランに入る
                     <em>9/11 ／ Max</em></div></li>
-                <li class="done"><span class="box" aria-hidden="true"></span><div>松2本の工数を実測する
+                <li class="done" data-id="p0-kosu"><button type="button" class="box" role="checkbox" aria-checked="true"></button><div>松2本の工数を実測する
                     <em>9/13〜14 ／ 11.5h。工数モデルを実測に合わせ直した</em></div></li>
-                <li class="done"><span class="box" aria-hidden="true"></span><div>松の4工程を通す
+                <li class="done" data-id="p0-4step"><button type="button" class="box" role="checkbox" aria-checked="true"></button><div>松の4工程を通す
                     <em>9/14 ／ 未検証だった仕上げの工程を一度ぜんぶ通した</em></div></li>
-                <li class="done"><span class="box" aria-hidden="true"></span><div>料金と仕様を組み直す
+                <li class="done" data-id="p0-price"><button type="button" class="box" role="checkbox" aria-checked="true"></button><div>料金と仕様を組み直す
                     <em>9/16 ／ 手間の増えない差（4K・書き出し形式）で段を分けるのをやめた</em></div></li>
-                <li class="done"><span class="box" aria-hidden="true"></span><div>サンプルをつくる
+                <li class="done" data-id="p0-sample"><button type="button" class="box" role="checkbox" aria-checked="true"></button><div>サンプルをつくる
                     <em>9/17 ／ 7ジャンル・5本・719.30クレジット</em></div></li>
-                <li class="done"><span class="box" aria-hidden="true"></span><div>支払条件を決める
+                <li class="done" data-id="p0-shiharai"><button type="button" class="box" role="checkbox" aria-checked="true"></button><div>支払条件を決める
                     <em>9/17 ／ 着手金50% ＋ 納品後50%、期日は納品日から30日以内</em></div></li>
-                <li class="done"><span class="box" aria-hidden="true"></span><div>インボイスは登録しないと決める
+                <li class="done" data-id="p0-invoice"><button type="button" class="box" role="checkbox" aria-checked="true"></button><div>インボイスは登録しないと決める
                     <em>9/17 ／ 免税事業者のまま税込表示</em></div></li>
-                <li class="done"><span class="box" aria-hidden="true"></span><div>見積書・契約書・請求書のひな形をつくる
+                <li class="done" data-id="p0-hinagata"><button type="button" class="box" role="checkbox" aria-checked="true"></button><div>見積書・契約書・請求書のひな形をつくる
                     <em>9/18 ／ 成果物/_テンプレート/。著作権の帰属・修正回数（梅2・竹3・松3）・
                     キャンセルの按分・AI特有の免責まで書き込んだ。着手金の期日は請求書発行日から14日以内
                     （ひな形だけの決めごと）。案件が来たら ＿＿ を埋めてPDFにするだけ</em></div></li>
-                <li class="done"><span class="box" aria-hidden="true"></span><div>プロフィール・略歴をサイトに載せる
+                <li class="done" data-id="p0-profile"><button type="button" class="box" role="checkbox" aria-checked="true"></button><div>プロフィール・略歴をサイトに載せる
                     <em>9/18 ／ 会社概要に経歴の行を足した。前職の社名と受注額は出していない。
                     顔写真は保留。残るは「開業」の行だけで、開業届が出てから</em></div></li>
             </ul>
@@ -269,19 +288,19 @@
             守れない予定が並ぶと、上の3つが埋もれる。
         </p>
         <ul class="ck next">
-            <li><span class="box" aria-hidden="true"></span><div>会社概要に「開業」の行を足す
+            <li data-id="next-kaigyo-line"><button type="button" class="box" role="checkbox" aria-checked="false"></button><div>会社概要に「開業」の行を足す
                 <em>開業届が出てから。プロフィールの行は 9/18 に入れてあるので、残りはこの1行だけ</em></div></li>
-            <li><span class="box" aria-hidden="true"></span><div>梅で90秒を1本つくって、実消費クレジットを測る
+            <li data-id="next-credit"><button type="button" class="box" role="checkbox" aria-checked="false"></button><div>梅で90秒を1本つくって、実消費クレジットを測る
                 <em>次にサンプルをつくるときに一緒に測る（測るためだけに1本つくらない）。
                 33クレジット/秒 は松（Seedance 2.5）の数字で、梅の実売には当てはまらない。
                 要らなくなれば買い足し 約¥192,000/年 が外れて上振れする。
                 <a href="record.html">実測記録と裏づけ</a>の「残っている宿題」</em></div></li>
-            <li><span class="box" aria-hidden="true"></span><div>初受注の1本目で、待ち時間を除いた実働を測る
+            <li data-id="next-jitsudo"><button type="button" class="box" role="checkbox" aria-checked="false"></button><div>初受注の1本目で、待ち時間を除いた実働を測る
                 <em>11.5h は架空のクライアントでの数字。実案件には返信待ち・要件の揺れ・素材待ちが乗る</em></div></li>
-            <li><span class="box" aria-hidden="true"></span><div>紹介以外の受注経路を1つ立てる
+            <li data-id="next-keiro"><button type="button" class="box" role="checkbox" aria-checked="false"></button><div>紹介以外の受注経路を1つ立てる
                 <em>Q2 まで。問い合わせが月7件に届かないと月2件が埋まらない。候補は
                 <a href="record.html">実測記録と裏づけ</a>の「先に決めること」</em></div></li>
-            <li><span class="box" aria-hidden="true"></span><div>玄光社『AI映像制作アーカイブス』の次号に応募する
+            <li data-id="next-mook"><button type="button" class="box" role="checkbox" aria-checked="false"></button><div>玄光社『AI映像制作アーカイブス』の次号に応募する
                 <em>掲載は無料だが、条件はクライアントワークの実績。2026年版は締切（6/21）済みなので、
                 次号の募集までに1件つくる</em></div></li>
         </ul>
@@ -314,6 +333,59 @@
         年収は額面（売上 − 経費）で、税・社会保険を引く前の数字。
     </p>
     <script>
+        /* チェックの状態は HTML（＝リポジトリ）が本体で、そこに書いてあるものが正。
+           ただし手元で「終わった」を押せないと使い物にならないので、この端末で
+           押したぶんは localStorage に覚える。覚えた状態は他の端末にも
+           リポジトリにも伝わらないため、ズレている件数を画面に出して、
+           気づかないまま二重帳簿になるのを防ぐ。
+           確定させるときは HTML を直してコミットする（＝ズレが0に戻る） */
+        (() => {
+            const KEY = 'so-roadmap-check';
+            const items = [...document.querySelectorAll('.ck li')];
+            if (!items.length) return;
+            // 読み込み時点の状態＝コミットされている状態
+            const committed = new Map(items.map((li) => [li.dataset.id, li.classList.contains('done')]));
+            const countEl = document.getElementById('ck-count');
+            const note = document.getElementById('ck-local');
+            const noteN = document.getElementById('ck-local-n');
+            const reset = document.getElementById('ck-reset');
+
+            // プライベートブラウズなどで localStorage が使えないことがある
+            const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { return {}; } };
+            const save = () => { try { localStorage.setItem(KEY, JSON.stringify(local)); } catch { /* 覚えられなくても動く */ } };
+            let local = load();
+
+            const paint = () => {
+                let diff = 0;
+                for (const li of items) {
+                    const id = li.dataset.id;
+                    const on = id in local ? local[id] : committed.get(id);
+                    li.classList.toggle('done', on);
+                    const box = li.querySelector('.box');
+                    box.setAttribute('aria-checked', String(on));
+                    box.setAttribute('aria-label', (li.querySelector('div')?.firstChild?.textContent || '').trim());
+                    if (on !== committed.get(id)) diff += 1;
+                }
+                const p0 = items.filter((li) => li.closest('.ck').classList.contains('p0'));
+                const done = p0.filter((li) => li.classList.contains('done')).length;
+                if (countEl) countEl.textContent = `P0 は ${p0.length}項目中 ${done}件 完了`;
+                if (note) { note.hidden = diff === 0; noteN.textContent = `${diff}件`; }
+            };
+
+            for (const li of items) {
+                li.querySelector('.box').addEventListener('click', () => {
+                    const id = li.dataset.id;
+                    const next = !li.classList.contains('done');
+                    // 記録と同じ値に戻したら、上書きとして覚えておく必要はない
+                    if (next === committed.get(id)) delete local[id]; else local[id] = next;
+                    save();
+                    paint();
+                });
+            }
+            reset?.addEventListener('click', () => { local = {}; save(); paint(); });
+            paint();
+        })();
+
         /* スマホで表を縦積みにするとき、各セルに列の見出しを持たせる。
            CSS だけでは thead の文字を読めないので、ここで data-label に写す */
         for (const t of document.querySelectorAll('table')) {
