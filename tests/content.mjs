@@ -347,16 +347,18 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     /* このあとの宿題。いま動かせないものなので、全部未チェックで始まる。
        日付ではなく着手条件で書くと決めたので、各項目に条件が要る */
     const next = await rm.locator('.ck.next li').allInnerTexts();
-    check('このあとの宿題が載っている', next.length >= 6, String(next.length));
+    check('このあとの宿題が載っている', next.length >= 5, String(next.length));
     check('宿題は未チェックで置いてある',
         await rm.locator('.ck.next li.done').count() === 0);
     check('宿題に着手条件が書いてある',
         next.every((x) => /てから|届いたら|ときに|まで|次号|1本目/.test(x)),
         next.find((x) => !/てから|届いたら|ときに|まで|次号|1本目/.test(x)) || '');
-    check('COLOWORKS と実測の宿題が入っている',
-        next.some((x) => /COLOWORKS/.test(x))
-        && next.some((x) => /実消費クレジット/.test(x))
+    check('実測と受注経路の宿題が入っている',
+        next.some((x) => /実消費クレジット/.test(x))
         && next.some((x) => /受注経路/.test(x)), next.join(' | '));
+    /* COLOWORKS（日本コロムビアのAIクリエイター公募）は 9/18 に登録し、同日に取り下げた。
+       宿題として残っていると嘘になるので、載っていないことを見る */
+    check('取り下げた COLOWORKS が残っていない', !/COLOWORKS/i.test(t));
 
     /* 未チェックのまま「済」と書いていないか（チェック漏れではなく書き間違いを拾う）。
        宿題の側は「登録済み」のように途中経過を書くので、P0 の残りだけを見る */
