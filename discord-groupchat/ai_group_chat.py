@@ -2268,7 +2268,10 @@ async def _gemini_recovery_loop():
             # 分析済みは飛ばすので、回すたびにリストの奥へ進む。
             _trend_redo.pop(cid, None)
             _genres_now = _genres_of(gen_settings.get("trend_query")) or [None]
-            if _trend_conf()[0] and _trend_can_run():
+            # すでに走っている時は起動しない。2本目の枠待ちの最中に
+            # ここがもう1本立ち上げると、同じお題が二重に回る。
+            _already = any("YouTubeリサーチ" in n for n, _ in _busy_tasks(cid))
+            if _trend_conf()[0] and _trend_can_run() and not _already:
                 _spawn(_run_trend_all(cid, _genres_now), cid,
                        "YouTubeリサーチ（枠の復活）")
             try:
@@ -2277,11 +2280,10 @@ async def _gemini_recovery_loop():
                     "✅ Gemini が復活しました（クールダウン明け）。"
                     "動画の視聴・画像分析・リサーチがまた使えます。"
                     + (f"\n🔁 リサーチを回します"
-                       f"（本日{_trend_runs_today() + 1}回目／上限"
-                       f"{TREND_MAX_RUNS_PER_DAY}回）。"
-                       if _trend_conf()[0] and _trend_can_run() else
-                       "\n（本日のリサーチは上限に達しました）"
-                       if _trend_conf()[0] else "")
+                       f"（本日{_trend_runs_today() + 1}／{TREND_MAX_RUNS_PER_DAY}）。"
+                       if _trend_conf()[0] and _trend_can_run() and not _already
+                       else "\n（本日のリサーチは上限に達しました）"
+                       if _trend_conf()[0] and not _trend_can_run() else "")
                 )
             except Exception as e:  # noqa: BLE001
                 print(f"[gemini_watch] 復活通知の送信失敗: {e}")
@@ -5983,7 +5985,6 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None):
     elif quota_hit:
         text += "\n\n（本日はGemini無料枠切れのためメタ情報ベースの分析です）"
     await send_long(channel, text)
-    _mark_trend_run()                # YouTube の枠を使ったので1回ぶん数える
     add_history(cid, "🎬映像リサーチ", f"（YouTube{label}リサーチ {today}）\n{digest}")
     # 会話ログに流れて散らばるだけだった知見を、読み返せる形で溜める。
     # 「YouTubeリサーチのデータは蓄積されてる？」に「散らばったまま」と
@@ -6183,6 +6184,7 @@ async def _run_trend_all(cid, genres):
     並列にすると1ジャンル目でクールダウンに入り、2つ目が空振りする。
     2本目からは、枠が戻るのを待ってから始める（待たずに始めると
     タイトルと説明文だけの分析になり、実際に動画を見られない）。"""
+    _mark_trend_run()        # 1巡で1回と数える（ジャンル数で上限が減らないように）
     for i, g in enumerate(genres or [None]):
         if i:
             await _wait_for_gemini(cid)

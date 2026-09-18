@@ -1548,8 +1548,14 @@ def run():
           "_genres_now = _genres_of(gen_settings.get(\"trend_query\")) or [None]"
           in _srcK and "_run_trend_all(cid, _genres_now)" in _srcK, True)
     check("リサーチが止めてある時・上限超過では回さない",
-          "if _trend_conf()[0] and _trend_can_run():" in _srcK, True)
-    check("回すたびに1回ぶん数える", "_mark_trend_run()" in _srcK, True)
+          "if _trend_conf()[0] and _trend_can_run() and not _already:" in _srcK,
+          True)
+    # 2本目の枠待ちの最中に、見張りがもう1本立ち上げると同じお題が二重に回る
+    check("走っている最中は起動しない",
+          '_already = any("YouTubeリサーチ" in n for n, _ in _busy_tasks(cid))'
+          in _srcK, True)
+    check("1巡で1回と数える（ジャンル数で上限が減らない）",
+          "_mark_trend_run()        # 1巡で1回と数える" in _srcK, True)
 
     print("■ 定時モードでも雑談は止めない")
     # 本人の希望（2026-09-18）：「雑談機能は残しておいて欲しい」。
