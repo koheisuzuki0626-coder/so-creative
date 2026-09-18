@@ -334,19 +334,36 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     /* 9/18 にチェックリスト式へ直した。状態は HTML に持たせてブラウザには保存しない
        （端末ごとに違う状態を持つとリポジトリの記録とズレるため）。
        残り＝未チェックがページ上部、済＝チェック済みが P0 に並ぶ */
-    const ckAll = await rm.locator('.ck li').count();
-    const ckDone = await rm.locator('.ck li.done').count();
-    const ckLeft = await rm.locator('.ck li:not(.done)').count();
+    const ckAll = await rm.locator('.ck.p0 li').count();
+    const ckDone = await rm.locator('.ck.p0 li.done').count();
+    const ckLeft = await rm.locator('.ck.p0 li:not(.done)').count();
     check('チェックリストになっている', ckAll >= 12 && ckDone >= 9, `${ckDone}/${ckAll}`);
-    /* 件数を手で書いているので、実際のチェック数とズレたら落とす */
+    /* 件数を手で書いているので、実際のチェック数とズレたら落とす。
+       数えるのは P0 のぶんだけ（「このあとの宿題」は別勘定） */
     check('進捗の数字が実際のチェック数と合っている',
         t.includes(`${ckAll}項目中${ckDone}つ完了`), `${ckDone}/${ckAll}`);
     check('残りは未チェックで置いてある', ckLeft === 3, String(ckLeft));
-    /* 未チェックのまま「済」と書いていないか（チェック漏れではなく書き間違いを拾う） */
-    const leftTxt = await rm.locator('.ck li:not(.done)').allInnerTexts();
+
+    /* このあとの宿題。いま動かせないものなので、全部未チェックで始まる。
+       日付ではなく着手条件で書くと決めたので、各項目に条件が要る */
+    const next = await rm.locator('.ck.next li').allInnerTexts();
+    check('このあとの宿題が載っている', next.length >= 6, String(next.length));
+    check('宿題は未チェックで置いてある',
+        await rm.locator('.ck.next li.done').count() === 0);
+    check('宿題に着手条件が書いてある',
+        next.every((x) => /てから|届いたら|ときに|まで|次号|1本目/.test(x)),
+        next.find((x) => !/てから|届いたら|ときに|まで|次号|1本目/.test(x)) || '');
+    check('COLOWORKS と実測の宿題が入っている',
+        next.some((x) => /COLOWORKS/.test(x))
+        && next.some((x) => /実消費クレジット/.test(x))
+        && next.some((x) => /受注経路/.test(x)), next.join(' | '));
+
+    /* 未チェックのまま「済」と書いていないか（チェック漏れではなく書き間違いを拾う）。
+       宿題の側は「登録済み」のように途中経過を書くので、P0 の残りだけを見る */
+    const leftTxt = await rm.locator('.ck.p0 li:not(.done)').allInnerTexts();
     check('未チェックの項目を済と書いていない', !leftTxt.some((x) => /済/.test(x)), leftTxt.join(' | '));
 
-    const doneTxt = await rm.locator('.ck li.done').allInnerTexts();
+    const doneTxt = await rm.locator('.ck.p0 li.done').allInnerTexts();
     check('決着ぶんが済に入っている',
         doneTxt.some((d) => /支払条件/.test(d) && /9\/17/.test(d))
         && doneTxt.some((d) => /インボイス/.test(d) && /登録しない/.test(d)), doneTxt.join(' | '));
