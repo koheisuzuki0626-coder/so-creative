@@ -415,6 +415,44 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     await rc.close();
 }
 
+/* ---- 見積書・契約書・請求書のひな形 ----
+   数字（着手金50%・期日・修正回数・キャンセルの按分・−¥25,000・¥70,000）は
+   サイトの料金ページに揃えてある。サイトだけ直すとひな形が古い条件のまま
+   お客様に出ていくので、突き合わせて見張る（9/18 作成） */
+{
+    const T = '成果物/_テンプレート';
+    const mitsu = readFileSync(`${ROOT}/${T}/見積書.md`, 'utf8');
+    const keiyaku = readFileSync(`${ROOT}/${T}/業務委託契約書.md`, 'utf8');
+    const seikyu = readFileSync(`${ROOT}/${T}/請求書.md`, 'utf8');
+    const all = mitsu + keiyaku + seikyu;
+
+    check('ひな形3点が空でない', [mitsu, keiyaku, seikyu].every(x => x.length > 500));
+    check('ひな形に税別・税抜が残っていない', !/税別|税抜/.test(all));
+    check('ひな形3点とも消費税を別途請求しない旨がある',
+        [mitsu, keiyaku, seikyu].every(x => /消費税を(別途請求|区分して請求)/.test(x)));
+    check('支払条件がサイトと揃っている(着手金50%・納品日から30日以内)',
+        [mitsu, keiyaku].every(x => /50%/.test(x) && /納品日から30日以内/.test(x)));
+    check('着手金の期日が契約書と請求書で揃っている',
+        [keiyaku, seikyu].every(x => /請求書発行日から14日以内/.test(x)));
+    check('キャンセルの按分がサイトと揃っている',
+        [mitsu, keiyaku].every(x => /80%/.test(x) && /100%/.test(x) && /絵コンテ/.test(x)));
+    check('修正回数がサイトと揃っている(梅2・竹3・松3)',
+        /梅2回・竹3回・松3回/.test(keiyaku) && /梅2回・竹3回・松3回/.test(mitsu));
+    check('ナレーションの条件が見積書にある',
+        /−¥25,000/.test(mitsu) && /¥70,000/.test(mitsu));
+    check('料金の単位がサイトと揃っている(基本料金と追加本数)',
+        /¥90,000/.test(mitsu) && /¥65,000/.test(mitsu));
+    check('契約書にAI特有の免責がある',
+        /著作権による保護を\s*受けない場合がある/.test(keiyaku) && /意図しない類似/.test(keiyaku));
+    check('契約書に権利の帰属がある', /報酬の完済をもって/.test(keiyaku) && /制限なく利用できる/.test(keiyaku));
+    check('実績掲載は相手が断れる形になっている', /公開を\s*希望しない場合/.test(keiyaku));
+    check('請求書に登録番号の欄が無い', !/登録番号 \||T\d{13}/.test(seikyu), (seikyu.match(/T\d{13}/) || [''])[0]);
+    /* 番号の例(S-20261001-001)に7桁以上の数字が含まれるので、全文の数字検索ではなく
+       振込先の行が空欄(＿)のままかを見る */
+    check('実在の口座番号を書いていない',
+        /＿＿銀行 ＿＿支店/.test(seikyu) && /普通 ＿/.test(seikyu) && /名義 \| ＿/.test(seikyu));
+}
+
 /* ---- 配信できるか ---- */
 for (const f of ['assets/site.css', 'assets/logo-mark.png', 'assets/favicon.png',
                  'assets/apple-touch-icon.png', 'assets/ogp.png', 'privacy.html',
