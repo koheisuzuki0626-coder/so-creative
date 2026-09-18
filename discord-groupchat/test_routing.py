@@ -1500,7 +1500,7 @@ def run():
           "_run_trend_all(cid, _genres)" in _srcK, True)
     check("全ジャンルは順番に回す（同時に走らせない）",
           "for i, g in enumerate(genres or [None]):" in _srcK
-          and "await _run_trend_study(cid, g or None, skip_analyzed=True)" in _srcK,
+          and "await _run_trend_study(cid, g or None, skip_analyzed=True," in _srcK,
           True)
     check("1ジャンルが失敗しても残りを続ける",
           "残りのジャンルは続けます" in _srcK, True)
@@ -1529,14 +1529,27 @@ def run():
     _saveT = bot._save_gen_settings
     try:
         bot._save_gen_settings = lambda: None
-        bot.gen_settings.pop("trend_runs", None)
+        bot.gen_settings.pop("trend_stat", None)
         check("最初は回せる", bot._trend_can_run(), True)
-        check("回した数を数える", (bot._mark_trend_run(), bot._trend_runs_today())[1], 1)
+        # 本人の希望（2026-09-19）「geminiに絵を見て判断して欲しい」。
+        # 枠切れでメタ情報だけになった回は数えず、やり直す。
+        bot._mark_trend_try()
+        check("試しただけでは上限に数えない", bot._trend_runs_today(), 0)
+        check("失敗した回は間隔を空けずにやり直せる", bot._trend_can_run(), True)
+        bot._mark_trend_run()
+        check("絵を見られた巡だけ数える", bot._trend_runs_today(), 1)
+        check("成功したら間隔を空ける（すぐには回さない）",
+              bot._trend_can_run(), False)
         for _ in range(bot.TREND_MAX_RUNS_PER_DAY):
             bot._mark_trend_run()
         check("上限に達したら止まる", bot._trend_can_run(), False)
+        bot.gen_settings.pop("trend_stat", None)
+        for _ in range(bot.TREND_MAX_TRIES_PER_DAY):
+            bot._mark_trend_try()
+        check("試行の上限でも止まる（YouTubeの枠を守る）",
+              bot._trend_can_run(), False)
         check("記録は今日のぶんだけ残す",
-              list(bot.gen_settings["trend_runs"].keys()),
+              list(bot.gen_settings["trend_stat"].keys()),
               [__import__("datetime").datetime.now(bot.JST).strftime("%Y-%m-%d")])
     finally:
         bot._save_gen_settings = _saveT
@@ -1544,6 +1557,14 @@ def run():
         bot.gen_settings.update(_gsT)
     check("1日の上限は環境変数で変えられる",
           'os.getenv("TREND_MAX_RUNS_PER_DAY"' in _srcK, True)
+    check("回す間隔の下限がある（朝だけで使い切らない）",
+          'os.getenv("TREND_MIN_GAP_SEC"' in _srcK, True)
+    check("絵を見られなかった回はレポートを出さない",
+          "if require_video and not reports:" in _srcK, True)
+    check("自動の巡回は視聴を必須にする",
+          "require_video=True" in _srcK, True)
+    check("手動のリサーチは従来どおり出す（待っている人がいるため）",
+          "require_video=False" in _srcK, True)
     # 本人の判断（2026-09-18）：通知は1日8通前後まで。数えたら約108通あった。
     # 4巡にして、途中経過（取得／枠切れ／枠待ち／復活）は黙りレポートだけ出す。
     check("既定は1日4巡", bot.TREND_MAX_RUNS_PER_DAY, 4)
@@ -1569,7 +1590,8 @@ def run():
           '_already = any("YouTubeリサーチ" in n for n, _ in _busy_tasks(cid))'
           in _srcK, True)
     check("1巡で1回と数える（ジャンル数で上限が減らない）",
-          "_mark_trend_run()        # 1巡で1回と数える" in _srcK, True)
+          "_mark_trend_try()        # YouTube の枠を使うので" in _srcK
+          and "_mark_trend_run()      # 絵を見られた巡だけを" in _srcK, True)
 
     print("■ 定時モードでも雑談は止めない")
     # 本人の希望（2026-09-18）：「雑談機能は残しておいて欲しい」。
@@ -1591,8 +1613,7 @@ def run():
     check("毎日の実行では分析済みを飛ばす",
           "skip_analyzed=True" in _srcK, True)
     check("お題指定でも飛ばすかを選べる",
-          "def _run_trend_study(cid, query=None, skip_analyzed=None)" in _srcK
-          or "async def _run_trend_study(cid, query=None, skip_analyzed=None)" in _srcK,
+          "async def _run_trend_study(cid, query=None, skip_analyzed=None," in _srcK,
           True)
 
     print("■ 代打で答えた時に名乗りを変える（別人が混ざって見えないように）")

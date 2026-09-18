@@ -2127,6 +2127,12 @@ _trend_redo = {}
 # 4巡（2〜3時間おき）にして、途中経過（取得しました／枠切れ／枠待ち）は黙る。
 # レポートだけ出す。分析そのものは毎回行い、youtube_insights.md には全部貯まる。
 TREND_MAX_RUNS_PER_DAY = int(os.getenv("TREND_MAX_RUNS_PER_DAY", "4"))
+# 回す間隔の下限。枠が戻るたびに回すと、朝の2時間で1日ぶんを使い切って
+# 残り22時間が沈黙する（2026-09-19 に判明）。1日に散らすための下限。
+TREND_MIN_GAP_SEC = int(os.getenv("TREND_MIN_GAP_SEC", str(4 * 3600)))
+# 枠切れで「絵を見られなかった」回は上限に数えない。ただし YouTube の枠は
+# 使うので、試行そのものには別の上限を置く。
+TREND_MAX_TRIES_PER_DAY = int(os.getenv("TREND_MAX_TRIES_PER_DAY", "12"))
 TREND_QUIET = os.getenv("TREND_QUIET", "1").lower() not in ("0", "false", "no")
 
 
@@ -2141,23 +2147,55 @@ async def _trend_say(channel, text):
         print(f"[trend] 通知の送信失敗: {str(e)[:120]}")
 
 
-def _trend_runs_today():
-    """今日すでに回した回数（再起動しても残す）。"""
-    rec = gen_settings.get("trend_runs") or {}
+def _trend_stat(key):
+    """今日の記録を読む（runs=絵を見られた巡, tries=試した巡, last=最後の時刻）。"""
+    rec = gen_settings.get("trend_stat") or {}
     today = datetime.now(JST).strftime("%Y-%m-%d")
-    return rec.get(today, 0) if isinstance(rec, dict) else 0
+    day = rec.get(today) or {} if isinstance(rec, dict) else {}
+    return day.get(key, 0)
 
 
-def _mark_trend_run():
-    """1回まわしたことを記録する。今日のぶんだけ残す。"""
+def _trend_bump(key):
+    """今日の記録を1つ進める（今日のぶんだけ残す）。"""
     today = datetime.now(JST).strftime("%Y-%m-%d")
-    gen_settings["trend_runs"] = {today: _trend_runs_today() + 1}
+    rec = gen_settings.get("trend_stat")
+    day = (rec.get(today) or {}) if isinstance(rec, dict) else {}
+    day[key] = (day.get(key, 0) + 1) if key != "last" else int(time.time())
+    gen_settings["trend_stat"] = {today: day}
     _save_gen_settings()
 
 
+def _trend_runs_today():
+    """今日、実際に動画を視聴して分析まで終えた巡の数。"""
+    return _trend_stat("runs")
+
+
+def _mark_trend_try():
+    """回し始めたことを記録する（YouTube の枠を使うため、失敗も数える）。
+    間隔の起点にはしない。枠切れで失敗した回まで4時間空けると、
+    せっかく枠が戻ってもやり直せない。"""
+    _trend_bump("tries")
+
+
+def _mark_trend_run():
+    """絵を見られた巡だけを数える。メタ情報だけで終わった回は数えない。
+    本人の希望（2026-09-19）「geminiに絵を見て判断して欲しい」。
+    間隔の起点もここ。成功した時から次まで TREND_MIN_GAP_SEC 空ける。"""
+    _trend_bump("runs")
+    _trend_bump("last")
+
+
 def _trend_can_run():
-    """まだ回してよいか（枠を使い切っていないか）。"""
-    return _trend_runs_today() < TREND_MAX_RUNS_PER_DAY
+    """いま回してよいか。次の3つを全部満たすときだけ。
+    ① 絵を見られた巡が上限に達していない
+    ② YouTube の枠を守るため、試行回数の上限にも達していない
+    ③ 前回から TREND_MIN_GAP_SEC 以上あいている（1日に散らすため）"""
+    if _trend_runs_today() >= TREND_MAX_RUNS_PER_DAY:
+        return False
+    if _trend_stat("tries") >= TREND_MAX_TRIES_PER_DAY:
+        return False
+    last = _trend_stat("last")       # 最後に「絵を見られた」時刻
+    return not last or (time.time() - last) >= TREND_MIN_GAP_SEC
 _gemini_cooldown = {}
 _gemini_rr = {"i": 0}  # ラウンドロビン用インデックス
 
@@ -5757,9 +5795,16 @@ def _is_voice_sample(v):
     return bool(_VOICE_SAMPLE_RE.search(text))
 
 
-async def _run_trend_study(cid, query=None, skip_analyzed=None):
+async def _run_trend_study(cid, query=None, skip_analyzed=None,
+                           require_video=False):
     """YouTube動画のリサーチ。query なし＝急上昇TOP100 / query あり＝そのお題で
-    検索した人気動画。上位数本を視聴・分析 → レポート保存＆ダイジェスト投稿。"""
+    検索した人気動画。上位数本を視聴・分析 → レポート保存＆ダイジェスト投稿。
+
+    require_video=True なら、Gemini の枠切れで【動画を1本も見られなかった】回は
+    レポートを出さずに終わる（本人の希望・2026-09-19「geminiに絵を見て判断して
+    欲しい」）。メタ情報だけの分析はタイトルの付け方までしか分からないため。
+    枠が戻ったときにやり直されるので、捨てても情報は失われない。
+    戻り値：動画を実際に視聴できたら True。"""
     channel = orch.get_channel(cid) or await orch.fetch_channel(cid)
     label = f"「{query}」" if query else "急上昇"
 
@@ -6001,8 +6046,13 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None):
         digest = "\n\n".join(x for x in (overview, meta_analysis) if x) \
             or "（本日は分析結果を取得できませんでした）"
 
+    if require_video and not reports:
+        # 絵を見られなかった回は出さない。枠が戻ったときにやり直す。
+        print(f"[trend] 視聴できなかったので投稿を見送る（{label}）")
+        return False
+
     text = (f"🎬 **YouTube{label}リサーチ（{today}）**"
-            f"　<本日{_trend_runs_today()}/{TREND_MAX_RUNS_PER_DAY}巡目>\n{digest}")
+            f"　<本日{_trend_runs_today() + 1}/{TREND_MAX_RUNS_PER_DAY}巡目>\n{digest}")
     if reports:
         text += "\n\n🔎 視聴した動画:\n" + "\n".join(
             f"・{v['title']}（{v['url']}）" for v, _ in reports
@@ -6019,6 +6069,7 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None):
                         f"【自動・{label}リサーチ】\n{digest[:1200]}")
     except Exception as e:  # noqa: BLE001
         print(f"[trend] 知見の保存に失敗: {str(e)[:150]}")
+    return bool(reports)          # 動画を実際に見られたか
 
 
 async def _weekly_channel_loop():
@@ -6212,12 +6263,15 @@ async def _run_trend_all(cid, genres):
     並列にすると1ジャンル目でクールダウンに入り、2つ目が空振りする。
     2本目からは、枠が戻るのを待ってから始める（待たずに始めると
     タイトルと説明文だけの分析になり、実際に動画を見られない）。"""
-    _mark_trend_run()        # 1巡で1回と数える（ジャンル数で上限が減らないように）
+    _mark_trend_try()        # YouTube の枠を使うので、試した時点で1つ数える
+    _seen_any = False
     for i, g in enumerate(genres or [None]):
         if i:
             await _wait_for_gemini(cid)
         try:
-            await _run_trend_study(cid, g or None, skip_analyzed=True)
+            if await _run_trend_study(cid, g or None, skip_analyzed=True,
+                                      require_video=True):
+                _seen_any = True
         except asyncio.CancelledError:
             raise
         except Exception as e:  # noqa: BLE001
@@ -6228,6 +6282,8 @@ async def _run_trend_all(cid, genres):
                               "残りのジャンルは続けます。")
             except Exception:  # noqa: BLE001
                 pass
+    if _seen_any:
+        _mark_trend_run()      # 絵を見られた巡だけを1日の上限に数える
 
 
 def _todays_genre(query, day=None):
