@@ -130,7 +130,10 @@
         .ck-head .eyebrow { margin: 0; }
         .ck-count { font-size: .82rem; color: var(--ink-dim); white-space: nowrap; }
         /* この端末だけで変えているぶんの知らせ。押せるようにした以上、
-           リポジトリの記録とズレたまま気づかない状態をつくらない */
+           リポジトリの記録とズレたまま気づかない状態をつくらない。
+           9/18 に端末間の同期も検討したが、保存先（サーバー）を増やさない方を選んだ。
+           このサイトは静的なので、鍵をHTMLに埋めずに書き込める置き場所がなく、
+           増やせば守るものが1つ増える。確定はHTMLを直してコミットする */
         .ck-local { margin-top: 14px; padding: 11px 15px; background: var(--bg-alt); border-radius: 9px;
                     font-size: .85rem; color: var(--ink-2); }
         .ck-local b { color: var(--ink); font-weight: 500; }
@@ -189,8 +192,9 @@
     </ul>
 
     <p class="ck-local" id="ck-local" hidden>
-        この端末だけで <b id="ck-local-n">0件</b> 変えています。リポジトリには入っていないので、
-        他の端末では元のままです。<button type="button" id="ck-reset">記録の状態に戻す</button>
+        この端末だけで <b id="ck-local-n">0件</b> 変えています。ほかの端末には伝わりません。
+        確定させるときは記録（HTML）を直してコミットします。
+        <button type="button" id="ck-reset">記録の状態に戻す</button>
     </p>
 
     <div class="act"><p class="act-label"><b>1</b><span>いまの位置</span></p></div>

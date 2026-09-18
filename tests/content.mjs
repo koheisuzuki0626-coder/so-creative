@@ -388,9 +388,14 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     check('押すと件数が増える',
         (await rm.locator('#ck-count').innerText()).includes(`${ckDone + 1}件`),
         await rm.locator('#ck-count').innerText());
+    /* 知らせは件数だけでなく、確定のしかた（HTML を直してコミット）まで書く。
+       端末間の同期はしないと決めた（9/18）ので、ここが唯一の確定経路になる */
     check('押すとズレの知らせが出る',
         await rm.locator('#ck-local').isVisible()
         && (await rm.locator('#ck-local').innerText()).includes('1件'));
+    check('知らせに確定のしかたが書いてある',
+        /コミット/.test(await rm.locator('#ck-local').innerText()),
+        await rm.locator('#ck-local').innerText());
     await rm.reload({ waitUntil: 'networkidle' });
     check('押した状態が再読込のあとも残る',
         await rm.locator('[data-id="p0-kaigyo"]').evaluate((el) => el.classList.contains('done')));
