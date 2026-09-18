@@ -1524,6 +1524,34 @@ def run():
           and "_run_trend_all(cid, _redo)" in _srcK, True)
     check("やり直すことを本人にも伝える",
           "見直します" in _srcK, True)
+    # 自動更新で再起動するとメモリ上のやり直し記録は消える。消えていても、
+    # 保存してある「今日回せたお題」から残りを割り出して回す（2026-09-18）。
+    _gsT = dict(bot.gen_settings)
+    _saveT = bot._save_gen_settings
+    try:
+        bot._save_gen_settings = lambda: None
+        bot.gen_settings["trend_query"] = "会社紹介動画 制作事例、ミュージックビデオ"
+        bot.gen_settings.pop("trend_done", None)
+        check("今日まだのお題を割り出せる",
+              bot._trend_pending_today(),
+              ["会社紹介動画 制作事例", "ミュージックビデオ"])
+        bot._mark_trend_done("会社紹介動画 制作事例")
+        check("視聴つきで回したお題は除かれる",
+              bot._trend_pending_today(), ["ミュージックビデオ"])
+        bot._mark_trend_done("ミュージックビデオ")
+        check("全部回したら空（同じ日に二度回さない）",
+              bot._trend_pending_today(), [])
+        check("記録は今日のぶんだけ残す",
+              list(bot.gen_settings["trend_done"].keys()),
+              [__import__("datetime").datetime.now(bot.JST).strftime("%Y-%m-%d")])
+    finally:
+        bot._save_gen_settings = _saveT
+        bot.gen_settings.clear()
+        bot.gen_settings.update(_gsT)
+    check("視聴できた時だけ札を立てる",
+          "if reports and not quota_hit:" in _srcK, True)
+    check("リサーチが止めてある時は回さない",
+          "if _redo and _trend_conf()[0]:" in _srcK, True)
 
     print("■ 定時モードでも雑談は止めない")
     # 本人の希望（2026-09-18）：「雑談機能は残しておいて欲しい」。

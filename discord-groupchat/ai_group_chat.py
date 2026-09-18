@@ -2117,6 +2117,37 @@ GEMINI_COOLDOWN_SEC = int(os.getenv("GEMINI_COOLDOWN_SEC", "1800"))  # 既定30�
 # 枠切れで「視聴なし」になったリサーチのお題。枠が戻ったらやり直す。
 # {チャンネルID: [お題, ...]}（お題が None なら急上昇TOP100）
 _trend_redo = {}
+
+
+def _trend_done_today():
+    """今日、動画を視聴して分析まで終えたお題の一覧（再起動しても残す）。
+    メモリだけに置くと、コードの自動更新で再起動した時点で消えてしまい、
+    「復活したのに回らない」になる（2026-09-18 に実際に起きた）。"""
+    rec = gen_settings.get("trend_done") or {}
+    today = datetime.now(JST).strftime("%Y-%m-%d")
+    return rec.get(today, []) if isinstance(rec, dict) else []
+
+
+def _mark_trend_done(query):
+    """視聴つきで回せたお題を記録する。同じ日に二度回さないための札。"""
+    today = datetime.now(JST).strftime("%Y-%m-%d")
+    rec = gen_settings.get("trend_done")
+    if not isinstance(rec, dict):
+        rec = {}
+    done = rec.get(today) or []
+    key = query or ""
+    if key not in done:
+        done.append(key)
+    # 今日のぶんだけ残す（古い日付を溜めない）
+    gen_settings["trend_done"] = {today: done}
+    _save_gen_settings()
+
+
+def _trend_pending_today():
+    """今日まだ視聴つきで回せていないお題。設定が空なら急上昇（""）1件。"""
+    genres = _genres_of(gen_settings.get("trend_query")) or [""]
+    done = _trend_done_today()
+    return [g for g in genres if g not in done]
 _gemini_cooldown = {}
 _gemini_rr = {"i": 0}  # ラウンドロビン用インデックス
 
@@ -2238,9 +2269,11 @@ async def _gemini_recovery_loop():
         cid = _gemini_watch.get("outage_cid")
         if cid and not _gemini_all_cooling():
             _gemini_watch["outage_cid"] = None
-            # 枠切れで視聴を飛ばしたお題があれば、ここでやり直す（毎回）。
-            _redo = _trend_redo.pop(cid, [])
-            if _redo:
+            # 枠が戻ったら、今日まだ視聴つきで回せていないお題を回す。
+            # _trend_redo はメモリなので再起動で消える。消えていても、
+            # 保存してある「今日回せたお題」から残りを割り出せる。
+            _redo = _trend_redo.pop(cid, []) or _trend_pending_today()
+            if _redo and _trend_conf()[0]:
                 _spawn(_run_trend_all(cid, _redo), cid, "YouTubeリサーチ（やり直し）")
             try:
                 await send_as(
@@ -5950,6 +5983,8 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None):
     elif quota_hit:
         text += "\n\n（本日はGemini無料枠切れのためメタ情報ベースの分析です）"
     await send_long(channel, text)
+    if reports and not quota_hit:
+        _mark_trend_done(query)      # 今日はこのお題を視聴つきで回せた
     add_history(cid, "🎬映像リサーチ", f"（YouTube{label}リサーチ {today}）\n{digest}")
     # 会話ログに流れて散らばるだけだった知見を、読み返せる形で溜める。
     # 「YouTubeリサーチのデータは蓄積されてる？」に「散らばったまま」と
