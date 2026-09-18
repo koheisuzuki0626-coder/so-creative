@@ -2123,7 +2123,22 @@ _trend_redo = {}
 # 止まらないと困るのは YouTube Data API の1日の枠（10,000ユニット）。
 # 1回の検索で約100〜200ユニット使うので、1日12回までにしておく。
 # 分析済みの動画は飛ばすので、回すたびにリストの奥へ進む（同じ動画は見ない）。
-TREND_MAX_RUNS_PER_DAY = int(os.getenv("TREND_MAX_RUNS_PER_DAY", "12"))
+# 本人の判断（2026-09-18）：通知は1日8通前後まで。数えたら約108通あった。
+# 4巡（2〜3時間おき）にして、途中経過（取得しました／枠切れ／枠待ち）は黙る。
+# レポートだけ出す。分析そのものは毎回行い、youtube_insights.md には全部貯まる。
+TREND_MAX_RUNS_PER_DAY = int(os.getenv("TREND_MAX_RUNS_PER_DAY", "4"))
+TREND_QUIET = os.getenv("TREND_QUIET", "1").lower() not in ("0", "false", "no")
+
+
+async def _trend_say(channel, text):
+    """リサーチの途中経過。静かモードでは出さない（ログには残す）。"""
+    if TREND_QUIET:
+        print(f"[trend] {text[:120]}")
+        return
+    try:
+        await channel.send(text)
+    except Exception as e:  # noqa: BLE001
+        print(f"[trend] 通知の送信失敗: {str(e)[:120]}")
 
 
 def _trend_runs_today():
@@ -2274,19 +2289,26 @@ async def _gemini_recovery_loop():
             if _trend_conf()[0] and _trend_can_run() and not _already:
                 _spawn(_run_trend_all(cid, _genres_now), cid,
                        "YouTubeリサーチ（枠の復活）")
-            try:
-                await send_as(
-                    orch, cid,
-                    "✅ Gemini が復活しました（クールダウン明け）。"
-                    "動画の視聴・画像分析・リサーチがまた使えます。"
-                    + (f"\n🔁 リサーチを回します"
-                       f"（本日{_trend_runs_today() + 1}／{TREND_MAX_RUNS_PER_DAY}）。"
-                       if _trend_conf()[0] and _trend_can_run() and not _already
-                       else "\n（本日のリサーチは上限に達しました）"
-                       if _trend_conf()[0] and not _trend_can_run() else "")
-                )
-            except Exception as e:  # noqa: BLE001
-                print(f"[gemini_watch] 復活通知の送信失敗: {e}")
+            # 静かモードでは復活の通知も出さない。1日4巡×2ジャンルだと、
+            # これだけで8通になり「レポートだけ」という狙いが崩れる。
+            if not TREND_QUIET:
+                try:
+                    await send_as(
+                        orch, cid,
+                        "✅ Gemini が復活しました（クールダウン明け）。"
+                        "動画の視聴・画像分析・リサーチがまた使えます。"
+                        + (f"\n🔁 リサーチを回します"
+                           f"（本日{_trend_runs_today() + 1}／"
+                           f"{TREND_MAX_RUNS_PER_DAY}）。"
+                           if _trend_conf()[0] and _trend_can_run() and not _already
+                           else "\n（本日のリサーチは上限に達しました）"
+                           if _trend_conf()[0] and not _trend_can_run() else "")
+                    )
+                except Exception as e:  # noqa: BLE001
+                    print(f"[gemini_watch] 復活通知の送信失敗: {e}")
+            else:
+                print(f"[gemini_watch] 復活（静かモード・本日"
+                      f"{_trend_runs_today()}/{TREND_MAX_RUNS_PER_DAY}巡）")
 
 
 async def _gemini_call(prompt, tag="gemini", purpose=PURPOSE_TEXT):
@@ -5849,7 +5871,8 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None):
             "「**リサーチのジャンルを〇〇にして**」で毎朝のお題を変えられます。")
         return
     targets = candidates[:TREND_DEEP_COUNT]
-    await channel.send(
+    await _trend_say(
+        channel,
         f"🎬 {label}の動画{len(videos)}本を取得しました。"
         # 何を弾いたかを内訳で出す。除外が効きすぎている時に気づけるように。
         + (f"制作事例でないもの（{'・'.join(f'{k}{n}' for k, n in sorted(_drop_why.items()))}）を"
@@ -5884,7 +5907,8 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None):
             if query not in _trend_redo[cid]:
                 _trend_redo[cid].append(query)
             print(f"[trend] Gemini無料枠切れ → 視聴をスキップしメタ情報分析へ: {e}")
-            await channel.send(
+            await _trend_say(
+                channel,
                 "⚠️ Gemini無料枠切れのため動画の視聴はスキップし、"
                 "メタ情報（タイトル・説明文・タグ・再生数）ベースの傾向分析に切り替えます。"
                 "\n（枠が戻ったら、このお題は動画を見て分析し直します）"
@@ -5977,7 +6001,8 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None):
         digest = "\n\n".join(x for x in (overview, meta_analysis) if x) \
             or "（本日は分析結果を取得できませんでした）"
 
-    text = f"🎬 **YouTube{label}リサーチ（{today}）**\n{digest}"
+    text = (f"🎬 **YouTube{label}リサーチ（{today}）**"
+            f"　<本日{_trend_runs_today()}/{TREND_MAX_RUNS_PER_DAY}巡目>\n{digest}")
     if reports:
         text += "\n\n🔎 視聴した動画:\n" + "\n".join(
             f"・{v['title']}（{v['url']}）" for v, _ in reports
@@ -6160,13 +6185,16 @@ async def _wait_for_gemini(cid, max_wait=None):
     # 待っている間はボットが動いていないので、進捗（⏳）を流さず実測にも混ぜない
     _pause_for_reply()
     try:
-        try:
-            await send_as(orch, cid,
-                          "🕒 Gemini の無料枠が戻るのを待ってから次のジャンルを見ます"
-                          f"（{_cooldown_note(GEMINI_MODELS)}）。"
-                          "動画を実際に見て分析するためです。")
-        except Exception:  # noqa: BLE001
-            pass
+        if not TREND_QUIET:
+            try:
+                await send_as(orch, cid,
+                              "🕒 Gemini の無料枠が戻るのを待ってから次のジャンルを見ます"
+                              f"（{_cooldown_note(GEMINI_MODELS)}）。"
+                              "動画を実際に見て分析するためです。")
+            except Exception:  # noqa: BLE001
+                pass
+        else:
+            print("[trend] 枠が戻るのを待つ（静かモード）")
         waited = 0
         while waited < max_wait:
             await asyncio.sleep(300)      # 5分おきに様子を見る

@@ -1544,6 +1544,20 @@ def run():
         bot.gen_settings.update(_gsT)
     check("1日の上限は環境変数で変えられる",
           'os.getenv("TREND_MAX_RUNS_PER_DAY"' in _srcK, True)
+    # 本人の判断（2026-09-18）：通知は1日8通前後まで。数えたら約108通あった。
+    # 4巡にして、途中経過（取得／枠切れ／枠待ち／復活）は黙りレポートだけ出す。
+    check("既定は1日4巡", bot.TREND_MAX_RUNS_PER_DAY, 4)
+    check("既定は静かモード", bot.TREND_QUIET, True)
+    for _msg in ("本を取得しました", "無料枠切れのため動画の視聴はスキップ"):
+        check(f"途中経過は _trend_say を通す: {_msg}",
+              _srcK.split(_msg)[0].rstrip().endswith("channel,")
+              or "_trend_say(" in _srcK.split(_msg)[0][-200:], True)
+    check("枠待ちの告知も静かモードでは出さない",
+          "if not TREND_QUIET:" in _srcK, True)
+    check("復活の通知も静かモードでは出さない",
+          "# 静かモードでは復活の通知も出さない" in _srcK, True)
+    check("レポートに何巡目かを出す（回っていることが分かる）",
+          "巡目>" in _srcK, True)
     check("枠が戻るたびに設定した全ジャンルを回す",
           "_genres_now = _genres_of(gen_settings.get(\"trend_query\")) or [None]"
           in _srcK and "_run_trend_all(cid, _genres_now)" in _srcK, True)
