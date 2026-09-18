@@ -218,6 +218,18 @@ check('未記入のまま公開していない', !rows.some(([k, v]) => /[◯○
 check('会社概要と構造化データが一致',
     rows.some(([k, v]) => k === '代表者' && v === '鈴木 宏平')
     && rows.some(([k, v]) => k === '所在地' && v === '愛知県名古屋市'));
+/* 経歴。クライアント事例が0本のあいだ、発注の判断材料がサイトに何もない状態を
+   埋めるためのもの。前職の社名と受注額は出さないと決めた（2026-09-18）。
+   検査に社名を書くとこのファイル経由で公開されてしまうので、書かない。
+   「経て」「一貫して担当」で職歴の形になっていることだけを見る */
+{
+    const career = rows.find(([k]) => k === '経歴');
+    check('会社概要に経歴の行がある', !!career, rows.map(([k]) => k).join('/'));
+    check('経歴が職歴の形になっている',
+        /経て/.test(career[1]) && /一貫して担当/.test(career[1]), career && career[1]);
+    check('経歴に受注額を書いていない', !/万円|1,500|1500/.test(career[1]), career && career[1]);
+    check('経歴が長すぎない', career[1].length <= 120, String(career[1].length));
+}
 
 /* ---- プライバシーポリシーが実装と合っているか ---- */
 const pv = await (await open(browser, { page: 'privacy.html' })).locator('main').innerText();
