@@ -330,8 +330,29 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     /* P0 はいま動いている段階なので、要約版に残りタスクを置く */
     check('P0 の残りタスクが載っている',
         ['開業届', 'ひな形', 'プロフィール', '手元資金'].every((w) => t.includes(w)));
+
+    /* 9/18 にチェックリスト式へ直した。状態は HTML に持たせてブラウザには保存しない
+       （端末ごとに違う状態を持つとリポジトリの記録とズレるため）。
+       残り＝未チェックがページ上部、済＝チェック済みが P0 に並ぶ */
+    const ckAll = await rm.locator('.ck li').count();
+    const ckDone = await rm.locator('.ck li.done').count();
+    const ckLeft = await rm.locator('.ck li:not(.done)').count();
+    check('チェックリストになっている', ckAll >= 12 && ckDone >= 9, `${ckDone}/${ckAll}`);
+    /* 件数を手で書いているので、実際のチェック数とズレたら落とす */
+    check('進捗の数字が実際のチェック数と合っている',
+        t.includes(`${ckAll}項目中${ckDone}つ完了`), `${ckDone}/${ckAll}`);
+    check('残りは未チェックで置いてある', ckLeft === 3, String(ckLeft));
+    /* 未チェックのまま「済」と書いていないか（チェック漏れではなく書き間違いを拾う） */
+    const leftTxt = await rm.locator('.ck li:not(.done)').allInnerTexts();
+    check('未チェックの項目を済と書いていない', !leftTxt.some((x) => /済/.test(x)), leftTxt.join(' | '));
+
+    const doneTxt = await rm.locator('.ck li.done').allInnerTexts();
     check('決着ぶんが済に入っている',
-        /支払条件（9\/17）/.test(t) && /インボイスは登録しない/.test(t));
+        doneTxt.some((d) => /支払条件/.test(d) && /9\/17/.test(d))
+        && doneTxt.some((d) => /インボイス/.test(d) && /登録しない/.test(d)), doneTxt.join(' | '));
+    /* 済の項目はいつ終わったかが分かること。日付のない「済」は後から検算できない */
+    check('済の項目に日付が入っている',
+        doneTxt.every((d) => /\d+\/\d+/.test(d)), doneTxt.find((d) => !/\d+\/\d+/.test(d)) || '');
     check('崩れるときの表がある', /この計画が崩れるとき/.test(t));
     check('未開業であることを書いている', /未開業/.test(t));
 

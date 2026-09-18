@@ -80,11 +80,9 @@
         .stage .tag { font-size: .76rem; letter-spacing: .1em; color: var(--accent-ink); font-weight: 500; }
         .stage h3 { margin: 2px 0 2px; font-size: 1.06rem; }
         .stage .when { font-size: .84rem; color: var(--ink-dim); }
-        .stage ul { margin: 12px 0 0; padding-left: 1.2em; }
-        .stage li { font-size: .93rem; color: var(--ink-2); margin-bottom: 6px; }
-        .gate { margin-top: 14px; padding: 11px 15px; background: var(--bg-alt); border-radius: 9px;
-                font-size: .88rem; color: var(--ink-2); }
-        .gate b { color: var(--ink); font-weight: 500; }
+        /* .ck（チェックリスト）は自前で余白を持つので、ここの箇条書きの指定は当てない */
+        .stage ul:not(.ck) { margin: 12px 0 0; padding-left: 1.2em; }
+        .stage ul:not(.ck) li { font-size: .93rem; color: var(--ink-2); margin-bottom: 6px; }
 
         .flag { margin-top: 18px; padding: 16px 20px; border-radius: 11px;
                 border: 1px solid rgba(168,50,58,.28); background: rgba(168,50,58,.05); }
@@ -105,16 +103,26 @@
         .act-label span { font-size: .82rem; color: var(--ink-dim); }
         .act + section, .act + details { margin-top: 26px; }
 
-        /* 先にやること */
-        .do { margin-top: 26px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-        .do > li { display: grid; grid-template-columns: 38px 1fr; gap: 4px 14px; align-items: baseline;
-                   padding: 16px 20px; border-top: 1px solid var(--line); }
-        .do > li:first-child { border-top: 0; }
-        .do > li > b { font-size: 1.5rem; font-weight: 300; color: var(--accent-ink); line-height: 1.2; }
-        .do > li > div { font-size: .96rem; }
-        .do > li > div em { display: block; font-style: normal; font-size: .86rem;
+        /* チェックリスト。状態は HTML に持たせる（ブラウザには保存しない）。
+           端末ごとに違う状態を持つと、リポジトリの記録とズレて二重帳簿になる。
+           チェックを付ける＝コミットする、というのがこのページの決めごと */
+        .ck { list-style: none; padding: 0; margin: 14px 0 0; }
+        .ck > li { display: grid; grid-template-columns: 20px 1fr; gap: 0 13px; align-items: start;
+                   padding: 11px 0; border-top: 1px solid var(--line); }
+        .ck > li:first-child { border-top: 0; }
+        .ck > li > div { font-size: .96rem; }
+        .ck > li > div em { display: block; font-style: normal; font-size: .85rem;
                             color: var(--ink-dim); margin-top: 3px; }
-        .do { list-style: none; padding: 0; }
+        .ck .box { width: 17px; height: 17px; margin-top: 5px; border-radius: 5px;
+                   border: 1.5px solid var(--ink-dim); position: relative; }
+        .ck li.done .box { background: var(--ok); border-color: var(--ok); }
+        .ck li.done .box::after { content: ""; position: absolute; left: 5px; top: 1px;
+                                  width: 4px; height: 9px; border-right: 2px solid #fff;
+                                  border-bottom: 2px solid #fff; transform: rotate(42deg); }
+        .ck li.done > div { color: var(--ink-dim); }
+        .ck-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 26px; }
+        .ck-head .eyebrow { margin: 0; }
+        .ck-count { font-size: .82rem; color: var(--ink-dim); white-space: nowrap; }
 
         /* 折りたたみ */
         details.fold { border-bottom: 1px solid var(--line); }
@@ -153,14 +161,17 @@
     </p>
     <p class="asof">2026年9月17日 時点 ／ 数字の出どころと松2本の実測は <a href="record.html">実測記録と裏づけ</a> に分けた（9/17）</p>
 
-    <ul class="do">
-        <li><b>1</b><div>声かけを始める
+    <div class="ck-head">
+        <p class="eyebrow">残っていること</p>
+        <p class="ck-count">P0 は 12項目中9つ完了</p>
+    </div>
+    <ul class="ck">
+        <li><span class="box" aria-hidden="true"></span><div>声かけを始める
             <em>制作は動きだした。止まっているのは営業のほうで、初入金の遅れが直接そこに効く</em></div></li>
-        <li><b>2</b><div>開業届を出す
-            <em>ひな形は 9/18 につくった（成果物/_テンプレート/）。受注できない理由は開業届だけになった</em></div></li>
-        <li><b>3</b><div>手元資金と月の生活費を確定させる
-            <em>いつまで無収入で持つかを日付で押さえる。必要な貯蓄は40〜60万（下の表）。
-            プロフィールは 9/18 に会社概要へ入れた</em></div></li>
+        <li><span class="box" aria-hidden="true"></span><div>開業届を出す
+            <em>ひな形も支払条件も決まったので、受注できない理由はこれだけになった</em></div></li>
+        <li><span class="box" aria-hidden="true"></span><div>手元資金と月の生活費を確定させる
+            <em>いつまで無収入で持つかを日付で押さえる。必要な貯蓄は40〜60万（下の表）</em></div></li>
     </ul>
 
     <div class="act"><p class="act-label"><b>1</b><span>いまの位置</span></p></div>
@@ -223,24 +234,31 @@
 
         <div class="stage">
             <p class="tag">P0</p>
-            <h3>残っているもの</h3>
-            <p class="when">いまここ ／ 声かけは並行して進める</p>
-            <ul>
-                <li>開業届を出す</li>
-                <li><s>見積書・契約書・請求書のひな形</s>　<b>済（9/18・成果物/_テンプレート/）</b>。
-                    著作権の帰属・修正回数（梅2・竹3・松3）・支払条件・キャンセルの按分・AI特有の免責
-                    （著作権保護を受けない場合がある／意図しない類似）まで書き込んだ。
-                    着手金の支払期日は<b>請求書発行日から14日以内</b>と置いた（サイトには書いていない、ひな形だけの決めごと）。
-                    案件が来たら ＿＿ を埋めてPDFにするだけ</li>
-                <li><s>プロフィール・略歴をサイトに載せる</s>　<b>済（9/18）</b>。
-                    会社概要に経歴の行を足した。前職の社名と受注額は出していない。
-                    顔写真は保留（紹介中心の経路では効きが小さい）。
-                    残りは会社概要に「開業」の行を足すことだけで、開業届が出てから</li>
-                <li><b>手元資金と月の生活費を確定させる。</b>いつまで無収入で持つかを日付で押さえる</li>
+            <h3>済んだこと</h3>
+            <p class="when">残り3つはページ上部。開業届が出れば受注できる</p>
+            <ul class="ck">
+                <li class="done"><span class="box" aria-hidden="true"></span><div>有料プランに入る
+                    <em>9/11 ／ Max</em></div></li>
+                <li class="done"><span class="box" aria-hidden="true"></span><div>松2本の工数を実測する
+                    <em>9/13〜14 ／ 11.5h。工数モデルを実測に合わせ直した</em></div></li>
+                <li class="done"><span class="box" aria-hidden="true"></span><div>松の4工程を通す
+                    <em>9/14 ／ 未検証だった仕上げの工程を一度ぜんぶ通した</em></div></li>
+                <li class="done"><span class="box" aria-hidden="true"></span><div>料金と仕様を組み直す
+                    <em>9/16 ／ 手間の増えない差（4K・書き出し形式）で段を分けるのをやめた</em></div></li>
+                <li class="done"><span class="box" aria-hidden="true"></span><div>サンプルをつくる
+                    <em>9/17 ／ 7ジャンル・5本・719.30クレジット</em></div></li>
+                <li class="done"><span class="box" aria-hidden="true"></span><div>支払条件を決める
+                    <em>9/17 ／ 着手金50% ＋ 納品後50%、期日は納品日から30日以内</em></div></li>
+                <li class="done"><span class="box" aria-hidden="true"></span><div>インボイスは登録しないと決める
+                    <em>9/17 ／ 免税事業者のまま税込表示</em></div></li>
+                <li class="done"><span class="box" aria-hidden="true"></span><div>見積書・契約書・請求書のひな形をつくる
+                    <em>9/18 ／ 成果物/_テンプレート/。著作権の帰属・修正回数（梅2・竹3・松3）・
+                    キャンセルの按分・AI特有の免責まで書き込んだ。着手金の期日は請求書発行日から14日以内
+                    （ひな形だけの決めごと）。案件が来たら ＿＿ を埋めてPDFにするだけ</em></div></li>
+                <li class="done"><span class="box" aria-hidden="true"></span><div>プロフィール・略歴をサイトに載せる
+                    <em>9/18 ／ 会社概要に経歴の行を足した。前職の社名と受注額は出していない。
+                    顔写真は保留。残るは「開業」の行だけで、開業届が出てから</em></div></li>
             </ul>
-            <div class="gate"><b>済：</b>有料プラン（9/11・Max）／松2本の工数実測（9/13〜14・11.5h）／
-                松の4工程（9/14）／料金と仕様の組み直し（9/16）／サンプル5本・7ジャンル（9/17）／
-                支払条件（9/17）／インボイスは登録しない（9/17・免税事業者のまま税込表示）</div>
         </div>
     </section>
 
