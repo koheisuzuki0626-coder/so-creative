@@ -582,7 +582,10 @@ node scripts/build-logo.mjs
 
 ## YouTube 新着動画の自動掲載
 
-YouTube に動画をアップすると、Works セクションに自動で並びます。**APIキーは不要**です。
+YouTube に動画をアップすると、Works セクションに自動で並びます。
+APIキー無しでも動きます(チャンネルページを読む従来方式)。
+**Secrets に `YOUTUBE_API_KEY` を登録すると公式の YouTube Data API v3 に切り替わり**、
+正確な投稿日と説明文が取れて、ページ構造の変更で壊れる心配がなくなります(2026-09-18 実装)。
 
 ```
 YouTube にアップ
@@ -639,15 +642,24 @@ index.html が読み込んで Works を描画
 - **投稿日は概算です。** チャンネルページは「2 日前」のような相対表記しか持たないため、
   取得時刻から逆算しています(`publishedIsApproximate: true`)。年の表示が境界で1年ずれる可能性があります。
 
-### より安定させたい場合(YouTube Data API v3)
+### 公式APIに切り替える(YouTube Data API v3・実装済み)
 
-APIキーを使えば、公式APIで正確な投稿日・説明文が取得でき、実装が壊れる心配もなくなります。
+スクリプトは環境変数 `YOUTUBE_API_KEY` の有無で方式を自動で切り替えます。
+キーを登録するだけで公式APIになり、上記の制約(壊れやすい・説明文なし・投稿日が概算)が
+すべて解消します。
 
 1. Google Cloud Console でプロジェクトを作り YouTube Data API v3 を有効化、APIキーを発行
 2. リポジトリの **Settings → Secrets and variables → Actions** に `YOUTUBE_API_KEY` として登録
-3. スクリプトをAPI方式に差し替え(未実装)
+3. **Actions → Sync YouTube videos → Run workflow** で手動実行し、ログに
+   「YouTube Data API v3 で取得します」と出ることを確認
 
-消費クォータは1回の実行あたり約2ユニット、無料枠は1日10,000ユニットなので余裕があります。
+消費クォータは1回の実行あたり2ユニット(channels.list ＋ playlistItems.list)、
+6時間おきで1日8ユニット。無料枠は1日10,000ユニットなので枯渇しません。
+
+方式の差がひとつだけあります。**API はアップロード一覧を読むのでショートも並びます**
+(従来方式が読む「動画」タブはショートを含まない)。ショートを出したくなければ言うこと。
+API 側の投稿日は確定値なので、概算日時の引き継ぎ(mergeWithExisting)は API では使いません。
+初回のAPI実行では既存の概算日時が確定値に置き換わる差分が一度だけ出ます。
 
 ## 動作の詳細
 

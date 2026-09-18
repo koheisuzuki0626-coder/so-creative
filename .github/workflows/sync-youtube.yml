@@ -30,6 +30,10 @@ jobs:
           node-version: '20'
 
       - name: Fetch latest videos
+        # YOUTUBE_API_KEY(Settings → Secrets → Actions)が登録されていれば
+        # 公式APIで取得し、無ければ従来どおりチャンネルページを読む
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: node scripts/fetch-youtube.mjs
 
       - name: Commit if changed

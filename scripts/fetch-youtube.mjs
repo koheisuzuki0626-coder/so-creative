@@ -11,10 +11,13 @@
 // 壊れたときに「静かに空データを公開する」ことがないよう、
 // 1件も取れなければ例外を投げ、既存の JSON は書き換えない。
 //
-// より安定させたい場合は YouTube Data API v3 (要APIキー) への移行を推奨。
-// ランナーから googleapis.com には到達できることを確認済み。
+// 2026-09-18: YouTube Data API v3 での取得を実装した。環境変数
+// YOUTUBE_API_KEY があれば公式APIで取り(正確な投稿日と説明文が入る)、
+// 無ければ従来どおり ytInitialData を読む。キーが未登録でも壊れない。
+// ランナーから googleapis.com には到達できることを確認済み(403=認証待ち)。
 //
 // 使い方: node scripts/fetch-youtube.mjs
+//         YOUTUBE_API_KEY=... node scripts/fetch-youtube.mjs
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -103,6 +106,85 @@ export function videosUrl(channel) {
     if (handle) return `https://www.youtube.com/@${handle[1]}/videos`;
 
     return `https://www.youtube.com/@${value}/videos`;
+}
+
+/* ---------- YouTube Data API v3 ---------- */
+
+const API_BASE = 'https://www.googleapis.com/youtube/v3';
+
+/**
+ * 設定値(UC.../@ハンドル/URL)を channels.list のクエリに変換する。
+ */
+export function channelQuery(channel) {
+    const value = String(channel ?? '').trim();
+    if (!value || value.includes('REPLACE_ME')) {
+        throw new Error('youtube.config.json の "channel" が未設定です(@ハンドル か UC... を指定してください)');
+    }
+    if (CHANNEL_ID_RE.test(value)) return { id: value };
+    const fromUrl = value.match(/\/channel\/(UC[\w-]{22})/);
+    if (fromUrl) return { id: fromUrl[1] };
+    const handle = value.match(/@([\w.-]+)/);
+    return { forHandle: handle ? handle[1] : value };
+}
+
+async function api(path, params, fetchImpl = fetch) {
+    const url = new URL(`${API_BASE}/${path}`);
+    for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+    url.searchParams.set('key', process.env.YOUTUBE_API_KEY);
+    const res = await fetchImpl(url);
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        // キー無効・クォータ切れなどは reason に入る(例: quotaExceeded)
+        const reason = body?.error?.errors?.[0]?.reason ?? '';
+        throw new Error(`API ${path} -> ${res.status} ${reason || res.statusText}`);
+    }
+    return body;
+}
+
+/**
+ * 公式APIで取る。channels.list(1ユニット) + playlistItems.list(1ユニット)。
+ * 6時間おき×2ユニットで1日8ユニット。無料枠(1日10,000)には遠く及ばない。
+ *
+ * 従来方式との差がひとつある: アップロード一覧はショートも含む
+ * (チャンネルページの「動画」タブはショートを含まない)。
+ */
+export async function fetchViaApi(config, maxVideos, fetchImpl = fetch) {
+    const ch = await api('channels', {
+        part: 'snippet,contentDetails',
+        maxResults: '1',
+        ...channelQuery(config.channel),
+    }, fetchImpl);
+    const item = ch.items?.[0];
+    if (!item) throw new Error(`チャンネルが見つかりません: ${config.channel}`);
+    const uploads = item.contentDetails?.relatedPlaylists?.uploads;
+    if (!uploads) throw new Error('アップロード一覧のプレイリストIDが取れませんでした');
+
+    const pl = await api('playlistItems', {
+        part: 'snippet,status',
+        playlistId: uploads,
+        maxResults: String(Math.min(Math.max(maxVideos, 1), 50)),
+    }, fetchImpl);
+
+    const videos = (pl.items ?? [])
+        .filter((it) => (it.status?.privacyStatus ?? 'public') === 'public')
+        .map((it) => it.snippet)
+        .filter((sn) => sn?.resourceId?.videoId && VIDEO_ID_RE.test(sn.resourceId.videoId)
+            && sn.title && sn.title !== 'Private video' && sn.title !== 'Deleted video')
+        .map((sn) => ({
+            id: sn.resourceId.videoId,
+            title: sn.title.trim(),
+            // カードは先頭の1行だけ使う(index.html)。JSONを太らせない程度に切る
+            description: (sn.description ?? '').slice(0, 500),
+            publishedAt: sn.publishedAt ?? null,
+            publishedRelative: null,
+            // APIの日時は確定値。概算フラグは立てない
+            publishedIsApproximate: false,
+            year: sn.publishedAt ? sn.publishedAt.slice(0, 4) : null,
+            url: `https://www.youtube.com/watch?v=${sn.resourceId.videoId}`,
+            thumbnail: `https://i.ytimg.com/vi/${sn.resourceId.videoId}/hqdefault.jpg`,
+        }));
+
+    return { channelId: item.id, channelTitle: item.snippet?.title ?? null, videos };
 }
 
 /* ---------- ytInitialData のパース ---------- */
@@ -217,17 +299,26 @@ async function main() {
         ? config.maxVideos
         : 6;
 
-    const url = videosUrl(config.channel);
-    console.log(`fetching: ${url}`);
-
-    const html = await get(url);
-    const data = extractInitialData(html);
-    const { channelId, channelTitle } = parseChannel(html, data);
-    const videos = parseVideos(data);
+    const useApi = Boolean(process.env.YOUTUBE_API_KEY);
+    let channelId, channelTitle, videos;
+    if (useApi) {
+        console.log('YOUTUBE_API_KEY を検出。YouTube Data API v3 で取得します');
+        ({ channelId, channelTitle, videos } = await fetchViaApi(config, maxVideos));
+    } else {
+        console.log('YOUTUBE_API_KEY 未設定。チャンネルページの ytInitialData を読みます');
+        const url = videosUrl(config.channel);
+        console.log(`fetching: ${url}`);
+        const html = await get(url);
+        const data = extractInitialData(html);
+        ({ channelId, channelTitle } = parseChannel(html, data));
+        videos = parseVideos(data);
+    }
 
     if (videos.length === 0) {
         throw new Error(
-            '動画を1件も抽出できませんでした。YouTube のページ構造が変わった可能性があります。' +
+            '動画を1件も抽出できませんでした。' +
+            (useApi ? 'チャンネルに公開動画が無いか、設定の channel が違う可能性があります。'
+                    : 'YouTube のページ構造が変わった可能性があります。') +
             '既存の data/videos.json は変更していません。',
         );
     }
@@ -236,7 +327,10 @@ async function main() {
     console.log(`extracted ${videos.length} videos, keeping ${Math.min(videos.length, maxVideos)}`);
 
     const existing = await readExisting();
-    const merged = mergeWithExisting(videos, existing?.videos ?? []).slice(0, maxVideos);
+    // 概算日時の引き継ぎはスクレイピング方式のためのもの。APIの日時は確定値で
+    // 毎回同じなので引き継がない(引き継ぐと古い概算が確定値を上書きし続ける)
+    const merged = (useApi ? videos : mergeWithExisting(videos, existing?.videos ?? []))
+        .slice(0, maxVideos);
 
     // 中身が同じなら updatedAt も触らない(無意味なコミットを避ける)
     if (existing && JSON.stringify(existing.videos) === JSON.stringify(merged)
