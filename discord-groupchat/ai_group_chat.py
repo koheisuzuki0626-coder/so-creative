@@ -2155,6 +2155,16 @@ def _trend_stat(key):
     return day.get(key, 0)
 
 
+def _trend_set(key, value):
+    """今日の記録に値を入れる（今日のぶんだけ残す）。"""
+    today = datetime.now(JST).strftime("%Y-%m-%d")
+    rec = gen_settings.get("trend_stat")
+    day = (rec.get(today) or {}) if isinstance(rec, dict) else {}
+    day[key] = value
+    gen_settings["trend_stat"] = {today: day}
+    _save_gen_settings()
+
+
 def _trend_bump(key):
     """今日の記録を1つ進める（今日のぶんだけ残す）。"""
     today = datetime.now(JST).strftime("%Y-%m-%d")
@@ -2183,19 +2193,39 @@ def _mark_trend_run():
     間隔の起点もここ。成功した時から次まで TREND_MIN_GAP_SEC 空ける。"""
     _trend_bump("runs")
     _trend_bump("last")
+    _trend_set("fails", 0)            # 連続失敗をリセット
+
+
+def _mark_trend_fail():
+    """絵を見られずに終わった。次までの間隔を倍にしていく。"""
+    _trend_set("fails", _trend_stat("fails") + 1)
+    _trend_set("failed_at", int(time.time()))
 
 
 def _trend_can_run():
-    """いま回してよいか。次の3つを全部満たすときだけ。
+    """いま回してよいか。次の4つを全部満たすときだけ。
     ① 絵を見られた巡が上限に達していない
     ② YouTube の枠を守るため、試行回数の上限にも達していない
-    ③ 前回から TREND_MIN_GAP_SEC 以上あいている（1日に散らすため）"""
+    ③ 前回の成功から TREND_MIN_GAP_SEC 以上あいている（1日に散らすため）
+    ④ 失敗が続いている時は、間隔を倍々に伸ばす"""
     if _trend_runs_today() >= TREND_MAX_RUNS_PER_DAY:
         return False
     if _trend_stat("tries") >= TREND_MAX_TRIES_PER_DAY:
         return False
+    now = time.time()
     last = _trend_stat("last")       # 最後に「絵を見られた」時刻
-    return not last or (time.time() - last) >= TREND_MIN_GAP_SEC
+    if last and (now - last) < TREND_MIN_GAP_SEC:
+        return False
+    # 事故（2026-09-19 未明）：Gemini の枠が13時間戻らなかった夜に、
+    # 30分のクールダウンが明けるたび再挑戦し、1時間おきに4回失敗した。
+    # 枠が日単位で切れている時に叩き続けても意味がないので、
+    # 連続で失敗するほど間隔を伸ばす（30分→1h→2h→4h で頭打ち）。
+    fails = _trend_stat("fails")
+    if fails:
+        wait = min(4 * 3600, GEMINI_COOLDOWN_SEC * (2 ** (fails - 1)))
+        if (now - _trend_stat("failed_at")) < wait:
+            return False
+    return True
 _gemini_cooldown = {}
 _gemini_rr = {"i": 0}  # ラウンドロビン用インデックス
 
@@ -5826,10 +5856,13 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
                 break
         videos.sort(key=lambda v: v["views"], reverse=True)
         if not videos:
-            await channel.send(f"🔎 {label}に合う動画が見つかりませんでした。")
-            return
+            await _trend_say(channel, f"🔎 {label}に合う動画が見つかりませんでした。")
+            return False
         if len(_used_queries) > 1:
-            await channel.send(
+            # 事故（2026-09-19 未明）：この1通だけ静かモードを通らず、
+            # 枠切れで失敗し続けた夜に1時間おきで4回流れた。
+            await _trend_say(
+                channel,
                 f"🔎 {label}だけでは母数が薄かったので、"
                 f"「{'」「'.join(_used_queries[1:])}」でも探しました。")
     else:
@@ -6284,6 +6317,8 @@ async def _run_trend_all(cid, genres):
                 pass
     if _seen_any:
         _mark_trend_run()      # 絵を見られた巡だけを1日の上限に数える
+    else:
+        _mark_trend_fail()     # 見られなかった。次までの間隔を伸ばす
 
 
 def _todays_genre(query, day=None):

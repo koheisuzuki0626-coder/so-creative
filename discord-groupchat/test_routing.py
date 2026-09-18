@@ -1548,6 +1548,21 @@ def run():
             bot._mark_trend_try()
         check("試行の上限でも止まる（YouTubeの枠を守る）",
               bot._trend_can_run(), False)
+        # 事故（2026-09-19 未明）：Gemini の枠が13時間戻らなかった夜に、
+        # 30分のクールダウンが明けるたび再挑戦し、1時間おきに4回失敗した。
+        import time as _tmB
+        bot.gen_settings.pop("trend_stat", None)
+        bot._mark_trend_fail()
+        check("1回失敗したら30分あける", bot._trend_can_run(), False)
+        bot._trend_set("failed_at", int(_tmB.time()) - 31 * 60)
+        check("31分たてば再挑戦できる", bot._trend_can_run(), True)
+        bot._mark_trend_fail()
+        bot._trend_set("failed_at", int(_tmB.time()) - 31 * 60)
+        check("2回続けて失敗したら1時間にのびる", bot._trend_can_run(), False)
+        bot._trend_set("failed_at", int(_tmB.time()) - 61 * 60)
+        check("のびた分だけたてば再挑戦できる", bot._trend_can_run(), True)
+        bot._mark_trend_run()
+        check("成功したら連続失敗をリセット", bot._trend_stat("fails"), 0)
         check("記録は今日のぶんだけ残す",
               list(bot.gen_settings["trend_stat"].keys()),
               [__import__("datetime").datetime.now(bot.JST).strftime("%Y-%m-%d")])
@@ -1561,6 +1576,11 @@ def run():
           'os.getenv("TREND_MIN_GAP_SEC"' in _srcK, True)
     check("絵を見られなかった回はレポートを出さない",
           "if require_video and not reports:" in _srcK, True)
+    check("補助検索の告知も静かモードを通す",
+          "母数が薄かったので" in _srcK
+          and "_trend_say(\n                channel," in _srcK, True)
+    check("失敗が続くほど間隔をのばす（頭打ち4時間）",
+          "min(4 * 3600, GEMINI_COOLDOWN_SEC * (2 ** (fails - 1)))" in _srcK, True)
     check("自動の巡回は視聴を必須にする",
           "require_video=True" in _srcK, True)
     check("手動のリサーチは従来どおり出す（待っている人がいるため）",
