@@ -701,6 +701,34 @@ def build_08_60(dur=60.0):
     return normalize(np.tanh(mix * 2.1), 0.86)
 
 
+def build_ugc(dur=10.0):
+    """UGC風ハンドクリーム（まもり葉）用の10秒。ローズと薄いシェイカーだけの
+    やわらかい2コード（Fmaj7 → Am7…はNOTE表に無い音があるので F→G/D で置く）。
+    lo-fi（05）と使い回さないための小品"""
+    n = int(dur * SR)
+    bar = 2.4
+    prog = [["F#3", "A3", "C#4", "E4"], ["G3", "B3", "D4", "A4"],
+            ["F#3", "A3", "C#4", "E4"], ["G3", "B3", "D4", "A4"],
+            ["A3", "C#4", "E4", "A4"]]
+    mix = np.zeros(n)
+    for i, ch in enumerate(prog):
+        p0 = int(i * bar * SR)
+        if p0 >= n:
+            break
+        ln = min(int(bar * 1.3 * SR), n - p0)
+        mix[p0:p0 + ln] += rhodes(ch, ln, level=0.2, decay=1.6)[:ln]
+        for k in range(4):
+            q = p0 + int((k + 0.5) * bar / 4 * SR)
+            if q < n:
+                mix[q:] += shaker(n - q, level=0.03)
+    mix = fft_filter(mix, 40, "hp", rolloff=3.0)
+    mix = reverb(mix, mix=0.28)
+    mix[:int(0.2 * SR)] *= np.linspace(0, 1, int(0.2 * SR))
+    tail = int(1.4 * SR)
+    mix[-tail:] *= np.linspace(1, 0, tail)
+    return normalize(np.tanh(mix * 2.0), 0.8)
+
+
 def write_wav(path, mono, width=0.12):
     """わずかにステレオに広げて 16bit で書く。"""
     d = int(width * 0.004 * SR)
