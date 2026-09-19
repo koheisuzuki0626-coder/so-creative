@@ -33,6 +33,20 @@ def isolate(bot):
     """bot の書き込み先を一時ディレクトリへ移す。戻り値は そのディレクトリ。"""
     tmp = Path(tempfile.mkdtemp(prefix="agc_test_"))
     real = Path(getattr(bot, "HISTORY_DIR", tmp))
+    # 知見・実験ログ（fixtures/）も逃がす。history/ の下ではないので
+    # 上の相対パス判定では移らない。
+    # 事故（2026-09-19）：simulate の「メモ 今日は開業届を出した」が
+    # 本物の prompt_experiments.md に10件書き込まれ、
+    # 翌日「開業届を出した」という誤った記録として読まれかけた。
+    if getattr(bot, "NOTES_DIR", None):
+        notes = tmp / "fixtures"
+        notes.mkdir(parents=True, exist_ok=True)
+        bot.NOTES_DIR = notes
+        if isinstance(getattr(bot, "NOTES", None), dict):
+            bot.NOTES = {
+                k: (notes / Path(v[0]).name, v[1])
+                for k, v in bot.NOTES.items()
+            }
     bot.HISTORY_DIR = tmp
     for name in _PATHS:
         cur = getattr(bot, name, None)

@@ -1162,7 +1162,10 @@ async def run():
               any("定時モード" in s and "Claude Code" in s for s in r["sent"]),
               f"{r['sent'][:1]}")
         # 記録や会話は通ったまま（装置としての仕事は止めない）
-        r2 = await drive("メモ 今日は開業届を出した")
+        # 本物の記録に紛れない文言にする（2026-09-19 の事故：この行が
+        # 本物の prompt_experiments.md に10件書き込まれ、翌日
+        # 「開業届を出した」という誤った記録として読まれかけた）
+        r2 = await drive("メモ [テスト] 記録の動作確認")
         check("定時モードでも記録は通る",
               any("記録" in k or "メモ" in k for k in r2["fired"])
               or bool(r2["sent"]), f"{r2['fired']}")
