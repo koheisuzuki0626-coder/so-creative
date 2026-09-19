@@ -1,7 +1,7 @@
 /* 文言と実装がズレていないか。
    同じことを複数箇所に書いているので、片方だけ直すと嘘になる。
    ここはその突き合わせ専用。 */
-import { check, report, open, BASE, PW, TIERS, LENGTHS, leadWeeks } from './lib.mjs';
+import { check, report, open, BASE, PW, TIERS, LENGTHS, leadWeeks, RATE } from './lib.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 const pwmod = (await import(PW)).default;
@@ -424,6 +424,22 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     /* 要約版なので長さそのものを見る。ここが膨らんだら分割した意味がなくなる */
     check('要約版が長くなりすぎていない', t.length < 4000, String(t.length));
     await rm.close();
+}
+
+/* ---- 社内2ページの「前提」に書いた目標時間単価 ----
+   料金と工数のモデルを動かすとここがズレる。9/16 に工数モデルを実測へ
+   合わせたとき、古い ¥14,900（重いモデルからの逆算）が残ったまま 9/19 まで
+   気づかなかった。lib.mjs の RATE を唯一の出どころにして突き合わせる */
+{
+    const want = `¥${RATE.toLocaleString('ja-JP')}`;
+    for (const file of ['roadmap.html', 'record.html']) {
+        const pg = await open(browser, { page: file });
+        const body = await pg.locator('body').innerText();
+        check(`${file} の前提が目標時間単価と一致`, body.includes(want), want);
+        check(`${file} に古い時間単価が残っていない`, !/14,900/.test(body),
+            (body.match(/.{0,24}14,900.{0,24}/) || [''])[0]);
+        await pg.close();
+    }
 }
 
 /* ---- 実測記録と裏づけ(社内用) ----
