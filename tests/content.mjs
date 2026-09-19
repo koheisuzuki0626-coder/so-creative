@@ -480,6 +480,41 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     await rm.close();
 }
 
+/* ---- ヒーローの背景 ----
+   YouTube のサムネイルを流していたのを、実際に納品した映像そのものに
+   差し替えた（9/19）。テロップは焼き込まれているので、上側16:9を切り出して
+   帯ごと外してある。文字の読みやすさは a11y.mjs のコントラスト検査が見る */
+{
+    const v = page.locator('#hero-video');
+    check('ヒーローの背景がサンプル映像になっている', await v.count() === 1);
+    check('映像は自前で配信している',
+        /assets\/works\/hero-reel\.(webm|mp4)/.test(idx) && !/i\.ytimg\.com[^"']*hero/.test(idx));
+    check('mp4 と webm の両方を置いている',
+        /hero-reel\.mp4/.test(idx) && /hero-reel\.webm/.test(idx));
+    check('音を出さず、繰り返し、インラインで再生する',
+        ['muted', 'loop', 'playsinline'].every((a) => idx.includes(a)));
+    /* 回線と電池を使うので、ポスターを置いて先に絵を出す */
+    check('ポスター画像がある',
+        (await v.getAttribute('poster') || '').includes('hero-reel.jpg'));
+    /* 画面から外れたら止める作りなので、ここまでのスクロールで止まっている。
+       先頭に戻したら再開することまで見る */
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+    await page.waitForTimeout(500);
+    check('先頭に戻ると再生が再開する',
+        await v.evaluate((e) => !e.paused && e.currentTime > 0),
+        JSON.stringify(await v.evaluate((e) => ({ paused: e.paused, t: e.currentTime }))));
+    /* 「動きを減らす」設定のときは再生しない（ポスターのまま止める） */
+    {
+        const still = await open(browser, { page: 'index.html' });
+        await still.emulateMedia({ reducedMotion: 'reduce' });
+        await still.reload({ waitUntil: 'domcontentloaded' });
+        await still.waitForTimeout(900);
+        check('動きを減らす設定では再生しない',
+            await still.locator('#hero-video').evaluate((e) => e.paused));
+        await still.close();
+    }
+}
+
 /* ---- 社内2ページの「前提」に書いた目標時間単価 ----
    料金と工数のモデルを動かすとここがズレる。9/16 に工数モデルを実測へ
    合わせたとき、古い ¥14,900（重いモデルからの逆算）が残ったまま 9/19 まで

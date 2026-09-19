@@ -245,7 +245,16 @@
     </div>
 
     <header class="hero" id="top">
-        <div class="hero-mosaic" id="hero-mosaic" aria-hidden="true"></div>
+        <!-- 背景は YouTube のサムネイルを流していたが、実際に納品した映像そのものに差し替えた（9/19）。
+             文字の背後は .hero::before の白で抜いてあるので、見出しの読みやすさは変わらない。
+             reduced-motion のときは再生せず、ポスター画像のまま止める -->
+        <div class="hero-media" aria-hidden="true">
+            <video class="hero-video" id="hero-video" muted loop playsinline preload="metadata"
+                   poster="assets/works/hero-reel.jpg">
+                <source src="assets/works/hero-reel.webm" type="video/webm">
+                <source src="assets/works/hero-reel.mp4" type="video/mp4">
+            </video>
+        </div>
         <div class="hero-inner">
             <p class="hero-badge">AI Video Production</p>
             <h1 class="display">撮影しない、<br><em>映像制作</em>。</h1>
@@ -1748,31 +1757,21 @@
             footerMeta.hidden = false;
         }
 
-        /* ---------- Hero mosaic ---------- */
-        function buildMosaic(videos) {
-            const host = document.getElementById('hero-mosaic');
-            if (videos.length === 0) return;
-
-            const ROWS = 3;
-            const perRow = Math.max(6, Math.ceil(videos.length / ROWS));
-
-            for (let r = 0; r < ROWS; r++) {
-                const row = document.createElement('div');
-                row.className = 'mosaic-row';
-                const slice = [];
-                for (let i = 0; i < perRow; i++) slice.push(videos[(r * perRow + i) % videos.length]);
-                // シームレスにループさせるため2周分並べる
-                [...slice, ...slice].forEach((v) => {
-                    const img = document.createElement('img');
-                    img.src = `https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`;
-                    img.alt = '';
-                    img.loading = 'lazy';
-                    img.addEventListener('error', () => img.remove(), { once: true });
-                    row.append(img);
-                });
-                host.append(row);
+        /* ---------- Hero の映像 ---------- */
+        /* 自動再生は「動きを減らす」設定のときは行わない。画面から外れたら止めて、
+           スクロールして戻ってきたら再開する（ずっと再生し続けない） */
+        (() => {
+            const v = document.getElementById('hero-video');
+            if (!v) return;
+            const still = window.matchMedia('(prefers-reduced-motion: reduce)');
+            const play = () => { if (!still.matches) v.play().catch(() => {}); };
+            if (still.matches) return;
+            play();
+            if ('IntersectionObserver' in window) {
+                new IntersectionObserver(([e]) => { e.isIntersecting ? play() : v.pause(); },
+                    { threshold: 0.01 }).observe(v);
             }
-        }
+        })();
 
         /* ---------- ステージのビジュアルも実際の制作物から組み立てる ---------- */
         function buildStages(videos) {
@@ -1807,7 +1806,6 @@
                     return;
                 }
 
-                buildMosaic(videos);
                 buildStages(videos);
                 buildFooterWorks(videos);
                 buildFooterMeta(data, videos.length);

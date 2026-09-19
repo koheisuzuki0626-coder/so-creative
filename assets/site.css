@@ -343,36 +343,26 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     background: radial-gradient(ellipse 48% 46% at 50% 48%,
                 rgba(255,255,255,0.94) 0%, rgba(255,255,255,0.82) 46%, rgba(255,255,255,0) 74%);
 }
-.hero-mosaic {
+/* 背景は実際に納品した映像そのもの。中央は .hero::before の白で抜き、
+   まわりはマスクで端に向かって消す。文字に干渉しない濃さに抑える */
+.hero-media {
     position: absolute;
     inset: -6%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 14px;
-    opacity: 0.13;
-    filter: saturate(0.6);
+    opacity: 0.22;
+    filter: saturate(0.72);
     pointer-events: none;
     transform: scale(calc(1 + var(--hero-p, 0) * 0.16));
-    -webkit-mask-image: radial-gradient(ellipse 64% 60% at 50% 50%, transparent 22%, #000 78%);
-    mask-image: radial-gradient(ellipse 64% 60% at 50% 50%, transparent 22%, #000 78%);
+    /* 中央は .hero::before の白で抜けるので、ここでは端に向かって薄く消すだけにする。
+       以前のように中央を大きく抜くと、映像は外周しか見えず何が映っているか分からない */
+    -webkit-mask-image: radial-gradient(ellipse 78% 74% at 50% 50%, #000 34%, rgba(0,0,0,0.35) 100%);
+    mask-image: radial-gradient(ellipse 78% 74% at 50% 50%, #000 34%, rgba(0,0,0,0.35) 100%);
 }
-.mosaic-row {
-    display: flex;
-    gap: 14px;
-    width: max-content;
-    animation: drift 78s linear infinite;
-}
-.mosaic-row:nth-child(2) { animation-duration: 96s; animation-direction: reverse; }
-.mosaic-row:nth-child(3) { animation-duration: 86s; }
-.mosaic-row img {
-    width: 240px;
-    aspect-ratio: 16 / 9;
+.hero-video {
+    width: 100%;
+    height: 100%;
     object-fit: cover;
-    border-radius: 10px;
     display: block;
 }
-@keyframes drift { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
 .hero-inner {
     position: relative;
@@ -1435,15 +1425,17 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
     .flow::before { left: 23px; }
     .flow-step { grid-template-columns: 48px 1fr; gap: 18px; }
     .flow-dot { width: 48px; height: 48px; font-size: 0.78rem; }
-    .mosaic-row img { width: 156px; }
     .wrap, .wrap-wide { padding: 0 20px; }
 }
 @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
-    .mosaic-row, .scroll-hint::after, .skeleton .thumb, .skeleton .bar { animation: none; }
+    .scroll-hint::after, .skeleton .thumb, .skeleton .bar { animation: none; }
     .reveal, .reveal-stagger > * { transition: none; opacity: 1; transform: none; }
     .card.enter { animation: none; }
-    .hero-inner, .hero-mosaic, .stage-copy, .stack, .stage-bg, .stage-mark { transform: none !important; opacity: 1 !important; }
+    .hero-inner, .stage-copy, .stack, .stage-bg, .stage-mark { transform: none !important; opacity: 1 !important; }
+    /* 背景の映像は opacity を戻さない。0.22 は文字を読ませるための濃さで、
+       スクロールで変わる値ではないため（打ち消すのは transform だけ） */
+    .hero-media { transform: none !important; }
 }
 
 /* 会社紹介のサンプル（自前ホスティング）。実績グリッドの上に1本だけ置く */
