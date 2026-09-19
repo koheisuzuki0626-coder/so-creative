@@ -580,6 +580,70 @@ def build_03(dur=180.0):
     return normalize(np.tanh(mix * 2.2), 0.86)
 
 
+def marimba(name, n, level=0.2):
+    """マリンバ。基音の速い減衰＋4倍音がさらに速く消える。頭に木のクリック。"""
+    f = note_hz(NOTE[name])
+    t = _t(n)
+    x = sine(f, n) * np.exp(-t * 5.5)
+    x += 0.45 * sine(f * 4, n) * np.exp(-t * 16)
+    x += 0.18 * sine(f * 9.2, n) * np.exp(-t * 40)
+    click = noise(min(n, int(0.004 * SR)), seed=7) * 0.25
+    x[:len(click)] += click
+    return x * level
+
+
+def build_08(dur=15.0):
+    """インフォグラフィック用。明るめ・BPM120。1小節2.0秒 × 7小節＋締め。
+
+    場面が 0/4/8/12 秒で切り替わるので、小節を2.0秒にして
+    切り替わりが必ず小節頭に乗るようにする。切り替わりの頭にはベルを置く。
+    キックは入れない。マリンバの8分と薄いシェイカーで軽く進める。
+    """
+    n = int(dur * SR)
+    bar = 2.0
+    beat = bar / 4
+    # NOTE 表に G# が無いので、E は Esus4（E-A-B）で置く。A メジャーの中では濁らない
+    prog = [["A3", "C#4", "E4"], ["D4", "F#4", "A4"],
+            ["E4", "A4", "B4"], ["A3", "C#4", "E4"],
+            ["D4", "F#4", "A4"], ["E4", "A4", "B4"],
+            ["A3", "C#4", "E4"]]
+    mix = np.zeros(n)
+    for i, ch in enumerate(prog):
+        p0 = int(i * bar * SR)
+        if p0 >= n:
+            break
+        ln = min(int(bar * SR), n - p0)
+        mix[p0:p0 + ln] += pad(ch, ln, level=0.2)[:ln]
+        # マリンバの8分。コードの音を下から順に回す
+        seq = ch + [ch[1]] if len(ch) == 3 else ch
+        for k in range(8):
+            q = p0 + int(k * beat / 2 * SR)
+            ln2 = min(int(0.6 * SR), n - q)
+            if ln2 > 0 and q < n:
+                mix[q:q + ln2] += marimba(seq[k % len(seq)], ln2,
+                                          level=0.16 if i else 0.11)[:ln2]
+        # シェイカーは8分の裏
+        for k in range(8):
+            q = p0 + int((k + 0.5) * beat / 2 * SR)
+            if q < n:
+                mix[q:] += shaker(n - q, level=0.045 if i else 0.025)
+    # 場面の切り替わり（4/8秒）の頭にベル
+    for sec, name in ((4.0, "A4"), (8.0, "B4")):
+        q = int(sec * SR)
+        lnb = min(int(1.2 * SR), n - q)
+        mix[q:q + lnb] += bell(name, lnb, level=0.15)[:lnb]
+    # 締め（ロゴ）は 12.0 秒。ベルとクラッシュ
+    q = int(12.0 * SR)
+    mix[q:] += crash(n - q, level=0.11)
+    mix[q:] += bell("E5", n - q, level=0.2)
+    mix = fft_filter(mix, 36, "hp", rolloff=3.0)
+    mix = reverb(mix, mix=0.24)
+    mix[:int(0.15 * SR)] *= np.linspace(0, 1, int(0.15 * SR))
+    tail = int(1.6 * SR)
+    mix[-tail:] *= np.linspace(1, 0, tail)
+    return normalize(np.tanh(mix * 2.1), 0.86)
+
+
 def write_wav(path, mono, width=0.12):
     """わずかにステレオに広げて 16bit で書く。"""
     d = int(width * 0.004 * SR)
@@ -621,4 +685,7 @@ if __name__ == "__main__":
     d = build_03()
     write_wav(f"{OUT}/bgm_03_3min.wav", d)
     rms_report("03(3分)", d, [(0, 20), (20, 68), (68, 128), (128, 143), (143, 160), (160, 180)])
-    print("wrote bgm_02 / bgm_04 / bgm_05 / bgm_03_3min")
+    e = build_08()
+    write_wav(f"{OUT}/bgm_08.wav", e)
+    rms_report("08", e, [(0, 4), (4, 8), (8, 12), (12, 15)])
+    print("wrote bgm_02 / bgm_04 / bgm_05 / bgm_03_3min / bgm_08")
