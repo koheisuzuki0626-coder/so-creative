@@ -18,7 +18,7 @@ for (const w of [1440, 1280, 1000, 900]) {
                  toCta: Math.round(cta.left - its[its.length - 1].getBoundingClientRect().right),
                  rows: new Set(its.map(e => Math.round(e.getBoundingClientRect().top))).size, gaps };
     });
-    check(`幅${w} 項目が6つ`, g.n === 6);
+    check(`幅${w} 項目が8つ`, g.n === 8, String(g.n));
     // 中央に寄せると広い画面で左右に大きな空きができ、バーではなく「浮いた島」に見える
     check(`幅${w} 項目がロゴの隣`, g.fromLogo > 0 && g.fromLogo < 80, `${g.fromLogo}px`);
     check(`幅${w} 1行に収まる`, g.rows === 1);
@@ -42,7 +42,7 @@ for (const w of [1440, 1280, 1000, 900]) {
                  navVar: getComputedStyle(document.documentElement).getPropertyValue('--nav-h').trim(),
                  overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth };
     });
-    check('スマホでも項目を隠さない', m.n === 6 && m.below && m.rows === 1, JSON.stringify(m));
+    check('スマホでも項目を隠さない', m.n === 8 && m.below && m.rows === 1, JSON.stringify(m));
     check('入りきらないぶんは横に流せる', m.scrollable);
     check('文字を小さくしすぎていない', m.font >= 12.5, `${m.font}px`);
     check('ヘッダーの高さが --nav-h に入る', m.navVar === `${m.navH}px`, `${m.navH}px`);
@@ -52,6 +52,19 @@ for (const w of [1440, 1280, 1000, 900]) {
        「つくれる動画」から開く。ここが開かなくなると、ジャンル一覧と
        サイト内リンクへの導線がフッターだけになる */
     check('ハンバーガーを置いていない', await page.locator('#burger').count() === 0);
+    /* ハンバーガーを外した条件は「行き先がヘッダーに全部ある」こと（9/19）。
+       メニューを開かないと辿れない項目ができたら、その条件が崩れる。
+       #service と #faq はここに出すまでメニューとフッターにしか無かった */
+    {
+        const inHeader = await page.locator('.nav-main .nav-item').evaluateAll(
+            (els) => els.map((e) => e.getAttribute('href') || e.dataset.for));
+        const inMenu = await page.locator('#menu .menu-links a').evaluateAll(
+            (els) => els.map((e) => e.getAttribute('href')));
+        // お問い合わせは右上の「相談する」が担うので、そのぶんを除いて突き合わせる
+        const cta = await page.locator('.nav-cta').getAttribute('href');
+        const missing = inMenu.filter((h) => !inHeader.includes(h) && h !== cta);
+        check('メニューの行き先がヘッダーに全部ある', missing.length === 0, missing.join(','));
+    }
     {
         const t = page.locator('#menu-trigger');
         check('メニューの入口が「つくれる動画」に一本化されている',

@@ -1382,6 +1382,9 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1000px) {
+    /* 項目が8つになったぶん、1行に収まる下限(861px)で CTA との空きが
+       16px まで詰まる。この幅だけ間隔を詰めて、隣り合わないようにする */
+    .nav-main { gap: 15px; margin-left: 20px; }
     .genre-grid { grid-template-columns: repeat(2, 1fr); }
     .genre, .genre:nth-child(1), .genre:nth-child(2) { grid-column: span 1; }
     .about-grid { grid-template-columns: 1fr; }
