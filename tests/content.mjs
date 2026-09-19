@@ -708,6 +708,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     const mitsu = readFileSync(`${ROOT}/${T}/見積書.md`, 'utf8');
     const keiyaku = readFileSync(`${ROOT}/${T}/業務委託契約書.md`, 'utf8');
     const seikyu = readFileSync(`${ROOT}/${T}/請求書.md`, 'utf8');
+    const hearing = readFileSync(`${ROOT}/${T}/ヒアリングシート.md`, 'utf8');
     const all = mitsu + keiyaku + seikyu;
 
     check('ひな形3点が空でない', [mitsu, keiyaku, seikyu].every(x => x.length > 500));
@@ -751,6 +752,30 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         (keiyaku.match(/^## 第\d+条/gm) || []).join(','));
     check('見積書にMVの扱いが書いてある',
         /料金表の対象外/.test(mitsu) && /楽曲の権利処理/.test(mitsu));
+
+    /* ヒアリングシート（9/19）。打ち合わせをやめてメールだけで着手するための土台。
+       計算機が送るメール本文と項目がズレると、計算機から来た問い合わせに
+       同じことを聞き直すことになるので、本文の項目を含んでいるかを見る */
+    {
+        check('ヒアリングシートがある', hearing.length > 500);
+        const fromCalc = ['会社名 / お名前', '映像の用途', '公開時期', '参考'];
+        check('計算機のメール本文の項目を含んでいる',
+            fromCalc.every((w) => hearing.includes(w) && idx.includes(w)),
+            fromCalc.filter((w) => !(hearing.includes(w) && idx.includes(w))).join(','));
+        /* 段と尺と本数が決まらないと見積りが出せない。そこへ繋がる欄があること */
+        check('見積りに必要な項目を聞いている',
+            ['尺', '本数', 'ナレーション', '予算'].every((w) => hearing.includes(w)));
+        /* 聞くだけでなく、あとで揉める3点を先に伝える欄があること。
+           ロゴの制約はサイトの FAQ と同じことを言っている必要がある */
+        const logoFaq = faqUi.find((u) => /ロゴを映像/.test(u.q));
+        check('ロゴの制約を先に伝える欄がある',
+            /映像の中の物/.test(hearing) && /重ね/.test(hearing)
+            && ['看板', '車体', 'パッケージ', '名札'].every((w) =>
+                hearing.includes(w) && logoFaq.a.includes(w)));
+        check('修正回数がサイトと揃っている', /梅2回・竹3回・松3回/.test(hearing));
+        /* 往復を増やさないのがこのシートの目的。そこが書かれていること */
+        check('聞き直しを1通にまとめると書いてある', /1通にまとめる/.test(hearing));
+    }
 
     check('実在の口座番号を書いていない',
         /＿＿銀行 ＿＿支店/.test(seikyu) && /普通 ＿/.test(seikyu) && /名義 \| ＿/.test(seikyu));
