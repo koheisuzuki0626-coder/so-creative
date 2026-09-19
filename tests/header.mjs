@@ -47,7 +47,27 @@ for (const w of [1440, 1280, 1000, 900]) {
     check('文字を小さくしすぎていない', m.font >= 12.5, `${m.font}px`);
     check('ヘッダーの高さが --nav-h に入る', m.navVar === `${m.navH}px`, `${m.navH}px`);
     check('スマホで横溢れなし', m.overflow <= 0, `${m.overflow}px`);
-    check('ハンバーガーも残っている', await page.locator('#burger').isVisible());
+    /* ハンバーガーは 9/19 に外した。狭い画面で、同じメニューを開く入口が
+       2段目のリンク列と並んで2つあったため。メニュー自体は残っていて、
+       「つくれる動画」から開く。ここが開かなくなると、ジャンル一覧と
+       サイト内リンクへの導線がフッターだけになる */
+    check('ハンバーガーを置いていない', await page.locator('#burger').count() === 0);
+    {
+        const t = page.locator('#menu-trigger');
+        check('メニューの入口が「つくれる動画」に一本化されている',
+            await t.isVisible() && await t.getAttribute('aria-expanded') === 'false');
+        await t.click();
+        await page.waitForTimeout(120);
+        check('つくれる動画からメニューが開く',
+            await page.locator('#menu.open').count() === 1
+            && await t.getAttribute('aria-expanded') === 'true');
+        check('開いたメニューにジャンルとサイト内リンクがある',
+            (await page.locator('#menu-genres li').count()) >= 8
+            && (await page.locator('#menu .menu-links a').count()) >= 6);
+        await t.click();
+        await page.waitForTimeout(120);
+        check('もう一度押すと閉じる', await page.locator('#menu.open').count() === 0);
+    }
     const edge = await page.evaluate(async () => {
         const nm = document.querySelector('.nav-main');
         const before = nm.classList.contains('nav-main-end');

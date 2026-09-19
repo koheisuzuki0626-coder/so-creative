@@ -212,9 +212,6 @@
 
         <div class="nav-end">
             <a href="#contact" class="nav-cta">相談する</a>
-            <button type="button" class="burger" id="burger" aria-expanded="false" aria-controls="menu" aria-label="メニューを開く">
-                <span></span><span></span>
-            </button>
         </div>
     </nav>
 
@@ -1002,15 +999,15 @@
         /* ---------- ヘッダーのメニュー ---------- */
         const menu = document.getElementById('menu');
         const scrim = document.getElementById('menu-scrim');
+        /* 開け閉めは「つくれる動画」の1か所だけ。以前はハンバーガーも同じ
+           メニューを開いていたが、狭い画面で入口が2つ並ぶのをやめた（9/19） */
         const trigger = document.getElementById('menu-trigger');
-        const burger = document.getElementById('burger');
-        const menuButtons = [trigger, burger].filter(Boolean);
+        const menuButtons = [trigger].filter(Boolean);
 
         function setMenu(open) {
             menu.classList.toggle('open', open);
             scrim.classList.toggle('open', open);
             menuButtons.forEach((b) => b.setAttribute('aria-expanded', String(open)));
-            burger?.setAttribute('aria-label', open ? 'メニューを閉じる' : 'メニューを開く');
             // 狭い画面では全画面シートになるので背面をスクロールさせない
             document.body.style.overflow = open && window.matchMedia('(max-width: 860px)').matches ? 'hidden' : '';
         }
