@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-"""08 インフォグラフィック「数字で見る、想工業。」を全部コードで描く。
+"""08 モーショングラフィックス「あおば健康保険組合 健診受診案内」を全部コードで描く。
+
+初稿は「数字で見る、想工業。」（採用インフォグラフィック）で作ったが、
+健診案内のほうがいいとの指摘で題材を戻した（9/19）。想工業版は
+git 履歴（44c7d75）にあるので、要るときはそこから復活できる。
 
 Higgsfield を使わない初めてのサンプル。モーショングラフィックス／
 インフォグラフィックは文字と図形が主役で、生成AIは画面内の文字を
@@ -30,12 +34,12 @@ ZEN = f"{FONTS}/ZenKakuNew-Black.ttf"
 FF = ("/usr/local/lib/python3.11/dist-packages/imageio_ffmpeg/binaries/"
       "ffmpeg-linux-x86_64-v7.0.2")
 
-# 色。スレートは #46597B だと紺地とのコントラストが 2.27:1 で足りず、
-# #5D7398 に上げて 3:1 を通した（dataviz の検証スクリプトで確認）
-NAVY = (15, 33, 64)
+# 色。深緑の地に生成りの文字、山吹のアクセント。くすんだ緑がかった
+# グレーを台座に使う。#6E8B7D は深緑地とのコントラスト 3:1 を通してある
+BG = (16, 51, 40)
 INK = (238, 231, 214)
 ACCENT = (245, 181, 42)
-SLATE = (93, 115, 152)
+MUTED = (110, 139, 125)
 
 
 def F(size):
@@ -79,121 +83,133 @@ def text_w(s, size):
     return F(size).getlength(s) / SS
 
 
-def person(d, cx, cy, h, col, alpha):
-    """人型アイコン。丸い頭＋角丸の胴体"""
-    s = SS
-    head_r = h * 0.19
-    d.ellipse([(cx - head_r) * s, (cy - h * 0.5) * s,
-               (cx + head_r) * s, (cy - h * 0.5 + head_r * 2) * s], fill=a(col, alpha))
-    bw = h * 0.46
-    d.rounded_rectangle([(cx - bw / 2) * s, (cy - h * 0.5 + head_r * 2.25) * s,
-                         (cx + bw / 2) * s, (cy + h * 0.5) * s],
-                        radius=bw / 2 * s, fill=a(col, alpha))
+def check_mark(d, cx, cy, r, col, alpha, w=None):
+    """チェックマーク。左下がりの短い線＋右上がりの長い線"""
+    w = w or max(4, int(r * 0.28))
+    pts = [(cx - r * 0.55, cy + r * 0.05), (cx - r * 0.12, cy + r * 0.48),
+           (cx + r * 0.62, cy - r * 0.42)]
+    d.line([(x * SS, y * SS) for x, y in pts], fill=a(col, alpha),
+           width=w * SS, joint="curve")
 
 
 def scene1(d, t):
-    """創業47年のカウンター＋社員62人の人型が並ぶ"""
+    """時計の円弧が一周して「30分」が数え上がる"""
     tt = eo((t - 0.1) / 0.6)
-    text(d, (W / 2, 150 + 26 * (1 - tt)), "数字で見る、想工業。", 76, INK, tt,
+    text(d, (W / 2, 150 + 26 * (1 - tt)), "年に1回の、30分。", 72, INK, tt,
          anchor="mm", tracking=6)
 
-    # 左：創業カウンター。中央寄せだと桁が増えるたび揺れるので左端を固定する
-    al = eo((t - 0.45) / 0.5)
-    v = int(round(47 * eo((t - 0.55) / 1.3)))
-    text(d, (330, 430), "創業", 44, SLATE, al)
-    text(d, (325, 750), str(v), 250, INK, al, anchor="ls")
-    text(d, (325 + text_w("47", 250) + 18, 750), "年", 64, INK, al * 0.9, anchor="ls")
-
-    # 右：人型アイコン 62人（13列×5段の頭から62個）
-    cols, size_, gx, gy = 13, 46, 57, 76
-    x0, y0 = 1010, 400
-    shown = 0
-    for i in range(62):
-        ai = eo((t - (0.8 + i * 0.026)) / 0.3)
-        if ai <= 0:
-            continue
-        shown += 1
-        r, c = divmod(i, cols)
-        person(d, x0 + c * gx, y0 + r * gy, size_ * (0.6 + 0.4 * ai), SLATE, ai * 0.95)
-    al2 = eo((t - 0.9) / 0.5)
-    text(d, (1010 - 28, 820), f"社員 {shown}人", 52, INK, al2, anchor="ls")
+    cx, cy, r, wd = W / 2, 620, 250, 44
+    al = eo((t - 0.35) / 0.4)
+    box = [(cx - r) * SS, (cy - r) * SS, (cx + r) * SS, (cy + r) * SS]
+    # 文字盤の目盛り12本
+    for k in range(12):
+        ang = np.pi * 2 * k / 12 - np.pi / 2
+        r0, r1 = r + wd / 2 + 18, r + wd / 2 + 38
+        d.line([(cx + np.cos(ang) * r0) * SS, (cy + np.sin(ang) * r0) * SS,
+                (cx + np.cos(ang) * r1) * SS, (cy + np.sin(ang) * r1) * SS],
+               fill=a(INK, 0.25 * al), width=4 * SS)
+    d.arc(box, 0, 360, fill=a(MUTED, 0.4 * al), width=wd * SS)
+    frac = eo((t - 0.55) / 1.7)
+    if frac > 0:
+        d.arc(box, -90, -90 + 360 * frac, fill=a(ACCENT, al), width=wd * SS)
+    v = int(round(30 * eo((t - 0.55) / 1.7)))
+    text(d, (cx, cy - 14), str(v), 150, INK, al, anchor="mm")
+    text(d, (cx, cy + 96), "分で終わります", 40, MUTED, al, anchor="mm")
 
 
 def scene2(d, t):
-    """有給82%のドーナツ＋平均残業12hのカウンター"""
+    """スマホの中でカレンダーが組み上がり、1日にチェックが付く"""
     tt = eo((t - 0.1) / 0.5)
-    text(d, (W / 2, 150 + 26 * (1 - tt)), "休める町工場です。", 72, INK, tt,
+    text(d, (W / 2, 150 + 26 * (1 - tt)), "予約は、スマホで1分。", 72, INK, tt,
          anchor="mm", tracking=6)
 
-    # 左：ドーナツ。台座の全周スレート＋実測ぶんだけ山吹が伸びる
-    cx, cy, r, wd = 620, 620, 240, 60
-    al = eo((t - 0.3) / 0.4)
-    box = [(cx - r) * SS, (cy - r) * SS, (cx + r) * SS, (cy + r) * SS]
-    d.arc(box, 0, 360, fill=a(SLATE, 0.45 * al), width=wd * SS)
-    frac = 0.82 * eo((t - 0.5) / 1.5)
-    if frac > 0:
-        d.arc(box, -90, -90 + 360 * frac, fill=a(ACCENT, al), width=wd * SS)
-    v = int(round(82 * eo((t - 0.5) / 1.5)))
-    text(d, (cx, cy - 8), f"{v}%", 110, INK, al, anchor="mm")
-    text(d, (cx, cy + 330), "有給取得率", 44, SLATE, al, anchor="mm")
+    # 左：スマホの輪郭
+    al = eo((t - 0.3) / 0.5)
+    px, py, pw, ph = 470, 320, 330, 580
+    d.rounded_rectangle([px * SS, py * SS, (px + pw) * SS, (py + ph) * SS],
+                        radius=42 * SS, outline=a(INK, 0.75 * al), width=6 * SS)
+    d.line([(px + pw / 2 - 40) * SS, (py + 40) * SS,
+            (px + pw / 2 + 40) * SS, (py + 40) * SS],
+           fill=a(INK, 0.4 * al), width=5 * SS)
+    # カレンダー。7列×4段のマスが順に出て、19日目にチェック
+    cols, rows = 7, 4
+    cw, ch_, gap = 34, 34, 6
+    gx = px + (pw - cols * cw - (cols - 1) * gap) / 2
+    gy = py + 110
+    target = 18                       # 0はじまりで19日目
+    for i in range(cols * rows):
+        ai = eo((t - (0.7 + i * 0.028)) / 0.3)
+        if ai <= 0:
+            continue
+        r_, c = divmod(i, cols)
+        x = gx + c * (cw + gap)
+        y = gy + r_ * (ch_ + gap)
+        col = ACCENT if (i == target and t > 2.0) else MUTED
+        alpha = ai * (1.0 if (i == target and t > 2.0) else 0.5)
+        d.rounded_rectangle([x * SS, y * SS, (x + cw) * SS, (y + ch_) * SS],
+                            radius=7 * SS, fill=a(col, alpha))
+        if i == target and t > 2.15:
+            check_mark(d, x + cw / 2, y + ch_ / 2, 13, BG,
+                       eo((t - 2.15) / 0.3), w=5)
 
-    # 右：残業カウンター
+    # 右：所要時間のカウンター
     al2 = eo((t - 1.0) / 0.5)
-    v2 = int(round(12 * eo((t - 1.1) / 1.2)))
-    text(d, (1180, 500), "平均残業", 44, SLATE, al2)
-    text(d, (1175, 720), str(v2), 190, INK, al2, anchor="ls")
-    text(d, (1175 + text_w("12", 190) + 16, 720), "時間/月", 56, INK, al2 * 0.9, anchor="ls")
-
-
-BARS = [("20代", 24, ACCENT), ("30代", 21, SLATE), ("40代〜", 17, SLATE)]
+    text(d, (1130, 470), "予約にかかる時間", 44, MUTED, al2)
+    v = max(1, int(round(1 * eo((t - 1.1) / 0.8) * 1)))
+    text(d, (1125, 700), "1", 210, INK, al2 * eo((t - 1.1) / 0.6), anchor="ls")
+    text(d, (1125 + text_w("1", 210) + 16, 700), "分", 60, INK,
+         al2 * eo((t - 1.3) / 0.6), anchor="ls")
+    check_mark(d, 1210 + text_w("1", 210), 610, 40, ACCENT, eo((t - 1.9) / 0.4))
 
 
 def scene3(d, t):
-    """年代別の棒グラフ。20代がいちばん高く、山吹で点灯"""
+    """¥3,000 に取り消し線が走り、0円へ数え下がる"""
     tt = eo((t - 0.1) / 0.5)
-    text(d, (W / 2, 150 + 26 * (1 - tt)), "20代が、いちばん多い。", 72, INK, tt,
+    text(d, (W / 2, 150 + 26 * (1 - tt)), "費用は、0円。", 72, INK, tt,
          anchor="mm", tracking=6)
 
-    base_y, max_h, bw, gap = 850, 430, 190, 130
-    x0 = (W - (bw * 3 + gap * 2)) / 2
-    al = eo((t - 0.3) / 0.4)
-    d.line([(x0 - 60) * SS, base_y * SS, (x0 + bw * 3 + gap * 2 + 60) * SS, base_y * SS],
-           fill=a(INK, 0.28 * al), width=2 * SS)
-    for i, (label, v, col) in enumerate(BARS):
-        x = x0 + i * (bw + gap)
-        hgt = (v / 24) * max_h * eo((t - (0.4 + i * 0.22)) / 0.9)
-        ab = eo((t - (0.4 + i * 0.22)) / 0.4)
-        if hgt > 8:
-            # 上だけ角丸、根元はベースラインに直づけ（浮かせない）
-            d.rounded_rectangle([x * SS, (base_y - hgt) * SS,
-                                 (x + bw) * SS, (base_y + 8) * SS],
-                                radius=8 * SS, fill=a(col, ab))
-        text(d, (x + bw / 2, base_y - hgt - 44), f"{v}人", 44, INK,
-             eo((t - (0.9 + i * 0.22)) / 0.4), anchor="mm")
-        text(d, (x + bw / 2, base_y + 48), label, 42, SLATE, ab, anchor="mm")
+    # 上：もとの金額。山吹の取り消し線が走る
+    al = eo((t - 0.4) / 0.5)
+    label = "通常 ¥3,000 のところ"
+    text(d, (W / 2, 400), label, 52, MUTED, al, anchor="mm")
+    lw = text_w(label, 52) + 40
+    strike = lw * eo((t - 0.9) / 0.5)
+    if strike > 4:
+        y = 400
+        d.rounded_rectangle([(W / 2 - lw / 2) * SS, (y - 4) * SS,
+                             (W / 2 - lw / 2 + strike) * SS, (y + 4) * SS],
+                            radius=4 * SS, fill=a(ACCENT, 0.95))
+
+    # 中央：カウントダウン。3,000 → 0
+    al2 = eo((t - 0.7) / 0.5)
+    v = int(round(3000 * (1 - eo((t - 1.1) / 1.4))))
+    v = (v // 10) * 10                 # 端数が暴れないよう10円刻みで落とす
+    txt = f"¥{v:,}"
+    text(d, (W / 2, 730), txt, 230, INK, al2, anchor="ms")
+    a3 = eo((t - 2.7) / 0.4)
+    text(d, (W / 2, 830), "組合が全額負担します", 44, MUTED, a3, anchor="mm")
 
 
 def scene4(d, t):
-    """締め。ロゴカードに収束"""
+    """締め。健診、行こう。"""
     tt = eo((t - 0.15) / 0.6)
-    text(d, (W / 2, 460 + 24 * (1 - tt)), "想工業株式会社", 104, INK, tt,
+    text(d, (W / 2, 440 + 24 * (1 - tt)), "健診、行こう。", 104, INK, tt,
          anchor="mm", tracking=10)
-    # 細い山吹の罫
     rl = 300 * eo((t - 0.5) / 0.5)
     if rl > 2:
-        d.rounded_rectangle([(W / 2 - rl / 2) * SS, 566 * SS,
-                             (W / 2 + rl / 2) * SS, (566 + 5) * SS],
+        d.rounded_rectangle([(W / 2 - rl / 2) * SS, 546 * SS,
+                             (W / 2 + rl / 2) * SS, (546 + 5) * SS],
                             radius=2 * SS, fill=a(ACCENT, eo((t - 0.5) / 0.4)))
     a2 = eo((t - 0.7) / 0.5)
-    text(d, (W / 2, 650), "機械加工 ／ 検査 ／ 出荷", 44, SLATE, a2, anchor="mm")
-    # 採用強化中のピル（山吹の縁取り＋生成りの文字）
+    text(d, (W / 2, 630), "あおば健康保険組合", 46, MUTED, a2, anchor="mm")
     a3 = eo((t - 0.95) / 0.5)
     if a3 > 0:
-        pw, ph, py = 340, 84, 760
+        pw, ph, py = 460, 84, 740
         d.rounded_rectangle([(W / 2 - pw / 2) * SS, py * SS,
                              (W / 2 + pw / 2) * SS, (py + ph) * SS],
                             radius=ph / 2 * SS, outline=a(ACCENT, a3), width=3 * SS)
-        text(d, (W / 2, py + ph / 2 - 2), "採用強化中", 42, INK, a3, anchor="mm")
+        text(d, (W / 2, py + ph / 2 - 2), "受付は 10月1日 から", 40, INK, a3,
+             anchor="mm")
 
 
 SCENES = [(0.0, 4.0, scene1), (4.0, 8.0, scene2), (8.0, 12.0, scene3), (12.0, 15.0, scene4)]
@@ -201,7 +217,7 @@ XFADE = 0.4     # 場面の頭でフェードイン（前の場面は尻でフ�
 
 
 def draw_frame(gt):
-    base = Image.new("RGB", (W * SS, H * SS), NAVY)
+    base = Image.new("RGB", (W * SS, H * SS), BG)
     for (st, en, fn) in SCENES:
         if not (st - 0.001 <= gt < en + 0.001):
             continue
@@ -220,7 +236,7 @@ def draw_frame(gt):
     # 注記は場面に関係なく常に出す（数字が架空であることを画面内で断る）
     note = Image.new("RGBA", (W * SS, H * SS), (0, 0, 0, 0))
     dn = ImageDraw.Draw(note)
-    text(dn, (W - 48, H - 40), "※架空の会社のサンプル映像です。数字も架空です。",
+    text(dn, (W - 48, H - 40), "※架空の健康保険組合のサンプル映像です。数字も架空です。",
          26, INK, 0.42, anchor="rs")
     base.paste(note, (0, 0), note)
     return base.resize((W, H), Image.LANCZOS)
