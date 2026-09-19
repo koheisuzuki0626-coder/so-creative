@@ -95,6 +95,19 @@ check('金額の表示は税込で揃っている',
     check('丸に戻っていない',
         await page.locator('#why .stage-mark').first().evaluate(
             (el) => getComputedStyle(el).borderRadius !== '50%'));
+    /* 1枚目のステージは背景も写真も暗い。札を黒にすると溶けて読めないので、
+       白で抜いていること（9/19 に黒→白へ直した） */
+    const mk = await page.locator('#why .stage-mark').first().evaluate((el) => {
+        const cs = getComputedStyle(el);
+        const lum = (c) => {
+            const [r, g, bl] = (c.match(/[\d.]+/g) || [0, 0, 0]).slice(0, 3).map(Number)
+                .map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; });
+            return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+        };
+        return { bg: lum(cs.backgroundColor), fg: lum(cs.color) };
+    });
+    check('札が白っぽい（暗い背景に溶けない）', mk.bg > 0.6, JSON.stringify(mk));
+    check('札の文字は濃い色', mk.fg < 0.2, JSON.stringify(mk));
     /* 経緯をコメントに書いてあるので、コメントを外してから見る */
     const css = (await (await page.request.get(`${BASE}/assets/site.css`)).text())
         .replace(/\/\*[\s\S]*?\*\//g, '');
