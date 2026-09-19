@@ -107,19 +107,26 @@ check('金額の表示は税込で揃っている',
         return { bg: lum(cs.backgroundColor), fg: lum(cs.color) };
     });
     check('札が白っぽい（暗い背景に溶けない）', mk.bg > 0.6, JSON.stringify(mk));
-    /* スマホでは写真の重なりごと出さない（9/19 決定）。縦1列だと回転が効かず
-       場所だけ取るため。見出しと箇条書きで同じことを言っているので、
-       札は飾りと割り切っている。出したくなったらこの検査を書き換える */
+    /* スマホでも札を出す。写真の重なりだけ畳み、札は PC と同じ見た目にする
+       （9/19。いったん「スマホでは出さない」と決めたが、出す方に変えた）。
+       数字を vw で縮めると PC より小さくなるので、大きさが揃うことも見る */
     {
         const sp = await open(browser, { width: 390, height: 780, mobile: true });
-        check('スマホでは写真の重なりと札を出さない',
-            await sp.locator('#why .stack').first().isVisible() === false
-            && await sp.locator('#why .stage-mark').first().isVisible() === false);
+        check('スマホでも札がある', await sp.locator('#why .stage-mark').count() === 2);
+        check('スマホでは写真の重なりは畳んでいる',
+            await sp.locator('#why .stack figure').first().isVisible() === false);
+        const numSize = (pg) => pg.locator('#why .stage-mark b').first()
+            .evaluate((el) => getComputedStyle(el).fontSize);
+        const spSize = await numSize(sp);
         const whyText = await sp.locator('#why').innerText();
         check('スマホでも言いたいことは本文に残っている',
             ['誰の顔も', '撮影日を', '登場人物はすべて AI が生成']
                 .every((w) => whyText.includes(w)), whyText.slice(0, 60));
         await sp.close();
+        const wide = await open(browser, { width: 1440 });
+        const wideSize = await numSize(wide);
+        check('札の大きさが PC と揃っている', spSize === wideSize, `${spSize} / ${wideSize}`);
+        await wide.close();
     }
     check('札の文字は濃い色', mk.fg < 0.2, JSON.stringify(mk));
     /* 経緯をコメントに書いてあるので、コメントを外してから見る */

@@ -594,7 +594,8 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
 .stage-mark b {
     display: block;
     margin-top: 2px;
-    font-size: clamp(1.7rem, 3.2vw, 2.3rem);
+    /* 画面幅で縮めない。スマホでも PC と同じ札に見せる（9/19） */
+    font-size: 2.3rem;
     font-weight: 300;
     line-height: 1.1;
     letter-spacing: -0.01em;
@@ -1452,10 +1453,10 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
     .about-points-wide { grid-template-columns: 1fr; }
     .stage-grid { grid-template-columns: 1fr; gap: 34px; }
     /* 写真の重なりは縦1列だと回転が効かず場所だけ取るので出さない。
-       中にある .stage-mark（出演者 0人／撮影日 0日）も一緒に消えるが、
-       これは巻き添えではなく決めたこと（9/19）。見出しと箇条書きで
-       同じことを言っているので、スマホでは札は飾りと割り切る */
-    .stack { display: none; }
+       ただし中の札（出演者 0人／撮影日 0日）は PC と同じ見た目で出す。
+       札の指定はいっさい変えず、.stack を札を置くためだけの枠として残す */
+    .stack { aspect-ratio: auto; height: 132px; }
+    .stack figure { display: none; }
     .stage-track { height: 190vh; }
 }
 @media (max-width: 860px) {
