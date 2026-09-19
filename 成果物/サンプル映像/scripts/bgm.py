@@ -644,6 +644,63 @@ def build_08(dur=15.0):
     return normalize(np.tanh(mix * 2.1), 0.86)
 
 
+def build_08_60(dur=60.0):
+    """健診案内の60秒版。BPM120・小節2.0秒はそのまま、30小節に伸ばす。
+
+    場面は 0/6/14/22/30/38/46/54 秒で切り替わる（すべて小節頭）。
+    切り替わりごとにベルを置き、14秒から柔らかいベースが入って
+    前に進む感じを足す。54秒の締めでクラッシュ＋ベル。
+    """
+    n = int(dur * SR)
+    bar = 2.0
+    beat = bar / 4
+    cycle = [["A3", "C#4", "E4"], ["D4", "F#4", "A4"],
+             ["E4", "A4", "B4"], ["A3", "C#4", "E4"]]
+    roots = ["A3", "D4", "E4", "A3"]
+    mix = np.zeros(n)
+    n_bars = int(np.ceil(dur / bar))
+    for i in range(n_bars):
+        ch = cycle[i % 4]
+        p0 = int(i * bar * SR)
+        if p0 >= n:
+            break
+        ln = min(int(bar * SR), n - p0)
+        quiet = i < 3 or i >= 27          # 頭と締めは薄く
+        mix[p0:p0 + ln] += pad(ch, ln, level=0.16 if quiet else 0.2)[:ln]
+        seq = ch + [ch[1]]
+        for k in range(8):
+            q = p0 + int(k * beat / 2 * SR)
+            ln2 = min(int(0.6 * SR), n - q)
+            if ln2 > 0 and q < n:
+                mix[q:q + ln2] += marimba(seq[k % len(seq)], ln2,
+                                          level=0.11 if quiet else 0.16)[:ln2]
+        for k in range(8):
+            q = p0 + int((k + 0.5) * beat / 2 * SR)
+            if q < n:
+                mix[q:] += shaker(n - q, level=0.025 if quiet else 0.045)
+        # 14〜54秒は8分のベースで前に進める
+        if 14.0 <= i * bar < 54.0:
+            for k in range(8):
+                q = p0 + int(k * beat / 2 * SR)
+                ln2 = min(int(beat * 0.4 * SR), n - q)
+                if ln2 > 0 and q < n:
+                    mix[q:q + ln2] += bass(roots[i % 4], ln2, level=0.12)[:ln2]
+    # 場面の切り替わりにベル
+    for j, sec in enumerate((6.0, 14.0, 22.0, 30.0, 38.0, 46.0)):
+        q = int(sec * SR)
+        lnb = min(int(1.2 * SR), n - q)
+        mix[q:q + lnb] += bell("A4" if j % 2 == 0 else "B4", lnb, level=0.14)[:lnb]
+    q = int(54.0 * SR)
+    mix[q:] += crash(n - q, level=0.11)
+    mix[q:] += bell("E5", n - q, level=0.2)
+    mix = fft_filter(mix, 36, "hp", rolloff=3.0)
+    mix = reverb(mix, mix=0.24)
+    mix[:int(0.15 * SR)] *= np.linspace(0, 1, int(0.15 * SR))
+    tail = int(2.2 * SR)
+    mix[-tail:] *= np.linspace(1, 0, tail)
+    return normalize(np.tanh(mix * 2.1), 0.86)
+
+
 def write_wav(path, mono, width=0.12):
     """わずかにステレオに広げて 16bit で書く。"""
     d = int(width * 0.004 * SR)
@@ -688,4 +745,7 @@ if __name__ == "__main__":
     e = build_08()
     write_wav(f"{OUT}/bgm_08.wav", e)
     rms_report("08", e, [(0, 4), (4, 8), (8, 12), (12, 15)])
+    e60 = build_08_60()
+    write_wav(f"{OUT}/bgm_08_60.wav", e60)
+    rms_report("08(60秒)", e60, [(0, 6), (6, 22), (22, 38), (38, 54), (54, 60)])
     print("wrote bgm_02 / bgm_04 / bgm_05 / bgm_03_3min / bgm_08")
