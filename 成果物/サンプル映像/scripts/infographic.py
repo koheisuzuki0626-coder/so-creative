@@ -40,6 +40,9 @@ BG = (16, 51, 40)
 INK = (238, 231, 214)
 ACCENT = (245, 181, 42)
 MUTED = (110, 139, 125)
+DK = (7, 29, 22)          # 版ずれ影。地より一段暗い緑
+LT = (24, 66, 52)         # スマホの画面など、地より一段明るい面
+SHX, SHY = 7, 9           # 影のオフセット。リソグラフの刷りずれに寄せる
 
 
 def F(size):
@@ -83,10 +86,30 @@ def text_w(s, size):
     return F(size).getlength(s) / SS
 
 
-def rrect(d, cx, cy, w, h, rad, col, alpha):
+def text_sh(d, xy, s, size, col, alpha=1.0, anchor="la", tracking=0):
+    """版ずれ影つきの文字。濃い緑を右下にずらして刷ってから本体を載せる"""
+    text(d, (xy[0] + SHX, xy[1] + SHY), s, size, DK, alpha * 0.9, anchor, tracking)
+    text(d, xy, s, size, col, alpha, anchor, tracking)
+
+
+def rrect(d, cx, cy, w, h, rad, col, alpha, shadow=False):
+    if shadow:
+        d.rounded_rectangle([(cx - w / 2 + SHX) * SS, (cy - h / 2 + SHY) * SS,
+                             (cx + w / 2 + SHX) * SS, (cy + h / 2 + SHY) * SS],
+                            radius=rad * SS, fill=a(DK, alpha * 0.9))
     d.rounded_rectangle([(cx - w / 2) * SS, (cy - h / 2) * SS,
                          (cx + w / 2) * SS, (cy + h / 2) * SS],
                         radius=rad * SS, fill=a(col, alpha))
+
+
+def halftone(d, x0, y0, cols, rows, pitch, r0, alpha, col=MUTED):
+    """ハーフトーンのドット。右へ行くほど点が痩せる。印刷物の網点の意匠"""
+    for r_ in range(rows):
+        for c in range(cols):
+            rr = r0 * (1 - c / cols * 0.75)
+            x, y = x0 + c * pitch, y0 + r_ * pitch
+            d.ellipse([(x - rr) * SS, (y - rr) * SS, (x + rr) * SS, (y + rr) * SS],
+                      fill=a(col, alpha))
 
 
 def check_mark(d, cx, cy, r, col, alpha, w=None):
@@ -115,13 +138,32 @@ def sparkle(d, cx, cy, t, t0, col=ACCENT, n=8, r0=20):
 
 def title(d, t, s):
     tt = eo((t - 0.1) / 0.6)
-    text(d, (W / 2, 150 + 26 * (1 - tt)), s, 72, INK, tt, anchor="mm", tracking=6)
+    text_sh(d, (W / 2, 150 + 26 * (1 - tt)), s, 72, INK, tt, anchor="mm", tracking=6)
     # 見出し下の短い罫。装飾はこの太さで統一する
     rrect(d, W / 2, 212, 56 * tt, 5, 2, ACCENT, tt * 0.9)
     return tt
 
 
 # ---------------------------------------------------------------- 背景の装飾
+
+def make_paper():
+    """紙のむら。低い周波数のノイズを拡大して色むらに、四隅を少し落とす。
+    毎フレーム同じものを敷く（動かすとノイズが泳いで見える）"""
+    rng = np.random.default_rng(7)
+    blot = rng.uniform(-1, 1, (27, 48))
+    blot = np.asarray(Image.fromarray(((blot + 1) * 127).astype(np.uint8))
+                      .resize((W * SS, H * SS), Image.BICUBIC), dtype=np.float32)
+    blot = (blot / 127 - 1) * 3.0
+    yy, xx = np.mgrid[0:H * SS, 0:W * SS]
+    dist = np.sqrt(((xx / (W * SS) - 0.5) * 2) ** 2 + ((yy / (H * SS) - 0.5) * 2) ** 2)
+    vig = -(np.clip(dist - 0.55, 0, None) ** 2) * 26
+    arr = np.zeros((H * SS, W * SS, 3), dtype=np.float32)
+    arr[:] = BG
+    arr += (blot + vig)[:, :, None]
+    return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
+
+
+PAPER = None      # main() で作る（テストで import しただけなら作らない）
 
 _rng = np.random.default_rng(11)
 PLUS = [(float(_rng.uniform(80, W - 80)), float(_rng.uniform(240, H - 120)),
@@ -136,6 +178,10 @@ def deco(d, gt):
                                 (W - 130, 110, 260, 3, 0.06)):
         d.arc([(cx - r) * SS, (cy - r) * SS, (cx + r) * SS, (cy + r) * SS],
               0, 360, fill=a(INK, al), width=wd * SS)
+    # 網点。左上と右下に1面ずつ。ゆっくり明滅
+    pulse = 0.10 + 0.03 * np.sin(2 * np.pi * gt * 0.07)
+    halftone(d, 90, 150, 10, 5, 34, 6.5, pulse)
+    halftone(d, W - 420, H - 300, 10, 6, 34, 6.5, pulse)
     for (px, py, sz, ph, is_ac) in PLUS:
         drift = 8 * np.sin(2 * np.pi * (gt * 0.045 + ph))
         al = 0.05 + 0.04 * (0.5 + 0.5 * np.sin(2 * np.pi * (gt * 0.08 + ph * 3)))
@@ -186,20 +232,40 @@ def scene1(d, t):
     r = r * (1 - shrink)
     wd = max(4, wd * (1 - shrink * 0.5))
     box = [(cx - r) * SS, (cy - r) * SS, (cx + r) * SS, (cy + r) * SS]
+    fade = al * (1 - shrink)
+    # 目覚まし時計に描き込む。上に山吹のベル2つ、下に足2本、頭にボタン
+    if r > 60:
+        for sgn in (-1, 1):
+            bx = cx + sgn * (r * 0.52)
+            by = cy - r - wd / 2 - 6
+            d.pieslice([(bx - 44) * SS, (by - 44) * SS, (bx + 44) * SS, (by + 44) * SS],
+                       180 + sgn * 18, 360 + sgn * 18, fill=a(ACCENT, fade * 0.95))
+        rrect(d, cx, cy - r - wd / 2 - 52, 26, 16, 6, INK, fade * 0.7)
+        for sgn in (-1, 1):
+            x0 = cx + sgn * (r * 0.62)
+            d.line([x0 * SS, (cy + r + wd / 2 - 6) * SS,
+                    (x0 + sgn * 34) * SS, (cy + r + wd / 2 + 40) * SS],
+                   fill=a(MUTED, fade * 0.8), width=14 * SS)
     for k in range(12):
         ang = np.pi * 2 * k / 12 - np.pi / 2
-        r0, r1 = r + wd / 2 + 18, r + wd / 2 + 38
+        big = (k % 3 == 0)
+        r0, r1 = r + wd / 2 + 18, r + wd / 2 + (44 if big else 34)
         d.line([(cx + np.cos(ang) * r0) * SS, (cy + np.sin(ang) * r0) * SS,
                 (cx + np.cos(ang) * r1) * SS, (cy + np.sin(ang) * r1) * SS],
-               fill=a(INK, 0.25 * al * (1 - shrink)), width=4 * SS)
+               fill=a(ACCENT if big else INK, (0.5 if big else 0.25) * fade),
+               width=(7 if big else 4) * SS)
     if r > 20:
-        d.arc(box, 0, 360, fill=a(MUTED, 0.4 * al * (1 - shrink)), width=int(wd) * SS)
+        # 版ずれ影 → 台座 → 山吹の弧の順に刷る
+        sbox = [(cx - r + SHX) * SS, (cy - r + SHY) * SS,
+                (cx + r + SHX) * SS, (cy + r + SHY) * SS]
+        d.arc(sbox, 0, 360, fill=a(DK, 0.9 * fade), width=int(wd) * SS)
+        d.arc(box, 0, 360, fill=a(MUTED, 0.4 * fade), width=int(wd) * SS)
         frac = eo((t - 0.55) / 1.7)
         if frac > 0:
             d.arc(box, -90, -90 + 360 * frac, fill=a(ACCENT, al), width=int(wd) * SS)
     fade_txt = 1 - shrink
     v = int(round(30 * eo((t - 0.55) / 1.7)))
-    text(d, (cx, cy - 14), str(v), 150, INK, al * fade_txt, anchor="mm")
+    text_sh(d, (cx, cy - 14), str(v), 150, INK, al * fade_txt, anchor="mm")
     text(d, (cx, cy + 96), "分で終わります", 40, MUTED, al * fade_txt, anchor="mm")
     sparkle(d, cx, cy - 250, t, 2.3)
 
@@ -208,11 +274,28 @@ def scene2(d, t):
     """スマホの中でカレンダーが組み上がり、1日にチェックが付く"""
     title(d, t, "予約は、スマホで1分。")
     al = eo((t - 0.15) / 0.5)
+    # 本体の版ずれ影 → 画面の面 → 輪郭の順
+    d.rounded_rectangle([(P_X + SHX) * SS, (P_Y + SHY) * SS,
+                         (P_X + P_W + SHX) * SS, (P_Y + P_H + SHY) * SS],
+                        radius=42 * SS, outline=a(DK, 0.9 * al), width=6 * SS)
+    d.rounded_rectangle([(P_X + 16) * SS, (P_Y + 62) * SS,
+                         (P_X + P_W - 16) * SS, (P_Y + P_H - 52) * SS],
+                        radius=22 * SS, fill=a(LT, 0.75 * al))
     d.rounded_rectangle([P_X * SS, P_Y * SS, (P_X + P_W) * SS, (P_Y + P_H) * SS],
                         radius=42 * SS, outline=a(INK, 0.75 * al), width=6 * SS)
-    d.line([(P_X + P_W / 2 - 40) * SS, (P_Y + 40) * SS,
-            (P_X + P_W / 2 + 40) * SS, (P_Y + 40) * SS],
+    d.line([(P_X + P_W / 2 - 40) * SS, (P_Y + 38) * SS,
+            (P_X + P_W / 2 + 40) * SS, (P_Y + 38) * SS],
            fill=a(INK, 0.4 * al), width=5 * SS)
+    # カレンダーのヘッダー。山吹の帯に「10月」
+    hd = eo((t - 0.35) / 0.4)
+    gw = C_COLS * C_SZ + (C_COLS - 1) * C_GAP
+    rrect(d, G_X + gw / 2, G_Y - 34, gw * hd, 30, 8, ACCENT, hd * 0.95)
+    if hd > 0.6:
+        text(d, (G_X + gw / 2, G_Y - 35), "10月", 20, BG, (hd - 0.6) / 0.4, anchor="mm")
+    # ホームバー
+    d.line([(P_X + P_W / 2 - 52) * SS, (P_Y + P_H - 26) * SS,
+            (P_X + P_W / 2 + 52) * SS, (P_Y + P_H - 26) * SS],
+           fill=a(INK, 0.35 * al), width=6 * SS)
     for i in range(C_COLS * C_ROWS):
         r_, c = divmod(i, C_COLS)
         x = G_X + c * (C_SZ + C_GAP)
@@ -235,7 +318,7 @@ def scene2(d, t):
         rrect(d, x + C_SZ / 2, y + C_SZ / 2, C_SZ, C_SZ, 7, MUTED, ai * 0.5)
     al2 = eo((t - 1.0) / 0.5)
     text(d, (1130, 470), "予約にかかる時間", 44, MUTED, al2)
-    text(d, (1125, 700), "1", 210, INK, al2 * eo((t - 1.1) / 0.6), anchor="ls")
+    text_sh(d, (1125, 700), "1", 210, INK, al2 * eo((t - 1.1) / 0.6), anchor="ls")
     text(d, (1125 + text_w("1", 210) + 16, 700), "分", 60, INK,
          al2 * eo((t - 1.3) / 0.6), anchor="ls")
     check_mark(d, 1210 + text_w("1", 210), 610, 40, ACCENT, eo((t - 1.9) / 0.4))
@@ -255,7 +338,20 @@ def scene3(d, t):
     al2 = eo((t - 0.5) / 0.5)
     v = int(round(3000 * (1 - eo((t - 0.9) / 1.4))))
     v = (v // 10) * 10
-    text(d, (W / 2, 730), f"¥{v:,}", 230, INK, al2, anchor="ms")
+    text_sh(d, (W / 2, 730), f"¥{v:,}", 230, INK, al2, anchor="ms")
+    # まわりにコイン。輪郭だけの円に¥。ゆっくり浮き沈み
+    for (px, py, rr, ph) in ((420, 620, 52, 0.0), (1510, 540, 40, 0.4),
+                             (1560, 800, 62, 0.7)):
+        ai = eo((t - (0.6 + ph)) / 0.5) * 0.5
+        if ai <= 0:
+            continue
+        y = py + 10 * np.sin(2 * np.pi * (t * 0.18 + ph))
+        d.ellipse([(px - rr + 4) * SS, (y - rr + 5) * SS,
+                   (px + rr + 4) * SS, (y + rr + 5) * SS],
+                  outline=a(DK, ai), width=6 * SS)
+        d.ellipse([(px - rr) * SS, (y - rr) * SS, (px + rr) * SS, (y + rr) * SS],
+                  outline=a(ACCENT, ai), width=6 * SS)
+        text(d, (px, y - 2), "¥", int(rr * 1.1), ACCENT, ai, anchor="mm")
     sparkle(d, W / 2 + text_w("¥0", 230) / 2 + 60, 640, t, 2.4, r0=30)
     a3 = eo((t - 2.5) / 0.4)
     text(d, (W / 2, 830), "組合が全額負担します", 44, MUTED, a3, anchor="mm")
@@ -264,8 +360,20 @@ def scene3(d, t):
 def scene4(d, t):
     """締め。健診、行こう。"""
     tt = eo((t - 0.15) / 0.6)
-    text(d, (W / 2, 440 + 24 * (1 - tt)), "健診、行こう。", 104, INK, tt,
-         anchor="mm", tracking=10)
+    # タイトルの上に医療の十字バッジ
+    bb = eo((t - 0.05) / 0.45)
+    if bb > 0:
+        br = 44 * (0.6 + 0.4 * bb)
+        d.ellipse([(W / 2 - br + SHX) * SS, (300 - br + SHY) * SS,
+                   (W / 2 + br + SHX) * SS, (300 + br + SHY) * SS],
+                  outline=a(DK, bb * 0.9), width=6 * SS)
+        d.ellipse([(W / 2 - br) * SS, (300 - br) * SS,
+                   (W / 2 + br) * SS, (300 + br) * SS],
+                  outline=a(ACCENT, bb), width=6 * SS)
+        rrect(d, W / 2, 300, br * 0.9, br * 0.3, br * 0.14, ACCENT, bb)
+        rrect(d, W / 2, 300, br * 0.3, br * 0.9, br * 0.14, ACCENT, bb)
+    text_sh(d, (W / 2, 440 + 24 * (1 - tt)), "健診、行こう。", 104, INK, tt,
+            anchor="mm", tracking=10)
     # 罫は運び役（取り消し線の名残）が着地してから伸びる
     rl = 300 * eo((t - 0.3) / 0.5)
     if rl > 2:
@@ -317,11 +425,12 @@ def bridges(d, gt):
         w = r_from[2] + (r_to[2] - r_from[2]) * u
         h = r_from[3] + (r_to[3] - r_from[3]) * u
         rad = r_from[4] + (r_to[4] - r_from[4]) * u
-        rrect(d, cx, cy, w, h, min(rad, h / 2, w / 2), ACCENT, min(1.0, eo((gt - t0) / 0.12)))
+        rrect(d, cx, cy, w, h, min(rad, h / 2, w / 2), ACCENT,
+              min(1.0, eo((gt - t0) / 0.12)), shadow=True)
 
 
 def draw_frame(gt):
-    base = Image.new("RGB", (W * SS, H * SS), BG)
+    base = PAPER.copy() if PAPER is not None else Image.new("RGB", (W * SS, H * SS), BG)
     dd = ImageDraw.Draw(base, "RGBA")
     deco(dd, gt)
     for (st, en, fn) in SCENES:
@@ -344,7 +453,11 @@ def draw_frame(gt):
     bridges(dt, gt)
     chrome(dt, gt)
     base.paste(top, (0, 0), top)
-    return base.resize((W, H), Image.LANCZOS)
+    out = base.resize((W, H), Image.LANCZOS)
+    # 粒子。フレームごとに引き直すとフィルムグレインのざわつきになる
+    arr = np.asarray(out, dtype=np.int16)
+    g = np.random.default_rng(int(round(gt * FPS))).integers(-5, 6, (H, W, 1), dtype=np.int16)
+    return Image.fromarray(np.clip(arr + g, 0, 255).astype(np.uint8))
 
 
 def measure(path, tp=-2.0):
@@ -362,8 +475,9 @@ def measure(path, tp=-2.0):
 
 
 def main():
-    global S3_LW
+    global S3_LW, PAPER
     S3_LW = text_w(S3_LABEL, 52) + 40
+    PAPER = make_paper()
     os.makedirs(OUT, exist_ok=True)
     silent = f"{OUT}/08_infographic_15s_silent.mp4"
     n_frames = int(DUR * FPS)
