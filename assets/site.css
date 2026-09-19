@@ -1451,6 +1451,10 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
     .about-grid { grid-template-columns: 1fr; }
     .about-points-wide { grid-template-columns: 1fr; }
     .stage-grid { grid-template-columns: 1fr; gap: 34px; }
+    /* 写真の重なりは縦1列だと回転が効かず場所だけ取るので出さない。
+       中にある .stage-mark（出演者 0人／撮影日 0日）も一緒に消えるが、
+       これは巻き添えではなく決めたこと（9/19）。見出しと箇条書きで
+       同じことを言っているので、スマホでは札は飾りと割り切る */
     .stack { display: none; }
     .stage-track { height: 190vh; }
 }
