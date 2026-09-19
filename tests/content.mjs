@@ -345,6 +345,20 @@ check('金額の表示は税込で揃っている',
     check('架空の題材だと書いてある', /架空の製造業を題材に/.test(works));
     check('架空クライアントの名前を出していない', !/想工業/.test(works));
 }
+/* 文言の方向（2026-09-20）：撮影が「無い」ことではなく、AI だから
+   できるようになることを前に出す。ただし書けるのは確かめられる事実だけ。 */
+{
+    const svc = await page.locator('#service').innerText();
+    check('できるようになることを書いている',
+        /訴求違い/.test(svc) && /差し替え/.test(svc), svc.slice(0, 40));
+    check('自社サンプルの日数と一致している', /3日間/.test(svc));
+    check('2本目の値段が料金表と一致している', /¥65,000/.test(svc));
+    check('誇大な言い方をしていない',
+        !/必ず|絶対|劇的|革命|No\.?1|業界最|最先端/.test(svc), svc.slice(0, 60));
+    const hero = await page.locator('.hero-inner').innerText();
+    check('ヒーローもできることで書いている',
+        /3日で1本できる/.test(hero) && /訴求違い/.test(hero));
+}
 check('人物ナレーションの追加料金が FAQ と計算機で同じ',
     /1名 ¥70,000〜/.test(idx) && /narrationHuman: 70000/.test(idx));
 /* AIを有料に戻すときは、ここと計算機と文言を必ず一緒に直す */
