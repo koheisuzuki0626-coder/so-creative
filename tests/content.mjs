@@ -150,9 +150,27 @@ check('金額の表示は税込で揃っている',
         /assets\/works\/recruit-3min\.mp4/.test(idx));
     check('採用のサンプルにもポスター画像がある',
         /poster="assets\/works\/recruit-3min\.jpg"/.test(idx));
-    /* 7ジャンル全部にサンプルが入った。1つでも欠けたらここが落ちる */
-    check('7ジャンル全部にサンプルが入っている',
-        (await page.locator('.genre .sample-video').count()) === 7);
+    /* サンプルは「見せられないものは売らない」の裏づけなので、欠けたら落とす。
+       08 ミュージックビデオ（9/19 追加）だけは、クレジット残が足りず 90秒の MV を
+       1本つくれないため、サンプルなしで先に公開している。黙って緩めないよう、
+       例外はこの1枚に限る形で書く。サンプルができたらこの除外を外す */
+    const noSample = await page.locator('.genre:not(:has(.sample-video))').evaluateAll(
+        (els) => els.map((e) => e.id));
+    check('サンプルが無いのはミュージックビデオだけ',
+        noSample.join(',') === 'genre-mv', noSample.join(','));
+    check('ミュージックビデオ以外の全ジャンルにサンプルが入っている',
+        (await page.locator('.genre .sample-video').count())
+        === (await page.locator('.genre').count()) - 1);
+    /* サンプルが無いぶん、いまどういう状態かをカードに書く。
+       黙って空にすると「作れないジャンル」に見える */
+    check('ミュージックビデオのカードに状態と料金の扱いが書いてある',
+        /サンプルは準備中/.test(await page.locator('#genre-mv').innerText())
+        && /料金表ではなく個別にお見積り/.test(await page.locator('#genre-mv').innerText()),
+        await page.locator('#genre-mv').innerText());
+    /* MV は計算機に乗せない。工数を一度も測っていないので、
+       定価を出すと測る前に金額を宣言することになる */
+    check('ミュージックビデオのカードに金額を書いていない',
+        !/¥[\d,]+/.test(await page.locator('#genre-mv').innerText()));
     check('サンプルは「01 会社紹介」のカードの中にある',
         (await page.locator('#genre-company .sample-video').count()) === 1
         && (await page.locator('#works .sample-video').count()) === 0);
