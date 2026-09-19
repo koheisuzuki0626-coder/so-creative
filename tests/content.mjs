@@ -172,11 +172,25 @@ check('金額の表示は税込で揃っている',
     const flow = await page.locator('#process .flow').innerText();
     check('打ち合わせの所要時間を約束していない', !/\d+\s*分/.test(flow),
         (flow.match(/.{0,16}\d+\s*分.{0,16}/) || [''])[0]);
-    check('ヒアリングが1回でオンラインだと書いてある',
-        /1回・オンラインで完結します/.test(flow));
+    /* 打ち合わせをやめ、ヒアリングもメールにした（9/19）。売りとして書く */
+    check('ヒアリングがメールのみだと書いてある',
+        /メールのみ・打ち合わせは不要です/.test(flow));
+    check('シートに記入する形だと書いてある', /シートにご記入/.test(flow));
     /* 4回だけ、という約束は別の場所にもあるので、そこは崩れていないこと */
-    check('お客様の対応は4回だけ、が残っている',
-        /4回だけです/.test(await page.locator('#process').innerText()));
+    const proc = await page.locator('#process').innerText();
+    check('お客様の対応は4回だけ、が残っている', /4回だけです/.test(proc));
+    check('4回ともメールだと書いてある', /いずれもメールで完結します/.test(proc));
+    /* 打ち合わせが要るかどうかは FAQ でも聞かれる。ここが「必要ありません」で
+       始まっていないと、流れの説明と食い違う */
+    const meetFaq = faqUi.find((u) => /打ち合わせや立ち会い/.test(u.q));
+    check('打ち合わせの FAQ が「必要ありません」で始まる',
+        !!meetFaq && /^必要ありません/.test(meetFaq.a), meetFaq && meetFaq.a.slice(0, 30));
+    check('FAQ もメールで完結すると書いてある', /すべてメールで完結します/.test(meetFaq.a));
+    /* 会社概要の対応地域も、打ち合わせ前提の書き方が残っていないこと */
+    const ab = await open(browser, { page: 'about.html' });
+    check('会社概要もメールで完結と書いてある',
+        /お問い合わせから納品までメールで完結します/.test(await ab.locator('body').innerText()));
+    await ab.close();
 }
 
 /* 制作の流れに置いていた「実例」（3日間・54回生成・4往復）は外した（2026-09-17）。
