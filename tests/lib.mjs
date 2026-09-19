@@ -25,7 +25,10 @@ export const PRICE = { base: 90000, perExtra: 65000, narrationAi: 0, narrationHu
        梅・竹だけ。松は人物ナレーションが込みで、これは秒単価に溶けているので対象外。
        3万にすると梅15秒×1本だけが ¥21,429/h（目標の93.2%）で下限を割る。
        2.75万でも95.2%しか残らないので、余白を見て2.5万にした（97.3%）。 */
-    noNarration: 25000 };
+    noNarration: 25000,
+    /* 松の人物ナレーション1名も外せる（9/19）。返す額は「いちばん短い尺でも
+       時間単価の下限を割らない額」で決めた。index.html の PRICE と同じ値にすること */
+    matsuToAi: 25000, matsuToNone: 50000 };
 export const TIERS = [
     { id: 'ume',   label: '梅', perSec: 3500, hours: 1.0,  narration: false },
     { id: 'take',  label: '竹', perSec: 4900, hours: 1.22, narration: false },
@@ -51,13 +54,16 @@ export const countCap = (sec) => (sec <= 30 ? 2 : sec <= 90 ? 4 : 6);
    **工数はどちらも 1本 1.0h。**原稿と配置は本数ぶん要るので、AI でも人でも同じ。
    人物の ¥70,000 のうち大半はナレーターへの外注費で、これは工数ではなく原価。 */
 export const narFee = (t, n, nar) =>
-    t.narration ? 0
+    t.narration
+        ? (nar === 'human' ? 0 : nar === 'ai' ? -PRICE.matsuToAi : -PRICE.matsuToNone)
         : nar === 'ai' ? PRICE.narrationAi * n
         : nar === 'human' ? PRICE.narrationHuman : 0;
 /* 松の秒単価（倍率 1.36）にはナレーション1本ぶんの 1.0h が入っているので、
    松が工数として足すのは2本目以降。ここを n にすると 60秒松の 15.2h が動く */
 export const narTracks = (t, n, nar) =>
-    (t.narration ? n - 1 : nar === 'none' ? 0 : n);
+    (t.narration
+        ? (nar === 'human' ? n - 1 : nar === 'ai' ? n : 0)
+        : nar === 'none' ? 0 : n);
 /* ナレーションを使わないときの引き。松は対象外（人物が込み） */
 export const narDiscount = (t, nar) =>
     (!t.narration && nar === 'none' ? PRICE.noNarration : 0);

@@ -61,9 +61,11 @@ check('使わないと差し引かれることが書いてある',
     /使わない（テロップのみ）場合は ¥25,000 を差し引きます/
         .test(await page.locator('.calc-why').innerText()));
 await page.locator('#calc-tier .calc-opt[data-tier="matsu"]').click();
-check('松では「人物ナレーション」に固定され、ほかが選べない',
-    (await page.locator('#calc-nar input[data-nar="none"]').isDisabled())
-    && (await page.locator('#calc-nar input[data-nar="ai"]').isDisabled())
+/* 9/19 に、松でもナレーションを選べるようにした。以前は human に固定していて、
+   人物ナレーションが要らない案件で松を選べなかった。既定は human のまま */
+check('松でもナレーションを選べる',
+    !(await page.locator('#calc-nar input[data-nar="none"]').isDisabled())
+    && !(await page.locator('#calc-nar input[data-nar="ai"]').isDisabled())
     && (await page.locator('#calc-nar input[data-nar="human"]').isChecked()));
 check('松はナレーションが込み（¥0）',
     /人物（松に1名込み）/.test(await page.locator('#calc-nar-dt').innerText())
@@ -94,7 +96,26 @@ check('ナレーションなしは差し引きが内訳に出る',
     && Number((await page.locator('#calc-total').innerText()).replace(/[^\d]/g, '')) === price(TIERS[0], 30, 2, 'none'));
 check('差し引きは AI を選ぶより安い',
     price(TIERS[0], 30, 2, 'none') === price(TIERS[0], 30, 2, 'ai') - PRICE.noNarration);
-check('松は差し引きの対象外', price(TIERS[2], 30, 2) === price(TIERS[2], 30, 2, 'human'));
+/* 松の人物ぶんを返す額。¥70,000 をそのまま返すと 15秒×1本で下限を割るので、
+   いちばん短い尺でも持つ額（AI -2.5万／なし -5万）にしてある */
+check('松をAIに替えると人物ぶんが引かれる',
+    price(TIERS[2], 30, 2, 'ai') === price(TIERS[2], 30, 2, 'human') - PRICE.matsuToAi);
+check('松でナレーションを使わないとさらに引かれる',
+    price(TIERS[2], 30, 2, 'none') === price(TIERS[2], 30, 2, 'human') - PRICE.matsuToNone);
+{
+    /* 引いたあとでも、どの組み合わせも時間単価の下限を割らないこと。
+       ここが割ると「松を選ぶほど損」になる */
+    const bad = [];
+    for (const sec of LENGTHS) {
+        for (let n = 1; n <= countCap(sec); n += 1) {
+            for (const nar of ['human', 'ai', 'none']) {
+                const r = price(TIERS[2], sec, n, nar) / hours(TIERS[2], sec, n, nar);
+                if (r < RATE * 0.95) bad.push(`${sec}秒×${n}本/${nar}: ¥${Math.round(r)}`);
+            }
+        }
+    }
+    check('松はナレーションを外しても下限を割らない', bad.length === 0, bad.slice(0, 3).join(','));
+}
 await page.locator('#calc-nar .calc-opt[data-nar="ai"]').click();
 await page.locator('#calc-nar .calc-opt[data-nar="human"]').click();
 check('人物ナレーションは本数で増えず「〜」が付く',
@@ -219,7 +240,7 @@ check('ナレーションの工数は1本 1.0h（AI・人で同じ）', HOURS_NA
     for (const sec of LENGTHS) {
         for (let n = 1; n <= 6; n++) {
             if (sec / n < 15) continue;
-            if (price(take, sec, n, 'human') > price(matsu, sec, n)) inverted.push(`${sec}秒×${n}本`);
+            if (price(take, sec, n, 'human') > price(matsu, sec, n, 'human')) inverted.push(`${sec}秒×${n}本`);
         }
     }
     /* ナレーションを「1名 ¥70,000〜」にした（2026-09-17）ことで逆転が3件に増えた。
@@ -235,10 +256,10 @@ check('ナレーションの工数は1本 1.0h（AI・人で同じ）', HOURS_NA
     /* AIは料金に含むので、どの組み合わせでも松を上回らない */
     check('AIナレーションでは逆転しない',
         LENGTHS.every((sec) => Array.from({ length: countCap(sec) }, (_, i) => i + 1)
-            .every((n) => price(take, sec, n, 'ai') <= price(matsu, sec, n))));
+            .every((n) => price(take, sec, n, 'ai') <= price(matsu, sec, n, 'human'))));
     check('松は本数が増えてもナレーション料は増えない',
-        price(matsu, 30, 2) - price(matsu, 30, 1) === PRICE.perExtra,
-        `¥${price(matsu, 30, 2) - price(matsu, 30, 1)}`);
+        price(matsu, 30, 2, 'human') - price(matsu, 30, 1, 'human') === PRICE.perExtra,
+        `¥${price(matsu, 30, 2, 'human') - price(matsu, 30, 1, 'human')}`);
     /* 松は料金は増えないが工数は増える。秒単価に入っているのは1本ぶんの 1.0h なので、
        2本目のナレーション（原稿・配置）はちゃんと工数に乗る。1.5h + 1.0h */
     check('松は料金は増えないが工数は2本目ぶん増える',
@@ -253,7 +274,7 @@ check('ナレーションの工数は1本 1.0h（AI・人で同じ）', HOURS_NA
             const cap = countCap(sec);
             for (let n = 1; n <= cap; n += 1) {
                 for (const mode of ['ai', 'human']) {
-                    const want = price(t, sec, n, mode) > price(matsu, sec, n);
+                    const want = price(t, sec, n, mode) > price(matsu, sec, n, 'human');
                     await pick(page, t.id, sec, n);
                     await page.locator(`#calc-nar .calc-opt[data-nar="${mode}"]`).click();
                     await page.waitForTimeout(40);
@@ -271,7 +292,8 @@ check('ナレーションの工数は1本 1.0h（AI・人で同じ）', HOURS_NA
 
 /* ---- 段の順序と独立性 ---- */
 /* 直前の「松のほうが安い」の確認ループが 'none' で終わるので、素の状態（AI）に戻す。
-   戻さないと差し引きが乗って、以降の金額の検査が全部ずれる */
+   戻さないと差し引きが乗って、以降の金額の検査が全部ずれる。
+   なお段を選び直すとナレーションは段の既定に戻る（松は human／梅・竹は ai） */
 await page.locator('#calc-nar .calc-opt[data-nar="ai"]').click();
 await page.waitForTimeout(60);
 const ladder = [];
@@ -280,7 +302,9 @@ check('段が上がるほど高い', ladder[0] < ladder[1] && ladder[1] < ladder
 /* 初期状態（AIナレーション）での額。AIは料金に含むので従来と同じ。
    ここが 380,000 になったら、初期が「なし」に戻って差し引きが効いている */
 check('梅は従来価格を据え置き', ladder[0] === 405000, `¥${ladder[0]}`);
-check('短い尺でも松が選べる', (await pick(page, 'matsu', 30, 1)) === price(TIERS[2], 30, 1));
+check('短い尺でも松が選べる',
+    (await pick(page, 'matsu', 30, 1)) === price(TIERS[2], 30, 1, 'human'),
+    String(await pick(page, 'matsu', 30, 1)));
 check('長い尺でも梅が選べる', (await pick(page, 'ume', 300, 1)) === price(TIERS[0], 300, 1));
 
 /* ---- プリセット ---- */
@@ -295,7 +319,10 @@ for (const [t, sec] of [['ume', 30], ['take', 90], ['matsu', 180]]) {
         on === t && shown === price(TIERS.find(x => x.id === t), sec, 1), `${on} ¥${shown}`);
 }
 
-/* ---- メール本文 ---- */
+/* ---- メール本文 ----
+   9/19 に本文を詰めた。松でもナレーションを選べるようにしたら差し引きの行が増え、
+   最長が 1,901 文字になって mailto の上限を超えたため。
+   「AI（料金に含まれます）」→「AI」、「ご希望の公開時期」→「公開時期」など */
 await pick(page, 'take', 90, 2);
 const mailLink = () => page.locator('#calc-mail').getAttribute('href');
 const href = await mailLink();
@@ -304,7 +331,7 @@ const body = q.get('body') || '';
 check('相談ボタンがメールを開く', href.startsWith('mailto:bonvoyage.ti@icloud.com?'));
 check('件名に段と尺と本数が入る', /竹・90秒 × 2本/.test(q.get('subject') || ''), q.get('subject'));
 check('本文に選んだ内容が入る',
-    /・仕上げ：竹（上）/.test(body) && /・ナレーション：AI（料金に含まれます）/.test(body)
+    /・仕上げ：竹（上）/.test(body) && /・ナレーション：AI/.test(body)
     && new RegExp(`・概算金額：¥${price(TIERS[1], 90, 2).toLocaleString('ja-JP')}（税込）`).test(body)
     && new RegExp(`・納品目安：約${leadWeeks(TIERS[1], 90)}週間`).test(body));
 check('本文に内訳も入る', /・基本料金：¥90,000/.test(body) && /・尺 90秒 × ¥4,900（竹）/.test(body)
@@ -312,7 +339,7 @@ check('本文に内訳も入る', /・基本料金：¥90,000/.test(body) && /�
 /* 尺と本数は件名と内訳にあるので、選んだ内容では繰り返さない（mailto の長さ対策） */
 check('選んだ内容で尺と本数を繰り返していない', !/・合計の尺：/.test(body) && !/・本数：2本/.test(body));
 check('先方に書いてもらう欄がある',
-    /会社名 \/ お名前：/.test(body) && /映像の用途：/.test(body) && /ご希望の公開時期：/.test(body));
+    /会社名 \/ お名前：/.test(body) && /映像の用途：/.test(body) && /公開時期：/.test(body));
 await pick(page, 'ume', 60, 2);
 await page.locator('#calc-nar .calc-opt[data-nar="human"]').click();
 await page.waitForTimeout(60);
@@ -325,12 +352,26 @@ await page.waitForTimeout(60);
 const aiBody = new URLSearchParams((await mailLink()).split('?')[1]).get('body') || '';
 /* 直前で 60秒×2本 を選んでいる。AI は本数ぶん増えるので 2本ぶんの額が出る */
 check('AIを選ぶと本文に「料金に含まれます」と入り、金額行は出ない',
-    /・ナレーション：AI（料金に含まれます）/.test(aiBody) && !/・ナレーション 人物/.test(aiBody));
+    /・ナレーション：AI/.test(aiBody) && !/・ナレーション 人物/.test(aiBody));
 await page.locator('#calc-nar .calc-opt[data-nar="none"]').click();
-// mailto はクライアント側の長さ制限があるので、最長の組み合わせでも収まること
-await pick(page, 'matsu', 300, 6);
-const longest = await page.locator('#calc-mail').getAttribute('href');
-check('最長の組み合わせでも mailto が収まる', longest.length < 1800, `${longest.length}文字`);
+/* mailto はクライアント側の長さ制限があるので、最長の組み合わせでも収まること。
+   以前は 松300秒×6本 の1通りだけ見ていたが、pick() が段の既定（松は human）に
+   戻すため、差し引きの行が出るケースを踏んでいなかった。実測の最長は
+   梅300秒×3本/human の1,748文字で、松/AI の差し引き行もここで見る（9/19） */
+const mailLens = [];
+for (const [t, sec, n, nar] of [
+    ['matsu', 300, 6, 'human'], ['matsu', 300, 6, 'ai'], ['matsu', 300, 6, 'none'],
+    ['matsu', 180, 3, 'ai'], ['ume', 300, 3, 'human'], ['take', 300, 6, 'human'],
+]) {
+    await pick(page, t, sec, n);
+    await page.locator(`#calc-nar .calc-opt[data-nar="${nar}"]`).click();
+    await page.waitForTimeout(40);
+    const href = await page.locator('#calc-mail').getAttribute('href');
+    mailLens.push({ k: `${t}${sec}秒×${n}本/${nar}`, len: href.length });
+}
+const over = mailLens.filter((x) => x.len >= 1800);
+check('最長の組み合わせでも mailto が収まる', over.length === 0,
+    JSON.stringify(mailLens.sort((a, b) => b.len - a.len).slice(0, 3)));
 
 check('JS エラーなし', page.__errors.length === 0, JSON.stringify(page.__errors));
 await browser.close();
