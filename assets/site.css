@@ -122,6 +122,9 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
 .pill-solid:hover { background: var(--accent); transform: translateY(-1px); }
 .pill-ghost { border-color: rgba(0,0,0,0.2); color: var(--ink); }
 .pill-ghost:hover { border-color: var(--ink); transform: translateY(-1px); }
+/* 黒い帯（Contact）の上に置く主ボタン。背景が黒なので白抜きにする */
+.pill-invert { background: #fff; color: var(--ink); }
+.pill-invert:hover { background: #d9b45f; color: #1d1d1f; transform: translateY(-1px); }
 
 /* ---------- Logo ---------- */
 /* シンボルマーク(花)＋社名の組み。
@@ -712,6 +715,9 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
 }
 
 /* ---------- Genres (bento) ---------- */
+/* 6列を土台に、1行目は半々（span 3）、2〜3行目は3等分（span 2）で 2+3+3=8枚。
+   枚数を変えるときはこの割り付けも一緒に直すこと（08 を足したとき、
+   7枚前提の [3,3][2,2,2][3,3] のままで最後の1枚が3分の1幅で取り残された） */
 .genre-grid {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
@@ -730,7 +736,6 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
 }
 .section-alt .genre { background: #fff; }
 .genre:nth-child(1), .genre:nth-child(2) { grid-column: span 3; }
-.genre:nth-child(6), .genre:nth-child(7) { grid-column: span 3; }
 .genre::after {
     content: "";
     position: absolute;
@@ -1350,7 +1355,10 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     transition: color 0.3s ease, border-color 0.3s ease;
 }
 .cta-mail:hover { color: #d9b45f; border-color: #d9b45f; }
-.cta-hint { margin: 30px auto 0; max-width: 560px; font-size: 0.95rem; color: #9a9aa0; }
+/* メールアドレスだけだと、とくにスマホで押せるものに見えない。
+   文字組みとしてのアドレスは残したまま、押す先をボタンで明示する */
+.cta-actions { margin-top: 26px; }
+.cta-hint { margin: 26px auto 0; max-width: 560px; font-size: 0.95rem; color: #9a9aa0; }
 
 /* ---------- Footer ---------- */
 footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
@@ -1399,7 +1407,7 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
 /* ---------- Responsive ---------- */
 @media (max-width: 1000px) {
     .genre-grid { grid-template-columns: repeat(2, 1fr); }
-    .genre, .genre:nth-child(1), .genre:nth-child(2), .genre:nth-child(6), .genre:nth-child(7) { grid-column: span 1; }
+    .genre, .genre:nth-child(1), .genre:nth-child(2) { grid-column: span 1; }
     .about-grid { grid-template-columns: 1fr; }
     .about-points-wide { grid-template-columns: 1fr; }
     .stage-grid { grid-template-columns: 1fr; gap: 34px; }
@@ -1513,3 +1521,6 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
 @media (max-width: 700px) {
     .sample-video.is-vertical { max-width: 240px; }
 }
+/* ジャンルのカードの中では、縦型だけが飛び抜けて高くなり、同じ行の
+   ほかのカードの下に大きな余白ができる。カードの中だけ幅を絞る */
+.genre .sample-video.is-vertical { max-width: 196px; }

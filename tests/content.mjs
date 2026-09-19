@@ -169,6 +169,32 @@ check('金額の表示は税込で揃っている',
         await page.locator('#genre-mv').innerText());
     /* MV は計算機に乗せない。工数を一度も測っていないので、
        定価を出すと測る前に金額を宣言することになる */
+    /* 6列の割り付けをジャンルの枚数に合わせているので、枚数を足すと
+       最後の1枚が3分の1幅で取り残されることがある（08 を足したとき実際に起きた）。
+       行ごとに幅を使い切っているかを見て、取り残しを機械で拾う */
+    {
+        const wide = await open(browser, { width: 1280, page: 'index.html' });
+        const rows = await wide.evaluate(() => {
+            const by = new Map();
+            for (const el of document.querySelectorAll('.genre')) {
+                const r = el.getBoundingClientRect();
+                const k = Math.round(r.top + scrollY);
+                if (!by.has(k)) by.set(k, []);
+                by.get(k).push(Math.round(r.width));
+            }
+            const gap = 20;
+            return [...by.values()].map((ws) =>
+                ({ n: ws.length, total: ws.reduce((a, b) => a + b, 0) + gap * (ws.length - 1) }));
+        });
+        const full = Math.max(...rows.map((r) => r.total));
+        check('ジャンルの各行が幅を使い切っている',
+            rows.every((r) => Math.abs(r.total - full) <= 4),
+            JSON.stringify(rows));
+        check('最後の行に1枚だけ取り残されていない',
+            rows[rows.length - 1].n >= 2, JSON.stringify(rows));
+        await wide.close();
+    }
+
     check('ミュージックビデオのカードに金額を書いていない',
         !/¥[\d,]+/.test(await page.locator('#genre-mv').innerText()));
     check('サンプルは「01 会社紹介」のカードの中にある',
@@ -300,6 +326,16 @@ check('段ごとの回数を FAQ に書いている',
 }
 
 /* ---- 公開範囲 ---- */
+/* 最後の CTA。アドレスの文字組みは残したまま、押す先をボタンでも出す（9/19）。
+   ここはサイトで一番の転換点なので、リンクがテキストだけの状態に戻ったら落とす */
+{
+    const btn = page.locator('.cta-band .pill-invert');
+    check('最後のCTAにボタンがある', await btn.count() === 1);
+    check('CTAのボタンがメールに繋がっている',
+        (await btn.getAttribute('href') || '').startsWith('mailto:bonvoyage.ti@icloud.com'),
+        await btn.getAttribute('href'));
+}
+
 for (const [f, html] of [['index.html', idx], ['about.html', about], ['privacy.html', privacy]]) {
     check(`${f} は検索結果に出さない`, /name="robots" content="noindex/.test(html));
 }
