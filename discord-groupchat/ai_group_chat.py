@@ -2019,6 +2019,11 @@ CLAUDE1_NAME = "クロード1（リサーチャー）"
 CLAUDE2_NAME = "クロード2（PM）"
 CLAUDE3_NAME = "クロード3（アドバイザー）"
 
+# 役の人格。2026-09-20 に「クロード1/3を呼んで複数視点で検討する」機能
+# （multiview）は削除した。1年近く一度も使われず、相談は Claude Code の
+# セッションでやるほうが噛み合うため。人格の定義だけは残っている——
+# claude3 は広告代理店モード（縦型CMの企画）とショート量産ラインで、
+# プロンプトの下地として使っている。
 CLAUDE_PERSONAS = {
     "claude1": (
         CLAUDE1_NAME,
@@ -2037,90 +2042,6 @@ CLAUDE_PERSONAS = {
         "外した時のリスクまで示したうえで推しを1つ選ぶ。",
     ),
 }
-
-
-async def _ask_claude_persona(role, history):
-    """役割つきでClaudeに答えさせる（同じCLIを別の人格で呼ぶ）。"""
-    name, persona = CLAUDE_PERSONAS[role]
-    prompt = (
-        f"あなたは{name}。{persona}\n"
-        f"日本語で{REPLY_CHARS}字以内、前置きや名乗りは不要、回答本体のみ。"
-        + topic_guide(history) + "\n\n"
-        + transcript_block(history)
-        + "\n\n上の会話ログの最後の発言に、あなたの立場で答えてください。"
-        "ログや指示文をそのまま繰り返さず、回答の本文だけを書くこと。"
-    )
-    return await run_claude_cli(prompt)
-
-
-GEMINI_VIEW_PERSONA = (
-    "あなたは別のモデル（Gemini）としての視点担当。"
-    "クロードとは違う切り口を出すことに徹する。"
-    "特に、最新の動向・数字・具体例・視覚的/体験的な観点・"
-    "見落とされている前提を挙げる。"
-    "確実でないことは『不明』と書き、推測を事実のように書かない。"
-    f"日本語{REPLY_CHARS}字以内、箇条書きで簡潔に。前置き不要。"
-)
-
-
-async def _ask_gemini_view(history):
-    """Geminiに『別の視点』だけを出させる（返事そのものは書かせない）。"""
-    prompt = (
-        GEMINI_VIEW_PERSONA + "\n\n" + transcript_block(history)
-        + "\n\n上の会話の最後の論点について、あなたの視点を出してください。"
-    )
-    return await _gemini_call(prompt, "gemini_view")
-
-
-async def _run_multi_view(message, content, roles=None):
-    """複数の視点で検討して統合する。クロードの2役に加えてGeminiにも
-    別の切り口を出させ、最後はクロードが1つにまとめて答える
-    （＝声はひとつ、頭は複数）。"""
-    cid = message.channel.id
-    roles = roles or ["claude1", "claude3"]
-    history = get_history(cid)
-    await send_as(orch, cid, "🧠 複数の視点で検討します（少し時間がかかります）…")
-    tasks = [_ask_claude_persona(r, history) for r in roles]
-    use_gemini = not _gemini_all_cooling()
-    if use_gemini:
-        tasks.append(_ask_gemini_view(history))
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-    names = [CLAUDE_PERSONAS[r][0] for r in roles]
-    if use_gemini:
-        names.append("Gemini（別モデルの視点）")
-    ok = []
-    for name, res in zip(names, results):
-        if isinstance(res, Exception):
-            print(f"[multi_view] {name} 失敗: {str(res)[:150]}")
-            continue
-        text = (res or "").strip()
-        if not text:
-            continue
-        ok.append((name, text))
-        # Geminiの視点も、投稿するのはクロード側のアカウント。
-        # Gemini自身に喋らせない（返信の声をひとつに保つ）。
-        speaker = claude_bot if _gemini_replies_on() is False else (
-            gemini_bot if name.startswith("Gemini") else claude_bot)
-        await send_as(speaker, cid, f"**{name}**\n{text}")
-        add_history(cid, name, text)
-    if len(ok) < 2:
-        return
-    try:
-        # まとめは必ずクロードが書く（出す声をひとつに保つため）
-        merged = await run_claude_cli(
-            "次の複数の視点を統合し、最終的な結論と次に取るべき一手を"
-            f"日本語{REPLY_CHARS}字以内でまとめて。重複は削り、"
-            "食い違う点があれば理由とともにどちらが妥当か示すこと。"
-            "誰がどう言ったかの実況は不要、結論本体だけを書く。\n\n"
-            + "\n\n".join(f"【{n}】\n{t}" for n, t in ok),
-            background=True,
-        )
-    except Exception as e:  # noqa: BLE001
-        print(f"[multi_view] 統合に失敗: {str(e)[:120]}")
-        return
-    if merged and merged.strip():
-        add_history(cid, "Orchestrator", merged.strip())
-        await send_as(orch, cid, f"🧩 **まとめ**\n{merged.strip()}")
 
 
 def _is_quota_error(e):
@@ -7571,19 +7492,6 @@ def _r_ad(c):
         return "ad"
 
 
-def _r_multiview(c):
-    """複数視点で検討（クロード1＝情報収集／クロード3＝多角的視点）。
-    名前が出ただけでは呼ばない。実際に「リサーチするのはクロード1にしてね」で
-    役の呼び出しが走った（担当を決める話であって、意見を聞く話ではない）。"""
-    if (re.search("多角的|多角度|いろんな(視点|角度)|色んな(視点|角度)|"
-                  "複数の(視点|角度)|両面から|別の視点", c.text)
-            or (re.search("クロード\\s*[1１]|クロード\\s*[3３]|claude\\s*[13]|"
-                          "リサーチャー|アドバイザー", c.text, re.I)
-                and not _ROLE_ASSIGN_RE.search(c.text)
-                and _ASK_ROLE_RE.search(c.text))):
-        return "multiview"
-
-
 def _r_channel_set(c):
     """自分のチャンネルの登録（URL・ハンドル・IDを渡された時）。"""
     if re.search("チャンネル", c.text) and re.search(
@@ -8078,7 +7986,6 @@ ROUTE_RULES = (
     ("ショート量産", _r_short),
     ("バズ度予測", _r_virality),
     ("広告", _r_ad),
-    ("複数視点", _r_multiview),
     ("チャンネル登録", _r_channel_set),
     ("実績分析", _r_channel_stats),
     ("ログ共有", _r_sharelog),
@@ -14354,20 +14261,6 @@ async def _dispatch_message(message):
               "Higgsfieldのクラウド編集室（ffmpeg）で加工し、結果のURLを返します",
               lambda: _run_video_edit(message, content), "動画編集",
               "動画生成のクレジットは消費しません（サンドボックス実行）")
-        return
-
-    if route == "multiview":
-        add_history(cid, message.author.display_name, content)
-        # 名指しがあればその役だけ、無ければ両方
-        roles = [r for r, pat in (
-            ("claude1", r"クロード\s*[1１]|claude\s*1|リサーチャー"),
-            ("claude3", r"クロード\s*[3３]|claude\s*3|アドバイザー"))
-            if re.search(pat, content, re.I)] or ["claude1", "claude3"]
-        names = "・".join(CLAUDE_PERSONAS[r][0] for r in roles)
-        _gate(message, cid, f"{names}に検討してもらう",
-              "同じ質問を役割ごとに分けて答え、最後に統合してまとめます",
-              lambda: _run_multi_view(message, content, roles), "複数視点の検討",
-              "Claudeのサブスク枠を役の数だけ使います（追加課金なし）")
         return
 
     if route == "ch_set":

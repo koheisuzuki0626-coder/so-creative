@@ -1076,10 +1076,8 @@ def run():
         bot._gemini_call, bot.run_claude_cli = _orig_g3, _orig_cli3
 
     print("■ Geminiとクロードの役割分担（声はひとつ、頭は複数）")
-    check("Geminiの視点担当の人格がある",
-          "違う切り口" in bot.GEMINI_VIEW_PERSONA, True)
-    check("Geminiに推測を書かせない",
-          "推測を事実のように書かない" in bot.GEMINI_VIEW_PERSONA, True)
+    # 2026-09-20：複数視点の機能を消したので、Gemini の視点担当の人格も消えた。
+    # Gemini は裏方（動画の視聴・画像分析・リサーチ）専任になっている。
     check("Geminiは返事そのものは書かない（既定）", bot._gemini_replies_on(), False)
     check("Geminiは裏方の解析で使い続ける",
           callable(bot._describe_media_url) and callable(bot._inspect_result), True)
@@ -2090,10 +2088,12 @@ def run():
                "稼働するクロードはクロード1でお願い、今すぐじゃなくていいから",
                "クロード3が担当だよね", "アドバイザーの役割を変えたい"):
         check(f"{_t[:20]!r}… は呼び出さない", bot.classify_route(_t), None)
+    # 2026-09-20：複数視点で検討する機能（multiview）は削除した。
+    # 名前を呼んでも、役の呼び出しは起きず会話になる。
     for _t in ("クロード1に聞いて", "クロード3はどう思う", "多角的に見て",
                "クロード1と3で検討して", "両面から考えて", "リサーチャーに聞いて",
                "アドバイザーはどう思う", "いろんな視点でこの企画見て"):
-        check(f"{_t!r} は呼び出す", bot.classify_route(_t), "multiview")
+        check(f"{_t!r} は会話になる", bot.classify_route(_t), None)
     # 「今すぐじゃなくていい」が打ち消しとして効くこと（『今すぐ』に当てない）
     check("否定形の『今すぐ』を依頼と読まない",
           bool(bot._NOW_RE.search("今すぐじゃなくていいから")), False)
@@ -2628,9 +2628,7 @@ def run():
     # 実データの照会（値を聞いている）は従来どおり
     for _t, _want in (("クレジットあとどれくらい残ってる？", "credits"),
                       ("veo3で動画作ると何クレジット？", "credits"),
-                      ("実績分析して", "ch_stats"),
-                      ("クロード3はどう思う", "multiview"),
-                      ("多角的に見て", "multiview")):
+                      ("実績分析して", "ch_stats"),):
         check(f"{_t!r} は {_want} のまま", bot.classify_route(_t), _want)
 
     print("■ 発言がどの機能に流れたかを記録する _fired")
@@ -4143,8 +4141,7 @@ def run():
     # それをユーザーの貼った文章と読み、「その後が空っぽ」と返した
     _h = [("kohei", "https://youtu.be/abc"), ("kohei", "要約して")]
     for _name, _p in (("_answer_prompt", bot._answer_prompt(bot.ORCH_PERSONA, _h)),
-                      ("peer_prompt", bot.peer_prompt("Claude", "Gemini", _h)),
-                      ("_ask_claude_persona", None)):
+                      ("peer_prompt", bot.peer_prompt("Claude", "Gemini", _h)),):
         if _p is None:
             continue
         check(f"{_name} が穴埋めで終わらない",

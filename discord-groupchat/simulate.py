@@ -259,7 +259,6 @@ def install_stubs(mcp_url=None):
     bot._run_video_edit = _rec("edit")
     bot._run_design = _rec("design")
     bot._analyze_my_channel = _rec("ch_stats")
-    bot._run_multi_view = _rec("multiview")
     globals().setdefault("_REAL_RUN_SHEET", bot._run_sheet)
     bot._run_sheet = _rec("sheet")
 
@@ -398,7 +397,6 @@ async def run():
         ("veo3で動画作ると何クレジット？", "credits", None),
         ("クレジットあとどれくらい残ってる？", "credits", None),
         ("実績分析して", "ch_stats", None),
-        ("多角的に見て", "multiview", None),
         ("この動画の広告効果を予測して", "virality", None),
         ("!short 夜の都市", "short", None),
         ("今日のショートお願い", "short", None),
@@ -1205,7 +1203,6 @@ async def run():
     install_stubs()
     bot._load_last_gen = lambda cid: None
     await drive("リサーチするのはクロード1にしてね")
-    check("担当を決める話で役を呼び出さない", "multiview" not in FIRED, f"fired={FIRED}")
 
     # --- ⑥ 長い動画の切り抜きが、Higgsfieldに流れないこと ---
     install_stubs()
