@@ -1550,17 +1550,24 @@ def run():
               bot._trend_can_run(), False)
         # 事故（2026-09-19 未明）：Gemini の枠が13時間戻らなかった夜に、
         # 30分のクールダウンが明けるたび再挑戦し、1時間おきに4回失敗した。
+        # 時刻に依存する判定なので、時計を固定して測る（実時間だと稀に揺れる）
         import time as _tmB
-        bot.gen_settings.pop("trend_stat", None)
-        bot._mark_trend_fail()
-        check("1回失敗したら30分あける", bot._trend_can_run(), False)
-        bot._trend_set("failed_at", int(_tmB.time()) - 31 * 60)
-        check("31分たてば再挑戦できる", bot._trend_can_run(), True)
-        bot._mark_trend_fail()
-        bot._trend_set("failed_at", int(_tmB.time()) - 31 * 60)
-        check("2回続けて失敗したら1時間にのびる", bot._trend_can_run(), False)
-        bot._trend_set("failed_at", int(_tmB.time()) - 61 * 60)
-        check("のびた分だけたてば再挑戦できる", bot._trend_can_run(), True)
+        _now0 = _tmB.time()
+        _real_time = bot.time.time
+        bot.time.time = lambda: _now0
+        try:
+            bot.gen_settings.pop("trend_stat", None)
+            bot._mark_trend_fail()
+            check("1回失敗したら30分あける", bot._trend_can_run(), False)
+            bot._trend_set("failed_at", int(_now0) - 31 * 60)
+            check("31分たてば再挑戦できる", bot._trend_can_run(), True)
+            bot._mark_trend_fail()
+            bot._trend_set("failed_at", int(_now0) - 31 * 60)
+            check("2回続けて失敗したら1時間にのびる", bot._trend_can_run(), False)
+            bot._trend_set("failed_at", int(_now0) - 61 * 60)
+            check("のびた分だけたてば再挑戦できる", bot._trend_can_run(), True)
+        finally:
+            bot.time.time = _real_time
         bot._mark_trend_run()
         check("成功したら連続失敗をリセット", bot._trend_stat("fails"), 0)
         check("記録は今日のぶんだけ残す",
