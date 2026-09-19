@@ -176,16 +176,9 @@
             </nav>
 
             <div class="f-col">
-                <h2 class="f-head">最新の制作実績</h2>
-                <!-- data/videos.json から自動生成する -->
-                <ul class="f-works" id="footer-works">
-                    <li class="f-works-empty">読み込み中…</li>
-                </ul>
-                <h2 class="f-head f-head-gap">お問い合わせ</h2>
+                <h2 class="f-head">お問い合わせ</h2>
                 <ul class="f-list">
                     <li><a href="mailto:bonvoyage.ti@icloud.com">bonvoyage.ti@icloud.com</a></li>
-                    <li><a href="https://www.youtube.com/@hzrinrng" target="_blank" rel="noopener">YouTube チャンネル ↗</a></li>
-                    <li><a href="https://www.instagram.com/so_maru_official/" target="_blank" rel="noopener">Instagram ↗</a></li>
                 </ul>
             </div>
         </div>
@@ -254,49 +247,6 @@
 
         document.getElementById('year').textContent = new Date().getFullYear();
 
-        /* フッターの最新実績。トップと違いライトボックスは持たないので
-           YouTube のページへそのまま送る */
-        const footerWorks = document.getElementById('footer-works');
-
-        function footerWorksFallback() {
-            const li = document.createElement('li');
-            li.className = 'f-works-empty';
-            const a = document.createElement('a');
-            a.href = 'https://www.youtube.com/@hzrinrng';
-            a.target = '_blank';
-            a.rel = 'noopener';
-            a.textContent = 'YouTube チャンネルで見る ↗';
-            li.append(a);
-            footerWorks.replaceChildren(li);
-        }
-
-        fetch('data/videos.json', { cache: 'no-cache' })
-            .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-            .then((data) => {
-                const videos = Array.isArray(data?.videos) ? data.videos.filter((v) => v && v.id) : [];
-                if (videos.length === 0) return footerWorksFallback();
-                footerWorks.replaceChildren(...videos.slice(0, 3).map((video) => {
-                    const li = document.createElement('li');
-                    const a = document.createElement('a');
-                    a.className = 'f-work';
-                    a.href = video.url || `https://www.youtube.com/watch?v=${video.id}`;
-                    a.target = '_blank';
-                    a.rel = 'noopener';
-
-                    const img = document.createElement('img');
-                    img.src = `https://i.ytimg.com/vi/${video.id}/mqdefault.jpg`;
-                    img.alt = '';
-                    img.loading = 'lazy';
-
-                    const span = document.createElement('span');
-                    span.textContent = video.title || 'Untitled';
-
-                    a.append(img, span);
-                    li.append(a);
-                    return li;
-                }));
-            })
-            .catch(footerWorksFallback);
     </script>
 </body>
 </html>

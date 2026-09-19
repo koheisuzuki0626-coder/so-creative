@@ -47,11 +47,7 @@
             "addressRegion": "愛知県",
             "addressLocality": "名古屋市"
           },
-          "areaServed": "JP",
-          "sameAs": [
-            "https://www.youtube.com/@hzrinrng",
-            "https://www.instagram.com/so_maru_official/"
-          ]
+          "areaServed": "JP"
         },
         {
           "@type": "WebSite",
@@ -208,7 +204,7 @@
             </button>
             <a class="nav-item" href="#why">撮影しない理由</a>
             <a class="nav-item" href="#process">制作の流れ</a>
-            <a class="nav-item" href="#works">実績</a>
+            <a class="nav-item" href="#works">サンプル</a>
             <a class="nav-item" href="#plans">料金</a>
             <a class="nav-item" href="#faq">よくあるご質問</a>
             <a class="nav-item" href="about.html#company">会社概要</a>
@@ -234,7 +230,7 @@
                     <li><a href="#service">事業内容</a></li>
                     <li><a href="#why">撮影しない理由</a></li>
                     <li><a href="#process">制作の流れ</a></li>
-                    <li><a href="#works">制作実績</a></li>
+                    <li><a href="#works">制作サンプル</a></li>
                     <li><a href="#plans">料金プラン</a></li>
                     <li><a href="#faq">よくあるご質問</a></li>
                     <li><a href="about.html#company">会社概要</a></li>
@@ -266,7 +262,7 @@
             </ul>
             <div class="hero-actions">
                 <a href="#contact" class="pill pill-solid">相談してみる</a>
-                <a href="#works" class="pill pill-ghost">制作実績を見る</a>
+                <a href="#works" class="pill pill-ghost">制作サンプルを見る</a>
             </div>
         </div>
         <div class="scroll-hint">SCROLL</div>
@@ -752,18 +748,45 @@
         <div class="wrap">
             <div class="section-head reveal">
                 <p class="eyebrow">Works</p>
-                <h2 class="headline">制作実績。</h2>
-                <p class="body-text measure">実際に AI で制作した映像です。すべて撮影を行わずにつくっています。クリックするとその場で再生します。</p>
+                <h2 class="headline">制作サンプル。</h2>
+                <p class="body-text measure">8つのジャンルすべてを、<strong>架空の題材で1本ずつ自社制作</strong>したサンプルです。撮影は行っていません。カードを選ぶと、各ジャンルの解説とあわせてその場で再生できます。クライアント事例は、初案件のあと掲載の許諾をいただいたうえで載せていきます。</p>
             </div>
-            <!-- 読み込み前はスケルトン。成功すれば実データに、失敗すればメッセージに置き換わる -->
+            <!-- 9/19 に YouTube の自動読み込みをやめ、自前ホスティングの
+                 サンプルへの静的リンクに置き換えた。HPから外部チャンネルへの
+                 導線と依存を無くすため。JSが無くても一覧が出る -->
             <div class="grid" id="works-grid">
-                <article class="card skeleton" aria-hidden="true"><div class="thumb"></div><div class="card-body"><div class="bar short"></div><div class="bar long"></div></div></article>
-                <article class="card skeleton" aria-hidden="true"><div class="thumb"></div><div class="card-body"><div class="bar short"></div><div class="bar long"></div></div></article>
-                <article class="card skeleton" aria-hidden="true"><div class="thumb"></div><div class="card-body"><div class="bar short"></div><div class="bar long"></div></div></article>
-            </div>
-            <div class="works-actions">
-                <button type="button" class="more-btn" id="more-btn" hidden>More</button>
-                <a class="channel-link clink" id="channel-link" href="https://www.youtube.com/@hzrinrng" target="_blank" rel="noopener">YouTube チャンネルを見る</a>
+                <a class="card" href="#genre-company">
+                    <div class="thumb"><img src="assets/works/company-60s.jpg" alt="" loading="lazy"><div class="play" aria-hidden="true"></div></div>
+                    <div class="card-body"><div class="meta">サンプル · 60秒</div><h3>会社紹介</h3><p>架空の町工場。ナレーション切り替え</p></div>
+                </a>
+                <a class="card" href="#genre-service">
+                    <div class="thumb"><img src="assets/works/service-15s.jpg" alt="" loading="lazy"><div class="play" aria-hidden="true"></div></div>
+                    <div class="card-body"><div class="meta">サンプル · 15秒</div><h3>サービス紹介</h3><p>架空の現場日報アプリ</p></div>
+                </a>
+                <a class="card" href="#genre-recruit">
+                    <div class="thumb"><img src="assets/works/recruit-3min.jpg" alt="" loading="lazy"><div class="play" aria-hidden="true"></div></div>
+                    <div class="card-body"><div class="meta">サンプル · 3分</div><h3>採用</h3><p>架空の町工場・36カット</p></div>
+                </a>
+                <a class="card" href="#genre-ad">
+                    <div class="thumb"><img src="assets/works/cm-15s-taste.jpg" alt="" loading="lazy"><div class="play" aria-hidden="true"></div></div>
+                    <div class="card-body"><div class="meta">サンプル · 15秒</div><h3>広告・CM</h3><p>架空の冷凍餃子</p></div>
+                </a>
+                <a class="card" href="#genre-sns">
+                    <div class="thumb"><img src="assets/works/sns-15s-vertical.jpg" alt="" loading="lazy"><div class="play" aria-hidden="true"></div></div>
+                    <div class="card-body"><div class="meta">サンプル · 15秒・縦型</div><h3>SNSショート</h3><p>架空のコインランドリー</p></div>
+                </a>
+                <a class="card" href="#genre-event">
+                    <div class="thumb"><img src="assets/works/exhibition-15s.jpg" alt="" loading="lazy"><div class="play" aria-hidden="true"></div></div>
+                    <div class="card-body"><div class="meta">サンプル · 15秒・無音</div><h3>展示会・イベント</h3><p>ブースのループ再生用</p></div>
+                </a>
+                <a class="card" href="#genre-internal">
+                    <div class="thumb"><img src="assets/works/internal-15s.jpg" alt="" loading="lazy"><div class="play" aria-hidden="true"></div></div>
+                    <div class="card-body"><div class="meta">サンプル · 15秒</div><h3>社内向け</h3><p>架空の倉庫の安全手順</p></div>
+                </a>
+                <a class="card" href="#genre-animation">
+                    <div class="thumb"><img src="assets/works/animation-60s.jpg" alt="" loading="lazy"><div class="play" aria-hidden="true"></div></div>
+                    <div class="card-body"><div class="meta">サンプル · 60秒</div><h3>アニメーション・図解</h3><p>架空の健保の健診案内</p></div>
+                </a>
             </div>
         </div>
     </section>
@@ -847,9 +870,6 @@
         </div>
     </section>
 
-    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="動画プレイヤー" hidden>
-        <button type="button" class="lightbox-close" id="lightbox-close" aria-label="閉じる">✕</button>
-        <div class="lightbox-frame" id="lightbox-player"></div>
     </div>
 
     <footer>
@@ -874,7 +894,7 @@
                     <li><a href="#genres">Genres — つくれる動画</a></li>
                     <li><a href="#why">Why AI — 撮影しない理由</a></li>
                     <li><a href="#process">Process — 制作の流れ</a></li>
-                    <li><a href="#works">Works — 制作実績</a></li>
+                    <li><a href="#works">Works — 制作サンプル</a></li>
                     <li><a href="#plans">Plans — 料金プラン</a></li>
                     <li><a href="#faq">FAQ — よくあるご質問</a></li>
                     <li><a href="about.html">About — so. について</a></li>
@@ -884,23 +904,15 @@
             </nav>
 
             <div class="f-col">
-                <h2 class="f-head">最新の制作実績</h2>
-                <!-- data/videos.json から自動生成する -->
-                <ul class="f-works" id="footer-works">
-                    <li class="f-works-empty">読み込み中…</li>
-                </ul>
-                <h2 class="f-head f-head-gap">お問い合わせ</h2>
+                <h2 class="f-head">お問い合わせ</h2>
                 <ul class="f-list">
                     <li><a href="mailto:bonvoyage.ti@icloud.com">bonvoyage.ti@icloud.com</a></li>
-                    <li><a href="https://www.youtube.com/@hzrinrng" target="_blank" rel="noopener">YouTube チャンネル ↗</a></li>
-                    <li><a href="https://www.instagram.com/so_maru_official/" target="_blank" rel="noopener">Instagram ↗</a></li>
                 </ul>
             </div>
         </div>
 
         <div class="footer-bottom">
             <p class="copy">© <span id="year">2026</span> so. All Rights Reserved.</p>
-            <p class="f-meta" id="footer-meta" hidden></p>
         </div>
     </footer>
 
@@ -1655,163 +1667,6 @@
             footerGenres.replaceChildren(...items);
         }
 
-        /* ---------- Lightbox ---------- */
-        const grid = document.getElementById('works-grid');
-        const channelLink = document.getElementById('channel-link');
-        const moreBtn = document.getElementById('more-btn');
-        const lightbox = document.getElementById('lightbox');
-        const player = document.getElementById('lightbox-player');
-        const closeBtn = document.getElementById('lightbox-close');
-        let lastFocused = null;
-
-        function openVideo(id, title) {
-            const iframe = document.createElement('iframe');
-            iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?autoplay=1&rel=0`;
-            iframe.title = title || 'YouTube video player';
-            iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
-            iframe.allowFullscreen = true;
-            player.replaceChildren(iframe);
-
-            lastFocused = document.activeElement;
-            lightbox.hidden = false;
-            requestAnimationFrame(() => lightbox.classList.add('open'));
-            document.body.style.overflow = 'hidden';
-            closeBtn.focus();
-        }
-
-        function closeVideo() {
-            lightbox.classList.remove('open');
-            document.body.style.overflow = '';
-            // 再生を確実に止めるため iframe を破棄する
-            setTimeout(() => { player.replaceChildren(); lightbox.hidden = true; }, 300);
-            if (lastFocused) lastFocused.focus();
-        }
-
-        closeBtn.addEventListener('click', closeVideo);
-        lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeVideo(); });
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !lightbox.hidden) closeVideo();
-        });
-
-        /* ---------- Works ---------- */
-        function buildCard(video) {
-            const card = document.createElement('article');
-            card.className = 'card enter';
-
-            const thumb = document.createElement('div');
-            thumb.className = 'thumb';
-
-            const img = document.createElement('img');
-            img.loading = 'lazy';
-            img.alt = video.title || '';
-            img.src = `https://i.ytimg.com/vi/${video.id}/maxresdefault.jpg`;
-            // maxres が無い動画は hqdefault にフォールバック(1回だけ)
-            img.addEventListener('error', () => {
-                const fallback = video.thumbnail || `https://i.ytimg.com/vi/${video.id}/hqdefault.jpg`;
-                if (img.src !== fallback) img.src = fallback;
-            }, { once: true });
-
-            const play = document.createElement('div');
-            play.className = 'play';
-            play.setAttribute('aria-hidden', 'true');
-
-            const link = document.createElement('a');
-            link.className = 'card-link';
-            link.href = video.url || `https://www.youtube.com/watch?v=${video.id}`;
-            link.setAttribute('aria-label', `${video.title || 'この動画'} を再生`);
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                openVideo(video.id, video.title);
-            });
-
-            thumb.append(img, play, link);
-
-            const body = document.createElement('div');
-            body.className = 'card-body';
-
-            const meta = document.createElement('div');
-            meta.className = 'meta';
-            meta.textContent = video.year ? `AI制作 · ${video.year}` : 'AI制作';
-
-            const h3 = document.createElement('h3');
-            h3.textContent = video.title || 'Untitled';
-
-            body.append(meta, h3);
-
-            // 説明文が無い動画では空の余白を作らない
-            const summary = (video.description || '').split('\n').find((line) => line.trim()) || '';
-            if (summary) {
-                const p = document.createElement('p');
-                p.textContent = summary.length > 90 ? summary.slice(0, 90) + '…' : summary;
-                body.append(p);
-            }
-
-            card.append(thumb, body);
-            return card;
-        }
-
-        function showWorksNote(message) {
-            const note = document.createElement('p');
-            note.className = 'works-note';
-            note.textContent = message;
-            grid.replaceChildren(note);
-        }
-
-        /* ---------- Footer (本文と同じデータから組み立てる) ---------- */
-        const footerWorks = document.getElementById('footer-works');
-        const footerMeta = document.getElementById('footer-meta');
-
-        function buildFooterWorks(videos) {
-            const items = videos.slice(0, 3).map((video) => {
-                const li = document.createElement('li');
-                const a = document.createElement('a');
-                a.className = 'f-work';
-                a.href = video.url || `https://www.youtube.com/watch?v=${video.id}`;
-                a.setAttribute('aria-label', `${video.title || 'この動画'} を再生`);
-                a.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    openVideo(video.id, video.title);
-                });
-
-                const img = document.createElement('img');
-                img.src = `https://i.ytimg.com/vi/${video.id}/mqdefault.jpg`;
-                img.alt = '';
-                img.loading = 'lazy';
-
-                const span = document.createElement('span');
-                span.textContent = video.title || 'Untitled';
-
-                a.append(img, span);
-                li.append(a);
-                return li;
-            });
-            footerWorks.replaceChildren(...items);
-        }
-
-        function footerWorksFallback() {
-            const li = document.createElement('li');
-            li.className = 'f-works-empty';
-            const a = document.createElement('a');
-            a.href = 'https://www.youtube.com/@hzrinrng';
-            a.target = '_blank';
-            a.rel = 'noopener';
-            a.textContent = 'YouTube チャンネルでご覧ください ↗';
-            li.append(a);
-            footerWorks.replaceChildren(li);
-        }
-
-        function buildFooterMeta(data, count) {
-            const parts = [`制作実績 ${count} 本`];
-            if (data.updatedAt) {
-                const d = new Date(data.updatedAt);
-                if (!Number.isNaN(d.getTime())) {
-                    parts.push(`最終更新 ${d.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}`);
-                }
-            }
-            footerMeta.textContent = parts.join(' ／ ');
-            footerMeta.hidden = false;
-        }
-
         /* ---------- Hero の映像 ---------- */
         /* 自動再生は「動きを減らす」設定のときは行わない。画面から外れたら止めて、
            スクロールして戻ってきたら再開する（ずっと再生し続けない） */
@@ -1828,78 +1683,30 @@
             }
         })();
 
-        /* ---------- ステージのビジュアルも実際の制作物から組み立てる ---------- */
-        function buildStages(videos) {
+        /* ---------- ステージのビジュアル ---------- */
+        /* 9/19 に YouTube のサムネイル読みをやめ、自社サンプルのポスターで組む。
+           HPから外部チャンネルへの依存を無くすため（動画一覧のデータも読まない） */
+        (() => {
+            const imgs = ['company-60s', 'service-15s', 'recruit-3min', 'cm-15s-taste',
+                          'sns-15s-vertical', 'exhibition-15s', 'internal-15s',
+                          'animation-60s'].map((n) => `assets/works/${n}.jpg`);
             document.querySelectorAll('[data-stack]').forEach((stack, si) => {
-                const picks = [0, 1, 2].map((i) => videos[(si * 3 + i) % videos.length]).filter(Boolean);
-                picks.forEach((v, i) => {
+                [0, 1, 2].forEach((i) => {
                     const fig = document.createElement('figure');
                     fig.className = `s${i + 1}`;
                     const img = document.createElement('img');
-                    img.src = `https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`;
+                    img.src = imgs[(si * 3 + i) % imgs.length];
                     img.alt = '';
                     img.loading = 'lazy';
-                    img.addEventListener('error', () => fig.remove(), { once: true });
                     fig.append(img);
                     stack.append(fig);
                 });
             });
             document.querySelectorAll('[data-stage-bg]').forEach((bg, i) => {
-                const v = videos[(i * 5) % videos.length];
-                if (v) bg.style.backgroundImage = `url(https://i.ytimg.com/vi/${v.id}/maxresdefault.jpg)`;
+                bg.style.backgroundImage = `url(${imgs[(i * 5) % imgs.length]})`;
             });
-        }
-
-        /* ---------- Load ---------- */
-        fetch('data/videos.json', { cache: 'no-cache' })
-            .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
-            .then((data) => {
-                const videos = Array.isArray(data.videos) ? data.videos.filter((v) => v && v.id) : [];
-                if (videos.length === 0) {
-                    showWorksNote('制作実績を準備中です。YouTube チャンネルをご覧ください。');
-                    footerWorksFallback();
-                    return;
-                }
-
-                buildStages(videos);
-                buildFooterWorks(videos);
-                buildFooterMeta(data, videos.length);
-
-                const INITIAL = 6;
-                const STEP = 6;
-                let shown = 0;
-
-                function reveal(count) {
-                    const next = videos.slice(shown, shown + count);
-                    const cards = next.map(buildCard);
-                    if (shown === 0) grid.replaceChildren(...cards);
-                    else grid.append(...cards);
-                    shown += next.length;
-
-                    const remaining = videos.length - shown;
-                    if (remaining > 0) {
-                        moreBtn.textContent = `More (${remaining})`;
-                        moreBtn.hidden = false;
-                    } else if (!moreBtn.hidden) {
-                        // ボタンが消えるとフォーカスが宙に浮くので新着カードへ移す
-                        moreBtn.hidden = true;
-                        cards[0]?.querySelector('.card-link')?.focus();
-                    } else {
-                        moreBtn.hidden = true;
-                    }
-                }
-
-                moreBtn.addEventListener('click', () => reveal(STEP));
-                reveal(INITIAL);
-
-                if (data.channelId) channelLink.href = `https://www.youtube.com/channel/${data.channelId}`;
-                onScroll();
-            })
-            .catch((err) => {
-                console.warn('[works] 制作実績を読み込めませんでした:', err.message);
-                showWorksNote('制作実績を読み込めませんでした。YouTube チャンネルをご覧ください。');
-                footerWorksFallback();
-            });
+            if (typeof onScroll === 'function') onScroll();
+        })();
     </script>
 </body>
 </html>

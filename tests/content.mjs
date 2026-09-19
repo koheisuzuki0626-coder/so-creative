@@ -400,9 +400,24 @@ check('構造化データの所在地は市区町村まで',
     org.address?.addressRegion === '愛知県' && org.address?.addressLocality === '名古屋市' && !org.address?.streetAddress);
 check('未確定の情報を入れていない', !/foundingDate|postalCode|streetAddress/.test(JSON.stringify(ld)));
 check('電話番号を載せていない', !org.telephone && !/090-2968-9616|tel:/.test(idx + about + privacy));
-check('SNS が sameAs に入っている',
-    (org.sameAs || []).includes('https://www.instagram.com/so_maru_official/')
-    && (org.sameAs || []).some(u => u.includes('youtube.com/@hzrinrng')));
+/* 9/19 に HP から YouTube・Instagram への導線を外した（アカウントは残す）。
+   sameAs・フッター・会社概要・実績欄の読み込みまで含めて、外部チャンネルへの
+   参照が3ページのどこにも無いことを見る。復活させるときはこの検査ごと戻す */
+check('YouTube・Instagram への導線が無い',
+    !/youtube\.com|youtube-nocookie|instagram\.com|i\.ytimg\.com/i.test(idx + about + privacy),
+    ((idx + about + privacy).match(/.{0,30}(youtube|instagram|ytimg)[^"'<]{0,30}/i) || [''])[0]);
+check('sameAs を出していない', !org.sameAs);
+/* 実績欄はサンプル8本への静的リンク。JSが無くても一覧が出る */
+{
+    const cards = await page.locator('#works-grid .card').count();
+    check('制作サンプル欄に8枚のカードがある', cards === 8, String(cards));
+    const hrefs = await page.locator('#works-grid .card').evaluateAll(
+        (els) => els.map((e) => e.getAttribute('href')));
+    check('カードは各ジャンルへ飛ぶ', hrefs.every((h) => /^#genre-/.test(h)), hrefs.join(','));
+    check('実績欄がサンプルだと明言している',
+        /架空の題材で1本ずつ自社制作/.test(await page.locator('#works').innerText()));
+    check('videos.json をどのページも読んでいない', !/videos\.json/.test(idx + about + privacy));
+}
 check('共有トークンを貼っていない', !/stkn=|utm_source=/.test(idx + about + privacy));
 
 /* ---- 会社概要 ---- */

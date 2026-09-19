@@ -589,10 +589,21 @@ node scripts/build-logo.mjs
 
 ## YouTube 新着動画の自動掲載
 
-YouTube に動画をアップすると、Works セクションに自動で並びます。
-APIキー無しでも動きます(チャンネルページを読む従来方式)。
-**Secrets に `YOUTUBE_API_KEY` を登録すると公式の YouTube Data API v3 に切り替わり**、
-正確な投稿日と説明文が取れて、ページ構造の変更で壊れる心配がなくなります(2026-09-18 実装)。
+**2026-09-19 に停止した。**HPから YouTube・Instagram への導線を外す判断に伴い、
+Works セクションは自前ホスティングのサンプル8本への静的リンクに置き換え、
+ワークフロー（sync-youtube.yml）は削除した。アカウント自体は残っている。
+
+スクリプト（scripts/fetch-youtube.mjs）・設定（youtube.config.json）・
+データ（data/videos.json）は残してあるので、復活させるときは
+git 履歴からワークフローを戻し、index.html に読み込み側を作り直す。
+Secrets の `YOUTUBE_API_KEY` は登録済み（2026-09-19、公式API方式で動作確認済み）。
+
+以下は停止前の記録。
+
+YouTube に動画をアップすると、Works セクションに自動で並ぶ仕組みだった。
+APIキー無しでも動く(チャンネルページを読む従来方式)。
+Secrets に `YOUTUBE_API_KEY` を登録すると公式の YouTube Data API v3 に切り替わり、
+正確な投稿日と説明文が取れて、ページ構造の変更で壊れる心配がなくなる(2026-09-18 実装)。
 
 ```
 YouTube にアップ
