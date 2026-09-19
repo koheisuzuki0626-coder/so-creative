@@ -2,6 +2,9 @@
    「お客様にどの組み合わせを選ばせても採算が崩れない」ことの担保がここ。
    金額・工数のどれかを動かしたら必ずこれを通すこと。 */
 import { check, report, PW, open, pick, PRICE, HOURS, TIERS, LENGTHS, countCap, price, hours, leadWeeks, RATE, MEASURED, REVISION_HOURS, CREDITS_PER_SEC } from './lib.mjs';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
 const HOURS_NARRATION = () => HOURS.narration;
 const pwmod = (await import(PW)).default;
 
@@ -288,6 +291,23 @@ check('ナレーションの工数は1本 1.0h（AI・人で同じ）', HOURS_NA
     }
     check('松のほうが安いときだけ、その旨が出る', warnBad.length === 0,
         JSON.stringify(warnBad.slice(0, 3)));
+}
+
+/* ---- 料金のしくみを説明している文章 ----
+   9/19 に松のナレーションを選べるようにしたとき、計算機だけ直して
+   「金額の内訳」と README が「松は込みなので対象外」のまま残っていた。
+   金額を文章にも書いている以上、そこも計算機の値と突き合わせる */
+{
+    const y = (n) => `¥${n.toLocaleString('ja-JP')}`;
+    const note = await page.locator('#plans .plan-note').innerText();
+    check('内訳の文章に松の差し引きが書いてある',
+        new RegExp(`松[^。]*AIに替えるなら ${y(PRICE.matsuToAi)}[^。]*使わないなら ${y(PRICE.matsuToNone)}`).test(note),
+        note.split('\n').find((l) => l.includes('人物ナレーション')) || '');
+    check('「松は対象外」という古い書き方が残っていない',
+        !/松は人物ナレーション込みのため対象外/.test(note));
+    const readme = readFileSync(`${ROOT}/README.md`, 'utf8');
+    check('README の料金の考え方にも松の差し引きがある',
+        readme.includes(y(PRICE.matsuToAi)) && readme.includes(y(PRICE.matsuToNone)));
 }
 
 /* ---- 段の順序と独立性 ---- */
