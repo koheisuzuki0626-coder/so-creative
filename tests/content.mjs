@@ -82,6 +82,26 @@ check('金額の表示は税込で揃っている',
     check('インボイスの注記は料金セクションの中にある',
         await page.locator('#plans .plan-tax').count() === 1);
 }
+/* 「撮影しない理由」の写真の上に置く印（9/19）。
+   白い丸＋赤（#d92e26）の禁止マークをやめ、見出しと同じ言葉の札にした。
+   赤はサイト全体でここにしか出てこない色だったので、戻っていないことも見る */
+{
+    const marks = await page.locator('#why .stage-mark').allInnerTexts();
+    check('印が文字になっている',
+        marks.length === 2 && /出演者[\s\S]*0人/.test(marks[0]) && /撮影日[\s\S]*0日/.test(marks[1]),
+        JSON.stringify(marks));
+    check('印に画像やアイコンを使っていない',
+        await page.locator('#why .stage-mark svg, #why .stage-mark img').count() === 0);
+    check('丸に戻っていない',
+        await page.locator('#why .stage-mark').first().evaluate(
+            (el) => getComputedStyle(el).borderRadius !== '50%'));
+    /* 経緯をコメントに書いてあるので、コメントを外してから見る */
+    const css = (await (await page.request.get(`${BASE}/assets/site.css`)).text())
+        .replace(/\/\*[\s\S]*?\*\//g, '');
+    check('サイトに赤（#d92e26）が残っていない', !/#d92e26/i.test(css),
+        (css.match(/.{0,30}#d92e26.{0,30}/i) || [''])[0]);
+}
+
 /* 料金セクションの下半分（9/19）。以前は同じ白い箱が5枚続いていて、
    計算機の根拠（金額の内訳）と、読まなくても発注できる注記が同じ格だった。
    箱は「金額の内訳」だけにして、残り4つは .plan-foot にまとめて格を下げる。
