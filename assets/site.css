@@ -934,6 +934,54 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
 }
 .plan-note p:last-child { margin: 0; font-size: 0.97rem; color: var(--ink-dim); }
 
+/* 計算機の根拠（.plan-note）だけを箱で残し、ここから下は注記として格を下げる。
+   同じ白い箱が5枚続いていて、どれを読めばいいか分からなかった（9/19）。
+   ②どの組み合わせにも含まれます ／ ③お支払いとキャンセル を2列に置き、
+   ④インボイス ／ ⑤5分超 は幅いっぱいの小さい注記にする */
+.plan-foot {
+    margin-top: 30px;
+    padding-top: 28px;
+    border-top: 1px solid var(--line);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px 48px;
+    align-items: start;
+}
+/* 左の列に②と④をまとめて置く（別々のグリッド項目にすると、
+   行の高さが右の③に引かれて左に大きな空きができる）。⑤だけ幅いっぱい */
+.plan-foot-col { display: grid; gap: 26px; align-content: start; }
+.plan-foot > .flow-note { grid-column: 1 / -1; }
+/* 箱をやめる。中身の作りは変えない */
+.plan-foot .plan-common, .plan-foot .plan-pay, .plan-foot .plan-tax {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+}
+.plan-foot .plan-common ul { grid-template-columns: 1fr; gap: 9px; }
+.plan-foot .plan-common li, .plan-foot .pay-list li { font-size: 0.9rem; }
+.plan-foot .pay-list { gap: 13px; }
+.plan-foot .plan-tax p, .plan-foot .flow-note {
+    margin: 0;
+    font-size: 0.87rem;
+    line-height: 1.85;
+    color: var(--ink-dim);
+}
+/* .flow-note は制作の流れでも使っている共有クラス。ここでだけ箱を外す */
+.plan-foot .flow-note {
+    max-width: none;
+    margin-top: 6px;
+    padding: 16px 0 0;
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+    background: none;
+}
+@media (max-width: 760px) {
+    .plan-foot { grid-template-columns: 1fr; gap: 26px; }
+}
+
 .plan-common {
     margin-top: 20px;
     padding: 28px 32px 30px;

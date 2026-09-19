@@ -82,6 +82,35 @@ check('金額の表示は税込で揃っている',
     check('インボイスの注記は料金セクションの中にある',
         await page.locator('#plans .plan-tax').count() === 1);
 }
+/* 料金セクションの下半分（9/19）。以前は同じ白い箱が5枚続いていて、
+   計算機の根拠（金額の内訳）と、読まなくても発注できる注記が同じ格だった。
+   箱は「金額の内訳」だけにして、残り4つは .plan-foot にまとめて格を下げる。
+   また箱が増えたら落とす */
+{
+    const boxOf = (sel) => page.locator(sel).evaluate((el) => {
+        const cs = getComputedStyle(el);
+        return { bg: cs.backgroundColor,
+                 border: parseFloat(cs.borderTopWidth) + parseFloat(cs.borderLeftWidth)
+                       + parseFloat(cs.borderRightWidth) + parseFloat(cs.borderBottomWidth) };
+    });
+    const note = await boxOf('#plans .plan-note');
+    check('金額の内訳は箱のまま残っている',
+        note.bg !== 'rgba(0, 0, 0, 0)' && note.border > 0, JSON.stringify(note));
+    for (const sel of ['.plan-common', '.plan-pay', '.plan-tax']) {
+        const b = await boxOf(`#plans ${sel}`);
+        check(`${sel} を箱にしていない`,
+            b.bg === 'rgba(0, 0, 0, 0)' && b.border === 0, JSON.stringify(b));
+    }
+    check('注記は1つのまとまりに入っている',
+        await page.locator('#plans .plan-foot > *').count() === 3
+        && await page.locator('#plans .plan-foot .plan-common').count() === 1
+        && await page.locator('#plans .plan-foot .plan-tax').count() === 1);
+    /* 見た目を落としただけで、中身は消していない */
+    const footText = await page.locator('#plans .plan-foot').innerText();
+    check('注記の中身が残っている',
+        ['どの組み合わせにも含まれます', 'お支払いとキャンセル', '適格請求書', '5分を超える場合']
+            .every((w) => footText.includes(w)), footText.slice(0, 60));
+}
 /* 制作の流れに置いていた「実例」（3日間・54回生成・4往復）は外した（2026-09-17）。
    代わりに、内部の生成回数や工数を客先の画面に出していないことだけを見る */
 {
