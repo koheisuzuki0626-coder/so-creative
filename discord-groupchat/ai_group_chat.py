@@ -120,7 +120,10 @@ GEMINI_MODELS = [
 MAX_TURNS = int(os.getenv("MAX_TURNS", "6"))
 REPLY_CHARS = 400
 SEND_DELAY = 2
-HISTORY_LIMIT = int(os.getenv("HISTORY_LIMIT", "40"))  # プロンプトに入れる直近発言数
+# 雑談・相談・調べ物だけに絞ったので（2026-09-19）、話の連続性は少し厚めに。
+# ただし枠の節約が目的なので 80 までは増やさない（1回の消費が倍になる）。
+# 体感の遅さはほぼ claude CLI の6秒で、渡す発言数の影響は小さい（実測）。
+HISTORY_LIMIT = int(os.getenv("HISTORY_LIMIT", "60"))  # プロンプトに入れる直近発言数
 CLAUDE_TIMEOUT = int(os.getenv("CLAUDE_TIMEOUT", "300"))
 # 作業（生成・修正・リサーチ・学習など）の前に、理解した内容とやることを提示して
 # 同意を得る＝反復確認。0 にすると従来どおり即実行する。
@@ -1626,23 +1629,48 @@ _wrote = {"name": "", "why": ""}
 GEMINI_STANDIN = "Gemini（クロードの代打）"
 
 
-def _model_args():
+# 短い雑談と、腰を据えた相談で、モデルを分ける（2026-09-19）。
+# 本人の事情：枠を節約したいが、Gemini は YouTube リサーチの動画視聴に
+# 取っておきたい（雑談を Gemini に回すと同じ無料枠を食い合う）。
+# そこで Claude の中で分ける。短い雑談は安いモデル、長い相談だけ上のモデル。
+CLAUDE_MODEL_DEEP = os.getenv("CLAUDE_MODEL_DEEP", "sonnet")
+# 「長い」の境目。_plan の近道（AIを呼ばずに雑談と決める）と同じ60字にそろえる。
+# 実際のやりとりで測った境目。「葛根湯の効果は？」(8字)や
+# 「タンニンなめしってなに？」(12字)は安いモデルで足り、
+# 「開業準備資金ってどんなレシートが使える？」(20字)からは考えさせたい。
+DEEP_CHARS = int(os.getenv("DEEP_CHARS", "18"))
+
+
+def _latest_user_line(prompt):
+    """プロンプトから【いま答えるべき発言】を取り出す（transcript_block が付ける）。
+    無ければ空。モデルを選ぶ長さの判定にだけ使う。"""
+    m = re.search(r"【いま答えるべき発言】(.*)", prompt or "")
+    return m.group(1).strip() if m else ""
+
+
+def _model_args(deep=False):
     """claude CLI に渡すモデル指定。未設定ならCLIの既定にまかせる。
     gen_settings は起動後も書き換わるので、呼ぶたびに読み直す
-    （＝Discordで切り替えたら次の発言から即反映される）。"""
+    （＝Discordで切り替えたら次の発言から即反映される）。
+    deep=True は腰を据えた相談。設定が haiku でも一段上のモデルで答える。"""
     m = (gen_settings.get("claude_model") or "").strip()
+    if deep and CLAUDE_MODEL_DEEP and m in ("haiku", ""):
+        return ["--model", CLAUDE_MODEL_DEEP]
     return ["--model", m] if m else []
 
 
-async def run_claude_cli(prompt, background=False, neutral=False):
+async def run_claude_cli(prompt, background=False, neutral=False, deep=None):
     """Claude Code CLI をヘッドレスで呼ぶ（サブスク利用・API課金なし）。
     プロンプトは stdin で渡す（長文でOSの引数上限を超えないように）。
     同時実行はセマフォで制限し、渋滞によるタイムアウトを防ぐ。
     background=True の裏方処理は追加の関門を通り、会話用の枠を空けたままにする。"""
+    # 指定が無ければ、本人の発言の長さで決める（長い＝腰を据えた相談）。
+    if deep is None:
+        deep = len(_latest_user_line(prompt)) > DEEP_CHARS
     if background:
         async with _get_bg_sem():
-            return await _claude_cli_run(prompt, neutral=neutral)
-    return await _claude_cli_run(prompt, neutral=neutral)
+            return await _claude_cli_run(prompt, neutral=neutral, deep=deep)
+    return await _claude_cli_run(prompt, neutral=neutral, deep=deep)
 
 
 # 機械的な作業（翻訳など）を走らせる、CLAUDE.md の無い場所。
@@ -1658,7 +1686,7 @@ def _neutral_cwd():
         return BASE_DIR
 
 
-async def _claude_cli_run(prompt, neutral=False):
+async def _claude_cli_run(prompt, neutral=False, deep=False):
     # cwd を固定 → discord-groupchat/.claude/settings.json（WebSearch許可）が読まれる。
     # ※ワークスペースを一度「信頼(trust)」しておかないと settings.json は無視される。
     #
@@ -1670,7 +1698,7 @@ async def _claude_cli_run(prompt, neutral=False):
     # 機械的な言い換えに運用マニュアルは要らないので、読ませない場所で走らせる。
     async with _get_claude_sem():
         proc = await asyncio.create_subprocess_exec(
-            CLAUDE_BIN, "-p", *_model_args(),
+            CLAUDE_BIN, "-p", *_model_args(deep),
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,

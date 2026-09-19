@@ -1662,6 +1662,35 @@ def run():
     check("境目は環境変数で変えられる",
           'os.getenv("STATUS_STALE_SEC"' in bot_src(), True)
 
+    print("■ 短い雑談と長い相談でモデルを分ける _model_args(deep)")
+    # 本人の事情（2026-09-19）：枠を節約したいが、Gemini は YouTube リサーチの
+    # 動画視聴に取っておきたい（雑談を Gemini に回すと同じ無料枠を食い合う）。
+    # そこで Claude の中で分ける。短い雑談は haiku、長い相談だけ一段上。
+    _cmT = bot.gen_settings.get("claude_model")
+    try:
+        bot.gen_settings["claude_model"] = "haiku"
+        check("短い雑談は設定どおり（安いモデル）",
+              bot._model_args(False), ["--model", "haiku"])
+        check("長い相談は一段上のモデル",
+              bot._model_args(True), ["--model", bot.CLAUDE_MODEL_DEEP])
+        bot.gen_settings["claude_model"] = "opus"
+        check("自分で上のモデルを指定していれば尊重する",
+              bot._model_args(True), ["--model", "opus"])
+    finally:
+        if _cmT is None:
+            bot.gen_settings.pop("claude_model", None)
+        else:
+            bot.gen_settings["claude_model"] = _cmT
+    # 長さは【いま答えるべき発言】から測る（指示文を拾うと全部同じ長さになる）
+    for _t, _deep in (("おはよう", False), ("葛根湯の効果は？", False),
+                      ("開業準備資金ってどんなレシートが使える？", True),
+                      ("傷病手当金をもらいながら開業届を出すとどうなる？", True)):
+        _line = bot._latest_user_line(bot.transcript_block([("kohei", _t)]))
+        check(f"長さで振り分ける: {_t}", len(_line) > bot.DEEP_CHARS, _deep)
+    check("境目とモデルは環境変数で変えられる",
+          'os.getenv("DEEP_CHARS"' in bot_src()
+          and 'os.getenv("CLAUDE_MODEL_DEEP"' in bot_src(), True)
+
     print("■ 定時モードでも雑談は止めない")
     # 本人の希望（2026-09-18）：「雑談機能は残しておいて欲しい」。
     # 断るのは ACT_ROUTES だけなので、会話・質問・状態確認はそのまま通る。
