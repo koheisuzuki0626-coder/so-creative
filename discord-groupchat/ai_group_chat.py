@@ -2133,6 +2133,14 @@ TREND_MIN_GAP_SEC = int(os.getenv("TREND_MIN_GAP_SEC", str(4 * 3600)))
 # 枠切れで「絵を見られなかった」回は上限に数えない。ただし YouTube の枠は
 # 使うので、試行そのものには別の上限を置く。
 TREND_MAX_TRIES_PER_DAY = int(os.getenv("TREND_MAX_TRIES_PER_DAY", "12"))
+# 「これより古い生成物は、進捗の質問への答えとして出さない」境目（既定2時間）。
+# ルーティングの has_last_gen と同じ窓にそろえてある。
+STATUS_STALE_SEC = int(os.getenv("STATUS_STALE_SEC", "7200"))
+# 「それを出して」と本人が求めている言い方。進捗の質問（できた？どのくらい？）
+# とは別で、古い成果物でも取り出してよい。
+_SHOW_LAST_RE = re.compile(
+    "見せ|みせ|出して|だして|送って|おくって|貼って|はって|"
+    "どこ|url|URL|リンク|ちょうだい|ください|頂戴")
 TREND_QUIET = os.getenv("TREND_QUIET", "1").lower() not in ("0", "false", "no")
 
 
@@ -7260,6 +7268,26 @@ _REFERS_PAST_GEN_RE = re.compile(
     "作った|つくった|生成した|できてた|出来てた")
 
 
+def _progress_q_but_general(c):
+    """進捗ワードで状態確認になっているが、実際は一般的な質問。
+
+    事故（2026-09-19 15:59）：「aiで広告動画作る企業の割合ってどのくらい？」が
+    『動画』（文脈語）と『どのくらい』（状態語）の2語だけで進捗確認と判定され、
+    1ヶ月前の生成物を「✅ もう完成しています」と返した。
+    聞かれているのは世の中の割合であって、自分の動画の残り時間ではない。
+
+    見分け方は長さと指し先。自分の生成物のことなら短く直接聞く
+    （「動画できた？」「あとどれくらい？」）。長い問いは一般論。
+    """
+    if not c.status_kw:
+        return False
+    if _REFERS_PAST_GEN_RE.search(c.text):
+        return False                       # 「さっき作ったやつ」＝指す先が文中にある
+    if c.has_job or c.has_running:
+        return False                       # 実際に動いているなら進捗の質問でよい
+    return not c.short_ask                 # 長い問いかけ＝一般論
+
+
 def _asks_where_but_general(c):
     """在り処ワードで状態確認になっているが、実際は一般的な質問。
 
@@ -7292,6 +7320,7 @@ def _r_status(c):
                 "作って|作りたい|つくって|生成して|作成して|描いて|アニメ化", c.text)
             and not _CONTENT_Q_RE.search(c.text)   # 中身への質問は会話へ
             and not _asks_where_but_general(c)     # 一般的な質問は会話へ
+            and not _progress_q_but_general(c)     # 長い問いは一般論（世の中の話）
             and not c.revise_like()):
         return "status"
 
@@ -10841,6 +10870,20 @@ async def _report_gen_status(channel, cid, author_name=None, said=None):
         else:
             await channel.send(_pending_eta_msg(job))
         return True
+    # 直近の生成が古い（既定2時間超）のに進行中のジョブも無いなら、
+    # その発言は「自分の生成物の進捗」ではない可能性が高い。
+    # 事故（2026-09-19 15:59）：「aiで広告動画作る企業の割合ってどのくらい？」に
+    # 1ヶ月前（8/22）の動画を「✅ もう完成しています」と返した。
+    # 『動画』という語と『どのくらい』が揃っただけで状態確認に流れ、
+    # 報告できる実体があるかを確かめないまま古い生成物を出していた。
+    # ただし「見せて」「どこ？」のように、本人がはっきり成果物を求めている時は
+    # 古くても出す（それは進捗の質問ではなく、取り出しの依頼だから）。
+    _wants_it = bool(_SHOW_LAST_RE.search(said or ""))
+    _age = time.time() - (lg.get("t") or 0)
+    if lg.get("url") and _age > STATUS_STALE_SEC and not job and not _wants_it:
+        print(f"[status] 直近の生成が古い（{_age / 3600:.1f}時間）ので会話に回す")
+        return False              # 会話として答えさせる（古い成果物を出さない）
+
     if lg.get("url"):
         label = lg.get("label") or "生成"
         # 聞かれている媒体と、手元にあるものが違うなら、そう言う。

@@ -121,3 +121,4 @@ chat	こうやって出る	chat
 chat	こんな感じになった	chat
 chat	これが今の画面	chat
 chat	今、試しにリサーチしてみて	chat
+chat	aiで広告動画作る企業の割合ってどのくらい？	chat

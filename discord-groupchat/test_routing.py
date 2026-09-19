@@ -1613,6 +1613,48 @@ def run():
           "_mark_trend_try()        # YouTube の枠を使うので" in _srcK
           and "_mark_trend_run()      # 絵を見られた巡だけを" in _srcK, True)
 
+    print("■ 古い生成物を進捗の答えにしない STATUS_STALE_SEC")
+    # 事故（2026-09-19 15:59）：「aiで広告動画作る企業の割合ってどのくらい？」に
+    # 1ヶ月前（8/22）の動画を「✅ もう完成しています」と返した。
+    # 『動画』の語と『どのくらい』が揃っただけで状態確認に流れ、
+    # 報告できる実体があるかを確かめないまま古い生成物を出していた。
+    import asyncio as _aioS
+    import time as _tmS
+
+    class _Ch:
+        def __init__(self):
+            self.sent = []
+
+        async def send(self, t):
+            self.sent.append(t)
+
+    def _status(age_sec, said=None):
+        _job, _lg, _hist = (bot._load_motion_job, bot._load_last_gen,
+                            bot.add_history)
+        try:
+            bot._load_motion_job = lambda: None
+            bot._load_last_gen = lambda cid: {
+                "url": "https://x/y.mp4", "label": "つないだ動画",
+                "t": _tmS.time() - age_sec}
+            bot.add_history = lambda *a, **k: None
+            ch = _Ch()
+            return (_aioS.run(bot._report_gen_status(ch, 1234, said=said)),
+                    ch.sent)
+        finally:
+            bot._load_motion_job, bot._load_last_gen = _job, _lg
+            bot.add_history = _hist
+
+    _r_old, _s_old = _status(30 * 24 * 3600)
+    check("1ヶ月前の生成は進捗の答えにしない", _r_old, False)
+    check("古い生成物のURLを出さない", _s_old, [])
+    _r_new, _s_new = _status(600)
+    check("直近の生成なら従来どおり答える", bool(_r_new), True)
+    # 「見せて」「どこ？」は進捗の質問ではなく取り出しの依頼。古くても出す。
+    _r_show, _s_show = _status(30 * 24 * 3600, said="さっきの動画見せて")
+    check("『見せて』なら古くても出す", bool(_r_show), True)
+    check("境目は環境変数で変えられる",
+          'os.getenv("STATUS_STALE_SEC"' in bot_src(), True)
+
     print("■ 定時モードでも雑談は止めない")
     # 本人の希望（2026-09-18）：「雑談機能は残しておいて欲しい」。
     # 断るのは ACT_ROUTES だけなので、会話・質問・状態確認はそのまま通る。

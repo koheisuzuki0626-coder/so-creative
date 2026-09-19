@@ -209,6 +209,7 @@ Mac で動いているボットは読まない。「ここで決めたのに Dis
 | 成果物は既定ブランチにも載せる（探させない） | `_save_to_main` |
 | 機械的な作業に運用マニュアルを読ませない | `run_claude_cli(neutral=True)` |
 | 戻らないジョブを待たせ続けない | `_job_is_lost` |
+| 古い生成物を進捗の答えにしない | `STATUS_STALE_SEC` ＋ `_progress_q_but_general` |
 | 作るものの依頼はDiscordで受けない | `_act_blocked`（`BOT_MODE=full` で解除） |
 | 表の誤発動をAIが差し戻せる | `_ai_route_veto`（`AI_ROUTE_CHECK=0` で無効化） |
 | 添付に文を添えただけで作業を始めない | `_att_is_material`（末尾が助詞なら素材） |
