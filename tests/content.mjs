@@ -278,6 +278,29 @@ check('金額の表示は税込で揃っている',
         /サンプルは準備中/.test(await page.locator('#genre-mv').innerText())
         && /料金表ではなく個別にお見積り/.test(await page.locator('#genre-mv').innerText()),
         await page.locator('#genre-mv').innerText());
+    /* 09 アニメーション・図解（9/19 追加）。生成AIを使っていない唯一のサンプル。
+       文字が主役の題材はAIが画面内の文字を描けないので、プログラム描画だと
+       明記してあること（これが売り文句であり、嘘をつかないための断りでもある） */
+    {
+        const an = await page.locator('#genre-animation').innerText();
+        check('アニメーションのカードにサンプルがある',
+            await page.locator('#genre-animation .sample-video').count() === 1);
+        check('プログラム描画だと明記している', /すべてプログラムで描いています/.test(an), an.slice(0, 60));
+        check('架空の題材だと断っている', /架空の健康保険組合/.test(an));
+        check('尺違いに触れている', /尺違い/.test(an));
+    }
+    /* about.html のフッターのジャンル一覧は静的に書いてある（トップは自動生成）。
+       「ズレたら e2e で落ちる」と about.html に書いてあったのに検査が無かったので、
+       ここで突き合わせる。09 追加のときに MV の載せ忘れも見つかった */
+    {
+        const cards = await page.locator('#genres .genre h3').allInnerTexts();
+        const ap = await open(browser, { page: 'about.html' });
+        const foot = await ap.locator('#footer-genres li').allInnerTexts();
+        check('about のフッターのジャンル一覧がトップのカードと一致',
+            JSON.stringify(cards) === JSON.stringify(foot),
+            `top=${cards.join('/')} about=${foot.join('/')}`);
+        await ap.close();
+    }
     /* MV は計算機に乗せない。工数を一度も測っていないので、
        定価を出すと測る前に金額を宣言することになる */
     /* 6列の割り付けをジャンルの枚数に合わせているので、枚数を足すと

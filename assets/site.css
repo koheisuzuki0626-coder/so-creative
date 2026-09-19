@@ -705,9 +705,11 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
 }
 
 /* ---------- Genres (bento) ---------- */
-/* 6列を土台に、1行目は半々（span 3）、2〜3行目は3等分（span 2）で 2+3+3=8枚。
-   枚数を変えるときはこの割り付けも一緒に直すこと（08 を足したとき、
-   7枚前提の [3,3][2,2,2][3,3] のままで最後の1枚が3分の1幅で取り残された） */
+/* 6列を土台に、1・2行目は半々（span 3）、3行目は3等分（span 2）、
+   4行目はまた半々で 2+2+3+2=9枚。新しい2ジャンル（MV・アニメーション）が
+   下段の大きいカードになる。枚数を変えるときはこの割り付けも一緒に直すこと
+   （08 を足したとき、7枚前提のままで最後の1枚が3分の1幅で取り残された。
+   e2e が行ごとの幅を見ている） */
 .genre-grid {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
@@ -725,7 +727,8 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     scroll-margin-top: calc(var(--nav-h) + 26px);
 }
 .section-alt .genre { background: #fff; }
-.genre:nth-child(1), .genre:nth-child(2) { grid-column: span 3; }
+.genre:nth-child(1), .genre:nth-child(2), .genre:nth-child(3), .genre:nth-child(4),
+.genre:nth-child(8), .genre:nth-child(9) { grid-column: span 3; }
 .genre::after {
     content: "";
     position: absolute;
@@ -1448,7 +1451,7 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
        16px まで詰まる。この幅だけ間隔を詰めて、隣り合わないようにする */
     .nav-main { gap: 15px; margin-left: 20px; }
     .genre-grid { grid-template-columns: repeat(2, 1fr); }
-    .genre, .genre:nth-child(1), .genre:nth-child(2) { grid-column: span 1; }
+    .genre, .genre:nth-child(n) { grid-column: span 1; }
     .about-grid { grid-template-columns: 1fr; }
     .about-points-wide { grid-template-columns: 1fr; }
     .stage-grid { grid-template-columns: 1fr; gap: 34px; }
