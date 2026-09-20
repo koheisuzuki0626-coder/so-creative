@@ -250,10 +250,13 @@ def print_on(base_path, out_path, geom="p1", seed=7):
 
 
 # 無地のチューブ写真（Higgsfield / nano_banana_pro 生成）と、刷り上がりの置き場所。
+# prep は刷る前の下ごしらえ。立ちカットはキャップを回す型に直してから刷る。
 MAT = "../素材"
 JOBS = [
-    ("p1", f"{MAT}/tube_p1.jpg", "../../../assets/works/ugc-mamoriha-product.jpg"),
-    ("p2", f"{MAT}/tube_p2.jpg", "../../../assets/works/ugc-mamoriha-flat.jpg"),
+    ("p1", f"{MAT}/tube_p1.jpg", "../../../assets/works/ugc-mamoriha-product.jpg", True),
+    # 寝かせたカットはキャップが緑で、そもそも立ちカットと別の商品なので外した。
+    # 必要になったら出力先を assets/works に戻す。
+    ("p2", f"{MAT}/tube_p2.jpg", "/tmp/_mamoriha_flat.jpg", False),
 ]
 
 
@@ -261,7 +264,10 @@ def main(argv):
     if len(argv) >= 3:
         print(print_on(argv[1], argv[2], argv[3] if len(argv) > 3 else "p1"))
         return
-    for geom, src, dst in JOBS:
+    for geom, src, dst, screw in JOBS:
+        if screw:
+            import screwcap
+            src = screwcap.fix(src, f"/tmp/_screw_{geom}.png")
         tmp = f"/tmp/_label_{geom}.png"
         print_on(src, tmp, geom)
         Image.open(tmp).convert("RGB").resize((1400, 1400), Image.LANCZOS).save(
