@@ -23,6 +23,8 @@ def set_canvas(w, h):
 FONTS = os.environ.get("SO_FONTS", "/tmp/fonts")
 ZEN = f"{FONTS}/ZenKakuNew-Black.ttf"
 GOTHIC = f"{FONTS}/NotoSansJP-Black.ttf"
+# CM のテロップは太いと画に乗りすぎるので、細めを別に持つ
+GOTHIC_M = f"{FONTS}/NotoSansJP-Medium.ttf"
 # 明朝は 05（縦型）だけで使う。ゴシックより「読ませる」より「効かせる」向き
 MINCHO = f"{FONTS}/NotoSerifJP-Black.ttf"
 # 締めの小さい文字。極太を小さく置くと潰れるので中細を使う
@@ -198,7 +200,7 @@ def band_telop(key, text, accent, style):
     bottom = {"emo": int(H * 0.32), "step": 118, "white_band": 118}.get(style, BOTTOM)
     # emo は字間を空ける。明朝を大きく置くと詰まって見えるのを開く
     track = TRACK if style == "emo" else 0
-    face = MINCHO if style == "emo" else ZEN
+    face = MINCHO if style == "emo" else (GOTHIC_M if style == "cm" else ZEN)
     while size > 84:
         f = ImageFont.truetype(face, size)
         w = max(sum(f.getlength(t) for t, _ in r) + track * (len(lines[i]) - 1)
@@ -237,20 +239,8 @@ def band_telop(key, text, accent, style):
     # block に発光を足していたが、ぼかしがブロックの外に40px以上はみ出して、
     # 暗い映像の上では黒ブロックの上に灰色の帯が乗ったように見えていた。
     # 209/255 の黒ブロックに白文字なら、それだけで十分に読める
-    if style == "cm":
-        # 黒ブロックをやめ、画面下の暗がりに乗せる（下敷きは build_set 側）。
-        # 帯が無くなると味気ないので、本文の上に山吹の細い罫を1本だけ置く
-        rw, rh, gap = 180, 4, 34
-        ry = bb[1] - gap
-        ramp = np.zeros((H, W), dtype=np.uint8)
-        x0, x1 = bb[0], bb[0] + rw
-        prof = np.clip(np.sin(np.linspace(0, np.pi, x1 - x0)) * 2.6, 0, 1) * 255
-        ramp[ry:ry + rh, x0:x1] = prof.astype(np.uint8)
-        rule = Image.composite(Image.new("RGBA", (W, H), ACCENT + (255,)),
-                               blank(), Image.fromarray(ramp))
-        img.alpha_composite(dim_alpha(rule.filter(ImageFilter.GaussianBlur(9)), 0.9))
-        img.alpha_composite(rule)
-        bb = (bb[0], ry, bb[2], bb[3])
+    # cm は黒ブロックも上の罫も置かない。画面下の暗がり（build_set 側）に
+    # 細いゴシックを乗せるだけ。装飾を足すほど実写から浮く
     if style == "emo":
         # 文字そのものを光らせる。02で嫌われた「黒フチ＋重ねぼかし」とは別物で、
         # フチを作らず、広く薄いぼかしを2段重ねるだけ。夜の画で文字が浮く
