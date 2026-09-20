@@ -115,3 +115,43 @@ def run(src, out, bgm_wav, tail=2.2, fade=0.5):
 if __name__ == "__main__":
     import sys
     print(run(sys.argv[1], sys.argv[2], sys.argv[3]))
+
+
+def run_talk(src, out, tail=2.4, fade=0.8):
+    """人が喋るカット（生成音声あり）＋ 締めカード。BGM は足さない。"""
+    card = end_card("/tmp/_ugc_card.png")
+    dur = probe(src)
+
+    body = "/tmp/_talk_body.mp4"
+    subprocess.run([
+        FFMPEG, "-y", "-i", src,
+        "-vf", f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},fps=30",
+        "-c:v", "libx264", "-crf", "18", "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "160k", "-ar", "48000", body,
+    ], check=True, capture_output=True)
+
+    # 締めカードは無音で作り、本編の音を尻でフェードさせる
+    tailmp4 = "/tmp/_talk_tail.mp4"
+    subprocess.run([
+        FFMPEG, "-y", "-loop", "1", "-t", str(tail), "-i", card,
+        "-f", "lavfi", "-t", str(tail), "-i", "anullsrc=r=48000:cl=stereo",
+        "-vf", f"scale={W}:{H},fps=30", "-c:v", "libx264", "-crf", "18",
+        "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k", "-ar", "48000",
+        "-shortest", tailmp4,
+    ], check=True, capture_output=True)
+
+    lst = "/tmp/_talk_list.txt"
+    with open(lst, "w") as f:
+        f.write(f"file '{body}'\nfile '{tailmp4}'\n")
+    joined = "/tmp/_talk_joined.mp4"
+    subprocess.run([FFMPEG, "-y", "-f", "concat", "-safe", "0", "-i", lst,
+                    "-c", "copy", joined], check=True, capture_output=True)
+
+    subprocess.run([
+        FFMPEG, "-y", "-i", joined,
+        "-af", f"afade=t=out:st={max(dur - fade, 0.1)}:d={fade},"
+               "loudnorm=I=-16:TP=-1.5:LRA=11,alimiter=limit=0.9",
+        "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-ar", "48000",
+        "-movflags", "+faststart", out,
+    ], check=True, capture_output=True)
+    return out
