@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""架空商品「こがね餃子」のパッケージ意匠を、無地の紙箱の写真に刷り込む。
+"""架空商品「こがね餃子」のパッケージ意匠を、無地の袋の写真に刷り込む。
 
-意匠は生成に描かせず、ここで組んでから箱の面に乗せる。文字が崩れないので、
+意匠は生成に描かせず、ここで組んでから袋の面に乗せる。文字が崩れないので、
 商品名や内容量の差し替えは刷り直すだけで済む。
 
 9/20 に4度作り直した。
@@ -9,9 +9,11 @@
  2稿 白地・赤帯・写真の小窓 → まだ要素が少なく、売り場のものに見えない
  3稿 赤ベタ・断ち切り写真・白フチの極太名。袋を自立袋から平袋に
  4稿 市販の平袋に構成を寄せ、切り抜きの1個と金の枠罫を足す
- 5稿（これ）容器を紙箱（カートン）に変えた。パウチだと弧に沿って原稿を
-      割り付けるので、大きな文字も金の縁も必ず歪む。紙箱の面は平らなので
-      透視だけで乗り、そのぶん派手に振れる。訴求のバッジも増やした
+ 5稿 紙箱（カートン）に変えた → 売り場の冷凍餃子はやはり袋
+ 6稿（これ）袋に戻す。ただし枕型のふくらんだパウチではなく、中にトレーが
+      入って板のように平たい袋。真上から撮った1枚に、弧を使わず透視だけで
+      刷る。面が平らなので大きな文字も金の縁も歪まない。訴求のバッジは
+      5稿のまま増やしてある
 
   冷凍餃子の容器を調べた結果（9/20）：
    - 専用の耐寒トレーが入る製品があり、袋はふくらまず板状になる（丸善）
@@ -19,7 +21,7 @@
      冷凍食品向けカートンを扱っている（紙箱・化粧箱.NET、アート印刷所）
    - 通販・ギフトの餃子は化粧箱が主（宇都宮餃子会）
    どのメーカーがどの形、という対応表は見つからなかったので、
-   「面が平らで派手に振れる」ことを理由に紙箱を選んでいる
+   トレーが入って平たくなる、という点だけを取って袋の形を決めている
 """
 import math
 import numpy as np
@@ -30,17 +32,16 @@ GOTHIC = f"{FONTS}/NotoSansJP-Black.ttf"
 ZEN = f"{FONTS}/ZenKakuNew-Black.ttf"
 
 SS = 2
-DW, DH = 1000, 880           # 正面の意匠を組む座標（箱の面の比に合わせた）
-SW, SH = 1600, 1408          # 原稿の解像度。面（約1410px 幅）より大きく取る
-DWS, DHS = 170, 1180         # 側面の意匠を組む座標
-SWS, SHS = 340, 2360
+DW, DH = 1000, 585           # 意匠を組む座標（袋の刷り面の比に合わせた）
+SW, SH = 1800, 1053          # 原稿の解像度。面（約1770px 幅）より大きく取る
 
-# 紙箱の面の四隅（2752x1536 の写真から実測）。時計回り
-FRONT = [(633, 200), (2045, 104), (2045, 1455), (633, 1324)]
-SIDE = [(2045, 104), (2220, 160), (2220, 1377), (2045, 1455)]
+# 袋の刷り面の四隅（2752x1536 の写真から実測）。左右の羽根の内側。時計回り
+FRONT = [(520, 240), (2292, 240), (2292, 1284), (520, 1284)]
+# 羽根まで含めた袋ぜんたい。ここは地色だけを流す（実物も色は端まで回る）
+BAG = [(330, 180), (2425, 180), (2425, 1345), (330, 1345)]
 
 # 金の斜め帯（面に対する割合）。左下の起点・右へ上がる量・太さ
-BAND_X0, BAND_Y0, BAND_RISE, BAND_TH = 0.47, 0.835, 0.135, 0.150
+BAND_X0, BAND_Y0, BAND_RISE, BAND_TH = 0.46, 0.800, 0.145, 0.200
 PHOTO_FILL, PHOTO_CY = 1.0, 0.50   # 刷る写真の切り方
 
 COPY1 = "羽根パリッ、"
@@ -120,14 +121,14 @@ def _star(img, cx, cy, r, points, k, lines):
 
 
 def build_art(photo, hero=None):
-    """正面の意匠を返す。photo は商品写真、hero は切り抜きの1個。"""
+    """刷り面の意匠を返す。photo は商品写真、hero は切り抜きの1個。"""
     W, H = SW * SS, SH * SS
     k = W / DW                      # 意匠の座標（DW×DH）から画素への倍率
     img = _ground(W, H)
 
     # 商品写真を面の左いっぱいに敷く。右だけ抜いて赤に渡す
-    pw, ph = int(700 * k), H
-    # 紙箱は地が白くて明るいぶん、写真を起こしすぎると白茶けた
+    pw, ph = int(640 * k), H
+    # 地が明るいぶん、写真を起こしすぎると白茶ける
     p = _lift(photo, gamma=0.80, sat=1.12)
     sw, sh = p.size
     ch = int(sh * PHOTO_FILL)
@@ -136,21 +137,21 @@ def build_art(photo, hero=None):
     cy0 = max(0, min(sh - ch, int(sh * PHOTO_CY - ch / 2)))
     p = p.crop((cx0, cy0, cx0 + cw, cy0 + ch)).resize((pw, ph), Image.LANCZOS)
     xx = np.arange(pw)[None, :].astype(np.float32)
-    ed = (np.linspace(575, 690, ph, dtype=np.float32) * k)[:, None]
-    mk = np.clip((ed - xx) / (130 * k), 0, 1) ** 0.85
+    ed = (np.linspace(520, 625, ph, dtype=np.float32) * k)[:, None]
+    mk = np.clip((ed - xx) / (105 * k), 0, 1) ** 0.85
     img.paste(p, (0, 0), Image.fromarray((mk * 255).astype(np.uint8)))
     d = ImageDraw.Draw(img)
 
-    f_logo_s = ImageFont.truetype(GOTHIC, int(14 * k))
-    f_logo = ImageFont.truetype(GOTHIC, int(33 * k))
-    f_n1 = ImageFont.truetype(GOTHIC, int(88 * k))
-    f_n2 = ImageFont.truetype(GOTHIC, int(238 * k))
-    f_rom = ImageFont.truetype(GOTHIC, int(50 * k))
-    f_copy1 = ImageFont.truetype(GOTHIC, int(42 * k))
-    f_copy2 = ImageFont.truetype(GOTHIC, int(46 * k))
-    f_tiny = ImageFont.truetype(ZEN, int(13 * k))
-    f_box = ImageFont.truetype(ZEN, int(22 * k))
-    f_box_s = ImageFont.truetype(ZEN, int(15 * k))
+    f_logo_s = ImageFont.truetype(GOTHIC, int(12 * k))
+    f_logo = ImageFont.truetype(GOTHIC, int(28 * k))
+    f_n1 = ImageFont.truetype(GOTHIC, int(62 * k))
+    f_n2 = ImageFont.truetype(GOTHIC, int(172 * k))
+    f_rom = ImageFont.truetype(GOTHIC, int(36 * k))
+    f_copy1 = ImageFont.truetype(GOTHIC, int(33 * k))
+    f_copy2 = ImageFont.truetype(GOTHIC, int(36 * k))
+    f_tiny = ImageFont.truetype(ZEN, int(11 * k))
+    f_box = ImageFont.truetype(ZEN, int(18 * k))
+    f_box_s = ImageFont.truetype(ZEN, int(12 * k))
 
     # 右下の金の斜め帯。上に細い罫を1本、そのうえにコピーを2行
     band = Image.new("RGBA", (W, H), (0, 0, 0, 0))
@@ -161,20 +162,20 @@ def build_art(photo, hero=None):
     bd.polygon([(x0 * k, yt0 * k), (x1 * k, yt1 * k),
                 (x1 * k, (yt1 + th) * k), (x0 * k, (yt0 + th) * k)],
                fill=GOLD + (255,))
-    bd.line([(x0 * k, (yt0 - 14) * k), (x1 * k, (yt1 - 14) * k)],
-            fill=GOLD + (235,), width=int(5 * k))
+    bd.line([(x0 * k, (yt0 - 11) * k), (x1 * k, (yt1 - 11) * k)],
+            fill=GOLD + (235,), width=int(4 * k))
     img.paste(band, (0, 0), band)
     d = ImageDraw.Draw(img)
 
     ang = math.degrees(math.atan2((yt0 - yt1) * k, (x1 - x0) * k))
     lines = [(COPY1, f_copy1), (COPY2, f_copy2)]
-    tw = int(max(_tw(d, t, f, 2 * k) for t, f in lines)) + int(26 * k)
-    cop = Image.new("RGBA", (tw, int(110 * k)), (0, 0, 0, 0))
+    tw = int(max(_tw(d, t, f, 2 * k) for t, f in lines)) + int(22 * k)
+    cop = Image.new("RGBA", (tw, int(88 * k)), (0, 0, 0, 0))
     cd = ImageDraw.Draw(cop)
-    yy = int(4 * k)
+    yy = int(3 * k)
     for t, f in lines:
         _tt(cd, tw / 2, yy, t, f, 2 * k, RED_D + (255,))
-        yy += int(51 * k)
+        yy += int(41 * k)
     cop = cop.rotate(ang, expand=True, resample=Image.BICUBIC)
     mx = 0.735
     my = (yt0 - (yt0 - yt1) * (mx * DW - x0) / (x1 - x0) + th / 2) / DH
@@ -183,103 +184,80 @@ def build_art(photo, hero=None):
 
     # 右上に切り抜きの1個。同じCMの箸のカットから背景を抜いたもの
     if hero is not None:
-        hw = int(396 * k)
+        hw = int(340 * k)
         hh = int(hw * hero.height / hero.width)
         hz = hero.resize((hw, hh), Image.LANCZOS)
         sh_ = Image.new("RGBA", (hw, hh), (0, 0, 0, 0))
         sh_.paste((0, 0, 0, 95), (0, 0), hz.split()[3])
-        sh_ = sh_.filter(ImageFilter.GaussianBlur(3 * k))
-        img.paste(sh_, (int(604 * k), int(34 * k)), sh_)
-        img.paste(hz, (int(600 * k), int(26 * k)), hz)
+        sh_ = sh_.filter(ImageFilter.GaussianBlur(2.4 * k))
+        img.paste(sh_, (int(654 * k), int(18 * k)), sh_)
+        img.paste(hz, (int(650 * k), int(10 * k)), hz)
         d = ImageDraw.Draw(img)
 
     # 商品名。写真の上にまたがらせて、面の幅いっぱいに使う
-    ncx = 482 * k
-    sx, sy = int(8 * k), int(10 * k)
-    _tt(d, ncx + sx, 300 * k + sy, "こがね", f_n1, 11 * k, (70, 10, 12),
-        stroke=int(10 * k), stroke_fill=(70, 10, 12))
-    _tt(d, ncx, 300 * k, "こがね", f_n1, 11 * k, WHITE,
-        stroke=int(10 * k), stroke_fill=(46, 6, 8))
-    _tt(d, ncx + sx, 384 * k + sy, "餃子", f_n2, 15 * k, (70, 10, 12),
-        stroke=int(18 * k), stroke_fill=(70, 10, 12))
-    _tt(d, ncx, 384 * k, "餃子", f_n2, 15 * k, WHITE,
-        stroke=int(18 * k), stroke_fill=(46, 6, 8))
-    _tt(d, ncx, 652 * k, "GYOZA", f_rom, 12 * k, GOLD,
-        stroke=int(5 * k), stroke_fill=(70, 10, 12))
+    ncx = 470 * k
+    sx, sy = int(6 * k), int(7 * k)
+    _tt(d, ncx + sx, 132 * k + sy, "こがね", f_n1, 8 * k, (70, 10, 12),
+        stroke=int(8 * k), stroke_fill=(70, 10, 12))
+    _tt(d, ncx, 132 * k, "こがね", f_n1, 8 * k, WHITE,
+        stroke=int(8 * k), stroke_fill=(46, 6, 8))
+    _tt(d, ncx + sx, 192 * k + sy, "餃子", f_n2, 11 * k, (70, 10, 12),
+        stroke=int(13 * k), stroke_fill=(70, 10, 12))
+    _tt(d, ncx, 192 * k, "餃子", f_n2, 11 * k, WHITE,
+        stroke=int(13 * k), stroke_fill=(46, 6, 8))
+    _tt(d, ncx, 386 * k, "GYOZA", f_rom, 9 * k, GOLD,
+        stroke=int(4 * k), stroke_fill=(70, 10, 12))
 
     # 左上：ブランドの白箱
-    bx0, by0, bx1, by1 = 34 * k, 30 * k, 266 * k, 126 * k
-    d.rounded_rectangle([bx0, by0, bx1, by1], radius=10 * k, fill=WHITE)
-    d.text(((bx0 + bx1) / 2, by0 + 12 * k), "FRESH FROZEN", font=f_logo_s,
+    bx0, by0, bx1, by1 = 28 * k, 20 * k, 222 * k, 100 * k
+    d.rounded_rectangle([bx0, by0, bx1, by1], radius=8 * k, fill=WHITE)
+    d.text(((bx0 + bx1) / 2, by0 + 9 * k), "FRESH FROZEN", font=f_logo_s,
            fill=(120, 110, 104), anchor="mt")
-    d.text(((bx0 + bx1) / 2, by0 + 35 * k), "こがね食品", font=f_logo,
+    d.text(((bx0 + bx1) / 2, by0 + 29 * k), "こがね食品", font=f_logo,
            fill=RED, anchor="mt")
 
     # 左に訴求のバッジを縦に3つ。売り場の冷凍餃子はここが賑やか
-    _badge(img, 104 * k, 292 * k, 62 * k, 62 * k,
-           [("油・水", 30, WHITE), ("いらず", 30, WHITE)], k)
-    _badge(img, 104 * k, 434 * k, 62 * k, 62 * k,
-           [("フタも", 30, WHITE), ("不要", 30, WHITE)], k)
-    _badge(img, 104 * k, 600 * k, 70 * k, 84 * k,
-           [("元祖", 19, GOLD), ("羽根", 38, WHITE), ("つき", 38, WHITE)], k)
+    _badge(img, 88 * k, 192 * k, 52 * k, 52 * k,
+           [("油・水", 25, WHITE), ("いらず", 25, WHITE)], k)
+    _badge(img, 88 * k, 310 * k, 52 * k, 52 * k,
+           [("フタも", 25, WHITE), ("不要", 25, WHITE)], k)
+    _badge(img, 88 * k, 438 * k, 58 * k, 66 * k,
+           [("元祖", 15, GOLD), ("羽根", 30, WHITE), ("つき", 30, WHITE)], k)
     # 右に金の星バッジ
-    _star(img, 886 * k, 452 * k, 82 * k, 12, k, [("新", 34), ("発売", 34)])
+    _star(img, 904 * k, 268 * k, 64 * k, 12, k, [("新", 26), ("発売", 26)])
     d = ImageDraw.Draw(img)
 
-    d.text((36 * k, 762 * k), "（調理例）", font=f_tiny, fill=WHITE, anchor="lt",
-           stroke_width=int(2.4 * k), stroke_fill=(30, 22, 18))
+    d.text((156 * k, 490 * k), "（調理例）", font=f_tiny, fill=WHITE, anchor="lt",
+           stroke_width=int(2 * k), stroke_fill=(30, 22, 18))
 
     # 下の情報。白い小箱を並べる
     bxs = [("要冷凍", None), ("12個入り", "(300g)"), ("フライパン", "ひとつで"),
            ("たれ付き", None)]
-    x = 34 * k
-    y0b, y1b = 800 * k, 848 * k
+    x = 28 * k
+    y0b, y1b = 512 * k, 556 * k
     for main, sub in bxs:
-        w = int((100 if sub else 82) * k)
+        w = int((84 if sub else 68) * k)
         d.rectangle([x, y0b, x + w, y1b], fill=WHITE)
         if sub:
-            d.text((x + w / 2, y0b + 5 * k), main, font=f_box, fill=RED_D,
+            d.text((x + w / 2, y0b + 4 * k), main, font=f_box, fill=RED_D,
                    anchor="mt")
-            d.text((x + w / 2, y0b + 28 * k), sub, font=f_box_s, fill=INK,
+            d.text((x + w / 2, y0b + 24 * k), sub, font=f_box_s, fill=INK,
                    anchor="mt")
         else:
             d.text((x + w / 2, (y0b + y1b) / 2), main, font=f_box, fill=RED_D,
                    anchor="mm")
-        x += w + int(9 * k)
+        x += w + int(8 * k)
 
-    # 面のふちに金の枠。紙箱はこれで全体が締まる
+    # 面のふちに金の枠。これで全体が締まる
     fr = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     fd = ImageDraw.Draw(fr)
-    fd.rounded_rectangle([14 * k, 14 * k, W - 14 * k, H - 14 * k],
-                         radius=12 * k, outline=GOLD + (255,), width=int(6 * k))
-    fd.rounded_rectangle([28 * k, 28 * k, W - 28 * k, H - 28 * k],
-                         radius=8 * k, outline=GOLD_D + (150,), width=int(2 * k))
+    fd.rounded_rectangle([11 * k, 11 * k, W - 11 * k, H - 11 * k],
+                         radius=10 * k, outline=GOLD + (255,), width=int(5 * k))
+    fd.rounded_rectangle([23 * k, 23 * k, W - 23 * k, H - 23 * k],
+                         radius=7 * k, outline=GOLD_D + (150,), width=int(2 * k))
     img.paste(fr, (0, 0), fr)
 
     return img.resize((SW, SH), Image.LANCZOS)
-
-
-def build_side():
-    """側面の意匠。赤の地に商品名を縦組みで入れるだけ。"""
-    W, H = SWS * SS, SHS * SS
-    k = W / DWS
-    img = _ground(W, H)
-    d = ImageDraw.Draw(img)
-    f = ImageFont.truetype(GOTHIC, int(62 * k))
-    fs = ImageFont.truetype(ZEN, int(28 * k))
-    y = 200 * k
-    for ch in "こがね餃子":
-        d.text((DWS * k / 2, y), ch, font=f, fill=WHITE, anchor="mt")
-        y += 72 * k
-    y += 44 * k
-    for ch in "要冷凍":
-        d.text((DWS * k / 2, y), ch, font=fs, fill=GOLD, anchor="mt")
-        y += 34 * k
-    fr = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    ImageDraw.Draw(fr).rectangle([11 * k, 15 * k, W - 11 * k, H - 15 * k],
-                                 outline=GOLD + (220,), width=int(5 * k))
-    img.paste(fr, (0, 0), fr)
-    return img.resize((SWS, SHS), Image.LANCZOS)
 
 
 def _persp(dst, src):
@@ -289,6 +267,18 @@ def _persp(dst, src):
         A.append([x, y, 1, 0, 0, 0, -u * x, -u * y]); B.append(u)
         A.append([0, 0, 0, x, y, 1, -v * x, -v * y]); B.append(v)
     return np.linalg.solve(np.array(A, np.float64), np.array(B, np.float64))
+
+
+def silhouette(base, quad, lo=115.0, hi=175.0, feather=1.4):
+    """袋の輪郭でマスクを作る。地の木目は暗いので明るさだけで拾える。"""
+    lum = np.asarray(base.convert("RGB")).astype(np.float32).mean(2)
+    m = np.clip((lum - lo) / (hi - lo), 0, 1)
+    box = Image.new("L", base.size, 0)
+    ImageDraw.Draw(box).polygon([tuple(q) for q in quad], fill=255)
+    m = m * (np.asarray(box).astype(np.float32) / 255.0)
+    m = np.asarray(Image.fromarray((m * 255).astype(np.uint8)).filter(
+        ImageFilter.GaussianBlur(feather))).astype(np.float32) / 255.0
+    return m
 
 
 def place_on_quad(art, size, quad, feather=1.1):
@@ -316,13 +306,17 @@ def print_on(src, dst, photo_path, hero_path=None, seed=4):
     lum = a.mean(2)
     out = a.copy()
     rng = np.random.default_rng(seed)
-    faces = ((build_art(Image.open(photo_path).convert("RGB"), hero), FRONT),
-             (build_side(), SIDE))
-    for art, quad in faces:
+    # 1回目は羽根まで含めて地色だけ。2回目に刷り面の意匠を重ねる
+    faces = [(_ground(600, 340), BAG, silhouette(base, BAG)),
+             (build_art(Image.open(photo_path).convert("RGB"), hero),
+              FRONT, None)]
+    for art, quad, msk in faces:
         rgb, al = place_on_quad(art, base.size, quad)
+        if msk is not None:
+            al = msk
         # 面ごとに明るさを測り、その面の陰影だけをインクに乗せる
         m = Image.new("L", base.size, 0)
-        ImageDraw.Draw(m).polygon([tuple(q) for q in quad], fill=255)
+        ImageDraw.Draw(m).polygon([tuple(q) for q in FRONT], fill=255)
         sel = np.asarray(m) > 200
         ref = float(np.median(lum[sel])) if sel.any() else 200.0
         shade = np.clip(lum / max(ref, 1e-6), 0.62, 1.16)[..., None]
@@ -337,17 +331,17 @@ FFMPEG = ("/usr/local/lib/python3.11/dist-packages/imageio_ffmpeg/binaries/"
           "ffmpeg-linux-x86_64-v7.0.2")
 
 
-def clip(still, out, dur=3.4, cw=1920, chh=1080, fps=24, z0=2730, z1=2560):
+def clip(still, out, dur=3.4, cw=1920, chh=1080, fps=24, z0=2540, z1=2290):
     """刷ったパッケージ写真の、正面の中心にゆっくり寄る。
 
-    寄りは 6% ほどに留める。箱は高さ約1350px あるので、これ以上寄せると
-    16:9 の枠に下の情報の箱が入らない。
+    寄りは 10% ほど。袋は高さ約1140px なので、これ以上寄せると 16:9 の枠に
+    上下の羽根まで入らない。
     """
     import subprocess
     src = Image.open(still).convert("RGB")
     sw, sh = src.size
-    cx = sum(q[0] for q in FRONT) / 4 * sw / 2752.0
-    cy = sum(q[1] for q in FRONT) / 4 * sh / 1536.0
+    cx = 1376.0 * sw / 2752.0          # 袋の中心（羽根を含む）
+    cy = 762.0 * sh / 1536.0
     n = int(round(dur * fps))
     p = subprocess.Popen(
         [FFMPEG, "-y", "-f", "rawvideo", "-pix_fmt", "rgb24",
