@@ -42,6 +42,34 @@ def push_in(still, out, dur, audio=None, z0=1.00, z1=1.11):
     return out
 
 
+def move(still, out, dur, box0, box1, audio=None):
+    """静止画の中を、box0 から box1 へゆっくり動く。box は (x, y, w, h)。"""
+    src = Image.open(still).convert("RGB")
+    n = int(round(dur * FPS))
+    p = subprocess.Popen(
+        [FFMPEG, "-y", "-f", "rawvideo", "-pix_fmt", "rgb24",
+         "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
+         "-c:v", "libx264", "-crf", "20", "-preset", "medium",
+         "-pix_fmt", "yuv420p", out],
+        stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    for i in range(n):
+        t = i / max(n - 1, 1)
+        t = t * t * (3 - 2 * t)
+        x, y, w, h = [a + (b - a) * t for a, b in zip(box0, box1)]
+        fr = src.resize((W, H), Image.LANCZOS, box=(x, y, x + w, y + h))
+        p.stdin.write(np.asarray(fr).tobytes())
+    p.stdin.close()
+    p.wait()
+    if audio:
+        tmp = out.replace(".mp4", "_a.mp4")
+        subprocess.run([FFMPEG, "-y", "-i", out, "-i", audio,
+                        "-c:v", "copy", "-c:a", "aac", "-b:a", "128k",
+                        "-ar", "48000", "-shortest", tmp],
+                       check=True, capture_output=True)
+        subprocess.run(["mv", tmp, out], check=True)
+    return out
+
+
 def slice_audio(src, out, start, dur):
     subprocess.run([FFMPEG, "-y", "-ss", f"{start:.2f}", "-i", src,
                     "-t", f"{dur:.2f}", "-vn", "-ac", "2", "-ar", "48000",
