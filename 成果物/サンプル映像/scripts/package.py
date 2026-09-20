@@ -355,11 +355,15 @@ def cutout(src, dst, blank=None, pad=48, off=(18, 24), blur=22, dark=0.58):
 
 
 def on_table(table, packpng, out, dur=5.0, tin=0.0, cw=1920, chh=1080,
-             width=0.45, mr=0.030, mb=0.050, at=1.20, rise=0.42, grade=None):
+             width=0.45, mr=0.030, mb=0.050, at=1.835, grade=None):
     """食卓のカットにパッケージを載せる。CMの締めはこの1カットで持たせる。
 
-    パッケージは画面の外（右）から滑り込ませ、少し行き過ぎてから収まる。
-    フェードで薄く出すと商品が幽霊のように見えて締まらない。
+    出し方は動かさない。9/20 に3度変えた。
+     フェードで薄く出す → 商品が幽霊のように見えて締まらない
+     右から滑り込ませて行き過ぎる → 動きが安っぽい
+     （これ）足さない。BGM の旋律が D5 に降りる 11.875秒（このカットの
+      1.835秒）にそのまま出す。ナレーションの「こがねギョーザ」も同じ
+      ところに置いてあるので、音と画が一緒に立つ
 
     階調はここで当てる（build.py 側では素通し）。持ち上げをパッケージにまで
     かけると、刷った赤がピンクに飛ぶ。
@@ -368,16 +372,13 @@ def on_table(table, packpng, out, dur=5.0, tin=0.0, cw=1920, chh=1080,
     pw = int(cw * width)
     mrp, mbp = int(cw * mr), int(chh * mb)
     gf = f"{grade}," if grade else ""
-    # 0 → 1 に進む量。行き過ぎて戻る（イーズアウト・バック）
-    u = f"clip((t-{at})/{rise},0,1)"
-    ez = f"(1+2.70158*pow({u}-1,3)+1.70158*pow({u}-1,2))"
     fc = (
         f"[0:v]trim={tin}:{tin + dur},setpts=PTS-STARTPTS,"
         f"crop='min(iw,ih*{cw}/{chh})':'min(ih,iw*{chh}/{cw})',"
         f"scale={cw}:{chh}:flags=lanczos,setsar=1,{gf}fps=24[bg];"
         f"[1:v]scale={pw}:-1,format=rgba,setpts=PTS-STARTPTS[pk];"
-        f"[bg][pk]overlay=x='W-w-{mrp}+(w+{mrp})*(1-{ez})':"
-        f"y=H-h-{mbp}:shortest=1[v]"
+        f"[bg][pk]overlay=x=W-w-{mrp}:y=H-h-{mbp}:"
+        f"enable='gte(t,{at})':shortest=1[v]"
     )
     subprocess.run([FFMPEG, "-loglevel", "error", "-y", "-i", table,
                     "-loop", "1", "-i", packpng, "-filter_complex", fc,
