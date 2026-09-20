@@ -51,5 +51,51 @@ for (const file of ['index.html', 'about.html', 'privacy.html', 'funnel.html', '
     check(`${file} JS エラーなし`, page.__errors.length === 0, JSON.stringify(page.__errors));
     await page.close();
 }
+/* 出現アニメーションで消えたままにならないこと。
+   threshold を割合で見ていたころ、画面より背の高い塊（ジャンル欄は
+   スマホで 6,400px）は「12%が同時に見える」状態を作れず、
+   中身が丸ごと出てこなかった。狭くて短い画面ほど起きやすい */
+const revealCases = [
+    ['index.html', 375, 667, 'index iPhone SE'],
+    ['index.html', 360, 640, 'index Android 小'],
+    ['index.html', 1280, 900, 'index PC'],
+    ['about.html', 375, 667, 'about iPhone SE'],
+    ['roadmap.html', 375, 667, 'roadmap iPhone SE'],
+    ['record.html', 375, 667, 'record iPhone SE'],
+    ['funnel.html', 375, 667, 'funnel iPhone SE'],
+];
+for (const [file, w, h, label] of revealCases) {
+    const page = await open(browser, { width: w, height: h, mobile: w < 700, page: file });
+    /* 端まで送る。ページが長いので刻んで進める。
+       html に scroll-behavior:smooth が効いているので instant を明示しないと
+       送りきる前にループが終わる */
+    const total = await page.evaluate(() => document.body.scrollHeight);
+    for (let y = 0; y < total + h; y += Math.floor(h * 0.6)) {
+        await page.evaluate((v) => window.scrollTo({ top: v, behavior: 'instant' }), y);
+        await page.waitForTimeout(70);
+    }
+    await page.waitForTimeout(1800);
+    const hidden = await page.evaluate(() => {
+        const out = [];
+        for (const el of document.querySelectorAll('.reveal, .reveal-stagger > *')) {
+            if (Number(getComputedStyle(el).opacity) > 0.5) continue;
+            const t = (el.id || el.className || el.tagName).toString().slice(0, 40);
+            out.push(t);
+        }
+        return out;
+    });
+    check(`${label} 一番下まで送れば出現アニメーションが全部出る`,
+        hidden.length === 0, JSON.stringify(hidden.slice(0, 5)));
+    if (file === 'index.html') {
+        const genres = await page.evaluate(() => {
+            const all = [...document.querySelectorAll('.genre')];
+            return { n: all.length, hidden: all.filter((e) => Number(getComputedStyle(e).opacity) < 0.5).length };
+        });
+        check(`${label} つくれる動画のジャンルが9本とも見える`,
+            genres.n === 9 && genres.hidden === 0, JSON.stringify(genres));
+    }
+    await page.close();
+}
+
 await browser.close();
 report();

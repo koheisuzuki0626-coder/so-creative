@@ -1015,15 +1015,24 @@
         window.addEventListener('scroll', onScroll, { passive: true });
         window.addEventListener('resize', onScroll, { passive: true });
 
-        /* 出現アニメーション */
-        const io = new IntersectionObserver((entries) => {
-            entries.forEach((e) => {
-                if (!e.isIntersecting) return;
-                e.target.classList.add('in');
-                io.unobserve(e.target);
-            });
-        }, { threshold: 0.12 });
-        document.querySelectorAll('.reveal, .reveal-stagger').forEach((el) => io.observe(el));
+        /* 出現アニメーション。
+           threshold を割合（0.12）で見ていたため、画面より背の高い塊は
+           「12%が同時に見える」状態を作れず、永久に出てこなかった。
+           ジャンル欄は9本で 6,400px あり、スマホでは中身が丸ごと
+           出ていなかった。塊の高さに依存しない rootMargin で判定する */
+        const els = document.querySelectorAll('.reveal, .reveal-stagger');
+        if ('IntersectionObserver' in window) {
+            const io = new IntersectionObserver((entries) => {
+                entries.forEach((e) => {
+                    if (!e.isIntersecting) return;
+                    e.target.classList.add('in');
+                    io.unobserve(e.target);
+                });
+            }, { threshold: 0, rootMargin: '0px 0px -12% 0px' });
+            els.forEach((el) => io.observe(el));
+        } else {
+            els.forEach((el) => el.classList.add('in'));
+        }
         // 子要素を少しずつ遅らせて、順番に立ち上がって見えるようにする
         document.querySelectorAll('.reveal-stagger').forEach((group) => {
             [...group.children].forEach((child, i) => {
