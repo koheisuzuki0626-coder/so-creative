@@ -355,24 +355,29 @@ def cutout(src, dst, blank=None, pad=48, off=(18, 24), blur=22, dark=0.58):
 
 
 def on_table(table, packpng, out, dur=5.0, tin=0.0, cw=1920, chh=1080,
-             width=0.45, mr=0.030, mb=0.050, at=1.20, rise=0.45, grade=None):
+             width=0.45, mr=0.030, mb=0.050, at=1.20, rise=0.42, grade=None):
     """食卓のカットにパッケージを載せる。CMの締めはこの1カットで持たせる。
+
+    パッケージは画面の外（右）から滑り込ませ、少し行き過ぎてから収まる。
+    フェードで薄く出すと商品が幽霊のように見えて締まらない。
 
     階調はここで当てる（build.py 側では素通し）。持ち上げをパッケージにまで
     かけると、刷った赤がピンクに飛ぶ。
     """
     import subprocess
     pw = int(cw * width)
+    mrp, mbp = int(cw * mr), int(chh * mb)
     gf = f"{grade}," if grade else ""
+    # 0 → 1 に進む量。行き過ぎて戻る（イーズアウト・バック）
+    u = f"clip((t-{at})/{rise},0,1)"
+    ez = f"(1+2.70158*pow({u}-1,3)+1.70158*pow({u}-1,2))"
     fc = (
         f"[0:v]trim={tin}:{tin + dur},setpts=PTS-STARTPTS,"
         f"crop='min(iw,ih*{cw}/{chh})':'min(ih,iw*{chh}/{cw})',"
         f"scale={cw}:{chh}:flags=lanczos,setsar=1,{gf}fps=24[bg];"
-        f"[1:v]scale={pw}:-1,format=rgba,fade=t=in:st={at}:d={rise}:alpha=1,"
-        f"setpts=PTS-STARTPTS[pk];"
-        f"[bg][pk]overlay=x=W-w-{int(cw * mr)}:"
-        f"y='H-h-{int(chh * mb)}+{int(chh * 0.075)}"
-        f"*max(0\,1-(t-{at})/{rise})':shortest=1[v]"
+        f"[1:v]scale={pw}:-1,format=rgba,setpts=PTS-STARTPTS[pk];"
+        f"[bg][pk]overlay=x='W-w-{mrp}+(w+{mrp})*(1-{ez})':"
+        f"y=H-h-{mbp}:shortest=1[v]"
     )
     subprocess.run([FFMPEG, "-loglevel", "error", "-y", "-i", table,
                     "-loop", "1", "-i", packpng, "-filter_complex", fc,
