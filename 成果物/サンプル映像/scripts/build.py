@@ -30,10 +30,11 @@ TXT_LAG = 0.13      # 文字はブロックより遅れて出す
 TXT_IN, TXT_OUT = 0.22, 0.24
 
 
-def layer(idx, st, en, is_text, b=None):
+def layer(idx, st, en, is_text, b=None, cw=1920):
     """下敷き／文字のレイヤー。基本はどちらも同じ y 式で動かす。
 
     フェードの長さはテロップごとに上書きできる（05 の emo だけ倍近く遅い）。
+    wipe を持つテロップは、文字だけ左から書き出す（CM のテロップの動き）。
     """
     b = b or {}
     out_d = b.get("txt_out", TXT_OUT)
@@ -42,7 +43,14 @@ def layer(idx, st, en, is_text, b=None):
     else:
         fi, d_in = st, b.get("blk_in", BLK_IN)
     fo = en - out_d
-    return (f"[{idx}:v]format=rgba,"
+    wp = ""
+    if is_text and b.get("wipe"):
+        d = b["wipe"]
+        e = b.get("wipe_edge", 90)
+        # X は画素の位置、T は秒。左端から右へ、境目をぼかしながら開けていく
+        wp = (f"geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':"
+              f"a='alpha(X,Y)*clip(({cw}*(T-{fi})/{d}-X)/{e},0,1)',")
+    return (f"[{idx}:v]format=rgba,{wp}"
             f"fade=t=in:st={fi}:d={d_in}:alpha=1,"
             f"fade=t=out:st={fo}:d={out_d}:alpha=1[t{idx}]")
 
@@ -102,7 +110,7 @@ def render_silent(path, cuts, telops, dim, logo, logo_at, dim_at, canvas,
             layers.insert(0, (f"{k}_blk", False, B[k].get("static_underlay", False)))
         for suffix, is_text, static in layers:
             ins += ["-loop", "1", "-t", str(total), "-i", f"{TELOP}/{suffix}.png"]
-            fc.append(layer(idx, st, en, is_text, B[k]))
+            fc.append(layer(idx, st, en, is_text, B[k], cw))
             tex.append((idx, None if static else st,
                         B[k].get("rise", RISE), B[k].get("rise_d", RISE_D)))
             idx += 1

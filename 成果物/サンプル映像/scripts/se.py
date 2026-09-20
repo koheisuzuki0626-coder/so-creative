@@ -490,29 +490,51 @@ def duck_by(x, ctrl, depth=0.42, attack=0.12, release=0.45, lead=0.0):
     return x * (1.0 - depth * g)
 
 
-def voice_04a(dur=15.0, at=11.72, level=1.25, name="vo_kogane.wav"):
-    """締めでパッケージが出るところに、商品名だけをナレーションで入れる。
+def _even(a, win=0.055, amount=0.55, floor=0.06):
+    """台詞の粒を揃える。包絡の逆数を amount ぶんだけ掛ける簡易コンプ。
+
+    「フライパンへ」の語尾のように、尻すぼみになる音が焼き音に食われていた。
+    """
+    n = max(int(win * SR), 1)
+    env = np.convolve(np.abs(a), np.ones(n) / n, mode="same")
+    env = np.maximum(env, floor * max(env.max(), 1e-9))
+    g = (env.max() / env) ** amount
+    return a * np.clip(g, 1.0, 4.0)
+
+
+# 04a のナレーション。テロップと同じ文言を読ませ、最後に商品名。
+# (ファイル, 置く秒) — テロップの出だしより 0.2秒 遅らせて、字が先に立つ形にする
+VO_04A = [("vo_04a_1.wav", 0.60),     # 凍ったまま、フライパンへ！
+          ("vo_04a_2.wav", 4.70),     # 羽根まで、ぱりっと！
+          ("vo_04a_3.wav", 7.70),     # 肉汁、そのまま！
+          ("vo_kogane.wav", 11.72)]   # こがねギョーザ！
+
+
+def voice_04a(dur=15.0, level=1.25, lines=None):
+    """04a のナレーション。テロップを全部読み、締めに商品名を言う。
 
     映像の中の人は喋らないので、ここだけ別のナレーター。
 
-    11.72秒にしてある。11.60 だとピアノが A4 を弾く 11.5625秒の打鍵に
-    語頭の「こ」が重なり、聞き取りで「ウガネ」「フガネ」になっていた。
-    打鍵の減衰に逃がすと通る。
+    締めは 11.72秒。11.60 だとピアノが A4 を弾く 11.5625秒の打鍵に語頭の
+    「こ」が重なり、聞き取りで「ウガネ」「フガネ」になっていた。
     """
     n = int(dur * SR)
     out = np.zeros(n)
-    f = f"{VO}/{name}"
-    if not os.path.exists(f):
-        print(f"  [voice] {f} が無い")
-        return out
-    a = _trim(_read_wav(f))
-    # 子音の抜けを足す。ピアノと環境音の中で語頭が埋もれるのを防ぐ
-    a = a + 0.40 * fft_filter(a, 2400, "hp")
-    a = a * (level * 0.30 / max(np.sqrt(np.mean(a ** 2)), 1e-9))
-    a = np.tanh(a * 1.5) / 1.5
-    p0 = int(at * SR)
-    ln = min(len(a), n - p0)
-    out[p0:p0 + ln] += a[:ln]
+    for name, at in (lines or VO_04A):
+        f = f"{VO}/{name}"
+        if not os.path.exists(f):
+            print(f"  [voice] {f} が無い")
+            continue
+        a = _trim(_read_wav(f))
+        # 子音の抜けを足す。ピアノと環境音の中で語頭が埋もれるのを防ぐ
+        a = a + 0.40 * fft_filter(a, 2400, "hp")
+        a = _even(a)            # 語尾が焼き音に食われるので粒を揃える
+        a = a * (level * 0.30 / max(np.sqrt(np.mean(a ** 2)), 1e-9))
+        a = np.tanh(a * 1.5) / 1.5
+        p0 = int(at * SR)
+        ln = min(len(a), n - p0)
+        if ln > 0:
+            out[p0:p0 + ln] += a[:ln]
     return out
 
 
@@ -521,11 +543,17 @@ def mix(bgm, se, se_level=0.9, path=None, peak=0.9, drive=1.15, voice=None,
     """drive を上げるとサチュレーションが強まり、足音や金具のような
     突出したトランジェントが潰れてピークとRMSの差が縮む。"""
     n = min(len(bgm), len(se))
-    m = bgm[:n] * 0.82 + reverb(se[:n], mix=0.1) * se_level
+    bg = bgm[:n] * 0.82
+    sfx = reverb(se[:n], mix=0.1) * se_level
     if voice is not None:
         v = voice[:n]
-        # 台詞の下だけ音楽と環境音を引く
-        m = duck_by(m, v, depth=duck, lead=duck_lead) + v
+        # 台詞の下だけ音楽と環境音を引く。焼き音は帯域が声と丸かぶりで、
+        # 音楽より先に語尾を食うので深めに引く
+        m = (duck_by(bg, v, depth=duck, lead=duck_lead)
+             + duck_by(sfx, v, depth=min(0.95, duck + 0.20), lead=duck_lead)
+             + v)
+    else:
+        m = bg + sfx
     m = normalize(np.tanh(m * drive), peak)
     if path:
         write_wav(path, m)
@@ -564,10 +592,10 @@ if __name__ == "__main__":
                 peak=0.52 if name == "07" else 0.9,
                 drive=3.2 if name == "07" else 1.15,
                 voice=vo,
-                # 一言だけのナレーションなので深めに、先回りして引く。
-                # 効いたのは先回りのほう。0.16 では語頭の「こ」がピアノに
-                # 潰されて「ホガネ」に聞こえていた（聞き取りで確認）
-                duck=0.75 if name == "04a" else 0.42,
+                # ナレーションの下は深めに、先回りして引く。効いたのは
+                # 先回りのほう。0.16 では語頭がピアノに潰されて「ホガネ」に
+                # 聞こえていた（聞き取りで確認）
+                duck=0.70 if name == "04a" else 0.42,
                 duck_lead=0.22 if name == "04a" else 0.0,
                 path=f"{HERE}/audio_{name}.wav")
         print(f"audio_{name}.wav  BGM {rms_db(b):6.1f}dB  SE {rms_db(s):6.1f}dB  "

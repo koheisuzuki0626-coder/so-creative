@@ -447,6 +447,12 @@ def build_set(table, label=""):
         b["underlay"] = True
         # グラデーションは動かさない（下から持ち上げると下端に隙間ができる）
         b["static_underlay"] = b["style"] in ("scrim", "cm")
+        if b["style"] == "cm":
+            # CM のテロップの動き。190px の持ち上げをやめて 44px を軽く上げ、
+            # 文字は左から書き出す（wipe は build.py の geq で開けている）
+            b["rise"], b["rise_d"] = 44, 0.42
+            b["wipe"], b["wipe_edge"] = 0.62, 120
+            b["txt_lag"], b["txt_in"] = 0.10, 0.20
         if b["style"] == "emo":
             # 下敷きはぼかした暗がりなので動かさない（動くと明るさが波打つ）。
             # 文字は 190px の持ち上げをやめ、28px をゆっくり浮かせる
