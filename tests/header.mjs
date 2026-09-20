@@ -139,5 +139,40 @@ for (const w of [1440, 1280, 1000, 900]) {
     check('黒帯の境目でもヘッダーが読める', worst.ratio >= 4.5, `最小 ${worst.ratio.toFixed(2)}:1 (y=${worst.y})`);
     await page.close();
 }
+/* ---- 並び順：ヘッダーとフッターの順番が、ページの実体と一致するか ----
+   ナビが「制作の流れ → サンプル → 料金」と出しているのにページでは
+   「料金 → サンプル」だった、という食い違いが実際に起きた。
+   メニューを見て行き先を決める人に嘘をつかないよう、順番を固定する */
+{
+    const page = await open(browser, { width: 1280 });
+    const orderOf = async (sel) => page.evaluate((s) => {
+        const links = [...document.querySelectorAll(s)];
+        const out = [];
+        for (const el of links) {
+            const id = (el.getAttribute('href') || el.dataset.for || '').replace(/^#/, '');
+            if (!id || id.includes('.html') || id === 'top') continue;
+            const t = document.getElementById(id);
+            if (!t) { out.push({ id, y: -1 }); continue; }
+            out.push({ id, y: Math.round(t.getBoundingClientRect().top + scrollY) });
+        }
+        return out;
+    }, sel);
+
+    for (const [sel, label] of [
+        ['.nav-main .nav-item, .nav-main .nav-trigger', 'ヘッダー'],
+        ['.menu-links a', 'メニュー'],
+        ['nav[aria-labelledby="f-site-h"] .f-list a', 'フッターのサイトマップ'],
+    ]) {
+        const o = await orderOf(sel);
+        check(`${label} の行き先がすべて実在する`,
+            o.every((x) => x.y >= 0), JSON.stringify(o.filter((x) => x.y < 0)));
+        const ys = o.filter((x) => x.y >= 0).map((x) => x.y);
+        const sorted = ys.every((y, i) => i === 0 || y >= ys[i - 1]);
+        check(`${label} の並びがページの並びと一致する`, sorted,
+            JSON.stringify(o.filter((x) => x.y >= 0).map((x) => x.id)));
+    }
+    await page.close();
+}
+
 await browser.close();
 report();
