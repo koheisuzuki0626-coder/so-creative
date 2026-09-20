@@ -1573,3 +1573,92 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
 /* ジャンルのカードの中では、縦型だけが飛び抜けて高くなり、同じ行の
    ほかのカードの下に大きな余白ができる。カードの中だけ幅を絞る */
 .genre .sample-video.is-vertical { max-width: 196px; }
+
+/* 写真1枚 → 動画 の並び。9/20 に「制作サンプル」欄と入れ替えた。
+   左右のカードは同じ 9:16 なので、高さが自然に揃う */
+.ba {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: start;
+    gap: 22px;
+    /* 見出し・本文と左端を揃える。中央寄せにすると3つの左端ができる */
+    max-width: 820px;
+    margin: 0;
+}
+.ba-item { margin: 0; min-width: 0; }
+.ba-step {
+    margin: 0 0 10px;
+    font-size: .82rem;
+    font-weight: 600;
+    letter-spacing: .12em;
+    color: var(--accent-ink);
+}
+.ba-media {
+    width: 100%;
+    /* width/height 属性を入れてあるので、height を auto にしないと
+       属性の 1280px がそのまま高さになる */
+    height: auto;
+    display: block;
+    aspect-ratio: 9 / 16;
+    object-fit: cover;
+    border-radius: 18px;
+    border: 1px solid var(--line);
+    background: #000;
+    color: #fff;
+}
+.ba-cap {
+    margin: 12px 0 0;
+    font-size: .88rem;
+    color: var(--ink-dim);
+}
+.ba-arrow {
+    margin: 0;
+    align-self: center;
+    color: var(--ink-dim);
+    font-size: 1.5rem;
+    line-height: 1;
+    /* 矢印は装飾。読み上げには出さないので文字ではなく罫で描く */
+    width: 34px;
+    height: 1px;
+    background: var(--line);
+    position: relative;
+}
+.ba-arrow::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 50%;
+    width: 9px;
+    height: 9px;
+    border-top: 1px solid var(--ink-dim);
+    border-right: 1px solid var(--ink-dim);
+    transform: translateY(-50%) rotate(45deg);
+}
+.ba-notes { margin: 30px 0 0; }
+.ba-notes p {
+    margin: 0 0 14px;
+    color: var(--ink-2);
+    line-height: 1.85;
+    font-size: .95rem;
+}
+.ba-notes p:last-child { margin-bottom: 0; }
+
+@media (max-width: 700px) {
+    .ba {
+        grid-template-columns: 1fr;
+        gap: 14px;
+        max-width: 420px;
+    }
+    .ba-arrow {
+        justify-self: center;
+        width: 1px;
+        height: 30px;
+    }
+    .ba-arrow::after {
+        right: 50%;
+        top: auto;
+        bottom: 0;
+        transform: translateX(50%) rotate(135deg);
+    }
+    .ba-notes p { font-size: .9rem; }
+}

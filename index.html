@@ -230,7 +230,7 @@
                     <li><a href="#service">事業内容</a></li>
                     <li><a href="#why">撮影しない理由</a></li>
                     <li><a href="#process">制作の流れ</a></li>
-                    <li><a href="#works">制作サンプル</a></li>
+                    <li><a href="#works">写真1枚から</a></li>
                     <li><a href="#plans">料金プラン</a></li>
                     <li><a href="#faq">よくあるご質問</a></li>
                     <li><a href="about.html#company">会社概要</a></li>
@@ -262,7 +262,7 @@
             </ul>
             <div class="hero-actions">
                 <a href="#contact" class="pill pill-solid">相談してみる</a>
-                <a href="#works" class="pill pill-ghost">制作サンプルを見る</a>
+                <a href="#works" class="pill pill-ghost">写真1枚から作った例を見る</a>
             </div>
         </div>
         <div class="scroll-hint">SCROLL</div>
@@ -744,49 +744,40 @@
         </div>
     </section>
 
+    <!-- 9/20 に「制作サンプル」欄を差し替えた。ジャンル欄に同じ動画が並んで
+         いて中身が重複していたため。代わりに、商品写真1枚から動画までを
+         並べて見せる。実在の商品・人物は使っていない -->
     <section class="section" id="works">
         <div class="wrap">
             <div class="section-head reveal">
-                <p class="eyebrow">Works</p>
-                <h2 class="headline">制作サンプル。</h2>
-                <p class="body-text measure">8つのジャンルすべてを、<strong>架空の題材で1本ずつ自社制作</strong>したサンプルです。撮影は行っていません。カードを選ぶと、各ジャンルの解説とあわせてその場で再生できます。クライアント事例は、初案件のあと掲載の許諾をいただいたうえで載せていきます。</p>
+                <p class="eyebrow">Before / After</p>
+                <h2 class="headline">写真1枚が、こうなります。</h2>
+                <p class="body-text measure">商品の写真が1枚あれば、そこから縦型の動画まで作れます。下は<strong>架空</strong>のハンドクリーム「まもりば」で試したものです。商品も、出てくる人も実在しません。</p>
             </div>
-            <!-- 9/19 に YouTube の自動読み込みをやめ、自前ホスティングの
-                 サンプルへの静的リンクに置き換えた。HPから外部チャンネルへの
-                 導線と依存を無くすため。JSが無くても一覧が出る -->
-            <div class="grid" id="works-grid">
-                <a class="card" href="#genre-company">
-                    <div class="thumb"><img src="assets/works/company-60s.jpg" alt="" loading="lazy"><div class="play" aria-hidden="true"></div></div>
-                    <div class="card-body"><div class="meta">サンプル · 60秒</div><h3>会社紹介</h3><p>架空の町工場。ナレーション切り替え</p></div>
-                </a>
-                <a class="card" href="#genre-service">
-                    <div class="thumb"><img src="assets/works/service-15s.jpg" alt="" loading="lazy"><div class="play" aria-hidden="true"></div></div>
-                    <div class="card-body"><div class="meta">サンプル · 15秒</div><h3>サービス紹介</h3><p>架空の現場日報アプリ</p></div>
-                </a>
-                <a class="card" href="#genre-recruit">
-                    <div class="thumb"><img src="assets/works/recruit-3min.jpg" alt="" loading="lazy"><div class="play" aria-hidden="true"></div></div>
-                    <div class="card-body"><div class="meta">サンプル · 3分</div><h3>採用</h3><p>架空の町工場・36カット</p></div>
-                </a>
-                <a class="card" href="#genre-ad">
-                    <div class="thumb"><img src="assets/works/cm-15s-taste.jpg" alt="" loading="lazy"><div class="play" aria-hidden="true"></div></div>
-                    <div class="card-body"><div class="meta">サンプル · 15秒</div><h3>広告・CM</h3><p>架空の冷凍餃子</p></div>
-                </a>
-                <a class="card" href="#genre-sns">
-                    <div class="thumb"><img src="assets/works/sns-15s-vertical.jpg" alt="" loading="lazy"><div class="play" aria-hidden="true"></div></div>
-                    <div class="card-body"><div class="meta">サンプル · 15秒・縦型</div><h3>SNSショート</h3><p>架空のコインランドリー</p></div>
-                </a>
-                <a class="card" href="#genre-event">
-                    <div class="thumb"><img src="assets/works/exhibition-15s.jpg" alt="" loading="lazy"><div class="play" aria-hidden="true"></div></div>
-                    <div class="card-body"><div class="meta">サンプル · 15秒・無音</div><h3>展示会・イベント</h3><p>ブースのループ再生用</p></div>
-                </a>
-                <a class="card" href="#genre-internal">
-                    <div class="thumb"><img src="assets/works/internal-15s.jpg" alt="" loading="lazy"><div class="play" aria-hidden="true"></div></div>
-                    <div class="card-body"><div class="meta">サンプル · 15秒</div><h3>社内向け</h3><p>架空の倉庫の安全手順</p></div>
-                </a>
-                <a class="card" href="#genre-animation">
-                    <div class="thumb"><img src="assets/works/animation-60s.jpg" alt="" loading="lazy"><div class="play" aria-hidden="true"></div></div>
-                    <div class="card-body"><div class="meta">サンプル · 60秒</div><h3>アニメーション・図解</h3><p>架空の健保の健診案内</p></div>
-                </a>
+            <div class="ba reveal">
+                <figure class="ba-item">
+                    <p class="ba-step">これが</p>
+                    <img class="ba-media" src="assets/works/ugc-mamoriha-before.jpg"
+                         width="720" height="1280" loading="lazy" decoding="async"
+                         alt="架空のハンドクリーム「まもりば」の商品写真。洗面台に置かれたセージグリーンのチューブ">
+                    <figcaption class="ba-cap">商品写真 1枚</figcaption>
+                </figure>
+                <p class="ba-arrow" aria-hidden="true"></p>
+                <figure class="ba-item">
+                    <p class="ba-step">こうなりました</p>
+                    <video class="ba-media" controls preload="none" playsinline
+                           poster="assets/works/ugc-mamoriha-talk.jpg"
+                           src="assets/works/ugc-mamoriha-talk.mp4"
+                           aria-label="架空のハンドクリーム「まもりば」のUGC風サンプル映像 14秒">
+                        お使いのブラウザでは再生できません。
+                    </video>
+                    <figcaption class="ba-cap">縦型動画 14秒・音あり</figcaption>
+                </figure>
+            </div>
+            <div class="ba-notes measure reveal">
+                <p><strong>商品が大きく映るところは、左の写真をそのまま使っています。</strong>人が手に取って実演する部分だけが生成です。商品の形や色が勝手に変わらないよう、見せ場は実物の写真で持たせています。</p>
+                <p><strong>ラベルは画像編集ではなく、プログラムで組んで刷り込んでいます。</strong>ロゴや商品名、内容量の差し替えは刷り直すだけで済むので、パッケージ違いや名称変更にもそのまま追随できます。</p>
+                <p><strong>話している内容は、パッケージに書いてあることと、画面で実際に起きていることだけです。</strong>「使ってよかった」「肌が変わった」のような体験談や効能は言わせていません。実際のご依頼でも、御社が出せる表現の範囲内で台本を組みます。</p>
             </div>
         </div>
     </section>
@@ -894,7 +885,7 @@
                     <li><a href="#genres">Genres — つくれる動画</a></li>
                     <li><a href="#why">Why AI — 撮影しない理由</a></li>
                     <li><a href="#process">Process — 制作の流れ</a></li>
-                    <li><a href="#works">Works — 制作サンプル</a></li>
+                    <li><a href="#works">Works — 写真1枚から</a></li>
                     <li><a href="#plans">Plans — 料金プラン</a></li>
                     <li><a href="#faq">FAQ — よくあるご質問</a></li>
                     <li><a href="about.html">About — so. について</a></li>

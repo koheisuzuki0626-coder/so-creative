@@ -407,15 +407,28 @@ check('YouTube・Instagram への導線が無い',
     !/youtube\.com|youtube-nocookie|instagram\.com|i\.ytimg\.com/i.test(idx + about + privacy),
     ((idx + about + privacy).match(/.{0,30}(youtube|instagram|ytimg)[^"'<]{0,30}/i) || [''])[0]);
 check('sameAs を出していない', !org.sameAs);
-/* 実績欄はサンプル8本への静的リンク。JSが無くても一覧が出る */
+/* 9/20 に「制作サンプル」欄を Before / After に入れ替えた。
+   ジャンル欄と中身が重複していたため。写真1枚と、そこから作った動画を並べる */
 {
-    const cards = await page.locator('#works-grid .card').count();
-    check('制作サンプル欄に8枚のカードがある', cards === 8, String(cards));
-    const hrefs = await page.locator('#works-grid .card').evaluateAll(
-        (els) => els.map((e) => e.getAttribute('href')));
-    check('カードは各ジャンルへ飛ぶ', hrefs.every((h) => /^#genre-/.test(h)), hrefs.join(','));
-    check('実績欄がサンプルだと明言している',
-        /架空の題材で1本ずつ自社制作/.test(await page.locator('#works').innerText()));
+    const ba = await page.locator('#works').innerText();
+    check('写真1枚から動画までを並べている',
+        (await page.locator('#works .ba-item').count()) === 2);
+    check('左は商品写真', (await page.locator('#works .ba-item img.ba-media').count()) === 1);
+    check('右は動画', (await page.locator('#works .ba-item video.ba-media').count()) === 1);
+    check('「これが」「こうなりました」の並びになっている',
+        /これが/.test(ba) && /こうなりました/.test(ba));
+    check('商品も人も架空だと書いてある', /架空/.test(ba) && /実在しません/.test(ba));
+    check('商品カットは写真そのままだと書いてある',
+        /左の写真をそのまま使っています/.test(ba));
+    check('ラベルを刷り直せると書いてある', /刷り直すだけ/.test(ba));
+    check('体験談や効能を言わせていないと書いてある',
+        /体験談や効能は言わせていません/.test(ba));
+    check('動画を自前で配信している',
+        /assets\/works\/ugc-mamoriha-talk\.mp4/.test(idx) && !/youtube\.com\/embed/.test(idx));
+    check('ポスター画像を指定している',
+        /poster="assets\/works\/ugc-mamoriha-talk\.jpg"/.test(idx));
+    check('商品写真に代替テキストがある',
+        ((await page.locator('#works .ba-item img.ba-media').getAttribute('alt')) || '').length > 10);
     check('videos.json をどのページも読んでいない', !/videos\.json/.test(idx + about + privacy));
 }
 check('共有トークンを貼っていない', !/stkn=|utm_source=/.test(idx + about + privacy));
