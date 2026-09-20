@@ -1521,6 +1521,27 @@ def run():
           "_trend_redo.pop(cid, None)" in _srcK, True)
     # 事故（2026-09-20〜21）：「見てきます…」と告げたのに、視聴できない回は
     # 何も返さず終わり、2日続けて音信不通に見えた。
+    print("■ リサーチの質（何を聞くか）")
+    # 2026-09-21：前は映画学校の設問で、返ってくるのが「【】で煽る」のような
+    # 一般論だった。撮影しない前提なので、実写でしか撮れない画を褒められても使えない。
+    check("AIで再現できるかを必ず聞く",
+          "AIで再現できるか" in bot.VIDEO_STUDY_PROMPT, True)
+    check("そのまま真似できる粒度を聞く（冒頭3秒・カット数・テロップ）",
+          all(w in bot.VIDEO_STUDY_PROMPT
+              for w in ("冒頭3秒", "カット割り", "テロップ")), True)
+    check("推測で書かせない",
+          "推測では書かず" in bot.VIDEO_STUDY_PROMPT
+          and "不明" in bot.VIDEO_STUDY_PROMPT, True)
+    check("明日試すことを1つ出させる",
+          "明日の制作で試すこと" in bot.VIDEO_STUDY_PROMPT, True)
+    _srcQ = bot_src()
+    check("まとめは受注につなげる形にする",
+          "AI映像制作の受注につなげる" in _srcQ, True)
+    check("一般論を書かせない", "一般論（【】で煽る・数字を入れる等）は書かない" in _srcQ, True)
+    check("過去の知見を渡して重複を防ぐ",
+          "_recent_insights(1500)" in _srcQ
+          and "同じことを繰り返さない" in _srcQ, True)
+
     check("視聴できなかった回も結末を返す",
           "枠が戻ったらやり直します" in _srcK, True)
     check("静かモードでは進捗も出さない",
