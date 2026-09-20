@@ -78,10 +78,13 @@ def render_silent(path, cuts, telops, dim, logo, logo_at, dim_at, canvas,
         # 使い分けるために足した。倍率が違えばサイズ違いの別カットに見える
         f, tin, dur = cut[0], cut[1], cut[2]
         z = cut[3] if len(cut) > 3 else 1.0
+        # 5つ目はこのカットだけの階調。"" を渡すと grade をかけない。
+        # 暗い実写に合わせた持ち上げを、明るい静止画にまでかけると白く飛ぶ
+        g = cut[4] if len(cut) > 4 else grade
         ins += ["-i", f]
         # 素材のアスペクト比が出力と違うことがある（kling は 1928x1076 を返す）。
         # 出力比でセンタークロップしてから合わせる
-        gf = f"{grade}," if grade else ""
+        gf = f"{g}," if g else ""
         fc.append(f"[{i}:v]trim={tin}:{tin + dur},setpts=PTS-STARTPTS,"
                   f"crop='min(iw,ih*{ar})/{z}':'min(ih,iw*{ch}/{cw})/{z}',"
                   f"scale={cw}:{ch}:flags=lanczos,setsar=1,{gf}fps=24[v{i}]")
@@ -237,7 +240,8 @@ if __name__ == "__main__":
                (f"{GEN}/04_c2.mp4", 0.04, 1.6),         # 箸で持ち上げ
                (f"{GEN}/04_c2.mp4", 3.60, 1.2, 1.35),   # 肉汁（寄り）
                (f"{GEN}/04_c3_v3m.mp4", 0.80, 1.8),     # 食卓
-               (f"{GEN}/04_pack.mp4", 0.00, 3.2)],      # パッケージ
+               # パッケージは刷った静止画なので、持ち上げはかけない
+               (f"{GEN}/04_pack.mp4", 0.00, 3.2, 1.0, "")],
               # テロップはカットの切れ目で終える（次の画に食い込ませない）
               [("04a_1", 0.40, 4.15), ("04a_2", 4.50, 7.05),
                ("04a_3", 7.50, 9.90)],
