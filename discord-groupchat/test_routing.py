@@ -1519,6 +1519,12 @@ def run():
           "_trend_redo.setdefault(cid, [])" in _srcK, True)
     check("やり直しの記憶は毎回捨てる（回数で管理するため）",
           "_trend_redo.pop(cid, None)" in _srcK, True)
+    # 事故（2026-09-20〜21）：「見てきます…」と告げたのに、視聴できない回は
+    # 何も返さず終わり、2日続けて音信不通に見えた。
+    check("視聴できなかった回も結末を返す",
+          "枠が戻ったらやり直します" in _srcK, True)
+    check("静かモードでは進捗も出さない",
+          'if TREND_QUIET and "リサーチ" in (name or ""):' in _srcK, True)
     check("回すことを本人にも伝える（何回目／上限）",
           "リサーチを回します" in _srcK and "上限" in _srcK, True)
     # 本人の希望（2026-09-18）「ずっと、定期的に」。枠が戻るたびに回す。

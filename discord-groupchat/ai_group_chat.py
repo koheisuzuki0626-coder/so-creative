@@ -763,6 +763,11 @@ def _wants_heartbeat(name):
     未計測なら流す（黙り込ませるより、うるさい方がまし）。"""
     if not HEARTBEAT_SEC:
         return False
+    # リサーチは静かモードのとき、途中経過も出さない（レポートだけ出す約束）。
+    # ここだけ別系統で流れていて、告知と進捗は出るのに結果が出ない、という
+    # ちぐはぐな見え方になっていた（2026-09-20）。
+    if TREND_QUIET and "リサーチ" in (name or ""):
+        return False
     st = _task_stats(name)
     return not (st and st[2] < HEARTBEAT_SEC)
 
@@ -6276,6 +6281,16 @@ async def _run_trend_all(cid, genres):
         _mark_trend_run()      # 絵を見られた巡だけを1日の上限に数える
     else:
         _mark_trend_fail()     # 見られなかった。次までの間隔を伸ばす
+        # 事故（2026-09-20〜21）：「見てきます…」と告げたのに、視聴できない回は
+        # 何も返さず終わっていた。静かモードで理由も出ないので、2日続けて
+        # 音信不通に見えた。【開始を告げたなら、必ず結末を告げる】。
+        try:
+            await send_as(orch, cid,
+                          "📭 今回は Gemini の枠が戻らず、動画を見て分析できません"
+                          "でした。タイトルだけの分析はしません（映像のヒントが"
+                          "取れないため）。枠が戻ったらやり直します。")
+        except Exception:  # noqa: BLE001
+            pass
 
 
 def _todays_genre(query, day=None):
