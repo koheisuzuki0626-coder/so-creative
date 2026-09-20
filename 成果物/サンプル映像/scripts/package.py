@@ -19,8 +19,9 @@ FONTS = "/tmp/fonts"
 GOTHIC = f"{FONTS}/NotoSansJP-Black.ttf"
 ZEN = f"{FONTS}/ZenKakuNew-Black.ttf"
 
-SS = 3
-SW, SH = 1000, 700           # 袋の面の見かけの比に合わせた原稿
+SS = 2
+DW, DH = 1000, 700           # 意匠を組む座標
+SW, SH = 1500, 1050          # 原稿の解像度。袋の面（約1514px 幅）より大きく取る
 
 # 平袋の面（2752px の写真から実測）。(y, 見かけの半幅, 中心x)
 PROF = [(250.0, 730.0, 1399.0), (770.0, 757.0, 1399.0), (1290.0, 730.0, 1399.0)]
@@ -29,8 +30,11 @@ FILL = 0.98
 BULGE = 0.45                 # 枕型のふくらみ
 
 # 金の斜め帯（面に対する割合）。左下の起点・右へ上がる量・太さ
-BAND_X0, BAND_Y0, BAND_RISE, BAND_TH = 0.38, 0.86, 0.28, 0.155
-COPY = "羽根パリッ、肉汁じゅわり！"
+BAND_X0, BAND_Y0, BAND_RISE, BAND_TH = 0.50, 0.795, 0.170, 0.190
+PHOTO_FILL, PHOTO_CY = 1.0, 0.50   # 刷る写真の切り方
+
+COPY1 = "羽根パリッ、"
+COPY2 = "肉汁じゅわり！"
 
 RED = (183, 27, 31)
 RED_D = (126, 14, 18)
@@ -71,118 +75,148 @@ def _lift(img, gamma=0.60, sat=1.18):
     return Image.fromarray((a * 255).astype(np.uint8))
 
 
-def build_art(photo):
+def build_art(photo, hero=None):
+    """袋の面いっぱいの意匠を返す。photo は商品写真、hero は切り抜きの1個。"""
     W, H = SW * SS, SH * SS
-    img = Image.new("RGB", (W, H), RED)
-    d = ImageDraw.Draw(img)
+    k = W / DW                      # 意匠の座標（DW×DH）から画素への倍率
 
-    # 地の赤に上下のグラデーション（ベタ1色は印刷に見えない）
+    # 地の赤。上下にグラデーションを入れる（ベタ1色は印刷に見えない）
     gr = np.linspace(0, 1, H)[:, None]
     base = np.zeros((H, W, 3), np.float32)
     for i in range(3):
-        base[..., i] = RED[i] * (1.0 - 0.14 * gr) + RED_D[i] * (0.14 * gr)
+        base[..., i] = RED[i] * (1.0 - 0.16 * gr) + RED_D[i] * (0.16 * gr)
     img = Image.fromarray(np.clip(base, 0, 255).astype(np.uint8))
-    d = ImageDraw.Draw(img)
 
-    # 左に商品写真を断ち切りで置く。右端だけ締めて抜く
-    pw, ph = int(680 * SS), H
-    p = _lift(photo, gamma=0.52, sat=1.22)
+    # 商品写真を面の左いっぱいに敷く。右だけ抜いて赤に渡す
+    pw, ph = int(700 * k), H
+    # 袋に刷る写真は、焼き上がりの俯瞰から鍋の内側だけを正方で切ったもの
+    # （04_pack_photo.png）。皿のカットは台所の背景が入って左半分が沈んだ
+    p = _lift(photo, gamma=0.62, sat=1.14)
     sw, sh = p.size
-    # 皿に寄せて切る（引きで撮っているので、そのままだと餃子が小さく天井が入る）
-    ch = int(sh * 0.62)
+    ch = int(sh * PHOTO_FILL)
     cw = int(ch * pw / ph)
-    cx0 = int(sw * 0.50 - cw / 2)
-    cy0 = int(sh * 0.76 - ch / 2)
-    cx0 = max(0, min(sw - cw, cx0))
-    cy0 = max(0, min(sh - ch, cy0))
+    cx0 = max(0, min(sw - cw, int(sw * 0.50 - cw / 2)))
+    cy0 = max(0, min(sh - ch, int(sh * PHOTO_CY - ch / 2)))
     p = p.crop((cx0, cy0, cx0 + cw, cy0 + ch)).resize((pw, ph), Image.LANCZOS)
-    # 抜きの境界は真っ直ぐ立てない。下に向かって少し広がる斜めにする
-    fade = int(56 * SS)
     xx = np.arange(pw)[None, :].astype(np.float32)
-    ed = (np.linspace(560, 660, ph, dtype=np.float32) * SS)[:, None]
-    mk = np.clip((ed - xx) / fade, 0, 1) ** 0.75
+    ed = (np.linspace(575, 675, ph, dtype=np.float32) * k)[:, None]
+    mk = np.clip((ed - xx) / (140 * k), 0, 1) ** 0.85
     img.paste(p, (0, 0), Image.fromarray((mk * 255).astype(np.uint8)))
-    # 境界に金の細い罫を通して、貼り込みに見えないようにする
-    ru = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    ImageDraw.Draw(ru).line([(560 * SS, 0), (660 * SS, H)],
-                            fill=GOLD + (215,), width=int(3.5 * SS))
-    img.paste(ru, (0, 0), ru)
     d = ImageDraw.Draw(img)
 
-    # 金の斜め帯。左下から右へ緩く上がり、面の中で終わる
+    f_logo_s = ImageFont.truetype(GOTHIC, int(13 * k))
+    f_logo = ImageFont.truetype(GOTHIC, int(31 * k))
+    f_n1 = ImageFont.truetype(GOTHIC, int(80 * k))
+    f_n2 = ImageFont.truetype(GOTHIC, int(218 * k))
+    f_rom = ImageFont.truetype(GOTHIC, int(46 * k))
+    f_copy1 = ImageFont.truetype(GOTHIC, int(40 * k))
+    f_copy2 = ImageFont.truetype(GOTHIC, int(44 * k))
+    f_badge_s = ImageFont.truetype(GOTHIC, int(17 * k))
+    f_badge = ImageFont.truetype(GOTHIC, int(37 * k))
+    f_tiny = ImageFont.truetype(ZEN, int(12 * k))
+    f_box = ImageFont.truetype(ZEN, int(21 * k))
+    f_box_s = ImageFont.truetype(ZEN, int(14 * k))
+
+    # 右下の金の斜め帯。上に細い罫を1本、そのうえにコピーを2行
     band = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     bd = ImageDraw.Draw(band)
-    bx = [(BAND_X0 * W, BAND_Y0 * H), (W, (BAND_Y0 - BAND_RISE) * H),
-          (W, (BAND_Y0 - BAND_RISE + BAND_TH) * H),
-          (BAND_X0 * W, (BAND_Y0 + BAND_TH) * H)]
-    bd.polygon(bx, fill=GOLD + (255,))
-    bd.line([bx[0], bx[1]], fill=GOLD_D + (255,), width=int(2 * SS))
-    bd.line([bx[3], bx[2]], fill=GOLD_D + (255,), width=int(2 * SS))
+    x0, x1 = BAND_X0 * DW, DW
+    yt0, yt1 = BAND_Y0 * DH, (BAND_Y0 - BAND_RISE) * DH
+    th = BAND_TH * DH
+    bd.polygon([(x0 * k, yt0 * k), (x1 * k, yt1 * k),
+                (x1 * k, (yt1 + th) * k), (x0 * k, (yt0 + th) * k)],
+               fill=GOLD + (255,))
+    bd.line([(x0 * k, (yt0 - 13) * k), (x1 * k, (yt1 - 13) * k)],
+            fill=GOLD + (235,), width=int(4 * k))
     img.paste(band, (0, 0), band)
     d = ImageDraw.Draw(img)
 
-    f_logo_s = ImageFont.truetype(GOTHIC, int(13 * SS))
-    f_logo = ImageFont.truetype(GOTHIC, int(30 * SS))
-    f_n1 = ImageFont.truetype(GOTHIC, int(104 * SS))
-    f_n2 = ImageFont.truetype(GOTHIC, int(158 * SS))
-    f_rom = ImageFont.truetype(GOTHIC, int(32 * SS))
-    f_copy = ImageFont.truetype(GOTHIC, int(37 * SS))
-    f_badge_s = ImageFont.truetype(GOTHIC, int(20 * SS))
-    f_badge = ImageFont.truetype(GOTHIC, int(34 * SS))
-    f_box = ImageFont.truetype(ZEN, int(22 * SS))
-    f_box_s = ImageFont.truetype(ZEN, int(15 * SS))
-
-    # 左上：ブランドの白箱（写真の上に乗せる）
-    bx0, by0, bx1, by1 = 26 * SS, 24 * SS, 250 * SS, 112 * SS
-    d.rounded_rectangle([bx0, by0, bx1, by1], radius=8 * SS, fill=WHITE)
-    d.text(((bx0 + bx1) / 2, by0 + 10 * SS), "FRESH FROZEN", font=f_logo_s,
-           fill=(120, 110, 104), anchor="mt")
-    d.text(((bx0 + bx1) / 2, by0 + 32 * SS), "こがね食品", font=f_logo,
-           fill=RED, anchor="mt")
-
-    # 商品名。白抜きに濃い縁。2段に割って大きく見せる
-    ncx = 748 * SS
-    _tt(d, ncx, 150 * SS, "こがね", f_n1, 6 * SS, WHITE,
-        stroke=int(11 * SS), stroke_fill=(52, 8, 10))
-    _tt(d, ncx, 258 * SS, "餃子", f_n2, 10 * SS, WHITE,
-        stroke=int(14 * SS), stroke_fill=(52, 8, 10))
-    d.text((ncx, 438 * SS), "G Y O Z A", font=f_rom, fill=GOLD, anchor="mt")
-
-    # 金帯の上にコピー。帯と同じ角度に倒して、帯の中心線に乗せる
-    ang = math.degrees(math.atan2(BAND_RISE * H, (1 - BAND_X0) * W))
-    tw = int(_tw(d, COPY, f_copy, 2 * SS)) + int(20 * SS)
-    cop = Image.new("RGBA", (tw, int(64 * SS)), (0, 0, 0, 0))
-    _tt(ImageDraw.Draw(cop), tw / 2, int(6 * SS), COPY, f_copy, 2 * SS,
-        RED_D + (255,))
+    ang = math.degrees(math.atan2((yt0 - yt1) * k, (x1 - x0) * k))
+    lines = [(COPY1, f_copy1), (COPY2, f_copy2)]
+    tw = int(max(_tw(d, t, f, 2 * k) for t, f in lines)) + int(26 * k)
+    cop = Image.new("RGBA", (tw, int(106 * k)), (0, 0, 0, 0))
+    cd = ImageDraw.Draw(cop)
+    yy = int(4 * k)
+    for t, f in lines:
+        _tt(cd, tw / 2, yy, t, f, 2 * k, RED_D + (255,))
+        yy += int(49 * k)
     cop = cop.rotate(ang, expand=True, resample=Image.BICUBIC)
-    # 帯の中心線上の、コピーを乗せる点
-    mx = 0.685
-    my = BAND_Y0 - BAND_RISE * (mx - BAND_X0) / (1 - BAND_X0) + BAND_TH / 2
+    mx = 0.76
+    my = (yt0 - (yt0 - yt1) * (mx * DW - x0) / (x1 - x0) + th / 2) / DH
     img.paste(cop, (int(mx * W - cop.width / 2), int(my * H - cop.height / 2)),
               cop)
 
-    # 赤丸バッジ
-    r = 62 * SS
-    cx2, cy2 = 492 * SS, 192 * SS
-    d.ellipse([cx2 - r, cy2 - r, cx2 + r, cy2 + r], fill=RED_D,
-              outline=GOLD, width=int(4 * SS))
-    d.text((cx2, cy2 - 38 * SS), "元祖", font=f_badge_s, fill=GOLD, anchor="mt")
-    d.text((cx2, cy2 - 8 * SS), "羽根", font=f_badge, fill=WHITE, anchor="mt")
+    # 右上に切り抜きの1個。参考と同じで、箸で持ち上げたところ
+    if hero is not None:
+        hw = int(392 * k)
+        hh = int(hw * hero.height / hero.width)
+        hz = hero.resize((hw, hh), Image.LANCZOS)
+        sh_ = Image.new("RGBA", (hw, hh), (0, 0, 0, 0))
+        sh_.paste((0, 0, 0, 95), (0, 0), hz.split()[3])
+        sh_ = sh_.filter(ImageFilter.GaussianBlur(9 * k / 3))
+        img.paste(sh_, (int(600 * k), int(28 * k)), sh_)
+        img.paste(hz, (int(596 * k), int(20 * k)), hz)
+        d = ImageDraw.Draw(img)
 
-    # 下の情報の小箱
-    bxs = [("要冷凍", None), ("12個入り", "(300g)"), ("フライパン", "ひとつで")]
-    x = 26 * SS
+    # 商品名。写真の上にまたがらせて、面の幅いっぱいに使う
+    ncx = 468 * k
+    sx, sy = int(7 * k), int(9 * k)     # 影
+    _tt(d, ncx + sx, 208 * k + sy, "こがね", f_n1, 10 * k, (70, 10, 12),
+        stroke=int(9 * k), stroke_fill=(70, 10, 12))
+    _tt(d, ncx, 208 * k, "こがね", f_n1, 10 * k, WHITE,
+        stroke=int(9 * k), stroke_fill=(46, 6, 8))
+    _tt(d, ncx + sx, 286 * k + sy, "餃子", f_n2, 14 * k, (70, 10, 12),
+        stroke=int(17 * k), stroke_fill=(70, 10, 12))
+    _tt(d, ncx, 286 * k, "餃子", f_n2, 14 * k, WHITE,
+        stroke=int(17 * k), stroke_fill=(46, 6, 8))
+    _tt(d, ncx, 528 * k, "GYOZA", f_rom, 11 * k, GOLD,
+        stroke=int(5 * k), stroke_fill=(70, 10, 12))
+
+    # 左上：ブランドの白箱
+    bx0, by0, bx1, by1 = 30 * k, 26 * k, 254 * k, 118 * k
+    d.rounded_rectangle([bx0, by0, bx1, by1], radius=9 * k, fill=WHITE)
+    d.text(((bx0 + bx1) / 2, by0 + 11 * k), "FRESH FROZEN", font=f_logo_s,
+           fill=(120, 110, 104), anchor="mt")
+    d.text(((bx0 + bx1) / 2, by0 + 33 * k), "こがね食品", font=f_logo,
+           fill=RED, anchor="mt")
+
+    # 左下：縦長の楕円バッジ（参考の「元祖 油・水なし」の位置）
+    ecx, ecy, ehw, ehh = 116 * k, 498 * k, 74 * k, 86 * k
+    d.ellipse([ecx - ehw, ecy - ehh, ecx + ehw, ecy + ehh], fill=RED_D,
+              outline=GOLD, width=int(4 * k))
+    d.text((ecx, ecy - 68 * k), "元祖", font=f_badge_s, fill=GOLD, anchor="mt")
+    d.text((ecx, ecy - 45 * k), "羽根", font=f_badge, fill=WHITE, anchor="mt")
+    d.text((ecx, ecy + 0 * k), "つき", font=f_badge, fill=WHITE, anchor="mt")
+    d.text((34 * k, 612 * k), "（調理例）", font=f_tiny, fill=WHITE, anchor="lt",
+           stroke_width=int(2.2 * k), stroke_fill=(30, 22, 18))
+
+    # 下の情報。白い小箱を並べて、最後は地に白文字
+    bxs = [("要冷凍", None), ("12個入り", "(300g)"), ("フライパン", "ひとつで"),
+           ("たれ付き", None)]
+    x = 30 * k
+    y0b, y1b = 640 * k, 684 * k
     for main, sub in bxs:
-        w = int((100 if sub else 82) * SS)
-        y0b, y1b = 612 * SS, 668 * SS
+        w = int((96 if sub else 78) * k)
         d.rectangle([x, y0b, x + w, y1b], fill=WHITE)
         if sub:
-            d.text((x + w / 2, y0b + 6 * SS), main, font=f_box, fill=RED_D, anchor="mt")
-            d.text((x + w / 2, y0b + 31 * SS), sub, font=f_box_s, fill=INK, anchor="mt")
+            d.text((x + w / 2, y0b + 4 * k), main, font=f_box, fill=RED_D,
+                   anchor="mt")
+            d.text((x + w / 2, y0b + 26 * k), sub, font=f_box_s, fill=INK,
+                   anchor="mt")
         else:
             d.text((x + w / 2, (y0b + y1b) / 2), main, font=f_box, fill=RED_D,
                    anchor="mm")
-        x += w + int(10 * SS)
+        x += w + int(9 * k)
+
+    # 面のふちに金の枠。参考の袋はこれで全体が締まっている
+    fr = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    fd = ImageDraw.Draw(fr)
+    fd.rounded_rectangle([12 * k, 12 * k, W - 12 * k, H - 12 * k],
+                         radius=14 * k, outline=GOLD + (255,), width=int(5 * k))
+    fd.rounded_rectangle([24 * k, 24 * k, W - 24 * k, H - 24 * k],
+                         radius=10 * k, outline=GOLD_D + (150,),
+                         width=int(2 * k))
+    img.paste(fr, (0, 0), fr)
 
     return img.resize((SW, SH), Image.LANCZOS)
 
@@ -217,9 +251,10 @@ def wrap_rgb(art, size):
     return out, al
 
 
-def print_on(src, dst, photo_path, seed=4):
+def print_on(src, dst, photo_path, hero_path=None, seed=4):
     base = Image.open(src).convert("RGB")
-    art = build_art(Image.open(photo_path).convert("RGB"))
+    hero = Image.open(hero_path).convert("RGBA") if hero_path else None
+    art = build_art(Image.open(photo_path).convert("RGB"), hero)
     rgb, al = wrap_rgb(art, base.size)
     al = np.asarray(
         Image.fromarray((al * 255).astype(np.uint8)).filter(
@@ -240,7 +275,7 @@ def print_on(src, dst, photo_path, seed=4):
 
 if __name__ == "__main__":
     import sys
-    print(print_on(sys.argv[1], sys.argv[2], sys.argv[3]))
+    print(print_on(*sys.argv[1:5]))
 
 
 # --- 締めのカット（パッケージに寄る3.4秒）を静止画から作る -------------------
