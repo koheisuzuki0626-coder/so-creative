@@ -103,3 +103,40 @@ def join(parts, out):
                     "-c", "copy", "-movflags", "+faststart", out],
                    check=True, capture_output=True)
     return out
+
+
+def probe(path):
+    """ffprobe が無いので ffmpeg の出力から尺を拾う。"""
+    r = subprocess.run([FFMPEG, "-i", path], capture_output=True, text=True)
+    for line in r.stderr.splitlines():
+        if "Duration:" in line:
+            hh, mm, ss = line.split("Duration:")[1].split(",")[0].strip().split(":")
+            return int(hh) * 3600 + int(mm) * 60 + float(ss)
+    raise RuntimeError("尺が読めない: " + path)
+
+
+def concat_video_only(parts, out):
+    """映像だけを繋ぐ（音は別で作る）。"""
+    lst = "/tmp/_vonly_list.txt"
+    with open(lst, "w") as f:
+        for p in parts:
+            f.write(f"file '{p}'\n")
+    subprocess.run([FFMPEG, "-y", "-f", "concat", "-safe", "0", "-i", lst,
+                    "-an", "-c", "copy", out], check=True, capture_output=True)
+    return out
+
+
+def xfade_join(chunks, sr, ms=25):
+    """音の断片を、継ぎ目だけ短く重ねて繋ぐ。段差も無音の穴も作らない。"""
+    n = int(sr * ms / 1000)
+    out = chunks[0].astype(np.float32).copy()
+    for c in chunks[1:]:
+        c = c.astype(np.float32)
+        m = min(n, len(out), len(c))
+        if m > 0:
+            r = np.linspace(0, 1, m)
+            out[-m:] = out[-m:] * (1 - r) + c[:m] * r
+            out = np.concatenate([out, c[m:]])
+        else:
+            out = np.concatenate([out, c])
+    return out
