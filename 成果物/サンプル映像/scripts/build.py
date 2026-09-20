@@ -66,7 +66,8 @@ def measure(path, tp=-2.0):
     return tuple(vals[k] for k in keys)
 
 
-def render_silent(path, cuts, telops, dim, logo, logo_at, dim_at, canvas):
+def render_silent(path, cuts, telops, dim, logo, logo_at, dim_at, canvas,
+                  grade=None):
     """映像だけを1本に焼く。cuts: [(file, in, dur)] / telops: [(key, st, en)]"""
     total = sum(c[2] for c in cuts)      # 15秒とは限らない（3分版がある）
     cw, ch = canvas
@@ -80,9 +81,10 @@ def render_silent(path, cuts, telops, dim, logo, logo_at, dim_at, canvas):
         ins += ["-i", f]
         # 素材のアスペクト比が出力と違うことがある（kling は 1928x1076 を返す）。
         # 出力比でセンタークロップしてから合わせる
+        gf = f"{grade}," if grade else ""
         fc.append(f"[{i}:v]trim={tin}:{tin + dur},setpts=PTS-STARTPTS,"
                   f"crop='min(iw,ih*{ar})/{z}':'min(ih,iw*{ch}/{cw})/{z}',"
-                  f"scale={cw}:{ch}:flags=lanczos,setsar=1,fps=24[v{i}]")
+                  f"scale={cw}:{ch}:flags=lanczos,setsar=1,{gf}fps=24[v{i}]")
     fc.append("".join(f"[v{i}]" for i in range(len(cuts)))
               + f"concat=n={len(cuts)}:v=1:a=0[cat]")
 
@@ -132,7 +134,8 @@ def render_silent(path, cuts, telops, dim, logo, logo_at, dim_at, canvas):
 
 
 def build(name, cuts, telops, dim, logo, logo_at, dim_at, audio,
-          canvas=(1920, 1080), tp=-2.0, limit=0.82, loudnorm=True, chunk=0):
+          canvas=(1920, 1080), tp=-2.0, limit=0.82, loudnorm=True, chunk=0,
+          grade=None):
     """chunk を渡すとその本数ずつ別々に焼いてから連結する。
 
     テロップは1枚につき PNG を尺いっぱい展開するので、3分 × 44枚を一度に
@@ -140,7 +143,8 @@ def build(name, cuts, telops, dim, logo, logo_at, dim_at, audio,
     """
     silent = f"{OUT}/{name}_silent.mp4"
     if not chunk or len(cuts) <= chunk:
-        render_silent(silent, cuts, telops, dim, logo, logo_at, dim_at, canvas)
+        render_silent(silent, cuts, telops, dim, logo, logo_at, dim_at, canvas,
+                      grade)
     else:
         parts, off = [], 0.0
         for n in range(0, len(cuts), chunk):
@@ -157,7 +161,7 @@ def build(name, cuts, telops, dim, logo, logo_at, dim_at, audio,
             render_silent(part, grp, tl,
                           dim if dim and in_grp(dim_at) else None,
                           logo if logo and in_grp(logo_at) else None,
-                          logo_at - off, dim_at - off, canvas)
+                          logo_at - off, dim_at - off, canvas, grade)
             parts.append(part)
             print(f"  {name} part{n // chunk:02d} ok", flush=True)
             off += dur
@@ -237,7 +241,11 @@ if __name__ == "__main__":
               # テロップはカットの切れ目で終える（次の画に食い込ませない）
               [("04a_1", 0.40, 4.15), ("04a_2", 4.50, 7.05),
                ("04a_3", 7.50, 9.90)],
-              None, None, 0.0, 0.0, a04a)
+              None, None, 0.0, 0.0, a04a,
+              # 台所が暗く、食べ物のCMとしては沈んでいた。暗部と中間を
+              # 起こし、白は飛ばさない。彩度もわずかに上げる
+              grade="curves=m='0/0.04 0.14/0.37 0.35/0.60 0.6/0.79 0.85/0.94 1/1',"
+                    "eq=saturation=1.10")
 
     if wanted("03_recruit_15s"):
         build("03_recruit_15s",
