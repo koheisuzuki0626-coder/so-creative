@@ -96,9 +96,11 @@ def note_hz(semi_from_a4):
 
 
 # D major を基準にする（明るいまま保つ。会社紹介で Bm7 を挟んで暗くなった反省）
-NOTE = {"D3": -19, "E3": -17, "F#3": -15, "G3": -14, "A3": -12, "B3": -10,
+NOTE = {"D2": -31, "G2": -26, "A2": -24, "B2": -22,
+        "D3": -19, "E3": -17, "F#3": -15, "G3": -14, "A3": -12, "B3": -10,
         "C#4": -8, "D4": -7, "E4": -5, "F#4": -3, "G4": -2, "A4": 0,
-        "B4": 2, "C#5": 4, "D5": 5, "E5": 7, "F#5": 9, "A5": 12, "D6": 17}
+        "B4": 2, "C#5": 4, "D5": 5, "E5": 7, "F#5": 9, "G5": 10, "A5": 12,
+        "B5": 14, "D6": 17}
 
 
 def pad(chord, n, level=0.16):
@@ -349,73 +351,100 @@ def build_02(dur=15.0):
 
 
 def build_04_cm(dur=15.0):
-    """04 の差し替え。明るすぎたので落ち着かせた。
+    """04（冷凍餃子のCM）用。ピアノ主体・BPM96・D メジャー。
 
-    BPM128・D メジャーのキック＋クラップ＋スタブ（build_04）は、
-    冷凍餃子の台所の絵に対して跳ねすぎていた。BPM96 に落とし、
-    相対短調の Bm から始めて、木（マリンバ）とローズで組み直す。
-    クラップとオープンハットは使わない。
+    9/20 に2度作り直した。
+     1稿 BPM128 のキック＋クラップ＋スタブ（build_04）→ 台所の絵に対して跳ねすぎ
+     2稿 相対短調の Bm から入れてローズとマリンバで組んだ → 暗くなった
+          （音の重心 2328Hz。夜のコインランドリー 1559Hz の側に寄っていた）
+     3稿（これ）ピアノで旋律を弾く。短調を使わず D - G - D - A - G - D で
+          一度も曇らせない。旋律は最後に上がって、パッケージの画に着地する。
     """
     n = int(dur * SR)
     bar = 2.5                      # BPM96・4拍
     beat = bar / 4
-    prog = [["B3", "D4", "F#4"], ["G3", "B3", "D4"],
-            ["D4", "F#4", "A4"], ["A3", "C#4", "E4"],
-            ["B3", "D4", "F#4"], ["G3", "B3", "D4"]]
-    roots = ["B3", "G3", "D3", "A3", "B3", "G3"]
-    # マリンバの一節。和音の構成音だけを踏む
-    figure = [["F#4", None, "D4", None, "B3", None, None, None],
-              ["D4", None, "B3", None, "G3", None, None, None],
-              ["F#4", None, "A4", None, "D5", None, None, None],
-              ["E4", None, "C#4", None, "A3", None, None, None],
-              ["F#4", None, "D4", None, "B3", None, None, None],
-              ["D4", None, None, None, None, None, None, None]]
+    # 短調を挟まない。食品のCMは曇らせない
+    prog = [["D4", "F#4", "A4"], ["D4", "G4", "B4"],
+            ["D4", "F#4", "A4"], ["C#4", "E4", "A4"],
+            ["D4", "G4", "B4"], ["D4", "F#4", "A4"]]
+    # ベースは1オクターブ上を取る。bass() は渡した音のさらに1つ下を鳴らすので、
+    # D3 を渡すと 73Hz まで下がって画が重くなった
+    roots = ["D4", "G3", "D4", "A3", "G3", "D4"]
+    # ピアノの旋律。(秒, 音名, 長さ=拍)。11.875 の D5 がパッケージの頭に当たる
+    tune = [(0.000, "F#4", 1.0), (0.625, "A4", 1.0),
+            (1.250, "B4", 0.5), (1.5625, "A4", 0.5), (1.875, "F#4", 1.0),
+            (2.500, "G4", 1.0), (3.125, "B4", 1.0), (3.750, "D5", 2.0),
+            (5.000, "A4", 1.0), (5.625, "F#5", 1.0),
+            (6.250, "E5", 0.5), (6.5625, "D5", 0.5), (6.875, "B4", 1.0),
+            (7.500, "C#5", 1.0), (8.125, "E5", 1.0), (8.750, "A4", 2.0),
+            (10.000, "B4", 1.0), (10.625, "D5", 1.0),
+            (11.250, "G4", 0.5), (11.5625, "A4", 0.5),
+            (11.875, "D5", 2.0), (12.500, "F#5", 1.0), (13.125, "A5", 3.0)]
     mix = np.zeros(n)
     for i, ch in enumerate(prog):
         p0 = int(i * bar * SR)
         if p0 >= n:
             break
         ln = min(int(bar * SR), n - p0)
-        mix[p0:p0 + ln] += rhodes(ch, ln, level=0.17, decay=2.3)[:ln]
-        mix[p0:p0 + ln] += pad(ch, ln, level=0.10)[:ln]
+        # 伴奏のピアノは1拍目と3拍目だけ。旋律を邪魔しない
+        for b in (0, 2):
+            q = p0 + int(b * beat * SR)
+            if q >= n:
+                break
+            ln2 = min(int(bar * SR), n - q)
+            mix[q:q + ln2] += piano(ch, ln2, level=0.15, decay=1.7,
+                                    bright=0.80, vel=0.8)[:ln2]
+        # 弦のパッドは薄く敷くだけ。ピアノの芯を消さない
+        mix[p0:p0 + ln] += pad(ch, ln, level=0.040)[:ln]
         for b in range(4):
             q = p0 + int(b * beat * SR)
             if q >= n:
                 break
             if b in (0, 2):
-                mix[q:] += kick_soft(n - q, level=0.26)
-            # ベースは2分。8分で刻むと前に出すぎる
-            if b in (0, 2):
-                ln2 = min(int(beat * 1.8 * SR), n - q)
-                if ln2 > 0:
-                    mix[q:q + ln2] += bass(roots[i], ln2, level=0.15)[:ln2]
+                mix[q:] += kick_soft(n - q, level=0.13)
+                ln3 = min(int(beat * 1.8 * SR), n - q)
+                if ln3 > 0:
+                    mix[q:q + ln3] += bass(roots[i], ln3, level=0.105)[:ln3]
+            # シェイカーは8分。食品のCMの軽さはここで出る
             for sub in (0, 0.5):
                 r = q + int(sub * beat * SR)
                 if r < n:
-                    mix[r:] += shaker(n - r, level=0.042 if sub else 0.062,
+                    mix[r:] += shaker(n - r, level=0.075 if sub else 0.105,
                                       seed=11 + b)
-        # マリンバは8分の位置に置く
-        for j, name in enumerate(figure[i]):
-            if not name:
-                continue
-            r = p0 + int(j * beat / 2 * SR)
-            ln3 = min(int(beat * 1.6 * SR), n - r)
-            if r < n and ln3 > 0:
-                mix[r:r + ln3] += marimba(name, ln3, level=0.16)[:ln3]
-    # パッケージに変わるところ（12.0秒）で一度だけ木の一音を置く
-    q = int(12.0 * SR)
+                    if sub:      # 裏だけ軽く閉じたハット。CMの粒立ち
+                        mix[r:] += hat(n - r, level=0.055, seed=7 + b)
+    # 旋律。フレーズの頭にはグロッケンを重ねる（明るさの決め手）
+    glock = {0.000, 2.500, 3.750, 5.625, 7.500, 8.750, 10.625, 11.875, 13.125}
+    for (t0, name, beats) in tune:
+        q = int(t0 * SR)
+        if q >= n:
+            continue
+        ln = min(int(beats * beat * 1.9 * SR), n - q)
+        if ln <= 0:
+            continue
+        mix[q:q + ln] += piano(name, ln, level=0.40, decay=1.02,
+                               bright=1.07, vel=1.0)[:ln]
+        # 旋律をオクターブ上でも薄く弾く。ピアノの旋律が抜けてくる
+        if NOTE[name] + 12 <= NOTE["D6"]:
+            up = [k for k, v in NOTE.items() if v == NOTE[name] + 12]
+            if up:
+                mix[q:q + ln] += piano(up[0], ln, level=0.115, decay=1.25,
+                                       bright=1.02, vel=0.9)[:ln]
+        if t0 in glock:
+            mix[q:q + ln] += bell(name, ln, level=0.10, oct_up=12)[:ln]
+    # パッケージに変わるところ（11.875秒）で鐘を1つ。ここだけきらっとさせる
+    q = int(11.875 * SR)
     if q < n:
-        mix[q:] += marimba("D5", n - q, level=0.20)[:n - q]
-    mix = fft_filter(mix, 45, "hp", rolloff=3.0)
-    # 高域を少し落とす。明るさはここでも決まる。
-    # 7200 まで落とすと 05（夜のコインランドリー）より暗くなって籠るので、
-    # 音の重心が 3000Hz 前後に収まるところを取った
-    mix = fft_filter(mix, 13500, "lp", rolloff=1.6)
-    mix = reverb(mix, mix=0.26)
-    mix[:int(0.25 * SR)] *= np.linspace(0, 1, int(0.25 * SR))
-    tail = int(1.6 * SR)
+        mix[q:] += bell("D5", n - q, level=0.16)[:n - q]
+    # 80Hz 以下は要らない。ここを残すと明るい曲でも重く聞こえる
+    mix = fft_filter(mix, 80, "hp", rolloff=3.4)
+    # 2稿は 13500 まで落として籠った。ピアノの倍音を残すため上を開ける
+    mix = fft_filter(mix, 16500, "lp", rolloff=1.5)
+    mix = reverb(mix, mix=0.20)
+    mix[:int(0.14 * SR)] *= np.linspace(0, 1, int(0.14 * SR))
+    tail = int(1.3 * SR)
     mix[-tail:] *= np.linspace(1, 0, tail)
-    return normalize(np.tanh(mix * 1.9), 0.82)
+    return normalize(np.tanh(mix * 1.7), 0.84)
 
 
 def build_04(dur=15.0):
@@ -648,6 +677,39 @@ def build_03(dur=180.0):
     tail = int(3.0 * SR)
     mix[-tail:] *= np.linspace(1, 0, tail)
     return normalize(np.tanh(mix * 2.2), 0.86)
+
+
+def piano(names, n, level=0.2, decay=1.45, bright=1.0, vel=1.0):
+    """アコースティックピアノ。倍音を非整数にずらし、上の倍音だけ速く消す。
+
+    rhodes（FMのエレピ）とは別に用意した。食品のCMはまるいエレピより、
+    芯のあるピアノのほうが画に合う。names は和音でも単音でも通る。
+    """
+    if isinstance(names, str):
+        names = [names]
+    t = _t(n)
+    out = np.zeros(n)
+    B = 0.00042                                  # 弦の硬さによる倍音のずれ
+    for i, name in enumerate(names):
+        f = note_hz(NOTE[name])
+        v = 0.88 ** i                            # 上の音をわずかに引く
+        for k in range(1, 15):
+            fk = f * k * (1 + B * k * k)
+            if fk > 16000:
+                break
+            # 上の倍音は弱く、速く消える。強く弾くほど倍音が出る
+            a = (1.0 / k ** 1.32) * (bright ** (k - 1)) * (vel ** (k * 0.12))
+            d = decay * (1 + 0.62 * (k - 1))
+            # 2本の弦のわずかなずれ（うなり）
+            out += (np.sin(2 * np.pi * fk * t) * 0.5
+                    + np.sin(2 * np.pi * fk * 1.0009 * t) * 0.5
+                    ) * np.exp(-t * d) * a * v
+    # ハンマーの当たる音
+    hn = min(n, int(0.006 * SR))
+    out[:hn] += fft_filter(noise(hn, 23), 2600, "hp") * np.linspace(1, 0, hn) * 0.9
+    a = int(0.0025 * SR)
+    out[:a] *= np.linspace(0, 1, a)
+    return out / 3.2 * level
 
 
 def marimba(name, n, level=0.2):
