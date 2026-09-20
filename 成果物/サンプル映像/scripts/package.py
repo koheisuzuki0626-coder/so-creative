@@ -326,9 +326,63 @@ def print_on(src, dst, photo_path, hero_path=None, seed=4):
     return dst
 
 
-# --- 締めのカット（パッケージに寄る3.4秒）を静止画から作る -------------------
 FFMPEG = ("/usr/local/lib/python3.11/dist-packages/imageio_ffmpeg/binaries/"
           "ffmpeg-linux-x86_64-v7.0.2")
+
+
+def cutout(src, dst, blank=None, pad=48, off=(18, 24), blur=22, dark=0.58):
+    """刷った袋を地から抜いて、影をつけた PNG にする。食卓のカットに載せる用。
+
+    輪郭は必ず無地の袋（blank）から取る。刷り終わった写真から明るさで拾うと、
+    赤い地の明るさが低いぶん抜けが薄くなり、載せたとき半透明に見える。
+    """
+    base = Image.open(src).convert("RGB")
+    m = silhouette(Image.open(blank).convert("RGB") if blank else base, BAG)
+    al = Image.fromarray((np.clip(m, 0, 1) * 255).astype(np.uint8))
+    rgba = base.convert("RGBA")
+    rgba.putalpha(al)
+    x0 = max(0, min(q[0] for q in BAG) - pad)
+    y0 = max(0, min(q[1] for q in BAG) - pad)
+    x1 = min(base.width, max(q[0] for q in BAG) + pad + off[0] + blur)
+    y1 = min(base.height, max(q[1] for q in BAG) + pad + off[1] + blur)
+    cut = rgba.crop((x0, y0, x1, y1))
+    sh = Image.new("RGBA", cut.size, (0, 0, 0, 0))
+    sh.paste((0, 0, 0, int(255 * dark)), off, cut.split()[3])
+    sh = sh.filter(ImageFilter.GaussianBlur(blur))
+    out = Image.alpha_composite(sh, cut)
+    out.save(dst)
+    return dst
+
+
+def on_table(table, packpng, out, dur=5.0, tin=0.0, cw=1920, chh=1080,
+             width=0.45, mr=0.030, mb=0.050, at=1.20, rise=0.45, grade=None):
+    """食卓のカットにパッケージを載せる。CMの締めはこの1カットで持たせる。
+
+    階調はここで当てる（build.py 側では素通し）。持ち上げをパッケージにまで
+    かけると、刷った赤がピンクに飛ぶ。
+    """
+    import subprocess
+    pw = int(cw * width)
+    gf = f"{grade}," if grade else ""
+    fc = (
+        f"[0:v]trim={tin}:{tin + dur},setpts=PTS-STARTPTS,"
+        f"crop='min(iw,ih*{cw}/{chh})':'min(ih,iw*{chh}/{cw})',"
+        f"scale={cw}:{chh}:flags=lanczos,setsar=1,{gf}fps=24[bg];"
+        f"[1:v]scale={pw}:-1,format=rgba,fade=t=in:st={at}:d={rise}:alpha=1,"
+        f"setpts=PTS-STARTPTS[pk];"
+        f"[bg][pk]overlay=x=W-w-{int(cw * mr)}:"
+        f"y='H-h-{int(chh * mb)}+{int(chh * 0.075)}"
+        f"*max(0\,1-(t-{at})/{rise})':shortest=1[v]"
+    )
+    subprocess.run([FFMPEG, "-loglevel", "error", "-y", "-i", table,
+                    "-loop", "1", "-i", packpng, "-filter_complex", fc,
+                    "-map", "[v]", "-t", str(dur), "-an",
+                    "-c:v", "libx264", "-crf", "16", "-preset", "slow",
+                    "-pix_fmt", "yuv420p", out], check=True)
+    return out
+
+
+# --- パッケージ単体に寄るカット（いまは使っていない）------------------------
 
 
 def clip(still, out, dur=3.4, cw=1920, chh=1080, fps=24, z0=2540, z1=2290):
