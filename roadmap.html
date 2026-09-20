@@ -174,7 +174,8 @@
     <h1>事業ロードマップ</h1>
     <p class="sub">
         開業から12ヶ月で <b>年収（額面）¥10,408,605</b>。件数は月2件から動かさず、尺だけ伸ばす。<br>
-        すでに退職しているので、当面の焦点は年収ではなく<b>「最初の入金までを持ちこたえられるか」</b>。
+        いま焦点は資金ではない。傷病手当金（月17万・2027年12月まで）があり、<b>受けている間は営業もできない</b>。
+        当面の問いは <b>「いつ働ける状態になるか」</b>で、それが決まれば開業日が決まる（2026-09-20 更新）。
     </p>
     <p class="asof">2026年9月17日 時点 ／ 数字の出どころと松2本の実測は <a href="record.html">実測記録と裏づけ</a> に分けた（9/17）</p>
 
@@ -184,11 +185,11 @@
     </div>
     <ul class="ck p0">
         <li data-id="p0-eigyo"><button type="button" class="box" role="checkbox" aria-checked="false"></button><div>声かけを始める
-            <em>制作は動きだした。止まっているのは営業のほうで、初入金の遅れが直接そこに効く</em></div></li>
+            <em>手当を受けている間は営業も労務にあたる（9/20 保険者に確認）。働ける状態になるまで着手できない</em></div></li>
         <li data-id="p0-kaigyo"><button type="button" class="box" role="checkbox" aria-checked="false"></button><div>開業届を出す
-            <em>ひな形も支払条件も決まったので、受注できない理由はこれだけになった</em></div></li>
-        <li data-id="p0-shikin"><button type="button" class="box" role="checkbox" aria-checked="false"></button><div>手元資金と月の生活費を確定させる
-            <em>いつまで無収入で持つかを日付で押さえる。必要な貯蓄は40〜60万（下の表）</em></div></li>
+            <em>書類も支払条件もそろっている。出した時点で傷病手当金（月17万）が止まるので、働ける状態になってから</em></div></li>
+        <li data-id="p0-shikin"><button type="button" class="box" role="checkbox" aria-checked="false"></button><div>主治医と「いつ働ける状態になるか」を確認する
+            <em>資金は尽きない（月＋5.5万・15ヶ月で82万）。開業日を決めるのは体調だけになった</em></div></li>
     </ul>
 
     <p class="ck-local" id="ck-local" hidden>
@@ -212,41 +213,45 @@
 
     <section>
         <div class="flag" style="border-color:rgba(168,50,58,.3);background:rgba(168,50,58,.05)">
-            <b style="color:var(--warn)">前提が変わった（2026-09-20・保険者に確認）。</b>
-            傷病手当金を <b>月17万・2027年12月まで</b>（残り15ヶ月・総額255万）受けている。
-            保険者の回答は <b>「開業届を出すと支給は止まる」「営業活動も労務にあたる」</b>。
-            つまり <b>手当を受けている間は、声かけも受注もできない</b>。
-            下の表は「収入ゼロ・10月に受注できた場合」で組んであるが、
-            その前提は保険者の回答と両立しない。<br>
-            いまの実際の月次は <b>手当17万 − 生活費10万 − ツール代3.5万 ＝ ＋3.5万</b>
-            （Higgsfield を Pro に落としたあと）。沈まないが、営業も進まない。
-            <b>「いつ働ける状態になるか」が、そのまま開業日になる。</b>これは主治医と決めること。<br>
-            あわせて <b>Higgsfield は受注が入るまで Pro（$29≒¥4,600）に落とす</b>（2026-09-20）。
-            制作していない月に5,400クレジットの枠を持っても繰り越せず、毎月2.7万を捨てている。
-            受注が入った月に Max へ戻す。Claude Max は維持。
+            <b style="color:var(--warn)">営業ができない（2026-09-20・保険者に確認）。</b>
+            傷病手当金は <b>月17万・2027年12月まで</b>（残り15ヶ月・総額255万）。
+            保険者の回答は「<b>開業届を出すと支給は止まる</b>」「<b>営業活動も労務にあたる</b>」。
+            声かけも受注も、手当を受けている間はできない。
+            <b>開業日 ＝ 働ける状態になった日</b>で、これは主治医と決めること。
         </div>
-        <p class="lead">
-            支払条件は <b>着手金50% ＋ 納品後50%、期日は納品日から30日以内</b>（9/17 決定）。
-            着手金が入るので初入金は納品を待たない。10月に30秒1件 ¥195,000 → 11月以降 月2件 ¥600,000 のペースで、
-            生活費とツール代（月5万）を引いた手元の推移。<b>着手金50% は着手した月、残金50% は納品月の翌月</b>に置いている。
-        </p>
-        <div class="wrap-x"><table id="cash">
-            <thead><tr><th>生活費</th><th class="num">9月</th><th class="num">10月</th><th class="num">11月</th><th class="num">12月</th><th class="num">1月</th><th class="num">2月</th><th class="num">必要な貯蓄</th></tr></thead>
+
+        <h3>いまの月次（実数）</h3>
+        <div class="wrap-x"><table>
+            <thead><tr><th>項目</th><th class="num">月額</th><th>備考</th></tr></thead>
             <tbody>
-                <tr><td>月20万</td><td class="num">−25万</td><td class="num">−40万</td><td class="num">−26万</td><td class="num">+10万</td><td class="num">+44万</td><td class="num">+80万</td><td class="num"><b>40万</b></td></tr>
-                <tr><td>月25万</td><td class="num">−30万</td><td class="num">−50万</td><td class="num">−40万</td><td class="num">−10万</td><td class="num">+20万</td><td class="num">+50万</td><td class="num"><b>50万</b></td></tr>
-                <tr><td>月30万</td><td class="num">−35万</td><td class="num">−60万</td><td class="num">−56万</td><td class="num">−30万</td><td class="num">−6万</td><td class="num">+20万</td><td class="num"><b>60万</b></td></tr>
+                <tr><td>傷病手当金</td><td class="num">＋¥170,000</td><td>2027年12月まで（残り15ヶ月）</td></tr>
+                <tr><td>生活費</td><td class="num">−¥80,000</td><td>ツール代は別</td></tr>
+                <tr><td>Higgsfield Pro</td><td class="num">−¥4,600</td><td>$29。受注が入ったら Max（¥27,155）へ戻す</td></tr>
+                <tr><td>Claude Max</td><td class="num">−¥30,680</td><td>$200。維持する（9/20 判断）</td></tr>
+                <tr><td><b>手元に残る</b></td><td class="num"><b>＋¥54,720</b></td><td><b>15ヶ月で 約82万</b></td></tr>
             </tbody>
         </table></div>
-        <div class="flag">
-            <b>底は10月末。ただしこれは計画どおり10月に受注できた場合の数字。</b>
-            <p>
-                10月に1件も取れないと着手金も入らず、底はそのぶん深くなる。
-                着手金も相手の30日サイトで払われると、10月の入金が11月にずれて底が1ヶ月深くなる。<br>
-                必要な貯蓄は、支払条件を決める前（月末締め・翌月末払いを置いていたとき）の
-                56万／70万／86万から <b>40万／50万／60万</b> に下がった。着手金50%を納品前に受け取るぶん、
-                底が1ヶ月ぶん浅くなる。<b>この差は営業の余裕そのものなので、着手金は値引きの対象にしない。</b>
-            </p>
+        <p class="lead" style="margin-top:14px">
+            <b>資金は尽きない。貯まる。</b>以前ここに置いていた「生活費20〜30万・収入ゼロ・
+貯蓄40〜60万が要る」という表は、退職直後の想定で、いまの実態と1つも合っていなかったので外した。
+        </p>
+
+        <h3>開業したらどうなるか</h3>
+        <div class="wrap-x"><table>
+            <thead><tr><th>開業後の月</th><th class="num">出ていく</th><th>もつ期間</th></tr></thead>
+            <tbody>
+                <tr><td>収入ゼロの月（手当は停止・Higgsfield は Max に戻す）</td>
+                    <td class="num">−¥137,835</td>
+                    <td>貯めた82万で <b>約6ヶ月</b></td></tr>
+            </tbody>
+        </table></div>
+        <p class="lead" style="margin-top:14px">
+            支払条件は <b>着手金50% ＋ 納品後50%、期日は納品日から30日以内</b>（9/17 決定）。
+            着手金が入るので初入金は納品を待たない。30秒1件（¥195,000）を受注できれば、
+            着手した月に約10万が入る。<b>手当期間中に貯まる82万は、開業後6ヶ月ぶんの運転資金</b>にあたる。
+            以前「40〜60万を貯めておく必要がある」としていた水準は、手当だけで超える。<br>
+            着手金を値引きの対象にしないのは変わらない。底が1ヶ月ぶん浅くなるのは、そのまま営業の余裕になる。
+        </p>
         </div>
     </section>
 
