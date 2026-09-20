@@ -24,7 +24,7 @@ FONTS = os.environ.get("SO_FONTS", "/tmp/fonts")
 ZEN = f"{FONTS}/ZenKakuNew-Black.ttf"
 GOTHIC = f"{FONTS}/NotoSansJP-Black.ttf"
 # CM のテロップは太いと画に乗りすぎるので、細めを別に持つ
-GOTHIC_M = f"{FONTS}/NotoSansJP-Medium.ttf"
+GOTHIC_M = f"{FONTS}/NotoSansJP-Regular.ttf"
 # 明朝は 05（縦型）だけで使う。ゴシックより「読ませる」より「効かせる」向き
 MINCHO = f"{FONTS}/NotoSerifJP-Black.ttf"
 # 締めの小さい文字。極太を小さく置くと潰れるので中細を使う
