@@ -467,9 +467,16 @@ def voice_03_3min(dur=180.0, at=0.30, level=0.62):
     return out
 
 
-def duck_by(x, ctrl, depth=0.42, attack=0.12, release=0.45):
-    """ctrl が鳴っている間だけ x を下げる。台詞の下で BGM と SE を引く。"""
+def duck_by(x, ctrl, depth=0.42, attack=0.12, release=0.45, lead=0.0):
+    """ctrl が鳴っている間だけ x を下げる。台詞の下で BGM と SE を引く。
+
+    lead を入れると、その秒数だけ先回りして下げ始める。立ち上がりに 0.12秒
+    かかるので、先回りしないと語頭の1音が下がりきる前に終わってしまう。
+    """
     env = np.abs(ctrl)
+    if lead > 0:
+        k = int(lead * SR)
+        env = np.concatenate([env[k:], np.zeros(k)])
     na, nr = int(attack * SR), int(release * SR)
     # 立ち上がりは速く、戻りはゆっくり（片側移動最大 → 一次で平滑化）
     g = np.zeros(len(env))
@@ -483,14 +490,42 @@ def duck_by(x, ctrl, depth=0.42, attack=0.12, release=0.45):
     return x * (1.0 - depth * g)
 
 
-def mix(bgm, se, se_level=0.9, path=None, peak=0.9, drive=1.15, voice=None):
+def voice_04a(dur=15.0, at=11.72, level=1.25, name="vo_kogane.wav"):
+    """締めでパッケージが出るところに、商品名だけをナレーションで入れる。
+
+    映像の中の人は喋らないので、ここだけ別のナレーター。
+
+    11.72秒にしてある。11.60 だとピアノが A4 を弾く 11.5625秒の打鍵に
+    語頭の「こ」が重なり、聞き取りで「ウガネ」「フガネ」になっていた。
+    打鍵の減衰に逃がすと通る。
+    """
+    n = int(dur * SR)
+    out = np.zeros(n)
+    f = f"{VO}/{name}"
+    if not os.path.exists(f):
+        print(f"  [voice] {f} が無い")
+        return out
+    a = _trim(_read_wav(f))
+    # 子音の抜けを足す。ピアノと環境音の中で語頭が埋もれるのを防ぐ
+    a = a + 0.40 * fft_filter(a, 2400, "hp")
+    a = a * (level * 0.30 / max(np.sqrt(np.mean(a ** 2)), 1e-9))
+    a = np.tanh(a * 1.5) / 1.5
+    p0 = int(at * SR)
+    ln = min(len(a), n - p0)
+    out[p0:p0 + ln] += a[:ln]
+    return out
+
+
+def mix(bgm, se, se_level=0.9, path=None, peak=0.9, drive=1.15, voice=None,
+        duck=0.42, duck_lead=0.0):
     """drive を上げるとサチュレーションが強まり、足音や金具のような
     突出したトランジェントが潰れてピークとRMSの差が縮む。"""
     n = min(len(bgm), len(se))
     m = bgm[:n] * 0.82 + reverb(se[:n], mix=0.1) * se_level
     if voice is not None:
         v = voice[:n]
-        m = duck_by(m, v) + v          # 台詞の下だけ音楽と環境音を引く
+        # 台詞の下だけ音楽と環境音を引く
+        m = duck_by(m, v, depth=duck, lead=duck_lead) + v
     m = normalize(np.tanh(m * drive), peak)
     if path:
         write_wav(path, m)
@@ -517,8 +552,9 @@ if __name__ == "__main__":
                        ("03_3min", build_03(), se_03_3min())):
         # 3分版のインタビューは声を入れず、テロップだけで見せる。
         # 合成音声が日本語として不自然で、サンプルとしてはむしろ不利だった。
-        # 声そのものは scripts/vo/ と voice_03_3min() に残してある
-        vo = None
+        # 声そのものは scripts/vo/ と voice_03_3min() に残してある。
+        # 04a だけは、締めの商品名の一言をナレーターに言わせている
+        vo = voice_04a() if name == "04a" else None
         # 07 は BGM が無いので SE を上げていたが、上げすぎていた（9/19 に修正）。
         # 納品済みの5本を volumedetect で測ると 07 だけ -14.7dB で、
         # ほかの -16.4〜-18.5dB より大きかった。環境音を入れる設計は変えず、
@@ -528,6 +564,11 @@ if __name__ == "__main__":
                 peak=0.52 if name == "07" else 0.9,
                 drive=3.2 if name == "07" else 1.15,
                 voice=vo,
+                # 一言だけのナレーションなので深めに、先回りして引く。
+                # 効いたのは先回りのほう。0.16 では語頭の「こ」がピアノに
+                # 潰されて「ホガネ」に聞こえていた（聞き取りで確認）
+                duck=0.75 if name == "04a" else 0.42,
+                duck_lead=0.22 if name == "04a" else 0.0,
                 path=f"{HERE}/audio_{name}.wav")
         print(f"audio_{name}.wav  BGM {rms_db(b):6.1f}dB  SE {rms_db(s):6.1f}dB  "
               f"mix {rms_db(m):6.1f}dB  peak {np.abs(m).max():.3f}")
