@@ -355,14 +355,15 @@ def cutout(src, dst, blank=None, pad=48, off=(18, 24), blur=22, dark=0.58):
 
 
 def on_table(table, packpng, out, dur=5.0, tin=0.0, cw=1920, chh=1080,
-             width=0.45, mr=0.030, mb=0.050, at=2.50, grade=None):
+             width=0.45, mr=0.030, mb=0.050, at=2.50, fade=0.20, grade=None):
     """食卓のカットにパッケージを載せる。CMの締めはこの1カットで持たせる。
 
-    出し方は動かさない。9/20 に3度変えた。
-     フェードで薄く出す → 商品が幽霊のように見えて締まらない
+    出し方は動かさない。9/20 に何度か変えた。
+     0.45秒のフェード＋下からの持ち上げ → 薄く現れて締まらない
      右から滑り込ませて行き過ぎる → 動きが安っぽい
-     （これ）足さない。BGM の旋律が F#5 に上がる 12.5秒（このカットの
-      2.5秒）にそのまま出す。ナレーションの「こがねギョーザ」はその直後
+     切り替えだけ → 動きは無し
+     （これ）0.20秒の短いフェード。位置は動かさない。BGM の旋律が F#5 に
+      上がる 12.5秒（このカットの2.5秒）に出す。ナレーションはその直後
 
     階調はここで当てる（build.py 側では素通し）。持ち上げをパッケージにまで
     かけると、刷った赤がピンクに飛ぶ。
@@ -375,9 +376,9 @@ def on_table(table, packpng, out, dur=5.0, tin=0.0, cw=1920, chh=1080,
         f"[0:v]trim={tin}:{tin + dur},setpts=PTS-STARTPTS,"
         f"crop='min(iw,ih*{cw}/{chh})':'min(ih,iw*{chh}/{cw})',"
         f"scale={cw}:{chh}:flags=lanczos,setsar=1,{gf}fps=24[bg];"
-        f"[1:v]scale={pw}:-1,format=rgba,setpts=PTS-STARTPTS[pk];"
-        f"[bg][pk]overlay=x=W-w-{mrp}:y=H-h-{mbp}:"
-        f"enable='gte(t,{at})':shortest=1[v]"
+        f"[1:v]scale={pw}:-1,format=rgba,"
+        f"fade=t=in:st={at}:d={fade}:alpha=1,setpts=PTS-STARTPTS[pk];"
+        f"[bg][pk]overlay=x=W-w-{mrp}:y=H-h-{mbp}:shortest=1[v]"
     )
     subprocess.run([FFMPEG, "-loglevel", "error", "-y", "-i", table,
                     "-loop", "1", "-i", packpng, "-filter_complex", fc,
