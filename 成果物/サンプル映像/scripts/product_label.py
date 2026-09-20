@@ -249,7 +249,7 @@ def print_on(base_path, out_path, geom="p1", seed=7):
 # 無地のチューブ写真（Higgsfield / nano_banana_pro 生成）と、刷り上がりの置き場所。
 MAT = "../素材"
 JOBS = [
-    ("p1", f"{MAT}/tube_p1.jpg", "../../../assets/works/ugc-mamoriha.jpg"),
+    ("p1", f"{MAT}/tube_p1.jpg", "../../../assets/works/ugc-mamoriha-product.jpg"),
     ("p2", f"{MAT}/tube_p2.jpg", "../../../assets/works/ugc-mamoriha-flat.jpg"),
 ]
 

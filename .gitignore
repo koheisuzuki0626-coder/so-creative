@@ -7,3 +7,4 @@
 # Python のキャッシュ
 __pycache__/
 *.pyc
+成果物/サンプル映像/scripts/*.mp4
