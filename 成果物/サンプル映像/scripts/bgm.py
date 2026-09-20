@@ -348,6 +348,76 @@ def build_02(dur=15.0):
     return normalize(np.tanh(mix * 2.2), 0.86)
 
 
+def build_04_cm(dur=15.0):
+    """04 の差し替え。明るすぎたので落ち着かせた。
+
+    BPM128・D メジャーのキック＋クラップ＋スタブ（build_04）は、
+    冷凍餃子の台所の絵に対して跳ねすぎていた。BPM96 に落とし、
+    相対短調の Bm から始めて、木（マリンバ）とローズで組み直す。
+    クラップとオープンハットは使わない。
+    """
+    n = int(dur * SR)
+    bar = 2.5                      # BPM96・4拍
+    beat = bar / 4
+    prog = [["B3", "D4", "F#4"], ["G3", "B3", "D4"],
+            ["D4", "F#4", "A4"], ["A3", "C#4", "E4"],
+            ["B3", "D4", "F#4"], ["G3", "B3", "D4"]]
+    roots = ["B3", "G3", "D3", "A3", "B3", "G3"]
+    # マリンバの一節。和音の構成音だけを踏む
+    figure = [["F#4", None, "D4", None, "B3", None, None, None],
+              ["D4", None, "B3", None, "G3", None, None, None],
+              ["F#4", None, "A4", None, "D5", None, None, None],
+              ["E4", None, "C#4", None, "A3", None, None, None],
+              ["F#4", None, "D4", None, "B3", None, None, None],
+              ["D4", None, None, None, None, None, None, None]]
+    mix = np.zeros(n)
+    for i, ch in enumerate(prog):
+        p0 = int(i * bar * SR)
+        if p0 >= n:
+            break
+        ln = min(int(bar * SR), n - p0)
+        mix[p0:p0 + ln] += rhodes(ch, ln, level=0.17, decay=2.3)[:ln]
+        mix[p0:p0 + ln] += pad(ch, ln, level=0.10)[:ln]
+        for b in range(4):
+            q = p0 + int(b * beat * SR)
+            if q >= n:
+                break
+            if b in (0, 2):
+                mix[q:] += kick_soft(n - q, level=0.26)
+            # ベースは2分。8分で刻むと前に出すぎる
+            if b in (0, 2):
+                ln2 = min(int(beat * 1.8 * SR), n - q)
+                if ln2 > 0:
+                    mix[q:q + ln2] += bass(roots[i], ln2, level=0.15)[:ln2]
+            for sub in (0, 0.5):
+                r = q + int(sub * beat * SR)
+                if r < n:
+                    mix[r:] += shaker(n - r, level=0.042 if sub else 0.062,
+                                      seed=11 + b)
+        # マリンバは8分の位置に置く
+        for j, name in enumerate(figure[i]):
+            if not name:
+                continue
+            r = p0 + int(j * beat / 2 * SR)
+            ln3 = min(int(beat * 1.6 * SR), n - r)
+            if r < n and ln3 > 0:
+                mix[r:r + ln3] += marimba(name, ln3, level=0.16)[:ln3]
+    # パッケージに変わるところ（12.0秒）で一度だけ木の一音を置く
+    q = int(12.0 * SR)
+    if q < n:
+        mix[q:] += marimba("D5", n - q, level=0.20)[:n - q]
+    mix = fft_filter(mix, 45, "hp", rolloff=3.0)
+    # 高域を少し落とす。明るさはここでも決まる。
+    # 7200 まで落とすと 05（夜のコインランドリー）より暗くなって籠るので、
+    # 音の重心が 3000Hz 前後に収まるところを取った
+    mix = fft_filter(mix, 13500, "lp", rolloff=1.6)
+    mix = reverb(mix, mix=0.26)
+    mix[:int(0.25 * SR)] *= np.linspace(0, 1, int(0.25 * SR))
+    tail = int(1.6 * SR)
+    mix[-tail:] *= np.linspace(1, 0, tail)
+    return normalize(np.tanh(mix * 1.9), 0.82)
+
+
 def build_04(dur=15.0):
     """軽快・BPM128。1小節1.875秒 × 8小節。進行 D - A - G - A ×2"""
     n = int(dur * SR)

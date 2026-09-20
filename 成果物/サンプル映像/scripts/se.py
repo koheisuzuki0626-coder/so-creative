@@ -9,7 +9,8 @@ import numpy as np
 import os
 import wave
 
-from bgm import SR, fft_filter, normalize, write_wav, build_02, build_04, reverb
+from bgm import (SR, fft_filter, normalize, write_wav, build_02, build_04,
+                 build_04_cm, reverb)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 rng = np.random.default_rng(20260917)
@@ -173,19 +174,30 @@ def se_02(dur=15.0):
 
 
 def se_04a(dur=15.0):
-    """C1 フライパン 0-6 / C2 箸 6-11 / C3 食卓 11-15"""
+    """9/20 の組み直しに合わせた。
+
+    並べる 0-1.6 / 焼き 1.6-4.3 / 皿の羽根 4.3-7.2 /
+    箸 7.2-10.0 / 食卓 10.0-11.8 / パッケージ 11.8-15
+    """
     n = int(dur * SR)
     out = np.zeros(n)
-    out += sizzle(n, 1.15, 7, 56) * seg(n, 0, 6.1)
-    out += ambience_room(n, 0.10, 41) * seg(n, 5.9, dur)
-    # 箸のカット：残り火の弱い焼き音＋汁が落ちる
-    out += sizzle(n, 0.3, 9, 10) * seg(n, 6.0, 11.0)
-    out += drip(n, 8.7, 0.3)
-    out += clink(n, 6.4, 0.16, 2600, seed=43)
-    # 食卓：食器と箸
-    for at, lv, f0, sd in ((11.3, 0.3, 2200, 51), (12.1, 0.22, 1700, 53),
-                           (13.0, 0.26, 2900, 59), (13.9, 0.2, 2000, 61)):
+    out += ambience_room(n, 0.10, 41)
+    # 並べる：冷たい餃子を鉄に置く音。まだ焼き音はしない
+    for at, lv, f0, sd in ((0.35, 0.10, 900, 71), (0.95, 0.09, 820, 73)):
         out += clink(n, at, lv, f0, sd)
+    # 焼き：ここで一気に立ち上げる
+    out += sizzle(n, 1.20, 7, 58) * seg(n, 1.55, 4.45)
+    # 皿に返したあとは残り火
+    out += sizzle(n, 0.42, 9, 16) * seg(n, 4.35, 7.35)
+    # 箸：弱い焼き音と、汁が落ちる
+    out += sizzle(n, 0.24, 11, 8) * seg(n, 7.2, 10.1)
+    out += clink(n, 7.45, 0.15, 2600, seed=43)
+    out += drip(n, 9.05, 0.30)
+    # 食卓：食器と箸
+    for at, lv, f0, sd in ((10.15, 0.28, 2200, 51), (10.85, 0.21, 1700, 53),
+                           (11.45, 0.24, 2900, 59)):
+        out += clink(n, at, lv, f0, sd)
+    # パッケージは静か。部屋の音だけ残す
     return out
 
 
@@ -491,11 +503,14 @@ def rms_db(x):
 
 if __name__ == "__main__":
     from bgm import build_05, build_03
+    # 04a は 9/20 に BGM を差し替えた（明るすぎたため）。
+    # 使っていない訴求B（04b）は元の曲のまま残す
     b02, b04, b05 = build_02(), build_04(), build_05()
+    b04cm = build_04_cm()
     s02, s04a, s04b = se_02(), se_04a(), se_04b()
     # 03 は 02 の BGM を流用（構成案どおり）。07 は BGM なしで SE だけ
     silent = np.zeros(len(b02))
-    for name, b, s in (("02", b02, s02), ("04a", b04, s04a), ("04b", b04, s04b),
+    for name, b, s in (("02", b02, s02), ("04a", b04cm, s04a), ("04b", b04, s04b),
                        ("03", b02, se_03()), ("05", b05, se_05()),
                        ("07", silent, se_07()),
                        ("03_3min", build_03(), se_03_3min())):

@@ -68,16 +68,20 @@ def measure(path, tp=-2.0):
 
 def render_silent(path, cuts, telops, dim, logo, logo_at, dim_at, canvas):
     """映像だけを1本に焼く。cuts: [(file, in, dur)] / telops: [(key, st, en)]"""
-    total = sum(d for _, _, d in cuts)   # 15秒とは限らない（3分版がある）
+    total = sum(c[2] for c in cuts)      # 15秒とは限らない（3分版がある）
     cw, ch = canvas
     ar = f"{cw}/{ch}"
     ins, fc = [], []
-    for i, (f, tin, dur) in enumerate(cuts):
+    for i, cut in enumerate(cuts):
+        # 4つ目は寄り倍率（省略なら等倍）。同じ素材を寄り引きで2カットに
+        # 使い分けるために足した。倍率が違えばサイズ違いの別カットに見える
+        f, tin, dur = cut[0], cut[1], cut[2]
+        z = cut[3] if len(cut) > 3 else 1.0
         ins += ["-i", f]
         # 素材のアスペクト比が出力と違うことがある（kling は 1928x1076 を返す）。
         # 出力比でセンタークロップしてから合わせる
         fc.append(f"[{i}:v]trim={tin}:{tin + dur},setpts=PTS-STARTPTS,"
-                  f"crop='min(iw,ih*{ar})':'min(ih,iw*{ch}/{cw})',"
+                  f"crop='min(iw,ih*{ar})/{z}':'min(ih,iw*{ch}/{cw})/{z}',"
                   f"scale={cw}:{ch}:flags=lanczos,setsar=1,fps=24[v{i}]")
     fc.append("".join(f"[v{i}]" for i in range(len(cuts)))
               + f"concat=n={len(cuts)}:v=1:a=0[cat]")
@@ -141,7 +145,7 @@ def build(name, cuts, telops, dim, logo, logo_at, dim_at, audio,
         parts, off = [], 0.0
         for n in range(0, len(cuts), chunk):
             grp = cuts[n:n + chunk]
-            dur = sum(d for _, _, d in grp)
+            dur = sum(c[2] for c in grp)
             # このかたまりに収まるテロップだけを、頭を0に寄せて渡す
             tl = []
             for (k, st, en) in telops:
@@ -215,12 +219,25 @@ if __name__ == "__main__":
               [("02_1", 0.45, 4.70), ("02_2", 5.40, 9.70), ("02_3", 10.35, 12.50)],
               "dim34", "02_logo", 12.75, 12.45, a02)
 
+    # 9/20 に組み直した。3カット（焼き6秒・箸5秒・食卓4秒）は前半が重く、
+    # 冷凍であることも、商品名に入っている羽根も、パッケージも映っていなかった。
+    # 並べる／皿に返した羽根／パッケージの3つを足して9カットにしている。
+    # 締めはロゴ札をやめてパッケージそのもの。名前は袋に刷ってあるので重複する
     if wanted("04a_taste_15s"):
         build("04a_taste_15s",
-              [(C1, C1_IN, 6.0), (f"{GEN}/04_c2.mp4", 0.04, 5.0),
-               (f"{GEN}/04_c3_v3m.mp4", 0.6, 4.0)],
-              [("04a_1", 0.45, 5.70), ("04a_2", 6.35, 10.70)],
-              "dim29", "04_logo", 11.4, 11.1, a04a)
+              [(f"{GEN}/04_v1.mp4", 0.30, 1.6),        # 凍ったまま並べる
+               (C1, C1_IN, 1.5),                        # 焼き
+               (C1, C1_IN + 3.4, 1.2, 1.35),            # 蒸気（寄り）
+               (f"{GEN}/04_v2.mp4", 0.10, 1.6),         # 皿に返した羽根
+               (f"{GEN}/04_v2.mp4", 3.30, 1.3, 1.70),   # 羽根の寄り
+               (f"{GEN}/04_c2.mp4", 0.04, 1.6),         # 箸で持ち上げ
+               (f"{GEN}/04_c2.mp4", 3.60, 1.2, 1.35),   # 肉汁（寄り）
+               (f"{GEN}/04_c3_v3m.mp4", 0.80, 1.8),     # 食卓
+               (f"{GEN}/04_pack.mp4", 0.00, 3.2)],      # パッケージ
+              # テロップはカットの切れ目で終える（次の画に食い込ませない）
+              [("04a_1", 0.40, 4.15), ("04a_2", 4.50, 7.05),
+               ("04a_3", 7.50, 9.90)],
+              None, None, 0.0, 0.0, a04a)
 
     if wanted("03_recruit_15s"):
         build("03_recruit_15s",

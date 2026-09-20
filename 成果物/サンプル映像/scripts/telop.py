@@ -60,8 +60,11 @@ TELOPS = {
     "02_1": ("現場で、その場で。", None, "scrim"),
     "02_2": ("事務所には、もう届いている。", None, "scrim"),
     "02_3": ("日報の転記を、なくす。", None, "scrim"),
-    "04a_1": ("音が、ちがう。", None, "block"),
-    "04a_2": ("肉汁、そのまま。", None, "block"),
+    # 9/20 差し替え。黒ブロック（block）は画面の上に貼った板に見えていたので、
+    # 画面下を落とすだけの cm に変えた。文言もCMの運びに合わせて組み直し
+    "04a_1": ("凍ったまま、フライパンへ。", None, "cm"),
+    "04a_2": ("羽根まで、ぱりっと。", None, "cm"),
+    "04a_3": ("肉汁、そのまま。", None, "cm"),
     "04b_1": ("今日は、もう決まり。", None, "block"),
     "04b_2": ("フライパンひとつ、10分。", None, "block"),
     # 03 採用（16:9・scrim）
@@ -234,6 +237,20 @@ def band_telop(key, text, accent, style):
     # block に発光を足していたが、ぼかしがブロックの外に40px以上はみ出して、
     # 暗い映像の上では黒ブロックの上に灰色の帯が乗ったように見えていた。
     # 209/255 の黒ブロックに白文字なら、それだけで十分に読める
+    if style == "cm":
+        # 黒ブロックをやめ、画面下の暗がりに乗せる（下敷きは build_set 側）。
+        # 帯が無くなると味気ないので、本文の上に山吹の細い罫を1本だけ置く
+        rw, rh, gap = 180, 4, 34
+        ry = bb[1] - gap
+        ramp = np.zeros((H, W), dtype=np.uint8)
+        x0, x1 = bb[0], bb[0] + rw
+        prof = np.clip(np.sin(np.linspace(0, np.pi, x1 - x0)) * 2.6, 0, 1) * 255
+        ramp[ry:ry + rh, x0:x1] = prof.astype(np.uint8)
+        rule = Image.composite(Image.new("RGBA", (W, H), ACCENT + (255,)),
+                               blank(), Image.fromarray(ramp))
+        img.alpha_composite(dim_alpha(rule.filter(ImageFilter.GaussianBlur(9)), 0.9))
+        img.alpha_composite(rule)
+        bb = (bb[0], ry, bb[2], bb[3])
     if style == "emo":
         # 文字そのものを光らせる。02で嫌われた「黒フチ＋重ねぼかし」とは別物で、
         # フチを作らず、広く薄いぼかしを2段重ねるだけ。夜の画で文字が浮く
@@ -429,7 +446,7 @@ def build_set(table, label=""):
     for key, b in boxes.items():
         b["underlay"] = True
         # グラデーションは動かさない（下から持ち上げると下端に隙間ができる）
-        b["static_underlay"] = b["style"] == "scrim"
+        b["static_underlay"] = b["style"] in ("scrim", "cm")
         if b["style"] == "emo":
             # 下敷きはぼかした暗がりなので動かさない（動くと明るさが波打つ）。
             # 文字は 190px の持ち上げをやめ、28px をゆっくり浮かせる
@@ -457,7 +474,7 @@ def build_set(table, label=""):
             fs = ImageFont.truetype(GOTHIC, 62)
             d.text((134, b["y"] + b["h"] // 2), table[key][1], font=fs,
                    fill=(255, 255, 255, 255), anchor="mm")
-        elif b["style"] == "scrim":
+        elif b["style"] in ("scrim", "cm"):
             # 2行の引用は本文が上まで来るので、暗がりもその上から始める
             top_y = min(int(H * 0.574), b["y"] - 90)
             a = np.zeros((H, W), dtype=np.uint8)
