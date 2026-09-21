@@ -717,11 +717,39 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     for (const file of ['roadmap.html', 'record.html']) {
         const pg = await open(browser, { page: file });
         const body = await pg.locator('body').innerText();
-        check(`${file} の前提が目標時間単価と一致`, body.includes(want), want);
-        check(`${file} に古い時間単価が残っていない`, !/14,900/.test(body),
-            (body.match(/.{0,24}14,900.{0,24}/) || [''])[0]);
+        check(`${file} の前提が時間単価と一致`, body.includes(want), want);
+        /* ¥23,000 は価格÷実測工数の結果であって、目標として決めた数字ではない。
+           「目標の時間単価」と書くと、値下げの是非を時給の話にすり替えてしまう
+           （実際は循環している）。言い切りの表現に戻っていないかを見る（9/21） */
+        check(`${file} で時間単価を目標と書いていない`, !/目標の時間単価/.test(body),
+            (body.match(/.{0,20}目標の時間単価.{0,20}/) || [''])[0]);
+        /* 経緯の説明として ¥14,900 に触れるのは構わない（9/21 に追記した）。
+           見るのは「前提」の行で、いまの数字として出ていないこと */
+        const premise = await pg.locator('.note').innerText();
+        check(`${file} に古い時間単価が残っていない`, !/14,900/.test(premise),
+            (premise.match(/.{0,24}14,900.{0,24}/) || [''])[0]);
         await pg.close();
     }
+}
+
+/* ---- 時間単価の位置づけ（9/21）----
+   ¥23,000 は価格÷実測工数の結果で、目標として決めた数字ではない。
+   ここを取り違えると「時給を下げれば値下げできる」という循環した話になる。
+   record.html と README の両方に、その旨と代わりの判断軸を残してある */
+{
+    const rc2 = await open(browser, { page: 'record.html' });
+    const t2 = await rc2.locator('body').innerText();
+    check('時間単価が結果の数字だと書いてある',
+        /目標ではなく、結果の数字/.test(t2) && /割り算/.test(t2), t2.slice(0, 40));
+    check('値下げの判断軸が年収と時間だと書いてある',
+        /465h/.test(t2) && /713h/.test(t2));
+    check('いま値下げの根拠がないと書いてある',
+        /問い合わせが来ない/.test(t2) && /見積0件/.test(t2));
+    await rc2.close();
+    const readme2 = readFileSync(`${ROOT}/README.md`, 'utf8');
+    check('README にも同じことが書いてある',
+        /目標ではなく、価格 ÷ 実測工数の結果/.test(readme2)
+        && /循環していて、値下げの根拠にならない/.test(readme2));
 }
 
 /* ---- 実測記録と裏づけ(社内用) ----
