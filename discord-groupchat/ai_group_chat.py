@@ -2745,7 +2745,7 @@ KEY_REG_USAGE = (
 # スマホからは開けないが、認可コードはURLに載っているのでそれで交換できる。
 # （Macの前でしか認証できない作りにすると、外出先・入院中に詰む）
 # drive.file は「このアプリが作ったファイルだけ」。本人が手で作った
-# DRIVE_VIDEO_FOLDER に書き込めないので drive にしてある（2026-09-22）。
+# DRIVE_UPLOAD_FOLDER に書き込めないので drive にしてある（2026-09-22）。
 DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive"]
 DRIVE_REDIRECT = "http://localhost:8765/"
 DRIVE_TOKEN_FILE = Path(HISTORY_DIR) / "drive_token.json"   # history/ は .gitignore 済み
@@ -2891,7 +2891,7 @@ def _drive_list(limit=20):
 
 # 完成した動画を自動で入れる Drive のフォルダ（本人指定・2026-09-22）。
 # https://drive.google.com/drive/folders/1XCcxur8XY6VMooTp7cw6Pc-lpbUiz1r-
-DRIVE_VIDEO_FOLDER = os.getenv("DRIVE_VIDEO_FOLDER",
+DRIVE_UPLOAD_FOLDER = os.getenv("DRIVE_UPLOAD_FOLDER",
                                "1XCcxur8XY6VMooTp7cw6Pc-lpbUiz1r-")
 # 自動で上げるか。止めたいときは DRIVE_AUTO_UPLOAD=0。
 DRIVE_AUTO_UPLOAD = os.getenv("DRIVE_AUTO_UPLOAD", "1").lower() not in (
@@ -2924,20 +2924,21 @@ VIDEO_SUFFIXES = (".mp4", ".mov", ".m4v")
 
 
 def _drive_dest_for(path):
-    """どのフォルダへ入れるか。動画は「動画」フォルダ、他はマイドライブ直下。
+    """どのフォルダへ入れるか。【何を上げても】DRIVE_UPLOAD_FOLDER に入れる。
 
     置き場の規則をここ1か所にする（自動アップロードとDiscordの
     「ドライブに上げて」で行き先が食い違っていたため。2026-09-22）。
+    拡張子で分けていた（動画だけフォルダ・他は直下）が、本人の希望で
+    全部このフォルダに統一した（2026-09-22）。散らかる場所を作らない。
     """
-    return (DRIVE_VIDEO_FOLDER
-            if Path(path).suffix.lower() in VIDEO_SUFFIXES else None)
+    return DRIVE_UPLOAD_FOLDER
 
 
 def _drive_upload_video(path):
     """完成した動画を、決めたフォルダへ自動で上げる。
     失敗しても制作そのものは無駄にしない（例外は投げず、文を返すだけ）。
     戻り値: Discord に足す1行（上げなかった・失敗した時は空）。"""
-    if not (DRIVE_AUTO_UPLOAD and DRIVE_VIDEO_FOLDER):
+    if not (DRIVE_AUTO_UPLOAD and DRIVE_UPLOAD_FOLDER):
         return ""
     try:
         svc = _drive_service()
@@ -2948,7 +2949,7 @@ def _drive_upload_video(path):
         size = p.stat().st_size
         media = MediaFileUpload(str(p), resumable=size > 5 * 1024 * 1024)
         f = svc.files().create(
-            body={"name": p.name, "parents": [DRIVE_VIDEO_FOLDER]},
+            body={"name": p.name, "parents": [DRIVE_UPLOAD_FOLDER]},
             media_body=media, fields="id,name,webViewLink").execute()
         link = f.get("webViewLink") or ""
         print(f"[drive] 自動アップロード: {f.get('name')} → {link}")

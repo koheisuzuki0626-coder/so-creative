@@ -4,7 +4,8 @@
     python3 tools/drive_put.py 動画.mp4 [もう1本.mp4 ...]
     python3 tools/drive_put.py --folder <フォルダID> 資料.pdf
 
-置き場の既定は ai_group_chat.DRIVE_VIDEO_FOLDER（＝Driveの「動画」）。
+置き場は ai_group_chat.DRIVE_UPLOAD_FOLDER（＝Driveの「動画」フォルダ）。
+何を渡してもここに入る。
 認証とアップロードの実体はボットと同じものを使う（鍵の持ち方を二重に
 しないため）。トークンが切れていたら、その場で言う。
 """
