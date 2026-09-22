@@ -4500,8 +4500,16 @@ def _corporate_score(v):
     return s
 
 
+# 検索の並び順。検索語を出したのに再生数順で引くと、その語と関係の薄い
+# 有名動画が必ず上に来る（2026-09-23：「ミュージックビデオ」で Drake・BTS、
+# 「会社紹介動画 制作事例」でAIツールの宣伝が選ばれていた）。
+# 企業VPは再生数が数百〜数千回なのが普通で、再生数順はこの用途に最も向かない。
+TREND_SEARCH_ORDER = os.getenv("TREND_SEARCH_ORDER", "relevance")
+
+
 async def _search_videos(query, limit=50, days=None):
-    """YouTube Data API でキーワード検索し、直近N日の人気動画を再生数順に取得。
+    """YouTube Data API でキーワード検索し、直近N日の人気動画を取得。
+    並びは検索語との関連順（TREND_SEARCH_ORDER）。
     days を渡すと窓を狭められる（毎日のリサーチが同じ顔ぶれになるのを防ぐ）。"""
     if not YOUTUBE_API_KEY:
         raise RuntimeError("YOUTUBE_API_KEY が .env に設定されていません")
@@ -4513,7 +4521,7 @@ async def _search_videos(query, limit=50, days=None):
             "part": "id",
             "q": query,
             "type": "video",
-            "order": "viewCount",
+            "order": TREND_SEARCH_ORDER,
             "publishedAfter": published_after,
             "maxResults": str(min(limit, 50)),
             "regionCode": TREND_REGION,
@@ -5902,7 +5910,20 @@ _NOT_PROMO_PATTERNS = (
         r"稼(ぐ|げる)|副業|月収|案件の取り方", re.I)),
     ("サンプル・見本そのもの", re.compile(
         r"サンプル|sample|見本|テスト(動画|映像)|試作|デモ(動画|映像)", re.I)),
+    # 以下は 2026-09-23 に追加。実際に選ばれてノイズになったものを外す。
+    ("ショート動画", re.compile(r"#\s*shorts?\b|＃ショート", re.I)),
+    ("本編でない（舞台裏・反応・切り抜き）", re.compile(
+        r"メイキング|舞台裏|making\s*of|behind\s*the\s*scenes|"
+        r"リアクション|reaction|切り抜き|まとめてみた|"
+        r"(して|見て|聴いて)みた|比較してみた|検証してみた", re.I)),
+    ("ゲーム・実況", re.compile(
+        r"実況|ゲーム実況|gameplay|プレイ動画|攻略|roblox|minecraft", re.I)),
 )
+
+# これより短い動画は見ない。企業VPもMVも、短すぎると構成が読めない
+# （2026-09-23：#shorts の切り抜きが選ばれ、分析が当たり障りのないものに
+#  なっていた）。15秒のCMを見たい時は、検索語のほうで指定する。
+TREND_MIN_SECONDS = int(os.getenv("TREND_MIN_SECONDS", "30"))
 
 
 def _not_promo_reason(v):
@@ -6066,7 +6087,7 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
         seen = analyzed if skip else set()
         return [v for v in videos
                 if v["id"] not in seen
-                and 0 < v["duration"] <= TREND_MAX_MINUTES * 60]
+                and TREND_MIN_SECONDS <= v["duration"] <= TREND_MAX_MINUTES * 60]
 
     candidates = _pick(skip_analyzed)
     # 全部見終わっていたら、飛ばすのをやめて見る（0本で終わらせない）。

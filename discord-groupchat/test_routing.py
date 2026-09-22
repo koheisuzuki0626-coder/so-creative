@@ -2922,6 +2922,23 @@ def run():
     check("まとめに金額を書かせない",
           "**金額と工数は書かない**" in bot_src(), True)
 
+    print("■ リサーチで選ぶ動画：関連順で引き、本編でないものを外す")
+    # 事故（2026-09-23）：再生数順で引いていたため、検索語と関係の薄い有名動画
+    #（Drake・BTS の #shorts 等）が選ばれていた。企業VPは再生数が数百〜数千回
+    # なのが普通で、再生数順は毎日ほぼ同じ顔ぶれしか返さない。
+    check("検索は関連順", bot.TREND_SEARCH_ORDER, "relevance")
+    check("短すぎる動画は見ない", bot.TREND_MIN_SECONDS >= 15, True)
+    for _t, _why in (
+            ("BTS Painted Artworks For Their MV #shorts #bts", "ショート動画"),
+            ("企業VPのメイキング 舞台裏に密着", "本編でない（舞台裏・反応・切り抜き）"),
+            ("海外の反応 リアクション動画", "本編でない（舞台裏・反応・切り抜き）"),
+            ("【神回】Roblox Tower Battles 実況プレイ", "ゲーム・実況")):
+        check(f"外す: {_t[:22]}", bot._not_promo_reason({"title": _t}), _why)
+    for _t in ("ニッコーさま 会社紹介動画",
+               "【会社紹介動画】技術者集団｜株式会社ガイア",
+               "VIBEX - Stay Close (Official Music Video)"):
+        check(f"外さない: {_t[:22]}", bot._not_promo_reason({"title": _t}), None)
+
     print("■ Driveの認証切れは、日付ではなく状態で気づく")
     # 同意画面が「テスト中」のままなので更新用トークンは7日で切れる。
     # 黙って上がらなくなるのが一番困るので、切れていたらDiscordで言う。
