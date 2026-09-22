@@ -2884,8 +2884,18 @@ def _drive_list(limit=20):
     return "📂 Google Drive（新しい順）\n" + "\n".join(rows)
 
 
-def _drive_upload(path):
-    """Macのファイルを1つ上げる。戻り値は見せる文。"""
+# 完成した動画を自動で入れる Drive のフォルダ（本人指定・2026-09-22）。
+# https://drive.google.com/drive/folders/1XCcxur8XY6VMooTp7cw6Pc-lpbUiz1r-
+DRIVE_VIDEO_FOLDER = os.getenv("DRIVE_VIDEO_FOLDER",
+                               "1XCcxur8XY6VMooTp7cw6Pc-lpbUiz1r-")
+# 自動で上げるか。止めたいときは DRIVE_AUTO_UPLOAD=0。
+DRIVE_AUTO_UPLOAD = os.getenv("DRIVE_AUTO_UPLOAD", "1").lower() not in (
+    "0", "false", "no")
+
+
+def _drive_upload(path, folder_id=None):
+    """Macのファイルを1つ上げる。戻り値は見せる文。
+    folder_id を渡すと、そのフォルダの中に入れる（既定はマイドライブ直下）。"""
     svc = _drive_service()
     if svc is None:
         return DRIVE_NEED_AUTH
@@ -2895,11 +2905,39 @@ def _drive_upload(path):
     from googleapiclient.http import MediaFileUpload
     size = p.stat().st_size
     media = MediaFileUpload(str(p), resumable=size > 5 * 1024 * 1024)
+    body = {"name": p.name}
+    if folder_id:
+        body["parents"] = [folder_id]
     f = svc.files().create(
-        body={"name": p.name}, media_body=media,
+        body=body, media_body=media,
         fields="id,name,webViewLink").execute()
     return (f"⬆️ 上げました: **{f['name']}**（{_human_size(size)}）\n"
             + (f.get("webViewLink") or ""))
+
+
+def _drive_upload_video(path):
+    """完成した動画を、決めたフォルダへ自動で上げる。
+    失敗しても制作そのものは無駄にしない（例外は投げず、文を返すだけ）。
+    戻り値: Discord に足す1行（上げなかった・失敗した時は空）。"""
+    if not (DRIVE_AUTO_UPLOAD and DRIVE_VIDEO_FOLDER):
+        return ""
+    try:
+        svc = _drive_service()
+        if svc is None:
+            return ""            # 未認証。ここで認証を促すと制作の邪魔になる
+        p = Path(path)
+        from googleapiclient.http import MediaFileUpload
+        size = p.stat().st_size
+        media = MediaFileUpload(str(p), resumable=size > 5 * 1024 * 1024)
+        f = svc.files().create(
+            body={"name": p.name, "parents": [DRIVE_VIDEO_FOLDER]},
+            media_body=media, fields="id,name,webViewLink").execute()
+        link = f.get("webViewLink") or ""
+        print(f"[drive] 自動アップロード: {f.get('name')} → {link}")
+        return f"\nGoogle Drive: {link}" if link else "\nGoogle Drive に保存しました"
+    except Exception as e:  # noqa: BLE001
+        _log_error("Driveへの自動アップロード", e)
+        return ""
 
 
 def _drive_download(name):
@@ -4144,6 +4182,10 @@ async def _save_media_artifact(cid, data, filename, title, project=""):
             _refresh_media_readme, folder, project or MEDIA_PROJECT_DEFAULT)
         saved = await _save_to_github([p for p in (path, readme) if p],
                                       f"{title}を保存（Discordから）")
+        # 完成した動画は Google Drive にも自動で入れる（本人の希望・2026-09-22）。
+        # 素材の静止画は上げない。採用しなかったカットまで入ると埋まる。
+        if path.suffix.lower() in (".mp4", ".mov", ".m4v"):
+            saved += await asyncio.to_thread(_drive_upload_video, path)
         rel = os.path.relpath(path, os.path.dirname(ARTIFACT_DIR))
         _remember_artifact(cid, "media", title, path)
         return rel, _github_url(folder), saved
