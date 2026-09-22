@@ -116,7 +116,7 @@
                   "name": "料金はどうやって決まりますか？",
                   "acceptedAnswer": {
                         "@type": "Answer",
-                        "text": "基本料金 ¥90,000 ＋ 秒単価 × 合計秒数 ＋ ¥65,000 × (本数 − 1) で決まります（税込）。秒単価は仕上げの段階で変わり、梅（標準）¥3,500、竹（上）¥4,900、松（特上）¥6,650 です。たとえば30秒を1本なら梅で ¥195,000、90秒を1本なら竹で ¥531,000、3分を1本なら松で ¥1,287,000 になります。料金ページで段階・尺・本数を選ぶと、その場で金額が出ます。"
+                        "text": "基本料金 ¥90,000 ＋ 秒単価 × 合計秒数 ＋ ¥65,000 × (本数 − 1) で決まります（税込）。秒単価は仕上げの段階で変わり、梅（標準）¥3,500、竹（上）¥4,900、松（特上）¥6,650 です。たとえば30秒を1本なら梅で ¥195,000、90秒を1本なら竹で ¥531,000、3分を1本なら松で ¥1,287,000 になります。料金ページで段階と本数を選び、1本ずつ尺を選ぶと、その場で金額が出ます。尺は1本ごとに変えられるので、30秒と90秒を1本ずつ、といった組み合わせもそのまま計算できます。"
                   }
             },
             {
@@ -701,7 +701,7 @@
             <div class="section-head reveal">
                 <p class="eyebrow">Plans</p>
                 <h2 class="headline">料金プラン。</h2>
-                <p class="body-text measure">料金は <strong>基本料金 ＋ 合計の尺 ＋ 本数</strong> で決まり、<strong>仕上げの段階</strong>で尺の単価が変わります。3つ選ぶと、その場で金額が出ます。表示は税込です。</p>
+                <p class="body-text measure">料金は <strong>基本料金 ＋ 尺の合計 ＋ 本数</strong> で決まり、<strong>仕上げの段階</strong>で尺の単価が変わります。<strong>尺は1本ずつ別々に選べます</strong>（30秒と90秒を1本ずつ、のような組み合わせもそのまま出ます）。表示は税込です。</p>
             </div>
 
             <div class="calc reveal">
@@ -712,13 +712,14 @@
                         <p class="calc-hint" id="calc-tier-hint"></p>
                     </div>
                     <div class="calc-row">
-                        <p class="calc-label" id="calc-len-label"><span class="calc-step">2</span>合計の尺を選ぶ</p>
-                        <div class="calc-opts" role="radiogroup" aria-labelledby="calc-len-label" id="calc-len"></div>
-                    </div>
-                    <div class="calc-row">
-                        <p class="calc-label" id="calc-cnt-label"><span class="calc-step">3</span>何本に分けるかを選ぶ</p>
+                        <p class="calc-label" id="calc-cnt-label"><span class="calc-step">2</span>何本つくるかを選ぶ</p>
                         <div class="calc-opts" role="radiogroup" aria-labelledby="calc-cnt-label" id="calc-cnt"></div>
                         <p class="calc-hint" id="calc-cnt-hint"></p>
+                    </div>
+                    <div class="calc-row">
+                        <p class="calc-label" id="calc-len-label"><span class="calc-step">3</span>それぞれの尺を選ぶ</p>
+                        <div class="calc-lens" id="calc-len"></div>
+                        <p class="calc-hint" id="calc-len-hint"></p>
                     </div>
                     <div class="calc-row">
                         <p class="calc-label" id="calc-nar-label"><span class="calc-step">4</span>ナレーション</p>
@@ -827,7 +828,7 @@
                 </details>
                 <details class="faq-item">
                     <summary>料金はどうやって決まりますか？</summary>
-                    <div class="faq-a"><p>基本料金 ¥90,000 ＋ 秒単価 × 合計秒数 ＋ ¥65,000 × (本数 − 1) で決まります（税込）。秒単価は仕上げの段階で変わり、梅（標準）¥3,500、竹（上）¥4,900、松（特上）¥6,650 です。たとえば30秒を1本なら梅で ¥195,000、90秒を1本なら竹で ¥531,000、3分を1本なら松で ¥1,287,000 になります。料金ページで段階・尺・本数を選ぶと、その場で金額が出ます。</p></div>
+                    <div class="faq-a"><p>基本料金 ¥90,000 ＋ 秒単価 × 合計秒数 ＋ ¥65,000 × (本数 − 1) で決まります（税込）。秒単価は仕上げの段階で変わり、梅（標準）¥3,500、竹（上）¥4,900、松（特上）¥6,650 です。たとえば30秒を1本なら梅で ¥195,000、90秒を1本なら竹で ¥531,000、3分を1本なら松で ¥1,287,000 になります。料金ページで段階と本数を選び、1本ずつ尺を選ぶと、その場で金額が出ます。尺は1本ごとに変えられるので、30秒と90秒を1本ずつ、といった組み合わせもそのまま計算できます。</p></div>
                 </details>
                 <details class="faq-item">
                     <summary>梅・竹・松は何が違いますか？</summary>
@@ -1333,8 +1334,9 @@
             { sec: 180, label: '3分' },
             { sec: 300, label: '5分' },
         ];
-        // 1本あたりが短くなりすぎないよう、尺に応じて本数の上限を決める
-        const countCap = (sec) => (sec <= 30 ? 2 : sec <= 90 ? 4 : 6);
+        /* 以前は「合計の尺」を「本数」で割る形だったので、1本が短くなりすぎないよう
+           本数に上限を置いていた（countCap）。9/22 に本ごとに尺を選ぶ形へ変えたので、
+           1本あたりは必ず15秒以上になり、上限そのものが要らなくなった */
 
         /* 納期は工数から出す。固定の早見表にすると、尺が伸びたときに
            実際の手間より長い数字を出してしまう(3分48hで5週間など)。
@@ -1354,14 +1356,27 @@
             Math.max(2, Math.round((HOURS.base + HOURS.perSec * t.hours * sec + HOURS.narration * narN) / LEAD_WEEK_HOURS + LEAD_REVIEW));
         const leadTime = (sec, t, narN) => `約${leadWeeks(sec, t, narN)}週間`;
         const yen = (n) => `¥${n.toLocaleString('ja-JP')}`;
+        /* 合計は選択肢に無い秒数になりうる（120+90=210秒など）ので、その場で組み立てる */
+        const secLabel = (sec) => {
+            const hit = LENGTHS.find((l) => l.sec === sec);
+            if (hit) return hit.label;
+            const m = Math.floor(sec / 60), r = sec % 60;
+            return m ? (r ? `${m}分${r}秒` : `${m}分`) : `${sec}秒`;
+        };
 
         const calc = document.querySelector('.calc');
         if (calc) {
             const lenBox = document.getElementById('calc-len');
+            const lenHint = document.getElementById('calc-len-hint');
             const cntBox = document.getElementById('calc-cnt');
             const cntHint = document.getElementById('calc-cnt-hint');
-            let sec = 30;
-            let count = 1;
+            /* 本ごとの尺（秒）。長さが本数、合計が尺の合計。
+               料金は base + 秒単価 × 合計秒数 + ¥65,000 × (本数 − 1) なので、
+               どう割り振っても合計が同じなら金額は変わらない。
+               変わるのは「何を何秒で作るか」が相手に伝わるかどうか */
+            let lens = [30];
+            const MAX_COUNT = 6;
+            const totalSec = () => lens.reduce((a, b) => a + b, 0);
             let tier = TIERS[0];
             /* 初期は 'ai'。AIナレーションは料金に含まれているので、これが素の状態。
                'none' を初期にすると表示額が差し引き後になり、
@@ -1410,15 +1425,55 @@
                 o.input.dataset.tier = t.id;
             });
 
-            LENGTHS.forEach(({ sec: s, label }) => {
-                const o = makeOpt(label, lenBox, 'calc-len', s, () => { sec = s; touch(); render(); });
-                o.label.dataset.sec = String(s);
-                o.input.dataset.sec = String(s);
-            });
-            for (let n = 1; n <= 6; n += 1) {
-                const o = makeOpt(`${n}本`, cntBox, 'calc-cnt', n, () => { count = n; touch(); render(); });
+            for (let n = 1; n <= MAX_COUNT; n += 1) {
+                const o = makeOpt(`${n}本`, cntBox, 'calc-cnt', n, () => { setCount(n); touch(); render(); });
                 o.label.dataset.count = String(n);
                 o.input.dataset.count = String(n);
+            }
+            /* 本数を変えたとき、いま入っている尺は残す。
+               増えたぶんは直前の本と同じ尺で埋める（同じ尺を並べたい人が多いため） */
+            function setCount(n) {
+                while (lens.length > n) lens.pop();
+                while (lens.length < n) lens.push(lens[lens.length - 1] ?? 30);
+            }
+            /* 本ごとの尺は select で組む。6本 × 8つの尺を丸で並べると48個になり、
+               選ぶところが画面の大半を占めてしまう */
+            function buildLens() {
+                /* 本数が変わったときだけ組み直す。毎回つくり直すと、
+                   尺を選んだ直後に select が別物になってフォーカスが飛ぶ */
+                if (lenBox.children.length === lens.length) {
+                    lenBox.querySelectorAll('select').forEach((sel) => {
+                        sel.value = String(lens[Number(sel.dataset.row)]);
+                    });
+                    return;
+                }
+                lenBox.textContent = '';
+                lens.forEach((sec, i) => {
+                    const row = document.createElement('div');
+                    row.className = 'calc-len-row';
+                    row.dataset.row = String(i);
+                    const name = document.createElement('span');
+                    name.id = `calc-len-name-${i}`;
+                    name.textContent = `${i + 1}本目`;
+                    const sel = document.createElement('select');
+                    sel.dataset.row = String(i);
+                    sel.setAttribute('aria-labelledby', `calc-len-name-${i}`);
+                    LENGTHS.forEach(({ sec: v, label }) => {
+                        const opt = document.createElement('option');
+                        opt.value = String(v);
+                        opt.dataset.sec = String(v);
+                        opt.textContent = label;
+                        if (v === sec) opt.selected = true;
+                        sel.append(opt);
+                    });
+                    sel.addEventListener('change', () => {
+                        lens[i] = Number(sel.value);
+                        touch();
+                        render();
+                    });
+                    row.append(name, sel);
+                    lenBox.append(row);
+                });
             }
             const narBox = document.getElementById('calc-nar');
             const narHint = document.getElementById('calc-nar-hint');
@@ -1438,38 +1493,62 @@
                工数はどちらも 1本 1.0h。松の秒単価には1本ぶんが入っているので、
                松が工数として足すのは2本目以降（ここを本数にすると 60秒松の 15.2h が動く）。
                tests/lib.mjs の narFee / narTracks と同じ */
+            const count = () => lens.length;
+            /* 「30秒×2本、90秒×1本」。並びは選んだ順のまま、隣り合う同じ尺だけまとめる */
+            const lensText = () => {
+                const g = [];
+                for (const sec of lens) {
+                    const last = g[g.length - 1];
+                    if (last && last.sec === sec) last.n += 1;
+                    else g.push({ sec, n: 1 });
+                }
+                return g.map((x) => `${secLabel(x.sec)}×${x.n}本`).join('、');
+            };
+            /* メール用。「15×4/60/180秒」のように、秒数だけを詰めて並べる。
+               mailto は URL 長に上限（Outlook で約2,048字）があり、全角は1文字9バイトに
+               なるので、ここだけは半角の数字と / で書く。画面のほうは lensText() で
+               「15秒×4本、60秒×1本」と読みやすく出している */
+            const lensJoin = () => {
+                const g = [];
+                for (const sec of lens) {
+                    const last = g[g.length - 1];
+                    if (last && last.sec === sec) last.n += 1;
+                    else g.push({ sec, n: 1 });
+                }
+                return `${g.map((x) => (x.n === 1 ? x.sec : `${x.sec}x${x.n}`)).join('/')}秒`;
+            };
             const narFee = () => (tier.narration
                 ? (narration === 'human' ? 0
                     : narration === 'ai' ? -PRICE.matsuToAi
                     : -PRICE.matsuToNone)
-                : narration === 'ai' ? PRICE.narrationAi * count
+                : narration === 'ai' ? PRICE.narrationAi * count()
                 : narration === 'human' ? PRICE.narrationHuman
                 : -PRICE.noNarration);   // 使わないなら、込みのぶんを返す
             /* 松の1本目は秒単価に溶けているので工数に足さない（human のとき count-1）。
                AI に替えたときは溶けている前提が外れるので、本数ぶんを足す */
             const narTracks = () => (tier.narration
-                ? (narration === 'human' ? count - 1 : narration === 'ai' ? count : 0)
-                : narration === 'none' ? 0 : count);
+                ? (narration === 'human' ? count() - 1 : narration === 'ai' ? count() : 0)
+                : narration === 'none' ? 0 : count());
 
             /* 初期表示の render とユーザー操作を分ける。
                「自分で条件を変えた」だけを検討中とみなす */
-            const totalNow = () => PRICE.base + tier.perSec * sec + PRICE.perExtra * (count - 1) + narFee();
+            const totalNow = () => PRICE.base + tier.perSec * totalSec() + PRICE.perExtra * (count() - 1) + narFee();
 
             function touch() {
-                if (!used) { used = true; track('calc_use', { sec, count, tier: tier.id, nar: tier.narration ? 'human' : narration }); }
+                if (!used) { used = true; track('calc_use', { sec: totalSec(), count: count(), tier: tier.id, nar: tier.narration ? 'human' : narration }); }
             }
 
             // 選び終えたところを1回だけ拾う(連打のたびに送らない)
             function settled(total) {
                 clearTimeout(resultTimer);
                 resultTimer = setTimeout(() => {
-                    if (used) track('calc_result', { sec, count, total, tier: tier.id, nar: tier.narration ? 'human' : narration });
+                    if (used) track('calc_result', { sec: totalSec(), count: count(), total, tier: tier.id, nar: tier.narration ? 'human' : narration });
                 }, 900);
             }
 
             function render() {
-                const cap = countCap(sec);
-                if (count > cap) count = cap;
+                const sec = totalSec();
+                const n = count();
 
                 tierBox.querySelectorAll('input').forEach((i) => {
                     i.checked = i.dataset.tier === tier.id;
@@ -1481,17 +1560,18 @@
                 useLine.textContent = `向いている用途：${tier.use}`;
                 tierHint.append(useLine);
 
-                lenBox.querySelectorAll('input').forEach((i) => {
-                    i.checked = Number(i.dataset.sec) === sec;
-                });
                 cntBox.querySelectorAll('input').forEach((i) => {
-                    const n = Number(i.dataset.count);
-                    i.disabled = n > cap;
-                    i.checked = n === count;
+                    i.disabled = false;
+                    i.checked = Number(i.dataset.count) === n;
                 });
-                cntHint.textContent = cap < 6
-                    ? `合計${LENGTHS.find((l) => l.sec === sec).label}なら${cap}本までお選びいただけます。1本あたりが短くなりすぎないようにしています。`
-                    : '';
+                cntHint.textContent = n === 1
+                    ? ''
+                    : `${n}本それぞれの尺を、下で別々に選べます。`;
+
+                buildLens();
+                lenHint.textContent = n === 1
+                    ? ''
+                    : `合計 ${secLabel(sec)}（${lensText()}）`;
 
                 /* 松も3つとも選べる（9/19）。以前は「人が読む」に固定していたが、
                    人物ナレーションが要らない案件で松を選べなくなっていた。
@@ -1534,11 +1614,11 @@
                 narHint.classList.toggle('calc-hint-warn', cheaperMatsu);
 
                 const lenFee = tier.perSec * sec;
-                const cntFee = PRICE.perExtra * (count - 1);
+                const cntFee = PRICE.perExtra * (n - 1);
                 const narN = narTracks();
                 const narFeeNow = narFee();
                 const total = PRICE.base + lenFee + cntFee + narFeeNow;
-                const lenLabel = LENGTHS.find((l) => l.sec === sec).label;
+                const lenLabel = secLabel(sec);
                 /* 「〜」を付けるのは人のときだけ。AI は額が決まっている */
                 const approx = mode === 'human' && narFeeNow > 0;
                 const narText = tier.narration
@@ -1551,12 +1631,13 @@
 
                 document.getElementById('calc-total').textContent = yen(total) + (approx ? '〜' : '');
                 document.getElementById('calc-base').textContent = yen(PRICE.base);
-                document.getElementById('calc-len-dt').textContent =
-                    `尺 ${lenLabel} × ${yen(tier.perSec)}（${tier.label}）`;
+                document.getElementById('calc-len-dt').textContent = n === 1
+                    ? `尺 ${lenLabel} × ${yen(tier.perSec)}（${tier.label}）`
+                    : `尺 合計${lenLabel}（${lensText()}） × ${yen(tier.perSec)}（${tier.label}）`;
                 document.getElementById('calc-lenfee').textContent = yen(lenFee);
-                document.getElementById('calc-cnt-dt').textContent = count === 1
+                document.getElementById('calc-cnt-dt').textContent = n === 1
                     ? '本数 1本'
-                    : `本数 ${count}本（2本目以降 ${count - 1}本）`;
+                    : `本数 ${n}本（2本目以降 ${n - 1}本）`;
                 document.getElementById('calc-cntfee').textContent = yen(cntFee);
                 document.getElementById('calc-nar-dt').textContent = narText;
                 document.getElementById('calc-narfee').textContent =
@@ -1569,7 +1650,7 @@
                    mailto は URL 長にクライアント側の制限（Outlook で約2,048字）があり、
                    松・5分・6本のような端の組み合わせで超えるため */
                 summary = [
-                    'so. の料金シミュレーターからのご相談です。',
+                    '料金シミュレーターからのご相談です。',
                     '',
                     '■ 選んだ内容',
                     `・仕上げ：${tier.label}（${tier.sub}）`,
@@ -1579,20 +1660,20 @@
                     '',
                     '■ 内訳',
                     `・基本料金：${yen(PRICE.base)}`,
-                    `・尺 ${lenLabel} × ${yen(tier.perSec)}（${tier.label}）：${yen(lenFee)}`,
-                    `・本数 ${count}本：${yen(cntFee)}`,
+                    `・尺 ${n === 1 ? lenLabel : `合計${lenLabel}`} × ${yen(tier.perSec)}（${tier.label}）：${yen(lenFee)}`,
+                    `・本数 ${n}本${n === 1 ? '' : `（${lensJoin()}）`}：${yen(cntFee)}`,
                     ...(narFeeNow > 0 ? [`・ナレーション 人物 1名：${yen(narFeeNow)}〜`] : []),
                     ...(narFeeNow < 0 ? [`・ナレーションの差し引き：−${yen(-narFeeNow)}`] : []),
                     '',
                     '■ ご記入ください',
-                    '・会社名 / お名前：',
+                    '・会社名・お名前：',
                     '・映像の用途：',
                     '・公開時期：',
-                    '・参考の映像・URL：',
-                    '・そのほかご要望：',
+                    '・参考URL：',
+                    '・ご要望：',
                 ].join('\r\n');
 
-                const subject = `動画制作のご相談（${tier.label}・${lenLabel} × ${count}本）`;
+                const subject = `動画制作のご相談（${tier.label}・合計${lenLabel}／${n}本）`;
                 mailLink.href = `mailto:${mailAddr}`
                     + `?subject=${encodeURIComponent(subject)}`
                     + `&body=${encodeURIComponent(summary)}`;
@@ -1601,7 +1682,7 @@
             // 相談まで進んだ人。ここまで来た人と calc_use の差が、価格で落ちた人数
             mailLink.addEventListener('click', () => {
                 cta = true;
-                track('calc_cta', { sec, count, total: totalNow(), tier: tier.id, nar: tier.narration ? 'human' : narration, how: 'mail' });
+                track('calc_cta', { sec: totalSec(), count: count(), total: totalNow(), tier: tier.id, nar: tier.narration ? 'human' : narration, how: 'mail' });
             });
 
             // メールソフトが開かない環境向けに、同じ本文をコピーできるようにする
@@ -1611,7 +1692,7 @@
             let msgTimer;
             copyBtn.addEventListener('click', async () => {
                 cta = true;
-                track('calc_cta', { sec, count, total: totalNow(), tier: tier.id, nar: tier.narration ? 'human' : narration, how: 'copy' });
+                track('calc_cta', { sec: totalSec(), count: count(), total: totalNow(), tier: tier.id, nar: tier.narration ? 'human' : narration, how: 'copy' });
                 let ok = false;
                 try {
                     await navigator.clipboard.writeText(summary);
@@ -1635,11 +1716,11 @@
 
             document.querySelectorAll('.calc-preset').forEach((b) => {
                 b.addEventListener('click', () => {
-                    sec = Number(b.dataset.len);
-                    count = Number(b.dataset.cnt);
+                    // よくある組み合わせは全部そろいの尺。同じ尺を本数ぶん並べる
+                    lens = Array.from({ length: Number(b.dataset.cnt) }, () => Number(b.dataset.len));
                     tier = TIERS.find((t) => t.id === b.dataset.tier) || tier;
                     touch();
-                    track('calc_preset', { preset: b.querySelector('b')?.textContent || '', sec, count, tier: tier.id });
+                    track('calc_preset', { preset: b.querySelector('b')?.textContent || '', sec: totalSec(), count: count(), tier: tier.id });
                     render();
                 });
             });
@@ -1662,7 +1743,7 @@
             const onLeave = () => {
                 if (left || !used) return;
                 left = true;
-                track('calc_leave', { sec, count, total: totalNow(), tier: tier.id, nar: tier.narration ? 'human' : narration, used, cta });
+                track('calc_leave', { sec: totalSec(), count: count(), total: totalNow(), tier: tier.id, nar: tier.narration ? 'human' : narration, used, cta });
             };
             window.addEventListener('pagehide', onLeave);
             document.addEventListener('visibilitychange', () => {

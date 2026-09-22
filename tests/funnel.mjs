@@ -17,7 +17,7 @@ await p.locator('#plans').scrollIntoViewIfNeeded();
 await p.waitForTimeout(700);
 check('料金を見たら plans_view', (await log(p)).includes('plans_view'));
 check('見ただけでは検討扱いにしない', !(await log(p)).includes('calc_use'));
-await p.locator('#calc-len .calc-opt[data-sec="180"]').click();
+await p.locator('#calc-len select[data-row="0"]').selectOption('180');
 await p.waitForTimeout(1200);
 const L = await log(p);
 check('条件を変えたら calc_use', L.includes('calc_use'));
@@ -33,7 +33,7 @@ await p.close();
 /* ---- 相談まで進んだ場合 ---- */
 p = await open(browser, {});
 await p.locator('#plans').scrollIntoViewIfNeeded(); await p.waitForTimeout(700);
-await p.locator('#calc-len .calc-opt[data-sec="90"]').click();
+await p.locator('#calc-len select[data-row="0"]').selectOption('90');
 await p.waitForTimeout(200);
 await p.evaluate(() => document.getElementById('calc-mail').removeAttribute('href'));
 await p.locator('#calc-mail').click();
@@ -68,7 +68,7 @@ p = await open(browser, {});
 const visit = async (sec, contact) => {
     await p.goto(`${BASE}/index.html`, { waitUntil: 'networkidle' });
     await p.locator('#plans').scrollIntoViewIfNeeded(); await p.waitForTimeout(700);
-    await p.locator(`#calc-len .calc-opt[data-sec="${sec}"]`).click();
+    await p.locator('#calc-len select[data-row="0"]').selectOption(String(sec));
     await p.waitForTimeout(1050);
     if (contact) {
         await p.evaluate(() => document.getElementById('calc-mail').removeAttribute('href'));

@@ -1141,6 +1141,24 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
 .calc-opt:has(input:disabled) { opacity: 0.34; cursor: not-allowed; }
 .calc-opt:has(input:disabled):hover { border-color: var(--line); }
 .calc-opt:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 3px; }
+/* 本ごとの尺。1本ずつ別の長さを選べる（9/22）。
+   6本 × 8つの尺をぜんぶ丸で並べると48個になるので、ここだけ select にしている */
+.calc-lens { display: flex; flex-wrap: wrap; gap: 9px; }
+.calc-len-row {
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 7px 10px 7px 14px;
+    border-radius: 980px; border: 1px solid var(--line); background: #fff;
+}
+.calc-len-row > span { font-size: 0.9rem; color: var(--ink-dim); white-space: nowrap; }
+.calc-len-row select {
+    font: inherit; font-size: 0.95rem; color: var(--ink);
+    padding: 4px 8px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--bg-alt);
+    cursor: pointer;
+}
+.calc-len-row select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.calc-len-row:hover { border-color: var(--ink); }
+
 .calc-hint { margin: 11px 0 0; font-size: 0.86rem; color: var(--ink-dim); min-height: 1.4em; }
 /* 「松のほうが安い」の注意。色だけで伝えないよう、文言でも言い切っている */
 .calc-hint-warn { color: var(--ink); font-weight: 600; }

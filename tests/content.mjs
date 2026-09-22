@@ -937,7 +937,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
        同じことを聞き直すことになるので、本文の項目を含んでいるかを見る */
     {
         check('ヒアリングシートがある', hearing.length > 500);
-        const fromCalc = ['会社名 / お名前', '映像の用途', '公開時期', '参考'];
+        const fromCalc = ['会社名', 'お名前', '映像の用途', '公開時期', '参考'];
         check('計算機のメール本文の項目を含んでいる',
             fromCalc.every((w) => hearing.includes(w) && idx.includes(w)),
             fromCalc.filter((w) => !(hearing.includes(w) && idx.includes(w))).join(','));

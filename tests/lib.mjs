@@ -35,7 +35,26 @@ export const TIERS = [
     { id: 'matsu', label: '松', perSec: 6650, hours: 1.36, narration: true },
 ];
 export const LENGTHS = [15, 30, 45, 60, 90, 120, 180, 300];
-export const countCap = (sec) => (sec <= 30 ? 2 : sec <= 90 ? 4 : 6);
+/* 9/22 まで：「合計の尺」を「本数」で割る形だったので、1本が短くなりすぎないよう
+   本数に上限を置いていた（countCap）。いまは本ごとに尺を選ぶので、
+   1本あたりは必ず15秒以上になり、上限そのものが要らない。
+   代わりに「合計 sec 秒を最大で何本に割れるか」を使う */
+export const maxPieces = (sec) => Math.min(6, Math.floor(sec / LENGTHS[0]));
+/* 到達できる (合計秒数, 本数) の全部。1〜6本、各本 LENGTHS のどれか。
+   下限の検査はこの集合で回す（LENGTHS だけを見ると 45=15+30 のような合計を見落とす） */
+export function reachable() {
+    const out = [];
+    for (let n = 1; n <= 6; n += 1) {
+        const seen = new Set();
+        const rec = (i, sum) => {
+            if (i === n) { seen.add(sum); return; }
+            for (const l of LENGTHS) rec(i + 1, sum + l);
+        };
+        rec(0, 0);
+        for (const sec of seen) out.push({ sec, n });
+    }
+    return out;
+}
 /* nar … 'none' | 'ai' | 'human'。松は human が込み。
    2026-09-17 に2段階の変更をした。
 
@@ -138,10 +157,38 @@ export async function open(pw, { width = 1280, height = 900, mobile = false, pag
     p.__errors = errors;
     return p;
 }
-export const pick = async (p, tier, sec, n) => {
+/* 9/22 から、尺は本ごとに選ぶ形になった（合計の尺を本数で割る形ではない）。
+   pick(sec, n) の意味は前と同じ「合計 sec 秒を n 本」なので、
+   選択肢の尺だけで合計 sec になる組み合わせをここで探して入れる。
+   料金は合計秒数と本数だけで決まるので、どの割り方でも金額は同じ */
+export function splitSec(sec, n) {
+    const memo = new Map();
+    const go = (left, k) => {
+        if (k === 0) return left === 0 ? [] : null;
+        const key = `${left},${k}`;
+        if (memo.has(key)) return memo.get(key);
+        let out = null;
+        for (const l of LENGTHS) {
+            if (l > left) break;
+            const rest = go(left - l, k - 1);
+            if (rest) { out = [l, ...rest]; break; }
+        }
+        memo.set(key, out);
+        return out;
+    };
+    const got = go(sec, n);
+    if (!got) throw new Error(`${sec}秒 を ${n}本 に割れない（選べる尺: ${LENGTHS.join()}）`);
+    return got;
+}
+export const setLens = async (p, parts) => {
+    await p.locator(`#calc-cnt .calc-opt[data-count="${parts.length}"]`).click();
+    for (const [i, sec] of parts.entries()) {
+        await p.locator(`#calc-len select[data-row="${i}"]`).selectOption(String(sec));
+    }
+};
+export const pick = async (p, tier, sec, n = 1) => {
     await p.locator(`#calc-tier .calc-opt[data-tier="${tier}"]`).click();
-    await p.locator(`#calc-len .calc-opt[data-sec="${sec}"]`).click();
-    if (n) await p.locator(`#calc-cnt .calc-opt[data-count="${n}"]`).click();
+    await setLens(p, splitSec(sec, n));
     await p.waitForTimeout(60);
     return Number((await p.locator('#calc-total').innerText()).replace(/[^\d]/g, ''));
 };
