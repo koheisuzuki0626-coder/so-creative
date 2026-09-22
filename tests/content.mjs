@@ -262,22 +262,31 @@ check('金額の表示は税込で揃っている',
     check('採用のサンプルにもポスター画像がある',
         /poster="assets\/works\/recruit-3min\.jpg"/.test(idx));
     /* サンプルは「見せられないものは売らない」の裏づけなので、欠けたら落とす。
-       ミュージックビデオ（9/19 追加・現09）だけは、クレジット残が足りず 90秒の MV を
-       1本つくれないため、サンプルなしで先に公開している。黙って緩めないよう、
-       例外はこの1枚に限る形で書く。サンプルができたらこの除外を外す */
+       9/19〜9/21 はミュージックビデオ（現09）だけクレジット残が足りず例外にしていたが、
+       9/22 に30秒版を入れたので例外は無くなった。空のカードを増やさないため、
+       ここは「1枚も欠けていない」で固定する */
     const noSample = await page.locator('.genre:not(:has(.sample-video))').evaluateAll(
         (els) => els.map((e) => e.id));
-    check('サンプルが無いのはミュージックビデオだけ',
-        noSample.join(',') === 'genre-mv', noSample.join(','));
-    check('ミュージックビデオ以外の全ジャンルにサンプルが入っている',
+    check('サンプルの無いジャンルが1枚も無い', noSample.length === 0, noSample.join(','));
+    check('全ジャンルにサンプルが入っている',
         (await page.locator('.genre .sample-video').count())
-        === (await page.locator('.genre').count()) - 1);
-    /* サンプルが無いぶん、いまどういう状態かをカードに書く。
-       黙って空にすると「作れないジャンル」に見える */
-    check('ミュージックビデオのカードに状態と料金の扱いが書いてある',
-        /サンプルは準備中/.test(await page.locator('#genre-mv').innerText())
-        && /料金表ではなく個別にお見積り/.test(await page.locator('#genre-mv').innerText()),
+        === (await page.locator('.genre').count()));
+    /* MVだけ料金計算機に乗せていない。尺が3〜4分になると相場と2倍以上離れるうえ、
+       実工数をまだ測っていないため。カードにその扱いを書いていないと、
+       料金表に無いことが「出せない」に見える */
+    check('ミュージックビデオのカードに料金の扱いが書いてある',
+        /料金表ではなく個別にお見積り/.test(await page.locator('#genre-mv').innerText()),
         await page.locator('#genre-mv').innerText());
+    check('ミュージックビデオのサンプルは30秒だと書いてある',
+        /サンプル（30秒）/.test(await page.locator('#genre-mv').innerText()));
+    check('ミュージックビデオのサンプルも自前で配信している',
+        /assets\/works\/mv-30s-dance\.mp4/.test(idx));
+    check('ミュージックビデオのサンプルにもポスター画像がある',
+        /poster="assets\/works\/mv-30s-dance\.jpg"/.test(idx));
+    /* 曲は鈴木さん自身のもの。権利の出所を書いていないと、
+       既存曲を無断で使ったように見える */
+    check('ミュージックビデオの曲の出所を書いている',
+        /自作のオリジナル曲/.test(await page.locator('#genre-mv').innerText()));
     /* 09 アニメーション・図解（9/19 追加）。生成AIを使っていない唯一のサンプル。
        文字が主役の題材はAIが画面内の文字を描けないので、プログラム描画だと
        明記してあること（これが売り文句であり、嘘をつかないための断りでもある） */
