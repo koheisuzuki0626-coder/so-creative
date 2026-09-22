@@ -24,6 +24,14 @@ check('FAQ の文言が画面と構造化データで一致',
     faqUi.every((u, i) => faqLd[i]?.name === u.q && faqLd[i]?.acceptedAnswer?.text === u.a),
     JSON.stringify(faqUi.map((u, i) => faqLd[i]?.name === u.q)));
 check('閉じていても本文が読める(クローラ対策)', faqUi.every(u => u.a.length > 30));
+/* 9/22：「登場人物を増やすと値段が上がるのか」を聞かれた。
+   上がるのは段をまたぐときだけで、段の中（竹の1人と2人）は同額。
+   人数そのものは料金に入っていないので、そう言い切る。
+   曖昧なままだと、2人出したい相談で高い段を勧められたように見える */
+check('人数では変わらないと FAQ で言い切っている',
+    faqUi.some((u) => /梅・竹・松/.test(u.q)
+        && /登場人物の人数そのもので料金は変わりません/.test(u.a)
+        && /何人まで出せるか/.test(u.a)));
 /* 縦型は段の特典ではなく別の1本。機械で切らないことを明記しているか */
 check('縦型の扱いを FAQ で説明している',
     faqUi.some(u => /縦型/.test(u.q) && /設計し直します/.test(u.a) && /2本/.test(u.a)));
