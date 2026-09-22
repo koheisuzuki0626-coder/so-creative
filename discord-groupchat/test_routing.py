@@ -2905,6 +2905,23 @@ def run():
     check("視聴時に数えたか推定かを言わせる",
           "推定かを必ず書く" in bot.VIDEO_STUDY_PROMPT, True)
 
+    print("■ 見積りの計算はコードでやる（AIに算数をさせない）")
+    # 事故（2026-09-22）：「20秒×4,900＋基本料9万」を17.8万円と書いて1万円
+    # ずれた。同じ回で梅の金額を出しながら「松向き」とも結論した。
+    check("竹20秒＝基本料9万＋9.8万", bot._quote_text(20, "竹").count("188,000"), 1)
+    check("梅60秒＝基本料9万＋21万", bot._quote_text(60, "梅").count("300,000"), 1)
+    check("松はナレーション1本目が込み",
+          bot._quote_text(60, "松", 1, True) == bot._quote_text(60, "松", 1, False), True)
+    check("竹はナレーションが加算される",
+          bot._quote_text(60, "竹", 1, True) != bot._quote_text(60, "竹", 1, False), True)
+    check("知らない階層は見積もらない", bot._quote_text(60, "特"), "")
+    check("条件があれば計算を足す",
+          "円" in bot._attach_quote("見積り条件: 尺=20秒 階層=竹"), True)
+    check("条件が無ければ何も足さない",
+          bot._attach_quote("金額の話は無い"), "金額の話は無い")
+    check("まとめに金額を書かせない",
+          "**金額と工数は書かない**" in bot_src(), True)
+
     print("■ Driveの認証切れは、日付ではなく状態で気づく")
     # 同意画面が「テスト中」のままなので更新用トークンは7日で切れる。
     # 黙って上がらなくなるのが一番困るので、切れていたらDiscordで言う。

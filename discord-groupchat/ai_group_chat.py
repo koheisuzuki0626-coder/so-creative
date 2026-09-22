@@ -5931,11 +5931,50 @@ def _is_voice_sample(v):
     return bool(_VOICE_SAMPLE_RE.search(text))
 
 
+# 自分の料金表（サイトの計算機と同じ式）と、実測の工数。
+PRICE_BASE = 90000                  # 基本料
+PRICE_PER_SEC = {"梅": 3500, "竹": 4900, "松": 6650}
+PRICE_EXTRA_CUT = 65000             # 2本目以降
+PRICE_NARRATION = 30000             # ナレーション1本あたり
+HOUR_MULT = {"梅": 1.0, "竹": 1.22, "松": 1.36}
+HOURS_PER_SEC = 11.5 / 74           # 実測：本編59秒＋15秒版＝74秒で11.5時間
+
 MY_PRICING_NOTE = (
-    "【自分の値段と実測】秒単価 梅3,500／竹4,900／松6,650円、基本料9万円、"
-    "2本目以降＋6.5万円、ナレーション＋3万円。実測は60秒＋15秒版で11.5時間、"
-    "納品1秒あたり33クレジット。"
+    "【自分の値段】秒単価 梅3,500／竹4,900／松6,650円、基本料9万円、"
+    "2本目以降＋6.5万円、ナレーション＋3万円。"
+    "実測は74秒（本編59秒＋15秒版）で11.5時間、納品1秒あたり33クレジット。"
 )
+
+_QUOTE_RE = re.compile(
+    r"見積り条件[:：]\s*尺\s*=\s*(\d+)\s*秒?\s*[,、 ]*階層\s*=\s*([梅竹松])")
+
+
+def _quote_text(sec, tier, count=1, narration=False):
+    """自分の料金表で見積もる。
+
+    AIに算数をさせない（2026-09-22：「20秒×4,900＋基本料9万」を17.8万円と
+    書いて1万円ずれた。同じ回で梅の金額を出しながら松向きと結論もした）。
+    式はサイトの計算機と同じ。松はナレーション1本目が込み。
+    """
+    if tier not in PRICE_PER_SEC:
+        return ""
+    sec = max(1, int(sec))
+    nar = (max(0, count - 1) if tier == "松" else count) if narration else 0
+    yen = (PRICE_BASE + PRICE_PER_SEC[tier] * sec
+           + PRICE_EXTRA_CUT * max(0, count - 1) + PRICE_NARRATION * nar)
+    hours = HOURS_PER_SEC * sec * HOUR_MULT[tier]
+    return f"→ 自分の料金表だと **約{yen:,}円**／工数の見込み **約{hours:.1f}時間**"
+
+
+def _attach_quote(text):
+    """まとめの「見積り条件: 尺=N秒 階層=X」を、こちらで計算した行に置き換える。
+    条件が読み取れない時は何も足さない（作り話の金額を出さないため）。"""
+    m = _QUOTE_RE.search(text or "")
+    if not m:
+        return text
+    line = _quote_text(int(m.group(1)), m.group(2))
+    return text if not line else _QUOTE_RE.sub(
+        f"見積り条件: 尺={m.group(1)}秒・階層={m.group(2)}\n{line}", text, count=1)
 
 
 def _past_items(key, limit=25):
@@ -6224,8 +6263,11 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
             "2. **AIで作れるもの**：2つ。どう作るかの手順つき\n"
             "3. **AIで作れないもの**：1つ。なぜ作れないか\n"
             "4. **次に試すこと**：1つだけ。明日の制作でそのまま実行できる形で\n"
-            "5. **自分が作るなら**：この型を自分の値段で請けたらどうなるかを1行。"
-            "尺・カット数・梅/竹/松のどれ向きか・おおよその工数\n\n"
+            "5. **自分が作るなら**：この型を自分が請けるならどうかを2行。\n"
+            "　　1行目＝尺・カット数・梅/竹/松のどれ向きか（理由も短く）\n"
+            "　　2行目＝『見積り条件: 尺=<秒数> 階層=<梅|竹|松>』とだけ書く。"
+            "**金額と工数は書かない**（こちらで計算して足す。"
+            "書くと必ず計算違いが出る）\n\n"
             "【守ること】\n"
             "・下の既出リストと同じ結論になる項目は書かない。別の観点を探す。"
             "どうしても同じにしかならない時は、その項目に『既出（〜のため）』とだけ"
@@ -6240,7 +6282,7 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
             + "\n\n【個別分析】\n" + digest_src
         )
         try:
-            digest = await _ai_text_bg(digest_prompt, "trend_digest")
+            digest = _attach_quote(await _ai_text_bg(digest_prompt, "trend_digest"))
         except Exception as e:  # noqa: BLE001
             print(f"[trend] ダイジェスト生成失敗: {str(e)[:200]}")
     if not digest:
