@@ -2791,8 +2791,11 @@ def _drive_auth_url():
         return None, "⚠️ ライブラリが入っていません（`pip install -r requirements.txt`）。"
     flow = Flow.from_client_config(_drive_client_config(), scopes=DRIVE_SCOPES,
                                    redirect_uri=DRIVE_REDIRECT)
+    # include_granted_scopes は付けない。付けた版のURLをスマホで開くと
+    # Google が 400（malformed）を返した（2026-09-22）。外した版は通る。
+    # 単一スコープなので incremental authorization の利点も無い。
     url, _state = flow.authorization_url(
-        access_type="offline", prompt="consent", include_granted_scopes="true")
+        access_type="offline", prompt="consent")
     _drive_flow["flow"] = flow
     return url, None
 
