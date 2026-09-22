@@ -2871,8 +2871,12 @@ def run():
     check("成果物直下のファイルは仕切らない",
           bot._project_of_path(_root + "/README.md"), "")
     check("成果物の外は仕切らない", bot._project_of_path("/tmp/x.mp4"), "")
-    check("案件名が空ならフォルダ直下",
+    check("案件名が空ならその階層に置く（空のフォルダを作らない）",
           bot._drive_subfolder(""), bot.DRIVE_UPLOAD_FOLDER)
+    check("親を指定できる（入れ子）", bot._drive_subfolder("", "abc"), "abc")
+    check("動画は「動画」へ", bot._drive_kind_of("a.MP4"), "動画")
+    check("画像は「画像」へ", bot._drive_kind_of("a.png"), "画像")
+    check("どちらでもないものは仕切らない", bot._drive_kind_of("a.pdf"), "")
 
     print("■ Driveの認証切れは、日付ではなく状態で気づく")
     # 同意画面が「テスト中」のままなので更新用トークンは7日で切れる。
