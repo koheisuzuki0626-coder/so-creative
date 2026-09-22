@@ -91,6 +91,12 @@
         .flag b { color: var(--warn); font-weight: 500; }
         .flag p { font-size: .9rem; color: var(--ink-2); margin-top: 5px; }
 
+        .quote { margin-top: 18px; padding: 14px 20px; border-left: 3px solid var(--line);
+                 background: var(--bg-alt); border-radius: 0 8px 8px 0;
+                 font-size: .92rem; color: var(--ink-2); }
+        .quote cite { display: block; margin-top: 8px; font-size: .8rem;
+                      font-style: normal; color: var(--ink-dim); }
+
         .note { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--line);
                 font-size: .86rem; color: var(--ink-dim); }
         .note b { color: var(--ink); font-weight: 500; }
@@ -323,6 +329,51 @@
             開業の可否を決める数字なので、根拠側ではなく判断側で読めるようにした。
             <b>2か所に同じ数字を置くと片方だけ古くなる</b>ので、ここには残していない。
         </p>
+
+        <h3 id="site">支払サイト｜あの表は「最短の場合」（9/22）</h3>
+        <p class="lead">
+            ロードマップの表は「<b>納品の翌月に入金</b>」で組んである。
+            これは so. が出している条件（納品日から30日以内）がそのまま通った場合の数字で、
+            <b>いちばん早い形</b>。実際はそうならないことがある。
+        </p>
+
+        <p class="lead"><b>支払条件はこちらが決めるものではない。</b>
+            見積書と契約書で提示はするが、決めるのは相手。相手が大きいほど相手の規定になる。
+        </p>
+        <div class="wrap-x"><table class="t-wide">
+            <thead><tr><th>相手</th><th>実際に何が起きるか</th></tr></thead>
+            <tbody>
+                <tr><td>個人・小さい会社</td><td>so. の条件（納品日から30日以内）がそのまま通りやすい</td></tr>
+                <tr><td>中堅以上</td><td>相手の支払サイトに乗る（月末締め翌月末払いなど）。
+                    購買システムと経理規定があるので、個別対応はしてもらえない</td></tr>
+                <tr><td>官公庁</td><td>完全に相手の規定。検収後の決まった手続きで動く</td></tr>
+            </tbody>
+        </table></div>
+
+        <p class="lead"><b>ただし上限はある。</b>
+            フリーランス法（2024年11月施行）で、発注側にこの義務がある。
+        </p>
+        <blockquote class="quote">
+            報酬の支払期日は発注した物品等を受領した日から起算して<b>60日以内のできる限り短い期間内</b>で定め、
+            定めた支払期日までに報酬を支払わなければなりません
+            <cite>公正取引委員会 フリーランス法特設サイト</cite>
+        </blockquote>
+        <ul>
+            <li>起算日は<b>納品日</b>。「請求書を受け取った日」でも「社内の検収が終わった日」でもない</li>
+            <li>支払期日を定めなかった場合は、<b>納品日が支払期日</b>になる</li>
+            <li>請求書を出していないことは、支払いを遅らせる理由にならない</li>
+        </ul>
+        <p class="lead">
+            so. の「納品日から30日以内」はこの半分。
+            <b>相手の規定に合わせて延びたとしても、60日までしか行かない。</b>
+        </p>
+
+        <div class="flag">
+            <b>60日サイトだと、表が1ヶ月後ろにずれる。</b>
+            手元がプラスに戻るのが M+2 → <b>M+3</b>。底の深さは変わらない（−13.8万）が、
+            そこから戻るのに1ヶ月余計にかかる。必要な手元は14万から<b>約22万</b>へ。
+            運転資金82万に対しては、これも耐えられる範囲。
+        </div>
 
         <h2>P1〜P3 の中身</h2>
         <p class="lead">
