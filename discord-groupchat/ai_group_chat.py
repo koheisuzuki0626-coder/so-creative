@@ -6482,6 +6482,41 @@ async def _daily_trend_loop():
             print(f"[trend] 自動リサーチ失敗: {str(e)[:300]}")
 
 
+DRIVE_WATCH_HOUR = int(os.getenv("DRIVE_WATCH_HOUR", "9"))
+DRIVE_EXPIRED_NOTE = (
+    "🔑 **Google Drive の認証が切れています**\n"
+    "このままだと、出来上がった動画がDriveに入りません。\n"
+    "**「ドライブ認証」**と送って、つなぎ直してください（1分で終わります）。"
+)
+
+
+async def _drive_watch_loop():
+    """Driveの認証が切れたらDiscordで知らせる（1日1回・切れている時だけ）。
+
+    Googleの同意画面が「テスト中」のままなので、更新用トークンは7日で切れる
+    （実際、8/28に取ったものが9/22には失効していた）。黙って上がらなくなるのが
+    一番困るので、日付で決め打ちせず【状態】を見て本人に言う。
+    """
+    last_said = None
+    while True:
+        await asyncio.sleep(600)
+        try:
+            if not DRIVE_AUTO_UPLOAD:
+                continue
+            _on, _h, _m, cid = _trend_conf()
+            if not cid:
+                continue
+            now = datetime.now(JST)
+            if now.hour != DRIVE_WATCH_HOUR or last_said == now.date():
+                continue
+            if await asyncio.to_thread(_drive_creds) is not None:
+                continue                 # つながっている。黙っている
+            last_said = now.date()
+            await send_as(orch, cid, DRIVE_EXPIRED_NOTE)
+        except Exception as e:  # noqa: BLE001
+            print(f"[drive] 見張りに失敗: {str(e)[:200]}")
+
+
 # ---------------------------------------------------------------------------
 # オーケストレーター：3層構造
 #   ① ルーティング（得意モデルへ振り分け／簡単なら単発）
@@ -13297,6 +13332,7 @@ async def on_ready():
         _track(asyncio.create_task(_daily_trend_loop()))
         _track(asyncio.create_task(_gemini_recovery_loop()))
         _track(asyncio.create_task(_weekly_channel_loop()))
+        _track(asyncio.create_task(_drive_watch_loop()))
         # 再起動前に投入したモーション生成があれば、完了監視を再開する
         job = _load_motion_job()
         if job and job.get("cid") and time.time() - job.get("submitted_at", 0) < 3600:

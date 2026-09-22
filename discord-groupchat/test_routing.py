@@ -2860,6 +2860,17 @@ def run():
         check(f"{_t!r} は不具合の訴えにしない", bot._looks_trouble(_t), False)
     check("空文字で落ちない", bot._looks_trouble(""), False)
 
+    print("■ Driveの認証切れは、日付ではなく状態で気づく")
+    # 同意画面が「テスト中」のままなので更新用トークンは7日で切れる。
+    # 黙って上がらなくなるのが一番困るので、切れていたらDiscordで言う。
+    check("見張りがある", callable(getattr(bot, "_drive_watch_loop", None)), True)
+    with open(bot.__file__, encoding="utf-8") as _f:
+        _src = _f.read()
+    check("見張りが起動時に登録されている", "_drive_watch_loop()" in _src, True)
+    check("知らせる文がDiscord内で完結する（端末コマンドを書かない）",
+          "ドライブ認証" in bot.DRIVE_EXPIRED_NOTE
+          and "python" not in bot.DRIVE_EXPIRED_NOTE.lower(), True)
+
     print("■ 所要時間は実測だけで答える（推測で短く言わない）")
     # 以前は手書きの目安表（デザイン3分、動画12分…）を持っていた。根拠が無く、
     # 実際より短く出て何度も待たせたので、実測が無いときは「不明」と言う。
