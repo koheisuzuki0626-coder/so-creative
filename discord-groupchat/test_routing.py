@@ -1618,9 +1618,18 @@ def run():
     check("手動のリサーチは従来どおり出す（待っている人がいるため）",
           "require_video=False" in _srcK, True)
     # 本人の判断（2026-09-18）：通知は1日8通前後まで。数えたら約108通あった。
-    # 4巡にして、途中経過（取得／枠切れ／枠待ち／復活）は黙りレポートだけ出す。
-    check("既定は1日4巡", bot.TREND_MAX_RUNS_PER_DAY, 4)
+    # 途中経過（取得／枠切れ／枠待ち／復活）は黙り、レポートだけ出す。
+    # 2026-09-22：本人の希望で巡数を8へ。通知が増えるのは承知のうえ
+    #（増えるのはレポートだけ。途中経過は静かモードのまま黙る）。
+    check("既定は1日8巡", bot.TREND_MAX_RUNS_PER_DAY, 8)
     check("既定は静かモード", bot.TREND_QUIET, True)
+    # 事故（2026-09-22）：起点が定時と枠の復活だけで、1日1巡で止まっていた。
+    with open(bot.__file__, encoding="utf-8") as _f:
+        _src2 = _f.read()
+    check("回し続ける役がいる",
+          callable(getattr(bot, "_trend_drive_loop", None)), True)
+    check("その役が起動時に登録されている", "_trend_drive_loop()" in _src2, True)
+    check("夜中は回さない", bot.TREND_ACTIVE_FROM >= 6 and bot.TREND_ACTIVE_TO <= 24, True)
     for _msg in ("本を取得しました", "無料枠切れのため動画の視聴はスキップ"):
         check(f"途中経過は _trend_say を通す: {_msg}",
               _srcK.split(_msg)[0].rstrip().endswith("channel,")
