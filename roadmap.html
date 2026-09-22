@@ -206,7 +206,7 @@
             <div class="stop"><b>未開業</b><span>受注 0件・売上 0円。退職済みで給与収入もない</span></div>
             <div class="stop"><b>246.84</b><span>残りクレジット（9/17 実残高）。<a href="record.html#test-build">サンプル5本で 719.30 使った</a>。いまの作り方（Kling 3.0 pro・3分版で3.03/秒）でも約80秒ぶんで、90秒の案件1本が通らない</span></div>
             <div class="stop"><b>0本</b><span>クライアント事例。自社の松2本とサンプル5本は制作済み</span></div>
-            <div class="stop"><b>約1ヶ月</b><span>最初の入金（着手金50%）まで。残金50%はそこからさらに約1ヶ月後</span></div>
+            <div class="stop"><b>約2ヶ月</b><span>最初の入金まで。着手金は取らないので、納品してから期日30日ぶん待つ</span></div>
         </div>
     </section>
 
@@ -241,26 +241,29 @@
         <p class="lead">
             開業日は体調しだいで未定なので、日付ではなく<b>開業した月からの相対</b>で置く。
             前提は 生活費8万／ツール代は開業後 Max に戻して5.8万（＝支出 月13.8万）／
-            着手金50%＋納品後50%（期日は納品日から30日以内）／
+            <b>制作費は全額を納品後に請求</b>（期日は納品日から30日以内）で、着手金は取らない（9/22 決定）／
             受注は<b>開業月に30秒1件 ¥195,000、翌月から月2件 ¥600,000</b>（P1 のペース）。
+            着手した月に納品し、入金はその翌月に立つ。
         </p>
         <div class="wrap-x"><table class="t-wide">
             <thead><tr><th>時期</th><th class="num">入金</th><th class="num">支出</th><th class="num">その月</th><th class="num">手元（貯金ゼロから）</th></tr></thead>
             <tbody>
                 <tr><td>開業前（手当あり・営業不可）</td><td class="num">17.0万</td><td class="num">−11.5万</td><td class="num">＋5.5万</td><td class="num">待った月数 × 5.5万</td></tr>
-                <tr><td><b>M+0</b>　開業・手当停止</td><td class="num">9.8万</td><td class="num">−13.8万</td><td class="num"><b>−4.0万</b></td><td class="num">−4.0万</td></tr>
-                <tr><td>M+1</td><td class="num">39.8万</td><td class="num">−13.8万</td><td class="num">＋26.0万</td><td class="num">21.9万</td></tr>
-                <tr><td>M+2</td><td class="num">60.0万</td><td class="num">−13.8万</td><td class="num">＋46.2万</td><td class="num">68.1万</td></tr>
-                <tr><td>M+3</td><td class="num">60.0万</td><td class="num">−13.8万</td><td class="num">＋46.2万</td><td class="num">114.4万</td></tr>
-                <tr><td>M+6</td><td class="num">60.0万</td><td class="num">−13.8万</td><td class="num">＋46.2万</td><td class="num">253.0万</td></tr>
-                <tr><td>M+9</td><td class="num">60.0万</td><td class="num">−13.8万</td><td class="num">＋46.2万</td><td class="num">391.7万</td></tr>
-                <tr><td>M+11</td><td class="num">60.0万</td><td class="num">−13.8万</td><td class="num">＋46.2万</td><td class="num"><b>484.1万</b></td></tr>
+                <tr><td><b>M+0</b>　開業・手当停止</td><td class="num">0</td><td class="num">−13.8万</td><td class="num"><b>−13.8万</b></td><td class="num">−13.8万</td></tr>
+                <tr><td>M+1</td><td class="num">19.5万</td><td class="num">−13.8万</td><td class="num">＋5.7万</td><td class="num">−8.1万</td></tr>
+                <tr><td>M+2</td><td class="num">60.0万</td><td class="num">−13.8万</td><td class="num">＋46.2万</td><td class="num">38.1万</td></tr>
+                <tr><td>M+3</td><td class="num">60.0万</td><td class="num">−13.8万</td><td class="num">＋46.2万</td><td class="num">84.4万</td></tr>
+                <tr><td>M+6</td><td class="num">60.0万</td><td class="num">−13.8万</td><td class="num">＋46.2万</td><td class="num">223.0万</td></tr>
+                <tr><td>M+9</td><td class="num">60.0万</td><td class="num">−13.8万</td><td class="num">＋46.2万</td><td class="num">361.7万</td></tr>
+                <tr><td>M+11</td><td class="num">60.0万</td><td class="num">−13.8万</td><td class="num">＋46.2万</td><td class="num"><b>454.1万</b></td></tr>
             </tbody>
         </table></div>
         <p class="lead" style="margin-top:14px">
-            <b>赤字になるのは開業した月だけ。</b>M+0 は着手金50%（9.8万）しか入らないので −4.0万。
-            M+1 で前月の残金と当月の着手金が重なり、そこから黒字が続く。<br>
-            <b>納品後の一括払いにすると、この黒字化が1ヶ月後ろにずれる。</b>着手金を値引きの対象にしないのはこのため。<br>
+            <b>赤字になるのは開業した月だけ（−13.8万）。</b>納品後の一括払いなので M+0 は入金がゼロ。
+            M+1 で前月ぶんの19.5万が入り、その月から単月は黒字。
+            <b>手元がプラスに戻るのは M+2。</b>それまでの2ヶ月は貯金を食う。<br>
+            必要なのは開業時点で <b>14万</b>（手当の3ヶ月ぶんに満たない）。
+            着手金を外した代償と、外した理由は <a href="record.html#chakushukin">実測記録と裏づけ</a>。<br>
             待つほど開業時の貯金は増えるが（15ヶ月で82万）、<b>待っても事業は進まない</b>。
             貯金は保険で、<b>事業の前進ではない</b>。
         </p>
@@ -275,11 +278,10 @@
             </tbody>
         </table></div>
         <p class="lead" style="margin-top:14px">
-            支払条件は <b>着手金50% ＋ 納品後50%、期日は納品日から30日以内</b>（9/17 決定）。
-            着手金が入るので初入金は納品を待たない。30秒1件（¥195,000）を受注できれば、
-            着手した月に約10万が入る。<b>手当期間中に貯まる82万は、開業後6ヶ月ぶんの運転資金</b>にあたる。
+            支払条件は <b>全額を納品後に請求、期日は納品日から30日以内</b>（9/17 決定 → 9/22 に着手金を外した）。
+            初入金は納品の翌月。<b>手当期間中に貯まる82万は、開業後6ヶ月ぶんの運転資金</b>にあたる。
             以前「40〜60万を貯めておく必要がある」としていた水準は、手当だけで超える。<br>
-            着手金を値引きの対象にしないのは変わらない。底が1ヶ月ぶん浅くなるのは、そのまま営業の余裕になる。
+            底が深くなるぶん、開業前に14万を残しておけば足りる。手当の3ヶ月ぶんに満たない。
         </p>
         </div>
     </section>
@@ -334,13 +336,13 @@
                     インサート22枚は街の風景の素材から採ったので追加の費用はかかっていない。
                     フル尺（4分24秒）のダンス版はクレジットが足りず作れていない</em></div></li>
                 <li class="done" data-id="p0-shiharai"><button type="button" class="box" role="checkbox" aria-checked="true"></button><div>支払条件を決める
-                    <em>9/17 ／ 着手金50% ＋ 納品後50%、期日は納品日から30日以内</em></div></li>
+                    <em>9/17 ／ 全額を納品後に請求、期日は納品日から30日以内（9/22 に着手金を外した）</em></div></li>
                 <li class="done" data-id="p0-invoice"><button type="button" class="box" role="checkbox" aria-checked="true"></button><div>インボイスは登録しないと決める
                     <em>9/17 ／ 免税事業者のまま税込表示</em></div></li>
                 <li class="done" data-id="p0-hinagata"><button type="button" class="box" role="checkbox" aria-checked="true"></button><div>見積書・契約書・請求書のひな形をつくる
                     <em>9/18 ／ 成果物/_テンプレート/。著作権の帰属・修正回数（梅2・竹3・松3）・
-                    キャンセルの按分・AI特有の免責まで書き込んだ。着手金の期日は請求書発行日から14日以内
-                    （ひな形だけの決めごと）。案件が来たら ＿＿ を埋めてPDFにするだけ</em></div></li>
+                    キャンセルの按分・AI特有の免責まで書き込んだ。9/22 に着手金を外し、
+                    請求は納品後の1回だけにした。案件が来たら ＿＿ を埋めてPDFにするだけ</em></div></li>
                 <li class="done" data-id="p0-profile"><button type="button" class="box" role="checkbox" aria-checked="true"></button><div>プロフィール・略歴をサイトに載せる
                     <em>9/18 ／ 会社概要に経歴の行を足した。前職の社名と受注額は出していない。
                     顔写真は保留。残るは「開業」の行だけで、開業届が出てから</em></div></li>
@@ -362,7 +364,7 @@
                 等級は D だが、D の範囲＝予定価格300万円未満に so. の料金帯はまるごと入る。
                 狙うのは<b>撮影なしの案件だけ</b>（撮影ありは落札額の20倍になり土俵に乗らない）。
                 案件は <code>scripts/bid-search.mjs</code> で拾う。手順は「いくらで受注できるか」。
-                <b>入札では着手金が使えない</b>（検収後払いが原則）ので、上の推移とは別の財布になる</em></div></li>
+                入札は検収後払いで、支払サイトも長い。上の推移とは別の財布になる</em></div></li>
             <li data-id="next-credit"><button type="button" class="box" role="checkbox" aria-checked="false"></button><div>梅で90秒を1本つくって、実消費クレジットを測る
                 <em>次にサンプルをつくるときに一緒に測る（測るためだけに1本つくらない）。
                 33クレジット/秒 は松（Seedance 2.5）の数字で、梅の実売には当てはまらない。
