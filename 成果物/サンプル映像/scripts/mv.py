@@ -103,10 +103,11 @@ def build_cuts():
     return cuts
 
 
-def render_chunk(cuts, path):
+def render_chunk(cuts, path, unit=BAR):
+    """cuts の3つ目は尺。unit=BAR なら小節数、unit=1.0 なら秒で読む。"""
     ins, fc = [], []
     for i, (src, tin, bars, z) in enumerate(cuts):
-        dur = bars * BAR
+        dur = bars * unit
         ins += ["-i", f"{SRC}/{src}.mp4"]
         # 素材は 1276x720 で 16:9 ぴったりではないので、出力比で切ってから合わせる
         fc.append(
@@ -115,7 +116,7 @@ def render_chunk(cuts, path):
             f"scale={W}:{H}:flags=lanczos,setsar=1,{GRADE},fps={FPS}[v{i}]")
     fc.append("".join(f"[v{i}]" for i in range(len(cuts)))
               + f"concat=n={len(cuts)}:v=1:a=0,format=yuv420p[vout]")
-    total = sum(c[2] for c in cuts) * BAR
+    total = sum(c[2] for c in cuts) * unit
     subprocess.run([FF, "-loglevel", "error", "-y"] + ins +
                    ["-filter_complex", ";".join(fc), "-map", "[vout]",
                     "-t", str(total), "-an",
@@ -123,12 +124,12 @@ def render_chunk(cuts, path):
                     path], check=True)
 
 
-def render(cuts, song, name, chunk=12):
+def render(cuts, song, name, chunk=12, unit=BAR):
     """カットが多いとフィルタが重いので、chunk 本ずつ焼いてから繋ぐ。"""
     parts = []
     for n in range(0, len(cuts), chunk):
         p = f"{OUT}/{name}_part{n // chunk:02d}.mp4"
-        render_chunk(cuts[n:n + chunk], p)
+        render_chunk(cuts[n:n + chunk], p, unit)
         parts.append(p)
         print("  part%02d ok (%d カット)" % (n // chunk, len(cuts[n:n + chunk])),
               flush=True)
@@ -141,7 +142,7 @@ def render(cuts, song, name, chunk=12):
     for p in parts + [lst]:
         os.remove(p)
 
-    total = sum(c[2] for c in cuts) * BAR
+    total = sum(c[2] for c in cuts) * unit
     master = f"{OUT}/{name}_master.mp4"
     subprocess.run([FF, "-loglevel", "error", "-y", "-i", silent,
                     "-i", song, "-map", "0:v", "-map", "1:a",
@@ -184,12 +185,61 @@ CUTS_DANCE = [
     ("d75", 1.50, 2, 1.00),    # 27.0-30.0  夜明け。両腕を上げて終わる
 ]
 
+# ダンス版・インサート入り（30秒）。尺は秒で書く（render に unit=1.0 を渡す）。
+#
+# テンポはわざと崩している。小節（1.5秒）に全部乗せると律儀すぎて
+# 曲に対して編集が後ろに引っ込むので、狙いは3つ：
+#   ・インサートを 0.25〜0.45秒のフラッシュで拍の途中に差し込んで拍を食う
+#   ・ダンスのカットは逆に伸ばして息を持たせる（半端な尺にする）
+#   ・サビ頭の 12.00秒だけはきっちり合わせる。芯が1本通れば崩れても保つ
+# 締めの d75 は4.00秒。ここだけ長く置いて落とす。
+#
+# インサートは街の風景版の素材（c*）から、人が写らない寄りの画を採った。
+# 踊り手が1人という前提と矛盾させないため、傘の群れ（c21）や
+# 自転車（c32）のような人の写る画は外している。
+CUTS_DANCE_INS = [
+    ("d71", 0.00, 2.60, 1.00),   #  0.00 路地の街・後ろ姿
+    ("c4",  2.00, 0.35, 1.00),   #  2.60 窓の雨粒とボケたネオン
+    ("d71", 2.60, 1.85, 1.00),   #  2.95 同じカットの続きに戻る
+    ("c1",  1.80, 0.45, 1.00),   #  4.80 水たまりの赤い波紋
+    ("d72", 0.30, 3.10, 1.00),   #  5.25 歩道橋・正面
+    ("c31", 2.10, 0.30, 1.00),   #  8.35 水たまりを足が通る
+    ("c20", 2.00, 0.30, 1.00),   #  8.65 シャッターのネオンの線
+    ("d53", 0.30, 2.35, 1.00),   #  8.95 高架下のシルエット
+    ("c22", 1.60, 0.70, 1.00),   # 11.30 マンホールの蒸気。サビ直前の溜め
+    ("d73", 0.20, 2.40, 1.00),   # 12.00 ★サビ頭。駐車場のフラッドライト
+    ("c19", 2.00, 0.28, 1.00),   # 14.40 排水から流れ出る水
+    ("d61", 0.30, 2.12, 1.00),   # 14.68 街路の真ん中
+    ("c30", 1.80, 0.55, 1.00),   # 16.80 地下道の階段
+    ("d74", 0.30, 2.45, 1.00),   # 17.35 ネオンの路地・引き
+    ("c13", 1.90, 0.40, 1.00),   # 19.80 自販機
+    ("d71", 2.00, 1.70, 1.45),   # 20.20 1カット目に寄って戻る
+    ("c15", 2.00, 0.25, 1.00),   # 21.90 手すりの水滴
+    ("d61", 3.20, 1.15, 1.60),   # 22.15 ここから詰めていく
+    ("c28", 2.00, 0.25, 1.00),   # 23.30 濡れた植物にネオン
+    ("d73", 3.40, 0.95, 1.55),   # 23.55
+    ("c14", 1.90, 0.30, 1.00),   # 24.50 コインランドリーの窓
+    ("d72", 3.60, 0.85, 1.70),   # 24.80
+    ("c35", 1.90, 0.35, 1.00),   # 25.65 電話ボックス
+    ("d75", 1.00, 4.00, 1.00),   # 26.00 夜明け。長く置いて落とす
+]
+
 
 if __name__ == "__main__":
     import sys
     want = sys.argv[1] if len(sys.argv) > 1 else "full"
     if want == "30":
         render(CUTS_30, f"{SRC}/mv_song.wav", "mv_30s")
+    elif want == "dance_ins":
+        t = 0.0
+        for src, tin, dur, z in CUTS_DANCE_INS:
+            assert tin + dur <= CLIP + 1e-6, (src, tin, dur)
+            print("%5.2f→%5.2f  %4.2f秒  %-4s %.2f" % (t, t + dur, dur, src, z))
+            t += dur
+        print("合計 %.2f秒 / %dカット" % (t, len(CUTS_DANCE_INS)))
+        assert abs(t - 30.0) < 1e-6, t
+        render(CUTS_DANCE_INS, f"{SRC}/mv_song.wav", "mv_dance_ins_30s",
+               unit=1.0)
     elif want == "dance":
         t = 0.0
         for src, tin, bars, z in CUTS_DANCE:
