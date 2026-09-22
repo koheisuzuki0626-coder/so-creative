@@ -2744,7 +2744,9 @@ KEY_REG_USAGE = (
 # おき、繋がらなかった画面のURLを丸ごと貼ってもらう方式にした。localhost は
 # スマホからは開けないが、認可コードはURLに載っているのでそれで交換できる。
 # （Macの前でしか認証できない作りにすると、外出先・入院中に詰む）
-DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive.file"]
+# drive.file は「このアプリが作ったファイルだけ」。本人が手で作った
+# DRIVE_VIDEO_FOLDER に書き込めないので drive にしてある（2026-09-22）。
+DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive"]
 DRIVE_REDIRECT = "http://localhost:8765/"
 DRIVE_TOKEN_FILE = Path(HISTORY_DIR) / "drive_token.json"   # history/ は .gitignore 済み
 DRIVE_DL_DIR = Path(BASE_DIR) / "drive_in"
