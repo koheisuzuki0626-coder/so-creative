@@ -28,7 +28,10 @@ export const PRICE = { base: 90000, perExtra: 65000, narrationAi: 0, narrationHu
     noNarration: 25000,
     /* 松の人物ナレーション1名も外せる（9/19）。返す額は「いちばん短い尺でも
        時間単価の下限を割らない額」で決めた。index.html の PRICE と同じ値にすること */
-    matsuToAi: 25000, matsuToNone: 50000 };
+    matsuToAi: 25000 };
+/* 松で1本だけ、ナレーションも入れない場合の引き。手配ぶん＋その1本ぶんで、
+   9/19 までの −¥50,000 と同じ額になる。別の定数にすると片方だけ動くので、出して使う */
+export const matsuToNone = () => PRICE.matsuToAi + PRICE.noNarration;
 export const TIERS = [
     { id: 'ume',   label: '梅', perSec: 3500, hours: 1.0,  narration: false },
     { id: 'take',  label: '竹', perSec: 4900, hours: 1.22, narration: false },

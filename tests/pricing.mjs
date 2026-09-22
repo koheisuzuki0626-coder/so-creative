@@ -1,7 +1,7 @@
 /* 料金シミュレーター。
    「お客様にどの組み合わせを選ばせても採算が崩れない」ことの担保がここ。
    金額・工数のどれかを動かしたら必ずこれを通すこと。 */
-import { check, report, PW, open, pick, setLens, splitSec, setNar, setNarAll, narOf, priceModes, hoursModes, narFee, reachableNar, reachable, maxPieces, PRICE, HOURS, TIERS, LENGTHS, price, hours, leadWeeks, RATE, MEASURED, REVISION_HOURS, CREDITS_PER_SEC } from './lib.mjs';
+import { check, report, PW, open, pick, setLens, splitSec, setNar, setNarAll, narOf, matsuToNone, priceModes, hoursModes, narFee, reachableNar, reachable, maxPieces, PRICE, HOURS, TIERS, LENGTHS, price, hours, leadWeeks, RATE, MEASURED, REVISION_HOURS, CREDITS_PER_SEC } from './lib.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
@@ -116,7 +116,7 @@ check('松をAIに替えると人物ぶんが引かれる',
 /* 松は「人物の手配ぶん」と「入れない本のぶん」の両方が引かれる。
    1本だけのときは 9/19 までと同じ −¥50,000 になる */
 check('松でナレーションを使わないとさらに引かれる',
-    price(TIERS[2], 30, 1, 'none') === price(TIERS[2], 30, 1, 'human') - PRICE.matsuToNone
+    price(TIERS[2], 30, 1, 'none') === price(TIERS[2], 30, 1, 'human') - matsuToNone()
     && price(TIERS[2], 30, 2, 'none')
         === price(TIERS[2], 30, 2, 'human') - PRICE.matsuToAi - PRICE.noNarration * 2);
 {
@@ -313,14 +313,19 @@ check('ナレーションの工数は1本 1.0h（AI・人で同じ）', HOURS_NA
 {
     const y = (n) => `¥${n.toLocaleString('ja-JP')}`;
     const note = await page.locator('#plans .plan-note').innerText();
+    /* 9/22：本ごとに選べるようになったので「使わないなら ¥50,000」は
+       1本のときだけの数字になった。文章はルールで書く（手配ぶん＋入れない本ぶん） */
     check('内訳の文章に松の差し引きが書いてある',
-        new RegExp(`松[^。]*AIに替えるなら ${y(PRICE.matsuToAi)}[^。]*使わないなら ${y(PRICE.matsuToNone)}`).test(note),
+        new RegExp(`人物を1本も使わない場合は、その手配ぶん ${y(PRICE.matsuToAi)}`).test(note)
+        && new RegExp(`入れない本は、そのうえで1本につき ${y(PRICE.noNarration)}`).test(note),
         note.split('\n').find((l) => l.includes('人物ナレーション')) || '');
+    check('「使わないなら ¥50,000」という1本だけの数字が残っていない',
+        !/使わないなら ¥50,000/.test(note));
     check('「松は対象外」という古い書き方が残っていない',
         !/松は人物ナレーション込みのため対象外/.test(note));
     const readme = readFileSync(`${ROOT}/README.md`, 'utf8');
     check('README の料金の考え方にも松の差し引きがある',
-        readme.includes(y(PRICE.matsuToAi)) && readme.includes(y(PRICE.matsuToNone)));
+        readme.includes(y(PRICE.matsuToAi)) && readme.includes('入れない本1本につき'));
 }
 
 /* ---- 段の順序と独立性 ---- */
@@ -408,7 +413,7 @@ check('長い尺でも梅が選べる', (await pick(page, 'ume', 300, 1)) === pr
        松 AI −25,000 / なし −50,000）。ここが動くと既存のお客様への説明が変わる */
     const same = [
         ['ume', 'none', -PRICE.noNarration], ['ume', 'ai', 0], ['ume', 'human', PRICE.narrationHuman],
-        ['matsu', 'human', 0], ['matsu', 'ai', -PRICE.matsuToAi], ['matsu', 'none', -PRICE.matsuToNone],
+        ['matsu', 'human', 0], ['matsu', 'ai', -PRICE.matsuToAi], ['matsu', 'none', -matsuToNone()],
     ].every(([id, nar, fee]) => {
         const t = TIERS.find((x) => x.id === id);
         return narFee(t, [nar]) === fee;
