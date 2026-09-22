@@ -2,10 +2,12 @@
 """出来上がったファイルを Google Drive の「動画」フォルダへ入れる。
 
     python3 tools/drive_put.py 動画.mp4 [もう1本.mp4 ...]
+    python3 tools/drive_put.py --project 〇〇工業_会社紹介動画 完成.mp4
     python3 tools/drive_put.py --folder <フォルダID> 資料.pdf
 
 置き場は ai_group_chat.DRIVE_UPLOAD_FOLDER（＝Driveの「動画」フォルダ）。
-何を渡してもここに入る。
+その中を案件ごとに仕切る。案件名は 成果物/<案件>/ のパスから拾うので、
+成果物の中のファイルなら --project は要らない。
 認証とアップロードの実体はボットと同じものを使う（鍵の持ち方を二重に
 しないため）。トークンが切れていたら、その場で言う。
 """
@@ -31,13 +33,16 @@ import ai_group_chat as bot  # noqa: E402
 
 
 def main(argv):
-    folder = None
+    folder = project = None
     args = list(argv)
-    if args and args[0] == "--folder":
+    while args and args[0] in ("--folder", "--project"):
         if len(args) < 2:
-            print("⚠️ --folder のあとにフォルダIDが要ります")
+            print(f"⚠️ {args[0]} のあとに値が要ります")
             return 2
-        folder = args[1]
+        if args[0] == "--folder":
+            folder = args[1]
+        else:
+            project = args[1]
         args = args[2:]
     if not args:
         print(__doc__)
@@ -61,7 +66,7 @@ def main(argv):
     ok = 0
     for p in paths:
         # _drive_upload はDiscord向けの文を返すので、URLだけ取り出す
-        dest = folder or bot._drive_dest_for(p)
+        dest = folder or bot._drive_dest_for(p, project or "")
         res = bot._drive_upload(str(p), folder_id=dest) or ""
         link = next((w for w in res.split() if w.startswith("http")), "")
         if link:

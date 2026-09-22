@@ -2860,6 +2860,20 @@ def run():
         check(f"{_t!r} は不具合の訴えにしない", bot._looks_trouble(_t), False)
     check("空文字で落ちない", bot._looks_trouble(""), False)
 
+    print("■ Driveは案件ごとに仕切る（手元の 成果物/ と同じ名前で）")
+    # GitHubとDriveを行き来しても迷わないよう、仕切りの名前を揃える。
+    _root = str(bot.ARTIFACT_DIR)
+    check("成果物/<案件>/ から案件名を拾う",
+          bot._project_of_path(_root + "/〇〇工業_会社紹介動画/a.mp4"),
+          "〇〇工業_会社紹介動画")
+    check("深い階層でも案件名は先頭のひとつ",
+          bot._project_of_path(_root + "/律速段階PV/素材/b.mp4"), "律速段階PV")
+    check("成果物直下のファイルは仕切らない",
+          bot._project_of_path(_root + "/README.md"), "")
+    check("成果物の外は仕切らない", bot._project_of_path("/tmp/x.mp4"), "")
+    check("案件名が空ならフォルダ直下",
+          bot._drive_subfolder(""), bot.DRIVE_UPLOAD_FOLDER)
+
     print("■ Driveの認証切れは、日付ではなく状態で気づく")
     # 同意画面が「テスト中」のままなので更新用トークンは7日で切れる。
     # 黙って上がらなくなるのが一番困るので、切れていたらDiscordで言う。

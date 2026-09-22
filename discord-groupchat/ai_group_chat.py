@@ -2923,18 +2923,68 @@ def _drive_upload(path, folder_id=None):
 VIDEO_SUFFIXES = (".mp4", ".mov", ".m4v")
 
 
-def _drive_dest_for(path):
-    """どのフォルダへ入れるか。【何を上げても】DRIVE_UPLOAD_FOLDER に入れる。
+_drive_folders = {}                      # 案件名 → フォルダID（作り直さない）
+
+
+def _project_of_path(path):
+    """`成果物/<案件>/…` の <案件> を取り出す。当たらなければ空。
+
+    手元の置き場とDriveの仕切りを同じ名前で揃えるため
+    （GitHubとDriveを行き来しても迷わない）。
+    """
+    parts = Path(path).expanduser().resolve().parts
+    if ARTIFACT_DIR.name in parts:
+        i = parts.index(ARTIFACT_DIR.name)
+        if i + 2 < len(parts):           # 成果物/<案件>/ファイル
+            return parts[i + 1]
+    return ""
+
+
+def _drive_subfolder(name):
+    """DRIVE_UPLOAD_FOLDER の下の <name> フォルダのID。無ければ作る。
+
+    見つからない・作れない時は親フォルダのIDを返す。仕切りを作れなかった
+    だけで、上げること自体は失敗させない。
+    """
+    name = (name or "").strip()
+    if not name:
+        return DRIVE_UPLOAD_FOLDER
+    if name in _drive_folders:
+        return _drive_folders[name]
+    svc = _drive_service()
+    if svc is None:
+        return DRIVE_UPLOAD_FOLDER
+    try:
+        esc = name.replace("\\", "\\\\").replace("'", "\\'")
+        r = svc.files().list(
+            q=("mimeType='application/vnd.google-apps.folder' "
+               "and trashed=false "
+               f"and '{DRIVE_UPLOAD_FOLDER}' in parents and name='{esc}'"),
+            fields="files(id)", pageSize=1).execute()
+        got = r.get("files") or []
+        fid = got[0]["id"] if got else svc.files().create(
+            body={"name": name,
+                  "mimeType": "application/vnd.google-apps.folder",
+                  "parents": [DRIVE_UPLOAD_FOLDER]},
+            fields="id").execute()["id"]
+    except Exception as e:  # noqa: BLE001
+        _log_error("Driveのフォルダ作成", e)
+        return DRIVE_UPLOAD_FOLDER
+    _drive_folders[name] = fid
+    return fid
+
+
+def _drive_dest_for(path, project=""):
+    """どのフォルダへ入れるか。案件ごとに仕切る（本人の選択・2026-09-22）。
 
     置き場の規則をここ1か所にする（自動アップロードとDiscordの
-    「ドライブに上げて」で行き先が食い違っていたため。2026-09-22）。
-    拡張子で分けていた（動画だけフォルダ・他は直下）が、本人の希望で
-    全部このフォルダに統一した（2026-09-22）。散らかる場所を作らない。
+    「ドライブに上げて」で行き先が食い違っていたため）。
+    案件名が分からないものは、仕切らずフォルダ直下に置く。
     """
-    return DRIVE_UPLOAD_FOLDER
+    return _drive_subfolder(project or _project_of_path(path))
 
 
-def _drive_upload_video(path):
+def _drive_upload_video(path, project=""):
     """完成した動画を、決めたフォルダへ自動で上げる。
     失敗しても制作そのものは無駄にしない（例外は投げず、文を返すだけ）。
     戻り値: Discord に足す1行（上げなかった・失敗した時は空）。"""
@@ -2949,7 +2999,8 @@ def _drive_upload_video(path):
         size = p.stat().st_size
         media = MediaFileUpload(str(p), resumable=size > 5 * 1024 * 1024)
         f = svc.files().create(
-            body={"name": p.name, "parents": [DRIVE_UPLOAD_FOLDER]},
+            body={"name": p.name,
+                  "parents": [_drive_dest_for(p, project)]},
             media_body=media, fields="id,name,webViewLink").execute()
         link = f.get("webViewLink") or ""
         print(f"[drive] 自動アップロード: {f.get('name')} → {link}")
@@ -4204,7 +4255,9 @@ async def _save_media_artifact(cid, data, filename, title, project=""):
         # 完成した動画は Google Drive にも自動で入れる（本人の希望・2026-09-22）。
         # 素材の静止画は上げない。採用しなかったカットまで入ると埋まる。
         if path.suffix.lower() in VIDEO_SUFFIXES:
-            saved += await asyncio.to_thread(_drive_upload_video, path)
+            saved += await asyncio.to_thread(
+                _drive_upload_video, path,
+                project or MEDIA_PROJECT_DEFAULT)
         rel = os.path.relpath(path, os.path.dirname(ARTIFACT_DIR))
         _remember_artifact(cid, "media", title, path)
         return rel, _github_url(folder), saved
