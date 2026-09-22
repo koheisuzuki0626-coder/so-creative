@@ -2080,13 +2080,16 @@ _trend_redo = {}
 # 本人の判断（2026-09-18）：通知は1日8通前後まで。数えたら約108通あった。
 # 4巡（2〜3時間おき）にして、途中経過（取得しました／枠切れ／枠待ち）は黙る。
 # レポートだけ出す。分析そのものは毎回行い、youtube_insights.md には全部貯まる。
-TREND_MAX_RUNS_PER_DAY = int(os.getenv("TREND_MAX_RUNS_PER_DAY", "4"))
+TREND_MAX_RUNS_PER_DAY = int(os.getenv("TREND_MAX_RUNS_PER_DAY", "8"))
 # 回す間隔の下限。枠が戻るたびに回すと、朝の2時間で1日ぶんを使い切って
 # 残り22時間が沈黙する（2026-09-19 に判明）。1日に散らすための下限。
-TREND_MIN_GAP_SEC = int(os.getenv("TREND_MIN_GAP_SEC", str(4 * 3600)))
+TREND_MIN_GAP_SEC = int(os.getenv("TREND_MIN_GAP_SEC", str(90 * 60)))
+# 回す時間帯（この外では起こさない。夜中にレポートが来ても読まない）
+TREND_ACTIVE_FROM = int(os.getenv("TREND_ACTIVE_FROM", "7"))
+TREND_ACTIVE_TO = int(os.getenv("TREND_ACTIVE_TO", "23"))
 # 枠切れで「絵を見られなかった」回は上限に数えない。ただし YouTube の枠は
 # 使うので、試行そのものには別の上限を置く。
-TREND_MAX_TRIES_PER_DAY = int(os.getenv("TREND_MAX_TRIES_PER_DAY", "12"))
+TREND_MAX_TRIES_PER_DAY = int(os.getenv("TREND_MAX_TRIES_PER_DAY", "20"))
 # 「これより古い生成物は、進捗の質問への答えとして出さない」境目（既定2時間）。
 # ルーティングの has_last_gen と同じ窓にそろえてある。
 STATUS_STALE_SEC = int(os.getenv("STATUS_STALE_SEC", "7200"))
@@ -6599,6 +6602,36 @@ async def _drive_watch_loop():
             await send_as(orch, cid, DRIVE_EXPIRED_NOTE)
         except Exception as e:  # noqa: BLE001
             print(f"[drive] 見張りに失敗: {str(e)[:200]}")
+
+
+async def _trend_drive_loop():
+    """回せる状態なら、どんどん回す。
+
+    事故（2026-09-22）：上限は1日4巡なのに、実際は1巡しか回っていなかった。
+    リサーチの起点が【毎朝8時の定時】と【Geminiの枠が切れて復活した時】の
+    2つしか無く、枠が切れなければ2巡目が永久に来なかった。
+    回してよいかの判断は _trend_can_run() が全部持っているので、
+    ここは「定期的に聞きに行く役」だけをやる。
+    """
+    while True:
+        await asyncio.sleep(600)
+        try:
+            on, _h, _m, cid = _trend_conf()
+            if not (on and cid and YOUTUBE_API_KEY):
+                continue
+            now = datetime.now(JST)
+            if not (TREND_ACTIVE_FROM <= now.hour < TREND_ACTIVE_TO):
+                continue
+            if not _trend_can_run():      # 上限・間隔・失敗の後退はここ
+                continue
+            if _gemini_all_cooling():     # 枠切れ中は復活側の担当
+                continue
+            if any("YouTubeリサーチ" in n for n, _ in _busy_tasks(cid)):
+                continue                  # 走っている最中に二重に立てない
+            _spawn(_run_trend_all(cid, _genres_of(gen_settings.get("trend_query"))),
+                   cid, "YouTubeリサーチ")
+        except Exception as e:  # noqa: BLE001
+            print(f"[trend] 連続実行に失敗: {str(e)[:200]}")
 
 
 # ---------------------------------------------------------------------------
@@ -13417,6 +13450,7 @@ async def on_ready():
         _track(asyncio.create_task(_gemini_recovery_loop()))
         _track(asyncio.create_task(_weekly_channel_loop()))
         _track(asyncio.create_task(_drive_watch_loop()))
+        _track(asyncio.create_task(_trend_drive_loop()))
         # 再起動前に投入したモーション生成があれば、完了監視を再開する
         job = _load_motion_job()
         if job and job.get("cid") and time.time() - job.get("submitted_at", 0) < 3600:
