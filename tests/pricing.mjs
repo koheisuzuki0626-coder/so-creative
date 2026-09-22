@@ -1,7 +1,7 @@
 /* 料金シミュレーター。
    「お客様にどの組み合わせを選ばせても採算が崩れない」ことの担保がここ。
    金額・工数のどれかを動かしたら必ずこれを通すこと。 */
-import { check, report, PW, open, pick, setLens, splitSec, reachable, maxPieces, PRICE, HOURS, TIERS, LENGTHS, price, hours, leadWeeks, RATE, MEASURED, REVISION_HOURS, CREDITS_PER_SEC } from './lib.mjs';
+import { check, report, PW, open, pick, setLens, splitSec, setNar, setNarAll, narOf, priceModes, hoursModes, narFee, reachableNar, reachable, maxPieces, PRICE, HOURS, TIERS, LENGTHS, price, hours, leadWeeks, RATE, MEASURED, REVISION_HOURS, CREDITS_PER_SEC } from './lib.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
@@ -19,22 +19,23 @@ check('段の名前が梅竹松',
     (await page.locator('#calc-tier .calc-opt').allInnerTexts()).join('|') === '梅 標準|竹 上|松 特上');
 /* 9/22 から尺は本ごとに選ぶ（select）。1本のときは行が1つだけ出る */
 check('本ごとの尺の行が本数ぶん出る', (await page.locator('#calc-len .calc-len-row').count()) === 1);
-check('尺が8つ', (await page.locator('#calc-len select[data-row="0"] option').count()) === LENGTHS.length);
+check('尺が8つ', (await page.locator('#calc-len select[data-kind="len"][data-row="0"] option').count()) === LENGTHS.length);
 check('本数が6つ', (await page.locator('#calc-cnt .calc-opt').count()) === 6);
 /* 初期は AI。AIは料金に含むので、これが素の状態。
    'none' を初期にすると表示額が差し引き後になり、「AIは込み」と
    言いながら AI を選ぶと上がる見え方になる。
    段を触る前に見る（松を選ぶと human に固定されるため） */
-check('初期表示はAIナレーション',
-    await page.locator('#calc-nar input[data-nar="ai"]').isChecked());
+check('初期表示はAIナレーション', (await narOf(page, 0)) === 'ai');
+/* 9/22：ナレーションを本ごとの行に入れたので、手順は3つになった */
 check('操作の順番を番号で示している',
-    (await page.locator('.calc-step').allInnerTexts()).join('') === '1234');
+    (await page.locator('.calc-step').allInnerTexts()).join('') === '123');
 /* 段・本数・ナレーションはラジオ（丸が見えることで「選ぶところ」だと分かる）。
    尺だけは select。6本 × 8つの尺を丸で並べると48個になり、画面の大半を占めてしまう */
 check('実物のラジオで組んである',
-    (await page.locator('.calc input[type="radio"]').count()) === 3 + 6 + 3);
+    (await page.locator('.calc input[type="radio"]').count()) === 3 + 6);
 check('尺の行に名前がついている（読み上げ用）',
-    (await page.locator('#calc-len select[data-row="0"]').getAttribute('aria-labelledby')) === 'calc-len-name-0'
+    (await page.locator('#calc-len select[data-kind="len"][data-row="0"]').getAttribute('aria-label')) === '1本目の尺'
+    && (await page.locator('#calc-len select[data-kind="nar"][data-row="0"]').getAttribute('aria-label')) === '1本目のナレーション'
     && (await page.locator('#calc-len-name-0').innerText()) === '1本目');
 
 /* ---- 段の説明は客先向けの言葉か ---- */
@@ -47,9 +48,12 @@ for (const [t, must, use, rev] of [['ume', '登場人物なし', 'SNS', 2], ['ta
     /* 4K は売り文句にしない（中身は1080pの引き伸ばしなので）。FAQ にだけ正直に書く */
     check(`${t} は 1080p 納品と書いてある`, /1080p（フルHD）で納品/.test(h));
     check(`${t} の説明に 4K を出していない`, !/4K/.test(h));
+    /* 9/22：ナレーションは本ごとに選べる。入れない本ぶんだけ引くことと、
+       人物は何本に入れても1名ぶんであることが、段の説明から読めること */
     check(`${t} のナレーションの扱いが出る`, t === 'matsu'
-        ? /人物ナレーション込み（1名/.test(h)
-        : /AIナレーションは料金に含まれます（使わないなら −¥25,000／人物ナレーションは1名 ¥70,000〜）/.test(h));
+        ? /人物ナレーション込み（1名/.test(h) && /本ごとに選べます/.test(h)
+        : /本ごとに選べます。入れない本は1本につき −¥25,000/.test(h)
+            && /何本に入れても1名ぶん/.test(h));
 }
 const plansText = await page.locator('#plans').innerText();
 check('生成回数など内部の手順を出していない',
@@ -60,7 +64,7 @@ check('落とした仕様が段の説明に残っていない',
 check('修正回数が5回に戻っていない', !/5回/.test(plansText));
 
 /* ---- ナレーションの選択（なし／AI音声／人が読む の3択） ---- */
-check('ナレーションが3択', (await page.locator('#calc-nar .calc-opt').count()) === 3);
+check('ナレーションが3択', (await page.locator('#calc-len select[data-kind="nar"][data-row="0"] option').count()) === 3);
 /* AI音声を売るなら、合成音声だと分かる書き方にしておく。
    4エンジン×9声を試して不採用にしたものを、期待値を伏せて売らないため */
 check('AIナレーションが合成音声だと分かる書き方になっている',
@@ -68,15 +72,14 @@ check('AIナレーションが合成音声だと分かる書き方になって�
 check('AIナレーションが追加料金なしだと分かる',
     /AIナレーション 追加料金なし/.test(await page.locator('.calc-why').innerText()));
 check('使わないと差し引かれることが書いてある',
-    /使わない（テロップのみ）場合は ¥25,000 を差し引きます/
+    /ナレーションは1本ごとに選べます。入れない本は1本につき ¥25,000 を差し引きます/
         .test(await page.locator('.calc-why').innerText()));
 await page.locator('#calc-tier .calc-opt[data-tier="matsu"]').click();
 /* 9/19 に、松でもナレーションを選べるようにした。以前は human に固定していて、
    人物ナレーションが要らない案件で松を選べなかった。既定は human のまま */
 check('松でもナレーションを選べる',
-    !(await page.locator('#calc-nar input[data-nar="none"]').isDisabled())
-    && !(await page.locator('#calc-nar input[data-nar="ai"]').isDisabled())
-    && (await page.locator('#calc-nar input[data-nar="human"]').isChecked()));
+    !(await page.locator('#calc-len select[data-kind="nar"][data-row="0"]').isDisabled())
+    && (await narOf(page, 0)) === 'human');
 check('松はナレーションが込み（¥0）',
     /人物（松に1名込み）/.test(await page.locator('#calc-nar-dt').innerText())
     && (await page.locator('#calc-narfee').innerText()) === '¥0');
@@ -86,11 +89,10 @@ check('松は本数が増えてもナレーション料は¥0のまま',
 await page.locator('#calc-cnt .calc-opt[data-count="1"]').click();
 await page.locator('#calc-tier .calc-opt[data-tier="ume"]').click();
 check('梅では3択すべて選べる',
-    !(await page.locator('#calc-nar input[data-nar="none"]').isDisabled())
-    && !(await page.locator('#calc-nar input[data-nar="ai"]').isDisabled())
-    && !(await page.locator('#calc-nar input[data-nar="human"]').isDisabled()));
+    (await page.locator('#calc-len select[data-kind="nar"][data-row="0"] option').allInnerTexts())
+        .join('|') === 'ナレーションなし|AIナレーション|人物ナレーション');
 /* AIは料金に含む（¥0）。人物だけ加算される。違いを画面で確かめる */
-await page.locator('#calc-nar .calc-opt[data-nar="ai"]').click();
+await setNarAll(page, 'ai');
 await page.locator('#calc-cnt .calc-opt[data-count="2"]').click();
 check('AIナレーションは追加料金なし（内訳が ¥0）',
     (await page.locator('#calc-narfee').innerText()) === '¥0'
@@ -99,19 +101,24 @@ check('AIナレーションは追加料金なし（内訳が ¥0）',
     && !/〜/.test(await page.locator('#calc-total').innerText()));
 /* AIを込みにした以上、使わない案件から同じ額は取らない。
    松は人物ナレーションが込みなので対象外 */
-await page.locator('#calc-nar .calc-opt[data-nar="none"]').click();
+await setNarAll(page, 'none');
+/* 9/22：入れない本1本につき引くので、2本なら2本ぶん */
 check('ナレーションなしは差し引きが内訳に出る',
-    (await page.locator('#calc-narfee').innerText()) === `−¥${PRICE.noNarration.toLocaleString('ja-JP')}`
+    (await page.locator('#calc-narfee').innerText()) === `−¥${(PRICE.noNarration * 2).toLocaleString('ja-JP')}`
     && /差し引き/.test(await page.locator('#calc-nar-dt').innerText())
     && Number((await page.locator('#calc-total').innerText()).replace(/[^\d]/g, '')) === price(TIERS[0], 60, 2, 'none'));
-check('差し引きは AI を選ぶより安い',
-    price(TIERS[0], 60, 2, 'none') === price(TIERS[0], 60, 2, 'ai') - PRICE.noNarration);
+check('差し引きは AI を選ぶより安い（本数ぶん引く）',
+    price(TIERS[0], 60, 2, 'none') === price(TIERS[0], 60, 2, 'ai') - PRICE.noNarration * 2);
 /* 松の人物ぶんを返す額。¥70,000 をそのまま返すと 15秒×1本で下限を割るので、
    いちばん短い尺でも持つ額（AI -2.5万／なし -5万）にしてある */
 check('松をAIに替えると人物ぶんが引かれる',
     price(TIERS[2], 30, 2, 'ai') === price(TIERS[2], 30, 2, 'human') - PRICE.matsuToAi);
+/* 松は「人物の手配ぶん」と「入れない本のぶん」の両方が引かれる。
+   1本だけのときは 9/19 までと同じ −¥50,000 になる */
 check('松でナレーションを使わないとさらに引かれる',
-    price(TIERS[2], 30, 2, 'none') === price(TIERS[2], 30, 2, 'human') - PRICE.matsuToNone);
+    price(TIERS[2], 30, 1, 'none') === price(TIERS[2], 30, 1, 'human') - PRICE.matsuToNone
+    && price(TIERS[2], 30, 2, 'none')
+        === price(TIERS[2], 30, 2, 'human') - PRICE.matsuToAi - PRICE.noNarration * 2);
 {
     /* 引いたあとでも、どの組み合わせも時間単価の下限を割らないこと。
        ここが割ると「松を選ぶほど損」になる */
@@ -124,13 +131,13 @@ check('松でナレーションを使わないとさらに引かれる',
     }
     check('松はナレーションを外しても下限を割らない', bad.length === 0, bad.slice(0, 3).join(','));
 }
-await page.locator('#calc-nar .calc-opt[data-nar="ai"]').click();
-await page.locator('#calc-nar .calc-opt[data-nar="human"]').click();
+await setNarAll(page, 'ai');
+await setNarAll(page, 'human');
 check('人物ナレーションは本数で増えず「〜」が付く',
     (await page.locator('#calc-narfee').innerText()) === `¥${PRICE.narrationHuman.toLocaleString('ja-JP')}〜`
     && Number((await page.locator('#calc-total').innerText()).replace(/[^\d]/g, '')) === price(TIERS[0], 60, 2, 'human')
     && /〜/.test(await page.locator('#calc-total').innerText()));
-await page.locator('#calc-nar .calc-opt[data-nar="none"]').click();
+await setNarAll(page, 'none');
 await page.locator('#calc-cnt .calc-opt[data-count="1"]').click();
 
 
@@ -150,14 +157,14 @@ for (const t of TIERS) {
         for (let n = 1; n <= cap; n += 1) {
             await setLens(page, splitSec(sec, n));
             for (const nar of (t.narration ? ['human'] : ['none', 'ai', 'human'])) {
-                if (!t.narration) await page.locator(`#calc-nar .calc-opt[data-nar="${nar}"]`).click();
+                if (!t.narration) await setNarAll(page, nar);
                 const shown = Number((await page.locator('#calc-total').innerText()).replace(/[^\d]/g, ''));
                 const want = price(t, sec, n, nar);
                 const c = `${t.label}${sec}秒×${n}本/${nar}`;
                 if (shown !== want) wrong.push(`${c}: ${shown}≠${want}`);
                 rates.push({ c, nar, rate: shown / hours(t, sec, n, nar) });
             }
-            if (!t.narration) await page.locator('#calc-nar .calc-opt[data-nar="ai"]').click();
+            if (!t.narration) await setNarAll(page, 'ai');
         }
         await setLens(page, [sec]);
         const lead = await page.locator('#calc-lead-v').innerText();
@@ -285,12 +292,12 @@ check('ナレーションの工数は1本 1.0h（AI・人で同じ）', HOURS_NA
                 for (const mode of ['ai', 'human']) {
                     const want = price(t, sec, n, mode) > price(matsu, sec, n, 'human');
                     await pick(page, t.id, sec, n);
-                    await page.locator(`#calc-nar .calc-opt[data-nar="${mode}"]`).click();
+                    await setNarAll(page, mode);
                     await page.waitForTimeout(40);
                     const hint = await page.locator('#calc-nar-hint').innerText();
                     const shown = /松（人物ナレーション1名込み/.test(hint);
                     if (shown !== want) warnBad.push(`${t.label}${sec}秒×${n}本/${mode}: ${shown}≠${want}`);
-                    await page.locator('#calc-nar .calc-opt[data-nar="none"]').click();
+                    await setNarAll(page, 'none');
                 }
             }
         }
@@ -320,7 +327,7 @@ check('ナレーションの工数は1本 1.0h（AI・人で同じ）', HOURS_NA
 /* 直前の「松のほうが安い」の確認ループが 'none' で終わるので、素の状態（AI）に戻す。
    戻さないと差し引きが乗って、以降の金額の検査が全部ずれる。
    なお段を選び直すとナレーションは段の既定に戻る（松は human／梅・竹は ai） */
-await page.locator('#calc-nar .calc-opt[data-nar="ai"]').click();
+await setNarAll(page, 'ai');
 await page.waitForTimeout(60);
 const ladder = [];
 for (const t of TIERS) ladder.push(await pick(page, t.id, 90, 1));
@@ -338,7 +345,7 @@ check('長い尺でも梅が選べる', (await pick(page, 'ume', 300, 1)) === pr
    変わるのは「何を何秒で作るか」が内訳とメールに出るかどうか */
 {
     await page.locator('#calc-tier .calc-opt[data-tier="ume"]').click();
-    await page.locator('#calc-nar .calc-opt[data-nar="ai"]').click();
+    await setNarAll(page, 'ai');
     await setLens(page, [30, 90, 15]);
     await page.waitForTimeout(60);
     const shown = Number((await page.locator('#calc-total').innerText()).replace(/[^\d]/g, ''));
@@ -358,13 +365,82 @@ check('長い尺でも梅が選べる', (await pick(page, 'ume', 300, 1)) === pr
     await page.locator('#calc-cnt .calc-opt[data-count="3"]').click();
     await page.waitForTimeout(60);
     check('本数を増やすと直前の尺で埋まる',
-        (await page.locator('#calc-len select[data-row="2"]').inputValue()) === '90');
+        (await page.locator('#calc-len select[data-kind="len"][data-row="2"]').inputValue()) === '90');
     /* 本ごとに15秒以上なので、1本が短くなりすぎることがない。
        以前は合計を本数で割っていたので本数に上限を置いていた（countCap） */
     await page.locator('#calc-cnt .calc-opt[data-count="6"]').click();
     await page.waitForTimeout(60);
     check('本数に使えない選択肢が無い',
         (await page.locator('#calc-cnt input:disabled').count()) === 0);
+}
+
+/* ---- ナレーションを本ごとに選ぶ（9/22） ----
+   決め方は2つだけ。
+     1. 人物（1名の手配）は、1本でも使えば ¥70,000。本数では増えない
+     2. ナレーションを入れない本は、1本につき ¥25,000 を引く
+   1本だけのときは 9/19 までと同じ額になる（下で確かめる） */
+{
+    await page.locator('#calc-tier .calc-opt[data-tier="ume"]').click();
+    await setLens(page, [30, 30, 30]);
+    await setNarAll(page, 'ai');
+    await setNar(page, 0, 'human');
+    await setNar(page, 1, 'none');
+    await page.waitForTimeout(80);
+    const want = priceModes(TIERS[0], 90, ['human', 'none', 'ai']);
+    const shown = Number((await page.locator('#calc-total').innerText()).replace(/[^\d]/g, ''));
+    check('本ごとに違うナレーションでも計算が合う', shown === want, `${shown}≠${want}`);
+    check('内訳に本数で出る',
+        /人物 1本・AI 1本・なし 1本/.test(await page.locator('#calc-nar-dt').innerText()),
+        await page.locator('#calc-nar-dt').innerText());
+
+    /* 人物は手配が1回なので、何本に入れても額は同じ。ここが本数で増えると
+       「1人が同じ収録でまとめて読む」という実態と合わなくなる */
+    const one = priceModes(TIERS[0], 90, ['human', 'ai', 'ai']);
+    const three = priceModes(TIERS[0], 90, ['human', 'human', 'human']);
+    check('人物は何本に入れても1名ぶんのまま', one === three, `${one}≠${three}`);
+
+    /* なしは本数ぶん引く。AIは料金に含まれている＝入れない本はそのぶん工数が要らない */
+    check('なしは本数ぶん引く',
+        priceModes(TIERS[0], 90, ['none', 'none', 'ai'])
+            === priceModes(TIERS[0], 90, ['ai', 'ai', 'ai']) - PRICE.noNarration * 2);
+
+    /* 1本だけのときは 9/19 までと同じ額（梅 なし −25,000 / 人物 +70,000、
+       松 AI −25,000 / なし −50,000）。ここが動くと既存のお客様への説明が変わる */
+    const same = [
+        ['ume', 'none', -PRICE.noNarration], ['ume', 'ai', 0], ['ume', 'human', PRICE.narrationHuman],
+        ['matsu', 'human', 0], ['matsu', 'ai', -PRICE.matsuToAi], ['matsu', 'none', -PRICE.matsuToNone],
+    ].every(([id, nar, fee]) => {
+        const t = TIERS.find((x) => x.id === id);
+        return narFee(t, [nar]) === fee;
+    });
+    check('1本だけなら 9/19 までと同じ額', same);
+
+    /* 引いたあとでも、選べる全部の組み合わせで時間単価の下限を割らないこと。
+       ここが割ると「ナレーションを外すほど損」になる */
+    const bad = [];
+    for (const t of TIERS) {
+        for (const { sec, n, modes } of reachableNar()) {
+            const r = priceModes(t, sec, modes) / hoursModes(t, sec, modes);
+            if (r < RATE * 0.95) bad.push(`${t.label}${sec}秒×${n}本/${modes.join()}: ¥${Math.round(r)}`);
+        }
+    }
+    check('本ごとに選んでも下限を割らない', bad.length === 0, bad.slice(0, 3).join(','));
+
+    /* 本数を増やしたぶんは直前の本と同じナレーションで埋める */
+    await setLens(page, [30]);
+    await setNarAll(page, 'none');
+    await page.locator('#calc-cnt .calc-opt[data-count="3"]').click();
+    await page.waitForTimeout(60);
+    check('本数を増やすと直前のナレーションで埋まる', (await narOf(page, 2)) === 'none');
+    /* 段を変えたら全部の本を既定に戻す。松は人物込みなので意味が変わる */
+    await page.locator('#calc-tier .calc-opt[data-tier="matsu"]').click();
+    await page.waitForTimeout(60);
+    check('段を変えると全部の本が既定に戻る',
+        (await narOf(page, 0)) === 'human' && (await narOf(page, 2)) === 'human');
+    // 次の検査が前提にしている状態（梅・1本・AI）へ戻す
+    await page.locator('#calc-tier .calc-opt[data-tier="ume"]').click();
+    await page.locator('#calc-cnt .calc-opt[data-count="1"]').click();
+    await setNarAll(page, 'ai');
 }
 
 /* ---- プリセット ---- */
@@ -404,19 +480,21 @@ check('選んだ内容で尺と本数を繰り返していない', !/・合計�
 check('先方に書いてもらう欄がある',
     /会社名・お名前：/.test(body) && /映像の用途：/.test(body) && /公開時期：/.test(body));
 await pick(page, 'ume', 60, 2);
-await page.locator('#calc-nar .calc-opt[data-nar="human"]').click();
+await setNarAll(page, 'human');
 await page.waitForTimeout(60);
 const narBody = new URLSearchParams((await mailLink()).split('?')[1]).get('body') || '';
+/* 9/22：本ごとに選べるので、本文は「人物2」のように本数で書く。
+   金額は1名ぶんのまま（何本に入れても増えない） */
 check('人物ナレーションを足すと本文に単位と金額が入る',
-    /・ナレーション：人物 1名/.test(narBody)
-    && new RegExp(`・ナレーション 人物 1名：¥${PRICE.narrationHuman.toLocaleString('ja-JP')}〜`).test(narBody));
-await page.locator('#calc-nar .calc-opt[data-nar="ai"]').click();
+    /・ナレーション：人物2/.test(narBody)
+    && new RegExp(`・ナレーション 人物1名：¥${PRICE.narrationHuman.toLocaleString('ja-JP')}〜`).test(narBody));
+await setNarAll(page, 'ai');
 await page.waitForTimeout(60);
 const aiBody = new URLSearchParams((await mailLink()).split('?')[1]).get('body') || '';
 /* 直前で 60秒×2本 を選んでいる。AI は本数ぶん増えるので 2本ぶんの額が出る */
 check('AIを選ぶと本文に「料金に含まれます」と入り、金額行は出ない',
     /・ナレーション：AI/.test(aiBody) && !/・ナレーション 人物/.test(aiBody));
-await page.locator('#calc-nar .calc-opt[data-nar="none"]').click();
+await setNarAll(page, 'none');
 /* mailto はクライアント側の長さ制限があるので、最長の組み合わせでも収まること。
    以前は 松300秒×6本 の1通りだけ見ていたが、pick() が段の既定（松は human）に
    戻すため、差し引きの行が出るケースを踏んでいなかった。実測の最長は
@@ -427,7 +505,7 @@ for (const [t, sec, n, nar] of [
     ['matsu', 180, 3, 'ai'], ['ume', 300, 3, 'human'], ['take', 300, 6, 'human'],
 ]) {
     await pick(page, t, sec, n);
-    await page.locator(`#calc-nar .calc-opt[data-nar="${nar}"]`).click();
+    await setNarAll(page, nar);
     await page.waitForTimeout(40);
     const href = await page.locator('#calc-mail').getAttribute('href');
     mailLens.push({ k: `${t}${sec}秒×${n}本/${nar}`, len: href.length });
@@ -437,7 +515,7 @@ for (const [t, sec, n, nar] of [
 for (const lens of [[15, 30, 45, 60, 90, 300], [15, 45, 90, 120, 180, 300], [30, 45, 60, 90, 120, 180]]) {
     await page.locator('#calc-tier .calc-opt[data-tier="matsu"]').click();
     await setLens(page, lens);
-    await page.locator('#calc-nar .calc-opt[data-nar="none"]').click();
+    await setNarAll(page, 'none');
     await page.waitForTimeout(40);
     const href = await page.locator('#calc-mail').getAttribute('href');
     mailLens.push({ k: `松 ${lens.join('/')}秒/none`, len: href.length });

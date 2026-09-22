@@ -717,13 +717,9 @@
                         <p class="calc-hint" id="calc-cnt-hint"></p>
                     </div>
                     <div class="calc-row">
-                        <p class="calc-label" id="calc-len-label"><span class="calc-step">3</span>それぞれの尺を選ぶ</p>
+                        <p class="calc-label" id="calc-len-label"><span class="calc-step">3</span>それぞれの尺とナレーションを選ぶ</p>
                         <div class="calc-lens" id="calc-len"></div>
                         <p class="calc-hint" id="calc-len-hint"></p>
-                    </div>
-                    <div class="calc-row">
-                        <p class="calc-label" id="calc-nar-label"><span class="calc-step">4</span>ナレーション</p>
-                        <div class="calc-opts" role="radiogroup" aria-labelledby="calc-nar-label" id="calc-nar"></div>
                         <p class="calc-hint" id="calc-nar-hint"></p>
                     </div>
                     <div class="calc-presets">
@@ -758,10 +754,10 @@
                     <li><b>基本料金 ¥90,000</b>ヒアリング・構成案づくり・絵コンテづくり・進行管理。30秒でも3分でも同じだけかかる部分です。</li>
                     <li><b>1秒あたり ¥3,500〜6,650</b>映像の生成・選別・編集。ここだけが尺に比例し、仕上げの段階（梅・竹・松）で単価が変わります。</li>
                     <li><b>2本目以降 1本につき ¥65,000</b>合計の尺が同じでも、本数が増えれば構成案も絵コンテもご確認も本数分必要になります。</li>
-                    <li><b>AIナレーション 追加料金なし</b>原稿づくり・声の選定・話す速さの調整・映像への配置を含みます。<strong>合成音声なので機械の声だと分かる仕上がりです。</strong>社内向けや、テロップ主体で声を補助的に使う用途に向いています。<strong>使わない（テロップのみ）場合は ¥25,000 を差し引きます</strong>（梅・竹）。</li>
+                    <li><b>AIナレーション 追加料金なし</b>原稿づくり・声の選定・話す速さの調整・映像への配置を含みます。<strong>合成音声なので機械の声だと分かる仕上がりです。</strong>社内向けや、テロップ主体で声を補助的に使う用途に向いています。<strong>ナレーションは1本ごとに選べます。</strong>入れない本は<strong>1本につき ¥25,000</strong> を差し引きます。</li>
                     <li><b>人物ナレーション 1名 ¥70,000〜</b>上記に加えてナレーターの手配を含みます。<strong>声によって変わるため下限の金額です</strong>（1人が同じ収録で複数本を読む場合も1名ぶん）。<strong>松には1名ぶんが含まれています</strong>。松で人のナレーターを立てない場合は、AIに替えるなら ¥25,000、使わないなら ¥50,000 を差し引きます。</li>
                 </ul>
-                <p class="calc-formula" aria-label="料金の計算式">¥90,000 ＋ 秒単価 × 合計秒数 ＋ ¥65,000 × (本数 − 1)<span class="calc-formula-sub">秒単価 ／ 梅 ¥3,500・竹 ¥4,900・松 ¥6,650　ナレーション ／ AIは全段とも料金に含む（梅・竹で使わないなら −¥25,000）・人物は 1名 ¥70,000〜・松は人物1名込み（AIに替えるなら −¥25,000／使わないなら −¥50,000）</span></p>
+                <p class="calc-formula" aria-label="料金の計算式">¥90,000 ＋ 秒単価 × 合計秒数 ＋ ¥65,000 × (本数 − 1)<span class="calc-formula-sub">秒単価 ／ 梅 ¥3,500・竹 ¥4,900・松 ¥6,650　ナレーション ／ 本ごとに選べます。AIは全段とも料金に含む・人物は 1名 ¥70,000〜（何本に入れても1名ぶん）・入れない本は1本につき −¥25,000・松は人物1名込み（人物を1本も使わないなら −¥25,000）</span></p>
             </div>
 
             <!-- ここから下は注記。計算機の根拠（金額の内訳）だけを箱で残し、
@@ -1166,7 +1162,7 @@
         }, true);
 
         /* ---------- 料金シミュレーター ----------
-           料金 = 基本料金 ¥90,000 + 秒単価×秒数 + ¥65,000×(本数-1) + 人物ナレーション ¥70,000×1名（AIは込み／使わないなら −¥25,000）
+           料金 = 基本料金 ¥90,000 + 秒単価×秒数 + ¥65,000×(本数-1) + 人物ナレーション ¥70,000×1名（AIは込み／入れない本は1本につき −¥25,000）
            松は人物1名が込みなので、AIに替えるなら −¥25,000、使わないなら −¥50,000 を引く
            工数 =        3.0h      + 0.15h×倍率×秒数 + 1.5h×(本数-1) + 1.0h×ナレーション本数
            （梅・竹はオプション。松は1本目が秒単価に溶けているので、人物のときだけ加算しない）
@@ -1315,13 +1311,13 @@
            価格差をつけると、値付けの根拠ではなく口実になるため */
         const TIERS = [
             { id: 'ume', label: '梅', sub: '標準', perSec: 3500, hours: 1.0, narration: false,
-              detail: '登場人物なし（設備・製品・空間を中心に構成） ／ AIナレーションは料金に含まれます（使わないなら −¥25,000／人物ナレーションは1名 ¥70,000〜） ／ 修正2回まで ／ 1080p（フルHD）で納品',
+              detail: '登場人物なし（設備・製品・空間を中心に構成） ／ AIナレーションは料金に含まれます（本ごとに選べます。入れない本は1本につき −¥25,000／人物ナレーションは1名 ¥70,000〜で、何本に入れても1名ぶん） ／ 修正2回まで ／ 1080p（フルHD）で納品',
               use: 'SNS 投稿・社内共有・製品やサービスの紹介' },
             { id: 'take', label: '竹', sub: '上', perSec: 4900, hours: 1.22, narration: false,
-              detail: '登場人物2人まで（同じ人物を最後まで同じ顔で出せます） ／ AIナレーションは料金に含まれます（使わないなら −¥25,000／人物ナレーションは1名 ¥70,000〜） ／ 修正3回まで ／ 1080p（フルHD）で納品',
+              detail: '登場人物2人まで（同じ人物を最後まで同じ顔で出せます） ／ AIナレーションは料金に含まれます（本ごとに選べます。入れない本は1本につき −¥25,000／人物ナレーションは1名 ¥70,000〜で、何本に入れても1名ぶん） ／ 修正3回まで ／ 1080p（フルHD）で納品',
               use: '採用サイト・会社紹介・サービス紹介' },
             { id: 'matsu', label: '松', sub: '特上', perSec: 6650, hours: 1.36, narration: true,
-              detail: '登場人物3人まで ／ 人物ナレーション込み（1名。声を選び、話す速さまで調整します。2人目は別途お見積り／AIに替えるなら −¥25,000、使わないなら −¥50,000） ／ 修正3回まで ／ 1080p（フルHD）で納品',
+              detail: '登場人物3人まで ／ 人物ナレーション込み（1名。声を選び、話す速さまで調整します。2人目は別途お見積り／ナレーションは本ごとに選べます。人物を1本も使わないなら −¥25,000、入れない本は1本につきさらに −¥25,000） ／ 修正3回まで ／ 1080p（フルHD）で納品',
               use: '展示会での上映・ブランド映像・じっくり見せたい会社紹介' },
         ];
         const LENGTHS = [
@@ -1375,13 +1371,16 @@
                どう割り振っても合計が同じなら金額は変わらない。
                変わるのは「何を何秒で作るか」が相手に伝わるかどうか */
             let lens = [30];
+            /* 本ごとのナレーション。lens と同じ長さで、同じ添字が同じ本を指す。
+               'none' | 'ai' | 'human' */
+            let nars = ['ai'];
             const MAX_COUNT = 6;
             const totalSec = () => lens.reduce((a, b) => a + b, 0);
             let tier = TIERS[0];
             /* 初期は 'ai'。AIナレーションは料金に含まれているので、これが素の状態。
                'none' を初期にすると表示額が差し引き後になり、
                「AIは込み」と言いながら AI を選ぶと上がる見え方になる */
-            let narration = 'ai';    // 'none' | 'ai' | 'human'
+
             /* 段によってナレーションの意味が違う（松は人物1名込み、梅・竹はAI込み）ので、
                段を変えたら既定に戻す。持ち越すと、松を選んだのに人物ぶんが
                引かれた額が出る、という分かりにくい状態になる */
@@ -1420,7 +1419,7 @@
             const tierHint = document.getElementById('calc-tier-hint');
             TIERS.forEach((t) => {
                 const o = makeOpt(`${t.label} ${t.sub}`, tierBox, 'calc-tier', t.id,
-                    () => { tier = t; narration = defaultNar(t); touch(); render(); });
+                    () => { tier = t; nars = nars.map(() => defaultNar(t)); touch(); render(); });
                 o.label.dataset.tier = t.id;
                 o.input.dataset.tier = t.id;
             });
@@ -1433,17 +1432,23 @@
             /* 本数を変えたとき、いま入っている尺は残す。
                増えたぶんは直前の本と同じ尺で埋める（同じ尺を並べたい人が多いため） */
             function setCount(n) {
-                while (lens.length > n) lens.pop();
-                while (lens.length < n) lens.push(lens[lens.length - 1] ?? 30);
+                while (lens.length > n) { lens.pop(); nars.pop(); }
+                while (lens.length < n) {
+                    lens.push(lens[lens.length - 1] ?? 30);
+                    nars.push(nars[nars.length - 1] ?? defaultNar(tier));
+                }
             }
-            /* 本ごとの尺は select で組む。6本 × 8つの尺を丸で並べると48個になり、
-               選ぶところが画面の大半を占めてしまう */
+            /* 本ごとに「尺」と「ナレーション」を1行で選ぶ。select にしたのは、
+               6本 × 8つの尺を丸で並べると48個になり、選ぶところが画面の大半を占めるため */
             function buildLens() {
                 /* 本数が変わったときだけ組み直す。毎回つくり直すと、
-                   尺を選んだ直後に select が別物になってフォーカスが飛ぶ */
+                   選んだ直後に select が別物になってフォーカスが飛ぶ */
                 if (lenBox.children.length === lens.length) {
-                    lenBox.querySelectorAll('select').forEach((sel) => {
+                    lenBox.querySelectorAll('select[data-kind="len"]').forEach((sel) => {
                         sel.value = String(lens[Number(sel.dataset.row)]);
+                    });
+                    lenBox.querySelectorAll('select[data-kind="nar"]').forEach((sel) => {
+                        sel.value = nars[Number(sel.dataset.row)];
                     });
                     return;
                 }
@@ -1455,38 +1460,52 @@
                     const name = document.createElement('span');
                     name.id = `calc-len-name-${i}`;
                     name.textContent = `${i + 1}本目`;
-                    const sel = document.createElement('select');
-                    sel.dataset.row = String(i);
-                    sel.setAttribute('aria-labelledby', `calc-len-name-${i}`);
+                    row.append(name);
+
+                    const lenSel = document.createElement('select');
+                    lenSel.dataset.row = String(i);
+                    lenSel.dataset.kind = 'len';
+                    lenSel.setAttribute('aria-label', `${i + 1}本目の尺`);
                     LENGTHS.forEach(({ sec: v, label }) => {
                         const opt = document.createElement('option');
                         opt.value = String(v);
                         opt.dataset.sec = String(v);
                         opt.textContent = label;
                         if (v === sec) opt.selected = true;
-                        sel.append(opt);
+                        lenSel.append(opt);
                     });
-                    sel.addEventListener('change', () => {
-                        lens[i] = Number(sel.value);
+                    lenSel.addEventListener('change', () => {
+                        lens[i] = Number(lenSel.value);
                         touch();
                         render();
                     });
-                    row.append(name, sel);
+
+                    const narSel = document.createElement('select');
+                    narSel.dataset.row = String(i);
+                    narSel.dataset.kind = 'nar';
+                    narSel.setAttribute('aria-label', `${i + 1}本目のナレーション`);
+                    for (const v of ['none', 'ai', 'human']) {
+                        const opt = document.createElement('option');
+                        opt.value = v;
+                        opt.dataset.nar = v;
+                        opt.textContent = NAR_LABEL[v];
+                        if (v === nars[i]) opt.selected = true;
+                        narSel.append(opt);
+                    }
+                    narSel.addEventListener('change', () => {
+                        nars[i] = narSel.value;
+                        touch();
+                        render();
+                    });
+
+                    row.append(lenSel, narSel);
                     lenBox.append(row);
                 });
             }
-            const narBox = document.getElementById('calc-nar');
             const narHint = document.getElementById('calc-nar-hint');
-            for (const [v, text] of [
-                ['none', `なし（テロップのみ）− ${yen(PRICE.noNarration)}`],
-                ['ai', 'AIナレーション（料金に含まれます）'],
-                ['human', `人物ナレーション（1名 ${yen(PRICE.narrationHuman)}〜）`],
-            ]) {
-                const o = makeOpt(text, narBox, 'calc-nar', v,
-                    () => { narration = v; touch(); render(); });
-                o.label.dataset.nar = v;
-                o.input.dataset.nar = v;
-            }
+            /* 行の select は単体で読めるように長め、内訳とメールは短く */
+            const NAR_LABEL = { none: 'ナレーションなし', ai: 'AIナレーション', human: '人物ナレーション' };
+            const NAR_SHORT = { none: 'なし', ai: 'AI', human: '人物' };
             /* AIナレーションは料金に含める（追加料金なし）。合成音声なので原価がほぼゼロ。
                人物ナレーションは 1名 ¥70,000〜。1人が同じ収録で複数本を読んでも手配は1回。
                松は人物ナレーション1名が込み。
@@ -1517,32 +1536,41 @@
                 }
                 return `${g.map((x) => (x.n === 1 ? x.sec : `${x.sec}x${x.n}`)).join('/')}秒`;
             };
+            /* 決め方は2つだけ（tests/lib.mjs の narFee / narTracks と同じ）。
+               1. 人物ナレーション（1名の手配）は、1本でも使えば ¥70,000。本数では増えない。
+                  1人が同じ収録で複数本を読んでも手配は1回で、費用もほぼ変わらないため。
+                  松は秒単価に1名ぶんが溶けているので ¥0。人物を1本も使わないなら、
+                  その手配ぶん（¥25,000）を返す。
+               2. ナレーションを入れない本は、1本につき ¥25,000 を引く。
+                  AIナレーションは料金に含まれているので、使わない本のぶんは返す。
+               1本だけのときは 9/19 までと同じ額になる */
+            const hasHuman = () => nars.includes('human');
+            /* ファネルの記録用。本ごとに違うときは 'mixed' でまとめる */
+            const narSummary = () => (nars.every((m) => m === nars[0]) ? nars[0] : 'mixed');
+            const noneCount = () => nars.filter((m) => m === 'none').length;
             const narFee = () => (tier.narration
-                ? (narration === 'human' ? 0
-                    : narration === 'ai' ? -PRICE.matsuToAi
-                    : -PRICE.matsuToNone)
-                : narration === 'ai' ? PRICE.narrationAi * count()
-                : narration === 'human' ? PRICE.narrationHuman
-                : -PRICE.noNarration);   // 使わないなら、込みのぶんを返す
-            /* 松の1本目は秒単価に溶けているので工数に足さない（human のとき count-1）。
-               AI に替えたときは溶けている前提が外れるので、本数ぶんを足す */
-            const narTracks = () => (tier.narration
-                ? (narration === 'human' ? count() - 1 : narration === 'ai' ? count() : 0)
-                : narration === 'none' ? 0 : count());
+                ? (hasHuman() ? 0 : -PRICE.matsuToAi)
+                : (hasHuman() ? PRICE.narrationHuman : 0))
+                - PRICE.noNarration * noneCount();
+            /* 原稿・声の選定・配置は1本 1.0h。入れない本は 0。
+               松の秒単価にはナレーション1本ぶんの 1.0h が入っているので、
+               人物を使う松は1本ぶん差し引く（ここを引かないと 60秒松の 15.2h が動く） */
+            const narTracks = () =>
+                nars.filter((m) => m !== 'none').length - (tier.narration && hasHuman() ? 1 : 0);
 
             /* 初期表示の render とユーザー操作を分ける。
                「自分で条件を変えた」だけを検討中とみなす */
             const totalNow = () => PRICE.base + tier.perSec * totalSec() + PRICE.perExtra * (count() - 1) + narFee();
 
             function touch() {
-                if (!used) { used = true; track('calc_use', { sec: totalSec(), count: count(), tier: tier.id, nar: tier.narration ? 'human' : narration }); }
+                if (!used) { used = true; track('calc_use', { sec: totalSec(), count: count(), tier: tier.id, nar: narSummary() }); }
             }
 
             // 選び終えたところを1回だけ拾う(連打のたびに送らない)
             function settled(total) {
                 clearTimeout(resultTimer);
                 resultTimer = setTimeout(() => {
-                    if (used) track('calc_result', { sec: totalSec(), count: count(), total, tier: tier.id, nar: tier.narration ? 'human' : narration });
+                    if (used) track('calc_result', { sec: totalSec(), count: count(), total, tier: tier.id, nar: narSummary() });
                 }, 900);
             }
 
@@ -1576,41 +1604,30 @@
                 /* 松も3つとも選べる（9/19）。以前は「人が読む」に固定していたが、
                    人物ナレーションが要らない案件で松を選べなくなっていた。
                    松の既定は human。引く額は段によって変わるのでラベルも書き換える */
-                narBox.querySelectorAll('input').forEach((i) => {
-                    const v = i.dataset.nar;
-                    i.disabled = false;
-                    i.checked = v === narration;
-                    const t = i.closest('label')?.querySelector('.calc-opt-t');
-                    if (!t) return;
-                    t.textContent = tier.narration
-                        ? { none: `なし（テロップのみ）− ${yen(PRICE.matsuToNone)}`,
-                            ai: `AIナレーション − ${yen(PRICE.matsuToAi)}`,
-                            human: '人物ナレーション（1名・松に込み）' }[v]
-                        : { none: `なし（テロップのみ）− ${yen(PRICE.noNarration)}`,
-                            ai: 'AIナレーション（料金に含まれます）',
-                            human: `人物ナレーション（1名 ${yen(PRICE.narrationHuman)}〜）` }[v];
-                });
-                const mode = narration;
                 /* 短い尺では、梅・竹にナレーションを足すと松（人1名込み・登場人物3人）
                    より高くなる。松の秒単価に溶けているナレーション相当
                    （竹との差 1,750/秒）が足す額に届かないため。
                    黙っていると下位の仕様を高く買う選択肢が残るので、その場で知らせる */
                 const matsuTier = TIERS.find((x) => x.narration);
-                const cheaperMatsu = !tier.narration && mode !== 'none'
+                const cheaperMatsu = !tier.narration && nars.some((m) => m !== 'none')
                     && tier.perSec * sec + narFee() > matsuTier.perSec * sec;
+                /* 本ごとに違うモードを選べるので、使っているモードのぶんだけ説明を出す */
+                const used_ = new Set(nars);
+                const lines = [];
+                if (used_.has('human')) {
+                    lines.push(tier.narration
+                        ? '<b>人物</b>… 松は1名ぶんが含まれています。声を2人使う場合は別途お見積りします。'
+                        : `<b>人物</b>… ナレーター1名の手配と、原稿づくり・声の選定・映像への配置まで含みます。${yen(PRICE.narrationHuman)}〜で、<strong>何本に入れても1名ぶんのまま</strong>です（同じ収録でまとめて読むため）。`);
+                }
+                if (used_.has('ai')) {
+                    lines.push(`<b>AI</b>… 追加料金なしで入れられます。声を選んで速さも調整できますが、<strong>合成音声なので機械の声だと分かる仕上がりになります。</strong>${tier.narration && !hasHuman() ? `人物を1本も使わないので、松に込みの手配ぶん ${yen(PRICE.matsuToAi)} を差し引きます。` : ''}`);
+                }
+                if (used_.has('none')) {
+                    lines.push(`<b>なし</b>… 声を入れず、テロップだけで伝えます。<strong>入れない本1本につき ${yen(PRICE.noNarration)}</strong> を差し引きます（いまは ${noneCount()}本ぶん）。`);
+                }
                 narHint.innerHTML = cheaperMatsu
                     ? 'この尺と本数なら、松（人物ナレーション1名込み・登場人物3人まで）のほうが安くなります。'
-                    : tier.narration
-                        ? {
-                            none: `声を入れず、テロップだけで伝えます。松に込みの人物ナレーション1名ぶんを ${yen(PRICE.matsuToNone)} 差し引きます。`,
-                            ai: `人のナレーターを手配せず、合成音声に替えます。${yen(PRICE.matsuToAi)} 差し引きます。<strong>機械の声だと分かる仕上がりになります。</strong>`,
-                            human: '人物ナレーション1名ぶんが含まれています。声を2人使う場合は別途お見積りします。',
-                        }[mode]
-                        : {
-                            none: `声を入れず、テロップだけで伝えます。AIナレーションは料金に含まれているので、使わない場合は ${yen(PRICE.noNarration)} を差し引きます。`,
-                            ai: '追加料金なしで入れられます。声を選んで速さも調整できますが、<strong>合成音声なので機械の声だと分かる仕上がりになります。</strong>社内向けや、テロップ主体で声を補助的に使う用途に向いています。',
-                            human: 'ナレーター1名の手配と、原稿づくり・声の選定・映像への配置まで含みます。声によって変わるため下限の金額です。',
-                        }[mode];
+                    : lines.join('<br>');
                 narHint.classList.toggle('calc-hint-warn', cheaperMatsu);
 
                 const lenFee = tier.perSec * sec;
@@ -1620,14 +1637,26 @@
                 const total = PRICE.base + lenFee + cntFee + narFeeNow;
                 const lenLabel = secLabel(sec);
                 /* 「〜」を付けるのは人のときだけ。AI は額が決まっている */
-                const approx = mode === 'human' && narFeeNow > 0;
-                const narText = tier.narration
-                    ? mode === 'human' ? 'ナレーション 人物（松に1名込み）'
-                        : mode === 'ai' ? 'ナレーション AI（人物ぶんを差し引き）'
-                        : 'ナレーション なし（人物ぶんを差し引き）'
-                    : mode === 'ai' ? 'ナレーション AI（料金に含まれます）'
-                    : mode === 'human' ? 'ナレーション 人物（1名）'
-                    : 'ナレーション なし（AI込みぶんを差し引き）';
+                const approx = !tier.narration && hasHuman();
+                /* 内訳の行。本ごとに違うので「人物1本・AI2本」のように数で書く */
+                const narCounts = ['human', 'ai', 'none']
+                    .map((m) => [m, nars.filter((x) => x === m).length])
+                    .filter(([, c]) => c > 0)
+                    .map(([m, c]) => `${NAR_SHORT[m]}${n === 1 ? '' : ` ${c}本`}`)
+                    .join('・');
+                const narNote = tier.narration
+                    ? (hasHuman() ? '松に1名込み' : '松の人物ぶんを差し引き')
+                    : hasHuman() ? '1名・本数では増えません'
+                    : noneCount() > 0 ? `入れない${noneCount()}本ぶんを差し引き`
+                    : '料金に含まれます';
+                const narText = `ナレーション ${narCounts}（${narNote}）`;
+                /* メール用は詰める。「人物2/AI1/なし3」。
+                   全角1文字が9バイトになるので、区切りは半角 */
+                const narJoin = ['human', 'ai', 'none']
+                    .map((m) => [m, nars.filter((x) => x === m).length])
+                    .filter(([, c]) => c > 0)
+                    .map(([m, c]) => `${NAR_SHORT[m]}${n === 1 ? '' : c}`)
+                    .join('/');
 
                 document.getElementById('calc-total').textContent = yen(total) + (approx ? '〜' : '');
                 document.getElementById('calc-base').textContent = yen(PRICE.base);
@@ -1654,7 +1683,7 @@
                     '',
                     '■ 選んだ内容',
                     `・仕上げ：${tier.label}（${tier.sub}）`,
-                    `・ナレーション：${{ none: 'なし', ai: 'AI', human: '人物 1名' }[mode]}`,
+                    `・ナレーション：${narJoin}`,
                     `・概算金額：${yen(total)}（税込）`,
                     `・納品目安：${leadTime(sec, tier, narN)}`,
                     '',
@@ -1662,7 +1691,9 @@
                     `・基本料金：${yen(PRICE.base)}`,
                     `・尺 ${n === 1 ? lenLabel : `合計${lenLabel}`} × ${yen(tier.perSec)}（${tier.label}）：${yen(lenFee)}`,
                     `・本数 ${n}本${n === 1 ? '' : `（${lensJoin()}）`}：${yen(cntFee)}`,
-                    ...(narFeeNow > 0 ? [`・ナレーション 人物 1名：${yen(narFeeNow)}〜`] : []),
+                    ...(!tier.narration && hasHuman() ? [`・ナレーション 人物1名：${yen(PRICE.narrationHuman)}〜`] : []),
+                    /* 引きは1行にまとめる。松の人物ぶんと「なし」の本数ぶんを別の行にすると、
+                       6本ぜんぶ「なし」のときに mailto の上限に触る。内訳は画面に出ている */
                     ...(narFeeNow < 0 ? [`・ナレーションの差し引き：−${yen(-narFeeNow)}`] : []),
                     '',
                     '■ ご記入ください',
@@ -1682,7 +1713,7 @@
             // 相談まで進んだ人。ここまで来た人と calc_use の差が、価格で落ちた人数
             mailLink.addEventListener('click', () => {
                 cta = true;
-                track('calc_cta', { sec: totalSec(), count: count(), total: totalNow(), tier: tier.id, nar: tier.narration ? 'human' : narration, how: 'mail' });
+                track('calc_cta', { sec: totalSec(), count: count(), total: totalNow(), tier: tier.id, nar: narSummary(), how: 'mail' });
             });
 
             // メールソフトが開かない環境向けに、同じ本文をコピーできるようにする
@@ -1692,7 +1723,7 @@
             let msgTimer;
             copyBtn.addEventListener('click', async () => {
                 cta = true;
-                track('calc_cta', { sec: totalSec(), count: count(), total: totalNow(), tier: tier.id, nar: tier.narration ? 'human' : narration, how: 'copy' });
+                track('calc_cta', { sec: totalSec(), count: count(), total: totalNow(), tier: tier.id, nar: narSummary(), how: 'copy' });
                 let ok = false;
                 try {
                     await navigator.clipboard.writeText(summary);
@@ -1743,7 +1774,7 @@
             const onLeave = () => {
                 if (left || !used) return;
                 left = true;
-                track('calc_leave', { sec: totalSec(), count: count(), total: totalNow(), tier: tier.id, nar: tier.narration ? 'human' : narration, used, cta });
+                track('calc_leave', { sec: totalSec(), count: count(), total: totalNow(), tier: tier.id, nar: narSummary(), used, cta });
             };
             window.addEventListener('pagehide', onLeave);
             document.addEventListener('visibilitychange', () => {
