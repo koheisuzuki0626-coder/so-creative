@@ -81,8 +81,9 @@ check('松でもナレーションを選べる',
     !(await page.locator('#calc-len select[data-kind="nar"][data-row="0"]').isDisabled())
     && (await narOf(page, 0)) === 'human');
 check('松はナレーションが込み（¥0）',
-    /人物（松に1名込み）/.test(await page.locator('#calc-nar-dt').innerText())
-    && (await page.locator('#calc-narfee').innerText()) === '¥0');
+    /人物（松に人の声1名込み）/.test(await page.locator('#calc-nar-dt').innerText())
+    && (await page.locator('#calc-narfee').innerText()) === '¥0',
+    await page.locator('#calc-nar-dt').innerText());
 await page.locator('#calc-cnt .calc-opt[data-count="2"]').click();
 check('松は本数が増えてもナレーション料は¥0のまま',
     (await page.locator('#calc-narfee').innerText()) === '¥0');
@@ -316,11 +317,16 @@ check('ナレーションの工数は1本 1.0h（AI・人で同じ）', HOURS_NA
     /* 9/22：本ごとに選べるようになったので「使わないなら ¥50,000」は
        1本のときだけの数字になった。文章はルールで書く（手配ぶん＋入れない本ぶん） */
     check('内訳の文章に松の差し引きが書いてある',
-        new RegExp(`人物を1本も使わない場合は、その手配ぶん ${y(PRICE.matsuToAi)}`).test(note)
+        new RegExp(`どの本にも人の声を入れない場合は、ナレーターの手配ぶん ${y(PRICE.matsuToAi)}`).test(note)
         && new RegExp(`入れない本は、そのうえで1本につき ${y(PRICE.noNarration)}`).test(note),
         note.split('\n').find((l) => l.includes('人物ナレーション')) || '');
     check('「使わないなら ¥50,000」という1本だけの数字が残っていない',
         !/使わないなら ¥50,000/.test(note));
+    /* 松は「登場人物3人まで」も売りなので、「人物を使わない」と書くと
+       画面に人を出さない意味に読める。ナレーションの話は「人の声」と書く */
+    check('ナレーションの話を「人物を使わない」と書いていない',
+        !/人物を(1本も)?使わない/.test(note)
+        && /画面に出る登場人物の数とは別の話です/.test(note));
     check('「松は対象外」という古い書き方が残っていない',
         !/松は人物ナレーション込みのため対象外/.test(note));
     const readme = readFileSync(`${ROOT}/README.md`, 'utf8');
