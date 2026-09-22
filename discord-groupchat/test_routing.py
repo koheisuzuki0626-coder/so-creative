@@ -1538,9 +1538,11 @@ def run():
     check("まとめは受注につなげる形にする",
           "AI映像制作の受注につなげる" in _srcQ, True)
     check("一般論を書かせない", "一般論（【】で煽る・数字を入れる等）は書かない" in _srcQ, True)
+    # 2026-09-22：末尾1500字だと直近1〜2件しか入らず重複が止まらなかった。
+    # 見出し単位で拾う _past_items に替えてある。
     check("過去の知見を渡して重複を防ぐ",
-          "_recent_insights(1500)" in _srcQ
-          and "同じことを繰り返さない" in _srcQ, True)
+          '_past_items("次に試すこと")' in _srcQ
+          and "同じ提案は禁止" in _srcQ, True)
 
     check("視聴できなかった回も結末を返す",
           "枠が戻ったらやり直します" in _srcK, True)
@@ -2886,6 +2888,22 @@ def run():
     check("動画は「動画」へ", bot._drive_kind_of("a.MP4"), "動画")
     check("画像は「画像」へ", bot._drive_kind_of("a.png"), "画像")
     check("どちらでもないものは仕切らない", bot._drive_kind_of("a.pdf"), "")
+
+    print("■ リサーチの精度：既出を渡す・推測を断定しない・商売に接続する")
+    # 事故（2026-09-22）：同じ結論が1日4回のうち3回出た。既出の渡し方が
+    # 末尾1500字で、直近1〜2件しか入っていなかった。
+    with open(bot.__file__, encoding="utf-8") as _f:
+        _src3 = _f.read()
+    check("既出を見出し単位で拾える",
+          callable(getattr(bot, "_past_items", None)), True)
+    check("拾えない時も落ちない", bot._past_items("ありえない見出し"), [])
+    _dg = _src3.split("digest_prompt = (")[1][:2000]
+    check("既出の『次に試すこと』を渡す", "次に試すこと（新しい順" in _dg, True)
+    check("既出の『作れないもの』を渡す", "AIで作れないもの（同じ結論" in _dg, True)
+    check("自分の値段を渡す", "MY_PRICING_NOTE" in _dg, True)
+    check("『不明』を埋めさせない", "埋めない" in _dg, True)
+    check("視聴時に数えたか推定かを言わせる",
+          "推定かを必ず書く" in bot.VIDEO_STUDY_PROMPT, True)
 
     print("■ Driveの認証切れは、日付ではなく状態で気づく")
     # 同意画面が「テスト中」のままなので更新用トークンは7日で切れる。
