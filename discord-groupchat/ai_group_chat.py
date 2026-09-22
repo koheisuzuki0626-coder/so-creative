@@ -2889,10 +2889,11 @@ def _drive_list(limit=20):
     return "📂 Google Drive（新しい順）\n" + "\n".join(rows)
 
 
-# 完成した動画を自動で入れる Drive のフォルダ（本人指定・2026-09-22）。
-# https://drive.google.com/drive/folders/1XCcxur8XY6VMooTp7cw6Pc-lpbUiz1r-
+# AIで作ったものを入れる Drive のフォルダ（本人指定・2026-09-22）。
+# https://drive.google.com/drive/folders/1TsoIAqa2T34N1tP6bvzq5bLHy0B-CxxG
+# この下に「動画」「画像」が既にあり、さらにその下を案件ごとに仕切る。
 DRIVE_UPLOAD_FOLDER = os.getenv("DRIVE_UPLOAD_FOLDER",
-                               "1XCcxur8XY6VMooTp7cw6Pc-lpbUiz1r-")
+                                "1TsoIAqa2T34N1tP6bvzq5bLHy0B-CxxG")
 # 自動で上げるか。止めたいときは DRIVE_AUTO_UPLOAD=0。
 DRIVE_AUTO_UPLOAD = os.getenv("DRIVE_AUTO_UPLOAD", "1").lower() not in (
     "0", "false", "no")
@@ -2921,6 +2922,7 @@ def _drive_upload(path, folder_id=None):
 
 
 VIDEO_SUFFIXES = (".mp4", ".mov", ".m4v")
+IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".gif")
 
 
 _drive_folders = {}                      # 案件名 → フォルダID（作り直さない）
@@ -2940,48 +2942,63 @@ def _project_of_path(path):
     return ""
 
 
-def _drive_subfolder(name):
-    """DRIVE_UPLOAD_FOLDER の下の <name> フォルダのID。無ければ作る。
+def _drive_subfolder(name, parent=None):
+    """<parent> の下の <name> フォルダのID。無ければ作る。
 
     見つからない・作れない時は親フォルダのIDを返す。仕切りを作れなかった
     だけで、上げること自体は失敗させない。
     """
+    parent = parent or DRIVE_UPLOAD_FOLDER
     name = (name or "").strip()
     if not name:
-        return DRIVE_UPLOAD_FOLDER
-    if name in _drive_folders:
-        return _drive_folders[name]
+        return parent
+    key = (parent, name)
+    if key in _drive_folders:
+        return _drive_folders[key]
     svc = _drive_service()
     if svc is None:
-        return DRIVE_UPLOAD_FOLDER
+        return parent
     try:
         esc = name.replace("\\", "\\\\").replace("'", "\\'")
         r = svc.files().list(
             q=("mimeType='application/vnd.google-apps.folder' "
                "and trashed=false "
-               f"and '{DRIVE_UPLOAD_FOLDER}' in parents and name='{esc}'"),
+               f"and '{parent}' in parents and name='{esc}'"),
             fields="files(id)", pageSize=1).execute()
         got = r.get("files") or []
         fid = got[0]["id"] if got else svc.files().create(
             body={"name": name,
                   "mimeType": "application/vnd.google-apps.folder",
-                  "parents": [DRIVE_UPLOAD_FOLDER]},
+                  "parents": [parent]},
             fields="id").execute()["id"]
     except Exception as e:  # noqa: BLE001
         _log_error("Driveのフォルダ作成", e)
-        return DRIVE_UPLOAD_FOLDER
-    _drive_folders[name] = fid
+        return parent
+    _drive_folders[key] = fid
     return fid
 
 
+def _drive_kind_of(path):
+    """Driveの「動画」「画像」のどちらへ入れるか。どちらでもなければ空。"""
+    suf = Path(path).suffix.lower()
+    if suf in VIDEO_SUFFIXES:
+        return "動画"
+    if suf in IMAGE_SUFFIXES:
+        return "画像"
+    return ""
+
+
 def _drive_dest_for(path, project=""):
-    """どのフォルダへ入れるか。案件ごとに仕切る（本人の選択・2026-09-22）。
+    """どのフォルダへ入れるか。AI生成/<種類>/<案件>/ に入れる。
 
     置き場の規則をここ1か所にする（自動アップロードとDiscordの
-    「ドライブに上げて」で行き先が食い違っていたため）。
-    案件名が分からないものは、仕切らずフォルダ直下に置く。
+    「ドライブに上げて」で行き先が食い違っていたため。2026-09-22）。
+    「動画」「画像」は本人が先に作ってあるので、探せば見つかる。
+    種類が分からないもの・案件名が分からないものは、そこで仕切るのを
+    やめて上の階層に置く（間違った場所に作らない）。
     """
-    return _drive_subfolder(project or _project_of_path(path))
+    base = _drive_subfolder(_drive_kind_of(path))
+    return _drive_subfolder(project or _project_of_path(path), base)
 
 
 def _drive_upload_video(path, project=""):
