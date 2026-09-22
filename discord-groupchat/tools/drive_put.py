@@ -55,10 +55,12 @@ def main(argv):
               "   認証し直す: python3 tools/drive_auth.py")
         return 1
 
-    dest = folder or bot.DRIVE_VIDEO_FOLDER
+    # 置き場の規則はボット側と同じものを使う（動画は「動画」フォルダ、
+    # それ以外はマイドライブ直下）。--folder を渡せばそれが優先。
     ok = 0
     for p in paths:
         # _drive_upload はDiscord向けの文を返すので、URLだけ取り出す
+        dest = folder or bot._drive_dest_for(p)
         res = bot._drive_upload(str(p), folder_id=dest) or ""
         link = next((w for w in res.split() if w.startswith("http")), "")
         if link:

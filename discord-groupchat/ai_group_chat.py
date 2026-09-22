@@ -2920,6 +2920,19 @@ def _drive_upload(path, folder_id=None):
             + (f.get("webViewLink") or ""))
 
 
+VIDEO_SUFFIXES = (".mp4", ".mov", ".m4v")
+
+
+def _drive_dest_for(path):
+    """どのフォルダへ入れるか。動画は「動画」フォルダ、他はマイドライブ直下。
+
+    置き場の規則をここ1か所にする（自動アップロードとDiscordの
+    「ドライブに上げて」で行き先が食い違っていたため。2026-09-22）。
+    """
+    return (DRIVE_VIDEO_FOLDER
+            if Path(path).suffix.lower() in VIDEO_SUFFIXES else None)
+
+
 def _drive_upload_video(path):
     """完成した動画を、決めたフォルダへ自動で上げる。
     失敗しても制作そのものは無駄にしない（例外は投げず、文を返すだけ）。
@@ -4189,7 +4202,7 @@ async def _save_media_artifact(cid, data, filename, title, project=""):
                                       f"{title}を保存（Discordから）")
         # 完成した動画は Google Drive にも自動で入れる（本人の希望・2026-09-22）。
         # 素材の静止画は上げない。採用しなかったカットまで入ると埋まる。
-        if path.suffix.lower() in (".mp4", ".mov", ".m4v"):
+        if path.suffix.lower() in VIDEO_SUFFIXES:
             saved += await asyncio.to_thread(_drive_upload_video, path)
         rel = os.path.relpath(path, os.path.dirname(ARTIFACT_DIR))
         _remember_artifact(cid, "media", title, path)
@@ -13790,7 +13803,9 @@ async def _handle_drive_cmd(message, cid, content):
     if m:
         _fired(cid, "ドライブへ送る", t)
         await send_as(orch, cid, "⬆️ 上げています…")
-        await send_as(orch, cid, await asyncio.to_thread(_drive_upload, m.group(1)))
+        _p = m.group(1)
+        await send_as(orch, cid, await asyncio.to_thread(
+            _drive_upload, _p, _drive_dest_for(_p)))
         return
     m = _DRIVE_DOWN_RE.match(t)
     if m:
