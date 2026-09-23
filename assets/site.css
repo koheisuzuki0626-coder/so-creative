@@ -139,9 +139,9 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     /* 花の重心は上寄りなので、文字の中心とそろうよう少しだけ下げる */
     transform: translateY(0.02em);
 }
-/* 社名を so.creative にしたときに足した尾。ドットの直後に続けて
-   「so.creative」と読ませる。少しだけ小さく・軽くして、ドットで一度
-   区切って見えるようにしてある（2026-09-23）。 */
+/* 社名を so-creative にしたときに足した尾。区切りの直後に続けて
+   「so-creative」と読ませる。少しだけ小さく・軽くして、区切りで一度
+   息が入って見えるようにしてある（2026-09-23）。 */
 .logo-tail {
     flex: none;
     margin-left: 0.04em;
@@ -160,6 +160,17 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     border-radius: 50%;
     background: var(--accent);
     transform: translateY(-0.01em);
+}
+/* 社名のあいだの区切り。ドットからハイフンへ（2026-09-23）。
+   ブランドの金色は残したいので、文字の「-」ではなく同じ色の棒で描く。 */
+.logo-dash {
+    flex: none;
+    width: 0.30em;
+    height: 0.075em;
+    margin: 0 0.06em;
+    border-radius: 1px;
+    background: var(--accent);
+    transform: translateY(-0.30em);
 }
 
 /* ---------- Nav ---------- */
@@ -197,7 +208,8 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
 /* 黒いセクションに重なったときはヘッダーを反転させる */
 #nav.on-dark { background: rgba(0, 0, 0, 0.6); border-bottom-color: rgba(255,255,255,0.12); }
 #nav.on-dark .logo { color: #f5f5f7; }
-#nav.on-dark .logo-dot { background: #d9b45f; }
+#nav.on-dark .logo-dot,
+#nav.on-dark .logo-dash { background: #d9b45f; }
 #nav.on-dark .nav-item { color: rgba(245,245,247,0.66); }
 #nav.on-dark .nav-item:hover, #nav.on-dark .nav-item.active,
 #nav.on-dark .nav-trigger[aria-expanded="true"] { color: #fff; }
