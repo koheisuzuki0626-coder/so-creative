@@ -2939,6 +2939,36 @@ def run():
                "VIBEX - Stay Close (Official Music Video)"):
         check(f"外さない: {_t[:22]}", bot._not_promo_reason({"title": _t}), None)
 
+    print("■ 企業VPのお題では、企業VPらしくないものを落とす")
+    # 事故（2026-09-23）：「会社紹介動画 制作事例」で「TikTok崩壊話」
+    # 「Instagram運用代行」「外構ツアー」が選ばれた。らしさを測る
+    # _corporate_score はあったのに、どこからも呼ばれていなかった。
+    _mk = lambda t, c="": {"title": t, "channel": c, "id": t, "duration": 120}
+    _junk = [_mk("TikTok崩壊話 これからどうなる"),
+             _mk("Instagram運用代行の実態を語る対談"),
+             _mk("外構ツアー！こだわりのお庭を紹介します")]
+    _good = [_mk("ニッコーさま 会社紹介動画"),
+             _mk("六三印刷株式会社 - 紹介動画 -"),
+             _mk("山口キャピタル｜オープニングムービー（Crevo制作実績）"),
+             _mk("【制作事例・リデル様】サービス紹介動画【企業PR動画制作実績】")]
+    _kept, _dropped = bot._corp_gate(_junk + _good, "会社紹介動画 制作事例")
+    check("ノイズを落とす", _dropped, 3)
+    check("見たいものは残す", len(_kept), len(_good))
+    check("MVのお題では門を使わない",
+          bot._corp_gate(_junk, "ミュージックビデオ")[1], 0)
+    check("全部落ちる時は落とさない（0本で終わらせない）",
+          bot._corp_gate(_junk, "会社紹介動画")[1], 0)
+    check("歌詞の対訳は本編でない",
+          bot._not_promo_reason({"title": "Bon Jovi 歌詞 対訳"}) is not None, True)
+    # 再生数順に並べ直すと、関連順にした意味が消える。2か所あった
+    # （検索そのものと、毎日のリサーチの候補作り）。自分のチャンネルの
+    # 実績ランキングは再生数順でよいので、この2つだけを見る。
+    import inspect as _insp
+    for _fn in (bot._search_videos, bot._run_trend_study):
+        check(f"{_fn.__name__} は再生数で並べ直さない",
+              'sort(key=lambda v: v["views"]' in _insp.getsource(_fn), False)
+    check("毎日のリサーチの窓は狭すぎない", bot.TREND_DAILY_DAYS >= 90, True)
+
     print("■ Driveの認証切れは、日付ではなく状態で気づく")
     # 同意画面が「テスト中」のままなので更新用トークンは7日で切れる。
     # 黙って上がらなくなるのが一番困るので、切れていたらDiscordで言う。
@@ -3599,12 +3629,18 @@ def run():
           bot._corporate_score({"title": "ブランドムービー「未来へ」",
                                 "channel": "TOYOTA"}), 1)
     check("どちらも無ければ0点",
+          bot._corporate_score({"title": "TikTok崩壊話 これからどうなる",
+                                "channel": "個人チャンネル"}), 0)
+    # 2026-09-23：制作会社の事例集（「【制作事例・〇〇様】サービス紹介動画」）が
+    # 0点で落ちていた。一番見たいものが落ちていたので、語を広げた。
+    check("制作会社の事例集も企業VPとして数える",
           bot._corporate_score({"title": "【AI制作事例】模擬診療サービスの紹介",
-                                "channel": "AIチャンネル"}), 0)
-    # 並べ替えに使うだけで、落とすのには使わないこと（0本になるのを避けるため）
+                                "channel": "AIチャンネル"}) >= 1, True)
+    # 2026-09-23：並べ替えだけでは足りず、個人の喋り動画が選ばれ続けたので
+    # 門としても使う。ただし全部落ちる時は落とさない（0本にしない）。
     _srcQ = bot_src()
-    check("企業らしさは並べ替えに使う（除外しない）",
-          "_corporate_score" in _srcQ and "を優先" in _srcQ, True)
+    check("企業らしさで落とし、らしい順に並べる",
+          "_corp_gate" in _srcQ and "_corporate_score(v) > 0" in _srcQ, True)
 
     print("■ 一回きりの依頼で、毎日のリサーチ設定を書き換えないこと")
     # 事故（2026-09-04 16:53）：「YouTubeリサーチを企業VPに関連する語句で回して」

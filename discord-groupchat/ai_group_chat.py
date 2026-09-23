@@ -4611,7 +4611,9 @@ async def _search_videos(query, limit=50, days=None):
                     raise RuntimeError(f"YouTube API エラー: {str(data2)[:300]}")
             items.extend(data2.get("items", []))
     videos = [_video_dict(item) for item in items]
-    videos.sort(key=lambda v: v["views"], reverse=True)
+    # 並べ替えない。APIから受け取った順（TREND_SEARCH_ORDER＝関連順）が
+    # 検索語との近さそのもので、再生数順に直すと検索語と関係の薄い有名動画が
+    # 必ず上に来る（2026-09-23）。並びを変えたい側で変えること。
     return videos
 
 
