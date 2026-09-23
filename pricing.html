@@ -68,9 +68,111 @@
                 <p class="body-text measure" style="margin-top:18px">
                     <b>2本目以降は1本につき ¥65,000</b>です。合計の尺が同じでも、本数が増えれば構成案も絵コンテもご確認も本数ぶん必要になるためです。
                     尺は1本ずつ別々に選べます（30秒と90秒を1本ずつ、のような組み合わせもそのまま出ます）。</p>
-                <p class="cta-actions" style="margin-top:22px"><a class="pill pill-solid" href="index.html#plans">組み合わせを選んで、その場で試算する</a></p>
             </div>
         </section>
+
+    <section class="section" id="plans">
+        <div class="wrap">
+            <div class="section-head reveal">
+                <p class="eyebrow">Plans</p>
+                <h2 class="headline">料金プラン。</h2>
+                <p class="body-text measure">料金は <strong>基本料金 ＋ 尺の合計 ＋ 本数</strong> で決まり、<strong>仕上げの段階</strong>で尺の単価が変わります。<strong>尺は1本ずつ別々に選べます</strong>（30秒と90秒を1本ずつ、のような組み合わせもそのまま出ます）。表示は税込です。</p>
+            </div>
+
+            <div class="calc reveal">
+                <div class="calc-picks">
+                    <div class="calc-row">
+                        <p class="calc-label" id="calc-tier-label"><span class="calc-step">1</span>仕上げの段階を選ぶ</p>
+                        <div class="calc-opts" role="radiogroup" aria-labelledby="calc-tier-label" id="calc-tier"></div>
+                        <p class="calc-hint" id="calc-tier-hint"></p>
+                    </div>
+                    <div class="calc-row">
+                        <p class="calc-label" id="calc-cnt-label"><span class="calc-step">2</span>何本つくるかを選ぶ</p>
+                        <div class="calc-opts" role="radiogroup" aria-labelledby="calc-cnt-label" id="calc-cnt"></div>
+                        <p class="calc-hint" id="calc-cnt-hint"></p>
+                    </div>
+                    <div class="calc-row">
+                        <p class="calc-label" id="calc-len-label"><span class="calc-step">3</span>それぞれの尺とナレーションを選ぶ</p>
+                        <div class="calc-lens" id="calc-len"></div>
+                        <p class="calc-hint" id="calc-len-hint"></p>
+                        <p class="calc-hint" id="calc-nar-hint"></p>
+                    </div>
+                    <div class="calc-presets">
+                        <span class="calc-presets-head">よくある組み合わせ</span>
+                        <button type="button" class="calc-preset" data-tier="ume" data-len="30" data-cnt="1"><b>SNS広告</b>30秒 × 1本 · 梅</button>
+                        <button type="button" class="calc-preset" data-tier="take" data-len="90" data-cnt="1"><b>会社紹介</b>90秒 × 1本 · 竹</button>
+                        <button type="button" class="calc-preset" data-tier="matsu" data-len="180" data-cnt="1"><b>ブランド映像</b>3分 × 1本 · 松</button>
+                    </div>
+                </div>
+
+                <div class="calc-out">
+                    <p class="calc-out-head">お見積り</p>
+                    <p class="calc-total"><span id="calc-total">¥195,000</span><small>税込</small></p>
+                    <dl class="calc-break">
+                        <div><dt>基本料金</dt><dd id="calc-base">¥90,000</dd></div>
+                        <div><dt id="calc-len-dt">尺 30秒 × ¥3,500（梅）</dt><dd id="calc-lenfee">¥105,000</dd></div>
+                        <div><dt id="calc-cnt-dt">本数 1本</dt><dd id="calc-cntfee">¥0</dd></div>
+                        <div><dt id="calc-nar-dt">ナレーション なし</dt><dd id="calc-narfee">¥0</dd></div>
+                    </dl>
+                    <p class="calc-lead">納品目安 <strong id="calc-lead-v">約2週間</strong></p>
+                    <div class="calc-actions">
+                        <a href="mailto:bonvoyage.ti@icloud.com" class="pill pill-solid calc-cta" id="calc-mail">この内容で相談する</a>
+                        <button type="button" class="calc-copy" id="calc-copy">内容をコピー</button>
+                    </div>
+                    <p class="calc-note" id="calc-copy-msg">メールソフトが開き、選んだ内容が本文に入ります。</p>
+                </div>
+            </div>
+
+            <div class="plan-note reveal">
+                <p class="plan-note-head">金額の内訳</p>
+                <ul class="calc-why">
+                    <li><b>基本料金 ¥90,000</b>ヒアリング・構成案づくり・絵コンテづくり・進行管理。30秒でも3分でも同じだけかかる部分です。</li>
+                    <li><b>1秒あたり ¥3,500〜6,650</b>映像の生成・選別・編集。ここだけが尺に比例し、仕上げの段階（梅・竹・松）で単価が変わります。</li>
+                    <li><b>2本目以降 1本につき ¥65,000</b>合計の尺が同じでも、本数が増えれば構成案も絵コンテもご確認も本数分必要になります。</li>
+                    <li><b>AIナレーション 追加料金なし</b>原稿づくり・声の選定・話す速さの調整・映像への配置を含みます。<strong>合成音声なので機械の声だと分かる仕上がりです。</strong>社内向けや、テロップ主体で声を補助的に使う用途に向いています。<strong>ナレーションは1本ごとに選べます。</strong>入れない本は<strong>1本につき ¥25,000</strong> を差し引きます。</li>
+                    <li><b>人物ナレーション 1名 ¥70,000〜</b>上記に加えてナレーターの手配を含みます。<strong>声によって変わるため下限の金額です</strong>（1人が同じ収録で複数本を読む場合も1名ぶん）。<strong>松には1名ぶんが含まれています</strong>。どの本にも人の声を入れない場合は、ナレーターの手配ぶん ¥25,000 を差し引きます（ナレーションを入れない本は、そのうえで1本につき ¥25,000）。<strong>画面に出る登場人物の数とは別の話です</strong>。</li>
+                </ul>
+                <p class="calc-formula" aria-label="料金の計算式">¥90,000 ＋ 秒単価 × 合計秒数 ＋ ¥65,000 × (本数 − 1)<span class="calc-formula-sub">秒単価 ／ 梅 ¥3,500・竹 ¥4,900・松 ¥6,650　ナレーション ／ 本ごとに選べます。AIは全段とも料金に含む・人物は 1名 ¥70,000〜（何本に入れても1名ぶん）・入れない本は1本につき −¥25,000・松は人の声1名込み（どの本にも人の声を入れないなら −¥25,000）</span></p>
+            </div>
+
+            <!-- ここから下は注記。計算機の根拠（金額の内訳）だけを箱で残し、
+                 残り4つは1つのまとまりに畳んで格を下げた（9/19）。
+                 同じ白い箱が5枚続いていて、どれを読めばいいか分からなかった。
+                 クラス名は検査が参照しているのでそのまま残してある -->
+            <div class="plan-foot reveal">
+                <div class="plan-foot-col">
+                    <div class="plan-common">
+                        <p class="plan-common-head">どの組み合わせにも含まれます</p>
+                        <ul>
+                            <li>ヒアリングと構成案・絵コンテのご提案</li>
+                            <li>編集チェック <strong>2〜3回まで無料</strong>（段階によります／一般的には2回まで）</li>
+                            <li>テロップ・BGM</li>
+                            <li>出演者の手配費・撮影費は一切かかりません</li>
+                        </ul>
+                    </div>
+
+                    <!-- 免税事業者なので消費税を別途請求しない。表示額がそのまま総額。
+                         発注側は仕入税額控除の扱いが変わるので、先に書いておく。
+                         経過措置の割合や期限は時期で変わるため書かない -->
+                    <div class="plan-tax">
+                        <p><strong>適格請求書発行事業者の登録はしておりません。</strong>そのため、お客様側で仕入税額控除をお取りいただけない場合があります。発注前に経理のご担当者さまにご確認ください。</p>
+                    </div>
+                </div>
+
+                <div class="plan-pay">
+                    <p class="plan-pay-head">お支払いとキャンセル</p>
+                    <ul class="pay-list">
+                        <li><b>お支払い</b>制作費は<strong>全額を納品後</strong>にご請求します。<strong>着手金はいただきません。</strong></li>
+                        <li><b>お支払い期日</b><strong>納品日から30日以内</strong>でお願いしています。お客様側の経理サイクルに合わせた調整が必要な場合はご相談ください。</li>
+                        <li><b>着手後のキャンセル</b>進行の段階に応じてご請求します。絵コンテのご承認までは50%、映像の生成に入ったあとは80%、初稿のご提出後は100%です。</li>
+                    </ul>
+                </div>
+
+                <p class="flow-note">5分を超える場合や、本数の上限を超える場合も、同じ考え方でお見積りします。「こういう映像を、この予算で」という形でご相談ください。</p>
+            </div>
+        </div>
+    </section>
+
 
         <section class="section">
             <div class="wrap reveal">
@@ -90,39 +192,6 @@
                 </div>
                 <p class="body-text measure" style="margin-top:18px"><b>梅は人が出ません。</b>設備・製品・空間を中心に構成し、メッセージはテロップでお伝えします。<b>竹から人が出ます。</b>2人までなら、最初から最後まで同じ顔のまま登場させられます。採用サイトのように働く人を見せたい映像はこの段からです。<b>4人以上を出す場合</b>は料金表の範囲を超えるため、個別にお見積りします。</p>
                 <p class="body-text measure">尺と本数は段とは別に選べるので、「30秒を松で」も「3分を梅で」もお選びいただけます。</p>
-            </div>
-        </section>
-
-        <section class="section section-alt">
-            <div class="wrap reveal">
-                <h2 class="headline">何にいくらかかっているか</h2>
-                <ul class="calc-why">
-                    <li><b>基本料金 ¥90,000</b>ヒアリング・構成案づくり・絵コンテづくり・進行管理。30秒でも3分でも同じだけかかる部分です。</li>
-                    <li><b>1秒あたり ¥3,500〜6,650</b>映像の生成・選別・編集。ここだけが尺に比例し、仕上げの段階で単価が変わります。</li>
-                    <li><b>2本目以降 1本につき ¥65,000</b>合計の尺が同じでも、本数が増えれば構成案も絵コンテもご確認も本数ぶん必要になります。</li>
-                    <li><b>AIナレーション 追加料金なし</b>原稿づくり・声の選定・話す速さの調整・映像への配置を含みます。合成音声なので機械の声だと分かる仕上がりです。入れない本は1本につき ¥25,000 を差し引きます。</li>
-                    <li><b>人物ナレーション 1名 ¥70,000〜</b>ナレーターの手配を含みます。声によって変わるため下限の金額です（何本に入れても1名ぶん）。松には1名ぶんが含まれています。<b>画面に出る登場人物の数とは別の話です</b>。</li>
-                </ul>
-                <p class="body-text measure" style="margin-top:20px"><b>¥90,000 ＋ 秒単価 × 合計秒数 ＋ ¥65,000 ×（本数 − 1）</b></p>
-            </div>
-        </section>
-
-        <section class="section">
-            <div class="wrap reveal">
-                <h2 class="headline">どの組み合わせにも含まれます</h2>
-                <ul class="calc-why">
-                    <li><b>ヒアリングと構成案・絵コンテのご提案</b>つくる前に、何をどう見せるかをご確認いただきます。</li>
-                    <li><b>編集チェック 2〜3回まで無料</b>段階によります。一般的には2回までで、それ以降は1回 ¥3〜10万 の追加が相場です。</li>
-                    <li><b>テロップ・BGM</b>別料金にしていません。</li>
-                    <li><b>出演者の手配費・撮影費は一切かかりません</b>撮影工程そのものがないためです。</li>
-                </ul>
-                <h2 class="headline" style="margin-top:44px">お支払いとキャンセル</h2>
-                <ul class="calc-why">
-                    <li><b>お支払い</b>制作費は<b>全額を納品後</b>にご請求します。<b>着手金はいただきません。</b></li>
-                    <li><b>お支払い期日</b>納品日から30日以内でお願いしています。経理サイクルに合わせた調整が必要な場合はご相談ください。</li>
-                    <li><b>着手後のキャンセル</b>進行の段階に応じてご請求します。絵コンテのご承認までは50%、映像の生成に入ったあとは80%、初稿のご提出後は100%です。</li>
-                </ul>
-                <p class="body-text measure" style="margin-top:20px">適格請求書発行事業者の登録はしておりません。そのため、お客様側で仕入税額控除をお取りいただけない場合があります。発注前に経理のご担当者さまにご確認ください。</p>
             </div>
         </section>
 
@@ -251,5 +320,7 @@
         document.getElementById('year').textContent = new Date().getFullYear();
 
     </script>
+    <script src="assets/funnel.js" defer></script>
+    <script src="assets/pricing.js" defer></script>
 </body>
 </html>

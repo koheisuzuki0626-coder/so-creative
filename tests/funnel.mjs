@@ -1,3 +1,5 @@
+// 計算機とその注記は 2026-09-23 に pricing.html へ移した。
+// 料金で検索して来た人が最初に着くのがこのページで、二重に持つと式が食い違うため。
 /* 料金計算機の段差(ファネル計測)と、それを見るページ。
    料金表を公開している以上、価格で諦めた人はここにしか残らない。 */
 import { check, report, open, BASE, PW } from './lib.mjs';
@@ -14,7 +16,7 @@ const leave = (p) => p.evaluate(() => {
 });
 
 /* ---- 通過点が正しい順に立つか ---- */
-let p = await open(browser, {});
+let p = await open(browser, { page: 'pricing.html' });
 check('訪問そのものは記録する(母数)', (await log(p)).join() === 'page_view', JSON.stringify(await log(p)));
 await p.locator('#plans').scrollIntoViewIfNeeded();
 await p.waitForTimeout(700);
@@ -38,6 +40,7 @@ await p.close();
    節を飛ばしてスクロールすると途中が抜けるので、集計は
    「いちばん深く到達した節」から逆算する（funnel.html 側） */
 {
+    /* 節の到達はトップの話。計算機だけが pricing.html へ移った（2026-09-23） */
     const q = await open(browser, {});
     const SECTIONS = ['service', 'why', 'genres', 'works', 'process', 'plans', 'faq', 'contact'];
     /* つくれる動画の節は 4,000px 以上あって画面に 25% 入りきらない。
@@ -61,7 +64,8 @@ await p.close();
 
     /* funnel.html が index.html と同じ並び・同じ id を持っていること。
        ズレると、実際には通っている節が「来ていない」と出る */
-    const idx = readFileSync(`${ROOT}/index.html`, 'utf8');
+    /* 節の一覧と計測は 2026-09-23 に assets/funnel.js へ切り出した */
+    const idx = readFileSync(`${ROOT}/assets/funnel.js`, 'utf8');
     const fun = readFileSync(`${ROOT}/funnel.html`, 'utf8');
     const fromIdx = (idx.match(/const SECTIONS = \[([^\]]+)\]/) || [])[1] || '';
     const fromFun = (fun.match(/const SECTIONS = \[([\s\S]*?)\];/) || [])[1] || '';
@@ -84,7 +88,7 @@ await p.close();
 }
 
 /* ---- 相談まで進んだ場合 ---- */
-p = await open(browser, {});
+p = await open(browser, { page: 'pricing.html' });
 await p.locator('#plans').scrollIntoViewIfNeeded(); await p.waitForTimeout(700);
 await p.locator('#calc-len select[data-kind="len"][data-row="0"]').selectOption('90');
 await p.waitForTimeout(200);
@@ -101,8 +105,8 @@ await p.close();
    2026-09-23 に GA4 を入れた。ここでいちばん危ないのは、
    **計測しているのにポリシーに書いていない**（逆も同じ）状態。
    どちらの向きにもズレないよう、ANALYTICS_ID の中身で分岐して見る */
-p = await open(browser, {});
-const idxSrc = await (await p.request.get(`${BASE}/index.html`)).text();
+p = await open(browser, { page: 'pricing.html' });
+const idxSrc = await (await p.request.get(`${BASE}/assets/funnel.js`)).text();
 const gaId = (idxSrc.match(/const ANALYTICS_ID = '([^']*)'/) || [])[1] ?? null;
 const priv = await (await p.request.get(`${BASE}/privacy.html`)).text();
 check('ANALYTICS_ID が読み取れる', gaId !== null, String(gaId));
@@ -133,7 +137,7 @@ if (gaId) {
 /* ID を入れたら本当に動くか。ここが繋がっていないと、
    privacy.html だけ書き換えて「計測しているつもり」になる */
 {
-    const g = await open(browser, {});
+    const g = await open(browser, { page: 'pricing.html' });
     const loaded = await g.evaluate(() => {
         const s2 = document.createElement('script');
         return new Promise((res) => {
@@ -150,7 +154,7 @@ if (gaId) {
 
     /* page_view は gtag('config') が自分で送る。こちらからも送ると
        訪問が2回数えられ、以降の通過率が全部ずれる */
-    const h = await open(browser, {});
+    const h = await open(browser, { page: 'pricing.html' });
     const sent = await h.evaluate(async () => {
         const got = [];
         window.gtag = (kind, name) => { if (kind === 'event') got.push(name); };
@@ -177,9 +181,9 @@ for (const f of ['index.html', 'about.html']) {
 await p.close();
 
 // 実際に数字が出るか
-p = await open(browser, {});
+p = await open(browser, { page: 'pricing.html' });
 const visit = async (sec, contact) => {
-    await p.goto(`${BASE}/index.html`, { waitUntil: 'networkidle' });
+    await p.goto(`${BASE}/pricing.html`, { waitUntil: 'networkidle' });
     await p.locator('#plans').scrollIntoViewIfNeeded(); await p.waitForTimeout(700);
     await p.locator('#calc-len select[data-kind="len"][data-row="0"]').selectOption(String(sec));
     await p.waitForTimeout(1050);

@@ -9,7 +9,9 @@ const HOURS_NARRATION = () => HOURS.narration;
 const pwmod = (await import(PW)).default;
 
 const browser = await pwmod.chromium.launch();
-const page = await open(browser, {});
+// 計算機は 2026-09-23 に pricing.html へ移した。
+// 料金で検索して来た人が最初に着くのがこのページで、二重に持つと式が食い違うため。
+const page = await open(browser, { page: 'pricing.html' });
 await page.locator('#plans').scrollIntoViewIfNeeded();
 await page.waitForTimeout(700);
 

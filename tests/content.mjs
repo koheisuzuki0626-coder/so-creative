@@ -9,6 +9,10 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
 const browser = await pwmod.chromium.launch();
 const page = await open(browser, {});
 const idx = readFileSync(`${ROOT}/index.html`, 'utf8');
+/* 計算機は 2026-09-23 に assets/pricing.js へ切り出した。
+   値（秒単価・ナレーションの増減）はそちらにある */
+const calcSrc = readFileSync(`${ROOT}/assets/pricing.js`, 'utf8');
+const pricingHtml = readFileSync(`${ROOT}/pricing.html`, 'utf8');
 const about = readFileSync(`${ROOT}/about.html`, 'utf8');
 const privacy = readFileSync(`${ROOT}/privacy.html`, 'utf8');
 
@@ -68,14 +72,17 @@ check('金額の表示は税込で揃っている',
    金額の割合は料金セクションと FAQ の2か所に書いているので、
    片方だけ直すと嘘になる */
 {
-    const pay = await page.locator('.plan-pay').innerText();
+    /* 支払条件・税の注記は 2026-09-23 に pricing.html へ移した */
+    const pc = await open(browser, { page: 'pricing.html' });
+    const pay = await pc.locator('.plan-pay').innerText();
     check('全額を納品後と書いてある', /全額を納品後/.test(pay), pay.slice(0, 40));
     check('着手金を取らないと明記している', /着手金はいただきません/.test(pay));
     check('着手金50%の記述が残っていない', !/着手金\s*50%/.test(pay) && !/残金\s*50%/.test(pay), pay);
     /* 前金を相談する条件は内部ルール（record.html）であって、サイトには出さない。
        出した瞬間に、条件そのものが受注率の抵抗になる */
     check('前金の条件をサイトに書いていない',
-        !/前金/.test(await page.locator('body').innerText()));
+        !/前金/.test(await page.locator('body').innerText())
+        && !/前金/.test(await pc.locator('body').innerText()));
     check('支払期日を書いてある', /納品日から30日以内/.test(pay));
     check('キャンセルの段階を書いてある',
         ['絵コンテ', '初稿'].every(w => pay.includes(w)), pay);
@@ -100,15 +107,17 @@ check('金額の表示は税込で揃っている',
     check('代わりの進め方を書いてある', /無地のまま生成/.test(logo.a));
 }
 {
-    const tax = await page.locator('.plan-tax').innerText();
+    const pp = await open(browser, { page: 'pricing.html' });
+    const tax = await pp.locator('.plan-tax').innerText();
     check('インボイス未登録を料金セクションに明記している',
         /適格請求書発行事業者の登録はしておりません/.test(tax), tax.slice(0, 40));
     check('仕入税額控除に触れている', /仕入税額控除/.test(tax));
     check('経理担当への確認を促している', /経理/.test(tax));
     check('経過措置の割合や期限は書いていない',
         !/80%|50%|8割|5割|経過措置|2029年/.test(tax), tax);
+    /* 計算機と注記は 2026-09-23 に pricing.html へ移した */
     check('インボイスの注記は料金セクションの中にある',
-        await page.locator('#plans .plan-tax').count() === 1);
+        await pp.locator('#plans .plan-tax').count() === 1);
 }
 /* 「撮影しない理由」の写真の上に置く印（9/19）。
    白い丸＋赤（#d92e26）の禁止マークをやめ、見出しと同じ言葉の札にした。
@@ -169,26 +178,28 @@ check('金額の表示は税込で揃っている',
    箱は「金額の内訳」だけにして、残り4つは .plan-foot にまとめて格を下げる。
    また箱が増えたら落とす */
 {
-    const boxOf = (sel) => page.locator(sel).evaluate((el) => {
+    const boxOf = (sel, pg = page) => pg.locator(sel).evaluate((el) => {
         const cs = getComputedStyle(el);
         return { bg: cs.backgroundColor,
                  border: parseFloat(cs.borderTopWidth) + parseFloat(cs.borderLeftWidth)
                        + parseFloat(cs.borderRightWidth) + parseFloat(cs.borderBottomWidth) };
     });
-    const note = await boxOf('#plans .plan-note');
+    /* 料金の節は pricing.html にある（2026-09-23 に移した） */
+    const pg2 = await open(browser, { page: 'pricing.html' });
+    const note = await boxOf('#plans .plan-note', pg2);
     check('金額の内訳は箱のまま残っている',
         note.bg !== 'rgba(0, 0, 0, 0)' && note.border > 0, JSON.stringify(note));
     for (const sel of ['.plan-common', '.plan-pay', '.plan-tax']) {
-        const b = await boxOf(`#plans ${sel}`);
+        const b = await boxOf(`#plans ${sel}`, pg2);
         check(`${sel} を箱にしていない`,
             b.bg === 'rgba(0, 0, 0, 0)' && b.border === 0, JSON.stringify(b));
     }
     check('注記は1つのまとまりに入っている',
-        await page.locator('#plans .plan-foot > *').count() === 3
-        && await page.locator('#plans .plan-foot .plan-common').count() === 1
-        && await page.locator('#plans .plan-foot .plan-tax').count() === 1);
+        await pg2.locator('#plans .plan-foot > *').count() === 3
+        && await pg2.locator('#plans .plan-foot .plan-common').count() === 1
+        && await pg2.locator('#plans .plan-foot .plan-tax').count() === 1);
     /* 見た目を落としただけで、中身は消していない */
-    const footText = await page.locator('#plans .plan-foot').innerText();
+    const footText = await pg2.locator('#plans .plan-foot').innerText();
     check('注記の中身が残っている',
         ['どの組み合わせにも含まれます', 'お支払いとキャンセル', '適格請求書', '5分を超える場合']
             .every((w) => footText.includes(w)), footText.slice(0, 60));
@@ -424,12 +435,13 @@ check('金額の表示は税込で揃っている',
         /3日で1本できる/.test(hero) && /訴求違い/.test(hero));
 }
 check('人物ナレーションの追加料金が FAQ と計算機で同じ',
-    /1名 ¥70,000〜/.test(idx) && /narrationHuman: 70000/.test(idx));
+    /1名 ¥70,000〜/.test(idx) && /narrationHuman: 70000/.test(calcSrc));
 /* AIを有料に戻すときは、ここと計算機と文言を必ず一緒に直す */
-check('AIナレーションが計算機でも ¥0 になっている', /narrationAi: 0/.test(idx));
+check('AIナレーションが計算機でも ¥0 になっている', /narrationAi: 0/.test(calcSrc));
 /* AIを込みにした代わりに、使わないときは引く。額は3か所で揃っていること */
 check('ナレーションなしの差し引きが計算機と文言で同じ',
-    /noNarration: 25000/.test(idx) && /−¥25,000/.test(idx) && /−\u00a525,000|¥25,000 を差し引き/.test(idx));
+    /noNarration: 25000/.test(calcSrc) && /−¥25,000/.test(pricingHtml)
+    && /¥25,000 を差し引き/.test(idx));
 
 const org = ld.find(d => d['@graph'])?.['@graph']?.find(x => x['@type'] === 'Organization') || {};
 check('構造化データに代表者', org.founder?.name === '鈴木 宏平');
@@ -515,7 +527,7 @@ check('タイトルの「最短2週間」が実態と合う',
 
 /* ---- 料金の説明文が段と矛盾していないか ----
    段で秒単価が変わるのに「1秒あたり ¥3,500」と書いてあると嘘になる */
-const why = await page.locator('.calc-why').innerText();
+const why = await (await open(browser, { page: 'pricing.html' })).locator('.calc-why').innerText();
 check('内訳の秒単価が段の幅で書いてある',
     /¥3,500〜6,650/.test(why) && /仕上げの段階/.test(why), why.split('\n').find(l => l.includes('1秒')) || '');
 check('制作にかかる日数が何で変わるか書いてある',
