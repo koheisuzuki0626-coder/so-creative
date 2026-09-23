@@ -14,8 +14,15 @@
 
     料金 = 90,000 ＋ 秒単価 × 合計秒数 ＋ 65,000 ×（本数 − 1）＋ ナレーション調整
       秒単価 … 梅 3,500 ／ 竹 4,900 ／ 松 6,650
-      ナレーション … AI は全段とも料金に含む（入れない本は 1本 −25,000）
-                     人物は 1名 +70,000（何本でも1名ぶん）。松は1名込み
+      ナレーション調整（assets/pricing.js の narFee と同じ式にする）
+        梅・竹 … 人物 +70,000（何本に入れても1名ぶん）／ AI ±0
+        松     … 人物 ±0（秒単価に1名ぶんが溶けている）／
+                 人物を使わないなら手配1回ぶん −25,000 を返す
+        共通   … ナレーションを入れない本は 1本につき −25,000
+
+    2026-09-24：松で AI／なしを選んだとき、上の −25,000 を引いておらず
+    サイトの計算機より 25,000 円高い見積書が出ていた。サイトが正
+    （tests/pricing.mjs で時間単価の下限まで検証しているのはあちら）。
 """
 import argparse
 import datetime
@@ -32,6 +39,7 @@ PER_SEC = {"梅": 3500, "竹": 4900, "松": 6650}
 EXTRA_CUT = 65000
 NARRATION_HUMAN = 70000
 NO_NARRATION = 25000
+MATSU_TO_AI = 25000                 # 松に込みの「ナレーター手配1回ぶん」を返す額
 REVISIONS = {"梅": 2, "竹": 3, "松": 3}
 TIER_NOTE = {"梅": "梅（標準）／人物は出ません",
              "竹": "竹（上）／登場人物2人まで",
@@ -65,12 +73,19 @@ def calc(tier, sec, count, nar):
         extra = EXTRA_CUT * (count - 1)
         rows.append(("本数", f"2本目以降 {count - 1}本 × ¥{yen(EXTRA_CUT)}", extra))
         total += extra
-    if nar == "human" and tier != "松":
+    # ナレーション調整。サイトの計算機（assets/pricing.js の narFee）と同じ形にする。
+    # 「段による手配ぶん」と「入れない本のぶん」は別勘定で、両方乗ることがある。
+    if tier == "松":
+        if nar == "human":
+            rows.append(("人物ナレーション", "1名（松は料金に含まれています）", 0))
+        else:
+            rows.append(("ナレーター手配なし",
+                         "松に含まれる1名ぶんを お引きします", -MATSU_TO_AI))
+            total -= MATSU_TO_AI
+    elif nar == "human":
         rows.append(("人物ナレーション", "1名（何本に入れても1名ぶん）", NARRATION_HUMAN))
         total += NARRATION_HUMAN
-    elif nar == "human":
-        rows.append(("人物ナレーション", "1名（松は料金に含まれています）", 0))
-    elif nar == "ai":
+    if nar == "ai":
         rows.append(("AIナレーション", "原稿・声の選定・速さの調整・配置（料金に含まれます）", 0))
     elif nar == "none":
         back = -NO_NARRATION * count

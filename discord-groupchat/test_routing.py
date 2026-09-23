@@ -84,6 +84,26 @@ _TMP_STATE, _REAL_STATE = _testenv.isolate(bot)
 _REAL_BEFORE = _testenv.snapshot(_REAL_STATE)
 
 
+def _make_doc_path():
+    import os.path
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "tools", "make_doc.py")
+
+
+def _make_doc_src():
+    with open(_make_doc_path(), encoding="utf-8") as f:
+        return f.read()
+
+
+def _load_make_doc():
+    """tools/make_doc.py を読み込む（パッケージではないので直接読む）。"""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("_make_doc", _make_doc_path())
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def bot_src():
     """ボットの実装ソースを1つの文字列にして返す。
 
@@ -2929,6 +2949,51 @@ def run():
           "『引用』" in bot._attach_quote("『引用』\n見積り条件: 尺=30秒 階層=梅"), True)
     check("まとめに金額を書かせない",
           "**金額と工数は書かない**" in bot_src(), True)
+
+    print("■ お客様に出すPDFの金額は、サイトの計算機と1円もズレない")
+    # 事故（2026-09-24）：松で AI ナレーション／ナレーションなしを選ぶと、
+    # サイトに込みの「ナレーター手配1回ぶん −25,000」を引いておらず、
+    # 見積書のほうが 25,000円 高く出ていた。お客様に出す書類なので、
+    # ここがズレると それだけで信用を落とす。サイトが正
+    # （時間単価の下限まで tests/pricing.mjs で検証しているのはあちら）。
+    _md = _load_make_doc()
+
+    def _site_price(tier, sec, count, nar):
+        """assets/pricing.js の narFee をそのまま写した参照実装。
+
+        make_doc.py 側を書き換えるときは、まずこれとサイトを見比べること。
+        ここを make_doc.py から import して作ってはいけない。同じ間違いを
+        2回数えるだけになり、ズレを検出できなくなる。
+        """
+        per = {"梅": 3500, "竹": 4900, "松": 6650}[tier]
+        has_human = (nar == "human")
+        if tier == "松":                      # 人物1名が秒単価に溶けている
+            nar_fee = 0 if has_human else -25000
+        else:
+            nar_fee = 70000 if has_human else 0
+        nar_fee -= 25000 * (count if nar == "none" else 0)
+        return 90000 + per * sec * count + 65000 * (count - 1) + nar_fee
+
+    _ng = []
+    for _tier in ("梅", "竹", "松"):
+        for _sec in (15, 30, 60, 90, 120, 300):
+            for _cnt in (1, 2, 3):
+                for _nar in ("ai", "human", "none"):
+                    _got = _md.calc(_tier, _sec, _cnt, _nar)[1]
+                    if _got != _site_price(_tier, _sec, _cnt, _nar):
+                        _ng.append(f"{_tier}{_sec}秒x{_cnt}本/{_nar}")
+    check("162通りすべてサイトと同額", _ng[:3], [])
+    # 実額でも固定しておく（参照実装ごと間違えたときに気づけるように）
+    check("竹60秒・AI＝384,000", _md.calc("竹", 60, 1, "ai")[1], 384000)
+    check("松60秒・人物＝489,000", _md.calc("松", 60, 1, "human")[1], 489000)
+    check("松60秒・AIは手配ぶんを返す＝464,000",
+          _md.calc("松", 60, 1, "ai")[1], 464000)
+    check("松60秒・なしは二重に返す＝439,000",
+          _md.calc("松", 60, 1, "none")[1], 439000)
+    check("梅15秒・なし＝117,500", _md.calc("梅", 15, 1, "none")[1], 117500)
+    # 消費税は申し受けない（適格請求書発行事業者の登録をしていないため）。
+    # 「小計＋消費税10%」に戻すと、同じ案件でサイトより高い書類が出る
+    check("消費税を足していない", "消費税は申し受けません" in _make_doc_src(), True)
 
     print("■ リサーチで選ぶ動画：関連順で引き、本編でないものを外す")
     # 事故（2026-09-23）：再生数順で引いていたため、検索語と関係の薄い有名動画
