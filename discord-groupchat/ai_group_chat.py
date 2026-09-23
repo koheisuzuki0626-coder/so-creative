@@ -4444,7 +4444,9 @@ async def _fetch_trending(limit=100):
     return videos[:limit]
 
 
-TREND_SEARCH_DAYS = int(os.getenv("TREND_SEARCH_DAYS", "90"))  # 検索対象は直近N日
+# 検索対象は直近N日。5年（本人の希望・2026-09-23）。企業VPの制作事例は
+# 古いものが大半で、新しさに意味が無い。手で頼んだ時も同じ期間で見る。
+TREND_SEARCH_DAYS = int(os.getenv("TREND_SEARCH_DAYS", "1825"))
 # 毎日の自動リサーチだけは短い窓で見る。90日＋再生数順だと上位が何ヶ月も
 # 入れ替わらず、分析済みを飛ばしても同じ固定ランキングを下へ辿るだけになる
 # （本人の指摘：「毎日のリサーチがいつも同じ動画」。2026-08-22）。
@@ -4452,7 +4454,7 @@ TREND_SEARCH_DAYS = int(os.getenv("TREND_SEARCH_DAYS", "90"))  # 検索対象は
 # 毎日同じ顔ぶれになったため。関連順に変えた今は不要で、むしろ有害だった
 # （企業VPの制作事例で直近14日に公開されたものはごく僅かで、雑多な新着しか
 #  残らない。2026-09-23）。分析済みを飛ばす仕組みがあるので顔ぶれは変わる。
-TREND_DAILY_DAYS = int(os.getenv("TREND_DAILY_DAYS", "180"))
+TREND_DAILY_DAYS = int(os.getenv("TREND_DAILY_DAYS", "1825"))   # 5年
 # 毎日のリサーチで、その中から選ぶ母数（TOP何本まで見るか）。
 # 検索APIは1回50件なので、既定は50（増やすとページを繰る）。
 TREND_POOL = int(os.getenv("TREND_POOL", "100"))

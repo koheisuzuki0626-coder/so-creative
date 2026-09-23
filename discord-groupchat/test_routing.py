@@ -2967,7 +2967,10 @@ def run():
     for _fn in (bot._search_videos, bot._run_trend_study):
         check(f"{_fn.__name__} は再生数で並べ直さない",
               'sort(key=lambda v: v["views"]' in _insp.getsource(_fn), False)
-    check("毎日のリサーチの窓は狭すぎない", bot.TREND_DAILY_DAYS >= 90, True)
+    # 本人の希望（2026-09-23）：5年。企業VPの事例は古いものが大半で、
+    # 新しさに意味が無い。手で頼んだ時も同じ期間で見る。
+    check("毎日のリサーチは5年ぶん見る", bot.TREND_DAILY_DAYS, 1825)
+    check("手で頼んだ時も同じ期間", bot.TREND_SEARCH_DAYS, 1825)
 
     print("■ Driveの認証切れは、日付ではなく状態で気づく")
     # 同意画面が「テスト中」のままなので更新用トークンは7日で切れる。
