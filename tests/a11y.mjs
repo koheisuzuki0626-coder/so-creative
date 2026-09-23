@@ -2,7 +2,7 @@
 import { check, report, open, PW } from './lib.mjs';
 const pwmod = (await import(PW)).default;
 const browser = await pwmod.chromium.launch();
-for (const file of ['index.html', 'works.html', 'pricing.html', 'about.html', 'privacy.html',
+for (const file of ['index.html', 'works.html', 'pricing.html', 'company-video.html', 'about.html', 'privacy.html',
                     'funnel.html', 'roadmap.html', 'record.html']) {
     const page = await open(browser, { page: file });
     const bad = await page.evaluate(() => {
