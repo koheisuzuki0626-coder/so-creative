@@ -6025,15 +6025,31 @@ def _quote_text(sec, tier, count=1, narration=False):
     return f"→ 自分の料金表だと **約{yen:,}円**／工数の見込み **約{hours:.1f}時間**"
 
 
+_QUOTE_WRAP = "『』「」【】〈〉《》\"\'`"
+
+
 def _attach_quote(text):
     """まとめの「見積り条件: 尺=N秒 階層=X」を、こちらで計算した行に置き換える。
-    条件が読み取れない時は何も足さない（作り話の金額を出さないため）。"""
+    条件が読み取れない時は何も足さない（作り話の金額を出さないため）。
+
+    AIが行ごと『』で囲んでくることがあるので、その行の囲みは外す
+    （2026-09-23 のリサーチで実際に出た）。計算結果まで引用に見えてしまう。
+    """
     m = _QUOTE_RE.search(text or "")
     if not m:
         return text
     line = _quote_text(int(m.group(1)), m.group(2))
-    return text if not line else _QUOTE_RE.sub(
+    if not line:
+        return text
+    out = _QUOTE_RE.sub(
         f"見積り条件: 尺={m.group(1)}秒・階層={m.group(2)}\n{line}", text, count=1)
+    # 見積りの2行に付いた囲みだけを外す。本文の他の『』には触らない
+    fixed = []
+    for ln in out.splitlines():
+        if "見積り条件:" in ln or "自分の料金表だと" in ln:
+            ln = ln.strip().strip(_QUOTE_WRAP).strip()
+        fixed.append(ln)
+    return "\n".join(fixed)
 
 
 def _past_items(key, limit=25):
