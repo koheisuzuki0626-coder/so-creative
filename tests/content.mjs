@@ -915,45 +915,56 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     const eigyo = readFileSync(`${ROOT}/${T}/営業文面.md`, 'utf8');
     const all = mitsu + keiyaku + seikyu;
 
-    /* 営業文面の「料金について聞かれたときの答え方」（9/23）。
+    /* 料金の答え方と、詰められたときの返し方（9/23）。
+       営業中はスマホで開くので record.html に移した（markdown では読めない）。
        金額と時間単価を本文に書いている以上、モデルとズレたら
        お客様の前で違う数字を言うことになるので、ここで突き合わせる。
-       また「工数だからこの値段」と言わない方針そのものも守る
-       （価格の倍率 1.0/1.4/1.9 は市場向けの値で、工数の 1.0/1.22/1.36 とは違う） */
+       営業文面.md 側には移した旨のポインタだけを残し、数字は二重に持たない */
     {
         const y = (n) => `¥${n.toLocaleString('ja-JP')}`;
-        check('営業文面に料金の答え方がある', /料金について聞かれたときの答え方/.test(eigyo));
+        const rec = readFileSync(`${ROOT}/record.html`, 'utf8');
+        check('営業文面は record.html を指している',
+            /record\.html/.test(eigyo) && /2か所に置かない/.test(eigyo));
+        check('営業文面に数字を二重に持っていない',
+            !/¥185,725/.test(eigyo) && !/23,143\/h/.test(eigyo));
+
+        check('料金の答え方がある', /料金を聞かれたときの答え方/.test(rec));
         check('答え方の時間単価がモデルと合っている',
-            TIERS.every((t) => eigyo.includes(`${y(Math.round(price(t, 90, 1, 'ai') / hours(t, 90, 1, 'ai')))}/h`)),
+            TIERS.every((t) => rec.includes(`${y(Math.round(price(t, 90, 1, 'ai') / hours(t, 90, 1, 'ai')))}/h`)),
             TIERS.map((t) => Math.round(price(t, 90, 1, 'ai') / hours(t, 90, 1, 'ai'))).join());
         check('答え方の金額がモデルと合っている',
-            eigyo.includes(y(PRICE.base)) && eigyo.includes(y(PRICE.noNarration))
-            && eigyo.includes(y(PRICE.narrationHuman)));
+            rec.includes(y(PRICE.base)) && rec.includes(y(PRICE.noNarration))
+            && rec.includes(y(PRICE.narrationHuman)));
         check('「工数だからこの値段」と言わない方針が書いてある',
-            /「工数だからこの値段」とは言わない/.test(eigyo)
-            && /価格は市場を見て決めています/.test(eigyo));
+            /「工数だからこの値段」とは言わない/.test(rec)
+            && /価格は市場を見て決めています/.test(rec));
         check('2人目がタダなことを取り繕わない方針が書いてある',
-            /段の中では同じです/.test(eigyo) && /取り繕って/.test(eigyo));
+            /段の中では同じです/.test(rec) && /取り繕って/.test(rec));
 
-        /* 金額を詰められたときの返し方（9/23）。下げていい限界を実数で
-           書いているので、料金や工数を動かしたらここもズレる。
+        /* 下げていい限界を実数で書いている。料金や工数を動かしたらここもズレる。
            とくに「梅は5〜6%しか下げられない」は、感覚で応じると壊れる線 */
         const limit = (id, sec) => {
             const t = TIERS.find((x) => x.id === id);
             const nar = t.narration ? 'human' : 'ai';
             return Math.round(RATE * 0.95 * hours(t, sec, 1, nar));
         };
-        check('詰められたときの返し方がある', /金額を詰められたときの返し方/.test(eigyo));
+        const cases = [['ume', 30], ['ume', 90], ['take', 90], ['matsu', 90]];
+        check('詰められたときの返し方がある', /金額を詰められたときの返し方/.test(rec));
         check('下げていい限界がモデルと合っている',
-            [['ume', 30], ['ume', 90], ['take', 90], ['matsu', 90]]
-                .every(([id, sec]) => eigyo.includes(y(limit(id, sec)))),
-            [['ume', 30], ['ume', 90], ['take', 90], ['matsu', 90]].map(([i, s]) => limit(i, s)).join());
-        /* 30秒ぶんの差は尺によらず一定（秒単価 × 30）。本文にその額を書いている */
-        check('尺を縮めたときの差額が合っている',
-            eigyo.includes(y(TIERS[1].perSec * 30)));
+            cases.every(([id, sec]) => rec.includes(y(limit(id, sec)))),
+            cases.map(([i, sc]) => limit(i, sc)).join());
+        check('尺を縮めたときの差額が合っている', rec.includes(y(TIERS[1].perSec * 30)));
         check('値引きではなく構成で答える方針が書いてある',
-            /値引きで答えない。構成で答える/.test(eigyo) && /初回3社限定|最初の3社に限って/.test(eigyo));
-        check('引く基準が書いてある', /引くとき/.test(eigyo) && /当て馬/.test(eigyo));
+            /値引きで答えない。構成で答える/.test(rec) && /最初の3社に限って/.test(rec));
+        check('引く基準が書いてある', /引くとき/.test(rec) && /当て馬/.test(rec));
+
+        /* 入札参加資格の手順も移した。開業の週にスマホで開くもの */
+        check('入札の手順が record.html にある',
+            /入札に出られるようにする/.test(rec) && /新設のため決算書なし/.test(rec)
+            && /令和10年3月10日/.test(rec));
+        const research = readFileSync(`${ROOT}/成果物/リサーチ/2026-09-21_価格の実数.md`, 'utf8');
+        check('リサーチ側は移した旨を書いている',
+            /record\.html.*に移した/.test(research));
     }
 
     check('ひな形3点が空でない', [mitsu, keiyaku, seikyu].every(x => x.length > 500));
