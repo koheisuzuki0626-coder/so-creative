@@ -6001,14 +6001,26 @@ PRICE_EXTRA_CUT = 65000             # 2本目以降
 PRICE_NARRATION_HUMAN = 70000       # 人物ナレーション（梅・竹。何本に入れても1名ぶん）
 PRICE_NO_NARRATION = 25000          # ナレーションを入れない本は1本につき引く
 PRICE_MATSU_TO_AI = 25000           # 松で人物を使わない時に返す「手配1回ぶん」
+# 工数もサイト（tests/lib.mjs の hoursModes）と同じ式にする。
+#   工数 = 3.0h ＋ 0.15h×倍率×合計秒数 ＋ 1.5h×(本数−1) ＋ 1.0h×ナレーション本数
+# 実測そのままだと 松60秒で 12.7h と出て、サイトの 15.2h と1.3〜1.4倍ずれていた
+# （2026-09-24）。サイトの数字は実測に打合せ・素材待ち・要件の揺れぶんの
+# 安全率 約1.5倍をかけたもので、納期と時間単価¥23,000/hの下限はそちらで出している。
+# 見込みを2つ持つと、どちらを言ったか分からなくなる。サイトに寄せる。
 HOUR_MULT = {"梅": 1.0, "竹": 1.22, "松": 1.36}
-HOURS_PER_SEC = 11.5 / 74           # 実測：本編59秒＋15秒版＝74秒で11.5時間
+HOURS_BASE = 3.0                    # ヒアリング・構成案・絵コンテ
+HOURS_PER_SEC = 0.15                # 1秒あたり（段の倍率をかける）
+HOURS_EXTRA_CUT = 1.5               # 2本目以降
+HOURS_NARRATION = 1.0               # ナレーション1本あたり（原稿・声の選定・配置）
+HOURS_MEASURED = 11.5 / 74          # 実測：本編59秒＋15秒版＝74秒で11.5時間
 
 MY_PRICING_NOTE = (
     "【自分の値段】秒単価 梅3,500／竹4,900／松6,650円、基本料9万円、"
     "2本目以降＋6.5万円、人物ナレーション＋7万円（何本に入れても1名ぶん。"
     "松は秒単価に1名ぶんが込みで＋0円、使わないなら−2.5万円）、"
     "ナレーションを入れない本は1本につき−2.5万円、AIナレーションは料金に込み。"
+    "工数は 3時間＋0.15時間×倍率（梅1.0／竹1.22／松1.36）×秒数"
+    "＋1.5時間×(本数−1)＋1時間×ナレーション本数。"
     "実測は74秒（本編59秒＋15秒版）で11.5時間、納品1秒あたり33クレジット。"
 )
 
@@ -6021,7 +6033,8 @@ def _quote_text(sec, tier, count=1, nar="ai"):
 
     AIに算数をさせない（2026-09-22：「20秒×4,900＋基本料9万」を17.8万円と
     書いて1万円ずれた。同じ回で梅の金額を出しながら松向きと結論もした）。
-    式はサイトの計算機（narFee）＝ tools/make_doc.py の calc() と同じにする。
+    金額はサイトの計算機（narFee）＝ tools/make_doc.py の calc() と、
+    工数はサイトの hoursModes（tests/lib.mjs）と同じにする。
     ここを触るときは、必ず両方を見比べること。
 
     まとめの「見積り条件」にはナレーションが書かれないので、既定は AI
@@ -6040,7 +6053,11 @@ def _quote_text(sec, tier, count=1, nar="ai"):
         nar_fee -= PRICE_NO_NARRATION * count
     yen = (PRICE_BASE + PRICE_PER_SEC[tier] * sec * count
            + PRICE_EXTRA_CUT * (count - 1) + nar_fee)
-    hours = HOURS_PER_SEC * sec * count * HOUR_MULT[tier]
+    # ナレーションの工数は「入れた本の数」。松で人物を使う時だけ、
+    # 秒単価に溶けている1本ぶんを引く（ここを引かないと 60秒松の 15.2h が動く）。
+    tracks = 0 if nar == "none" else count - (1 if tier == "松" and nar == "human" else 0)
+    hours = (HOURS_BASE + HOURS_PER_SEC * HOUR_MULT[tier] * sec * count
+             + HOURS_EXTRA_CUT * (count - 1) + HOURS_NARRATION * tracks)
     note = {"ai": "AIナレーション", "human": "人物ナレーション1名",
             "none": "ナレーションなし"}[nar]
     return (f"→ 自分の料金表だと **約{yen:,}円**（{note}の場合）"

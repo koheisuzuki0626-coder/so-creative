@@ -3008,6 +3008,31 @@ def run():
                     if f"約{_want:,}円" not in bot._quote_text(_sec, _tier, _cnt, _nar):
                         _ng2.append(f"{_tier}{_sec}秒x{_cnt}本/{_nar}")
     check("まとめの概算も見積書と同額", _ng2[:3], [])
+
+    # 工数も同じ。サイトは実測に安全率 約1.5倍をかけた式で納期と時間単価
+    # ¥23,000/h の下限を出している。ボットが実測そのままの数字を出していたため、
+    # 松60秒で 12.7h と 15.2h の2つの「見込み」が並んでいた（2026-09-24）。
+    def _site_hours(tier, sec, count, nar):
+        """tests/lib.mjs の hoursModes をそのまま写した参照実装。
+        工数 = 3.0 ＋ 0.15×倍率×合計秒数 ＋ 1.5×(本数−1) ＋ 1.0×ナレーション本数"""
+        mult = {"梅": 1.0, "竹": 1.22, "松": 1.36}[tier]
+        tracks = 0 if nar == "none" else count - (1 if tier == "松" and nar == "human" else 0)
+        return 3.0 + 0.15 * mult * sec * count + 1.5 * (count - 1) + 1.0 * tracks
+
+    _ng3 = []
+    for _tier in ("梅", "竹", "松"):
+        for _sec in (15, 30, 60, 120):
+            for _cnt in (1, 2):
+                for _nar in ("ai", "human", "none"):
+                    _want = _site_hours(_tier, _sec, _cnt, _nar)
+                    if f"約{_want:.1f}時間" not in bot._quote_text(_sec, _tier, _cnt, _nar):
+                        _ng3.append(f"{_tier}{_sec}秒x{_cnt}本/{_nar}")
+    check("工数もサイトと同じ式", _ng3[:3], [])
+    # サイトの注記が名指ししている数字。ここが動いたら料金の根拠ごと動いている
+    check("松60秒・人物＝15.2時間",
+          "約15.2時間" in bot._quote_text(60, "松", 1, "human"), True)
+    check("実測（74秒で11.5時間）は残す", round(bot.HOURS_MEASURED * 74, 1), 11.5)
+
     # 消費税は申し受けない（適格請求書発行事業者の登録をしていないため）。
     # 「小計＋消費税10%」に戻すと、同じ案件でサイトより高い書類が出る
     check("消費税を足していない", "消費税は申し受けません" in _make_doc_src(), True)
