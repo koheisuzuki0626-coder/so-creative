@@ -1261,7 +1261,10 @@
             };
             return (name, params = {}) => {
                 push({ t: new Date().toISOString(), s: SID, name, ...params });
-                if (typeof window.gtag === 'function') {
+                /* page_view は gtag('config') が自分で送るので、こちらからは送らない。
+                   両方送ると GA4 側で訪問が2回数えられ、以降の通過率が全部ずれる。
+                   手元の localStorage には残すので、通過率を見るページの母数は変わらない */
+                if (name !== 'page_view' && typeof window.gtag === 'function') {
                     window.gtag('event', name, { ...params, transport_type: 'beacon' });
                 }
             };

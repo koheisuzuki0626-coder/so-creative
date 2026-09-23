@@ -124,6 +124,21 @@ check('Cookie を置いていない', (await p.context().cookies()).length === 0
     });
     check('gtag があれば track が送る側に渡す', loaded);
     await g.close();
+
+    /* page_view は gtag('config') が自分で送る。こちらからも送ると
+       訪問が2回数えられ、以降の通過率が全部ずれる */
+    const h = await open(browser, {});
+    const sent = await h.evaluate(async () => {
+        const got = [];
+        window.gtag = (kind, name) => { if (kind === 'event') got.push(name); };
+        // 料金まで進めて、いくつかのイベントを起こす
+        document.getElementById('plans').scrollIntoView();
+        await new Promise((r) => setTimeout(r, 600));
+        return got;
+    });
+    check('page_view を二重に送らない', !sent.includes('page_view'), sent.join());
+    check('ほかのイベントは送る', sent.length > 0, sent.join());
+    await h.close();
 }
 await p.close();
 
