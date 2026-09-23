@@ -872,7 +872,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## TNS_タイムコード--2eee9a0d-edb8-2995-1015-c456ffcd95a3-2025-12-16_19-07-33.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20251127_TNS（経営計画発表会）｜ライオンハート/制作/編集/納品/動画/Adobe Premiere Pro Auto-Save/TNS_タイムコード--2eee9a0d-edb8-2995-1015-c456ffcd95a3-2025-12-16_19-07-33.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20251127_TNS（経営計画発表会）｜ライオンハート/制作/編集/納品/動画/Adobe Premiere Pro Auto-Save/TNS_タイムコード--2eee9a0d-edb8-2995-1015-c456ffcd95a3-2025-12-16_19-07-33.prproj`
 - 参照素材: 1点（ユニーク 1）
 - 素材の内訳: {'mp4': 1}
 - シーケンス名: Root Bin, ティーエヌエス株式会社様_経営計画発表会_記録映像.mp4, ティーエヌエス株式会社様_経営計画発表会_記録映像, バランス, ボリューム, ミュート
@@ -880,7 +880,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## TNS_タイムコード--2eee9a0d-edb8-2995-1015-c456ffcd95a3-2025-12-16_19-14-52.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20251127_TNS（経営計画発表会）｜ライオンハート/制作/編集/納品/動画/Adobe Premiere Pro Auto-Save/TNS_タイムコード--2eee9a0d-edb8-2995-1015-c456ffcd95a3-2025-12-16_19-14-52.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20251127_TNS（経営計画発表会）｜ライオンハート/制作/編集/納品/動画/Adobe Premiere Pro Auto-Save/TNS_タイムコード--2eee9a0d-edb8-2995-1015-c456ffcd95a3-2025-12-16_19-14-52.prproj`
 - 参照素材: 2点（ユニーク 2）
 - 素材の内訳: {'mp4': 1, '(なし)': 1}
 - シーケンス名: Root Bin, ティーエヌエス株式会社様_経営計画発表会_記録映像.mp4, ティーエヌエス株式会社様_経営計画発表会_記録映像, クリアビデオ, バランス, ボリューム, ミュート, サイズ, 不透明度, Line1, メタデータ, 位置
@@ -888,7 +888,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## TNS_タイムコード.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20251127_TNS（経営計画発表会）｜ライオンハート/制作/編集/納品/動画/TNS_タイムコード.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20251127_TNS（経営計画発表会）｜ライオンハート/制作/編集/納品/動画/TNS_タイムコード.prproj`
 - 参照素材: 2点（ユニーク 2）
 - 素材の内訳: {'mp4': 1, '(なし)': 1}
 - シーケンス名: Root Bin, ティーエヌエス株式会社様_経営計画発表会_記録映像.mp4, ティーエヌエス株式会社様_経営計画発表会_記録映像, クリアビデオ, バランス, ボリューム, ミュート, サイズ, 不透明度, Line1, メタデータ, 位置
@@ -896,7 +896,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 20260226_フルエング株式会社_会社紹介_V02b.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260331/001-Pr-フルエング株式会社_会社紹介_本編/20260226_フルエング株式会社_会社紹介_V02b.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260331/001-Pr-フルエング株式会社_会社紹介_本編/20260226_フルエング株式会社_会社紹介_V02b.prproj`
 - 参照素材: 8点（ユニーク 7）
 - 素材の内訳: {'mov': 2, 'wav': 3, 'mp3': 1, '(なし)': 2}
 - シーケンス名: Root Bin, Foot, IOHD0298, フルエング株式会社(15fps)_V01.mov, フルエング株式会社(15fps)_V02.mov, フルエング株式会社_本ナレ.wav, フルエング株式会社_Sample_V02.wav, 会社・学校案内・華やかなオープニングaudiostock_838805.wav, audiostock_838805_sample.mp3, 20260226_フルエング株式会社_会社紹介_V02b, フルエング株式会社(15fps)_V02a.mov, グラフィック
@@ -904,7 +904,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 20260226_フルエング株式会社_会社紹介_V02b_1.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260331/20260226_フルエング株式会社_会社紹介_V02b_1.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260331/20260226_フルエング株式会社_会社紹介_V02b_1.prproj`
 - 参照素材: 8点（ユニーク 7）
 - 素材の内訳: {'mov': 2, 'wav': 3, 'mp3': 1, '(なし)': 2}
 - シーケンス名: Root Bin, Foot, IOHD0298, フルエング株式会社(15fps)_V01.mov, フルエング株式会社(15fps)_V02.mov, フルエング株式会社_本ナレ.wav, フルエング株式会社_Sample_V02.wav, 会社・学校案内・華やかなオープニングaudiostock_838805.wav, audiostock_838805_sample.mp3, 20260226_フルエング株式会社_会社紹介_V02b, フルエング株式会社(15fps)_V02a.mov, グラフィック
@@ -912,7 +912,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 名称未設定.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260331/名称未設定.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260331/名称未設定.prproj`
 - 参照素材: 0点（ユニーク 0）
 - 素材の内訳: {}
 - シーケンス名: Root Bin
@@ -920,7 +920,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 20260226_フルエング株式会社_会社紹介_V02b.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260401/001-Pr-フルエング株式会社_会社紹介_本編/20260226_フルエング株式会社_会社紹介_V02b.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260401/001-Pr-フルエング株式会社_会社紹介_本編/20260226_フルエング株式会社_会社紹介_V02b.prproj`
 - 参照素材: 8点（ユニーク 7）
 - 素材の内訳: {'mov': 2, 'wav': 3, 'mp3': 1, '(なし)': 2}
 - シーケンス名: Root Bin, Foot, IOHD0298, フルエング株式会社(15fps)_V01.mov, フルエング株式会社(15fps)_V02.mov, フルエング株式会社_本ナレ.wav, フルエング株式会社_Sample_V02.wav, 会社・学校案内・華やかなオープニングaudiostock_838805.wav, audiostock_838805_sample.mp3, 20260226_フルエング株式会社_会社紹介_V02b, フルエング株式会社(15fps)_V02a.mov, グラフィック
@@ -928,7 +928,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 20260401_フルエング株式会社_会社紹介_V03.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260401/20260401_フルエング株式会社_会社紹介_V03.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260401/20260401_フルエング株式会社_会社紹介_V03.prproj`
 - 参照素材: 9点（ユニーク 8）
 - 素材の内訳: {'mov': 2, 'wav': 4, 'mp3': 1, '(なし)': 2}
 - シーケンス名: Root Bin, Foot, IOHD0298, 0401修正, フルエング株式会社(15fps)_V01.mov, フルエング株式会社(15fps)_V02.mov, フルエング株式会社_本ナレ.wav, フルエング株式会社_Sample_V02.wav, 会社・学校案内・華やかなオープニングaudiostock_838805.wav, audiostock_838805_sample.mp3, フルエング_リテイク.wav, 20260401_フルエング株式会社_会社紹介_V03
@@ -936,7 +936,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 20260226_フルエング株式会社_会社紹介_V02b_1--4671cf0b-7f88-ee68-63d5-62c81ed0de17-2026-04-01_10-11-33.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260401/Adobe Premiere Pro Auto-Save/20260226_フルエング株式会社_会社紹介_V02b_1--4671cf0b-7f88-ee68-63d5-62c81ed0de17-2026-04-01_10-11-33.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260401/Adobe Premiere Pro Auto-Save/20260226_フルエング株式会社_会社紹介_V02b_1--4671cf0b-7f88-ee68-63d5-62c81ed0de17-2026-04-01_10-11-33.prproj`
 - 参照素材: 8点（ユニーク 7）
 - 素材の内訳: {'mov': 2, 'wav': 3, 'mp3': 1, '(なし)': 2}
 - シーケンス名: Root Bin, Foot, IOHD0298, フルエング株式会社(15fps)_V01.mov, フルエング株式会社(15fps)_V02.mov, フルエング株式会社_本ナレ.wav, フルエング株式会社_Sample_V02.wav, 会社・学校案内・華やかなオープニングaudiostock_838805.wav, audiostock_838805_sample.mp3, 20260226_フルエング株式会社_会社紹介_V02b, フルエング株式会社(15fps)_V02a.mov, グラフィック
@@ -944,7 +944,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 20260226_フルエング株式会社_会社紹介_V02b_1--4671cf0b-7f88-ee68-63d5-62c81ed0de17-2026-04-01_10-20-07.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260401/Adobe Premiere Pro Auto-Save/20260226_フルエング株式会社_会社紹介_V02b_1--4671cf0b-7f88-ee68-63d5-62c81ed0de17-2026-04-01_10-20-07.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260401/Adobe Premiere Pro Auto-Save/20260226_フルエング株式会社_会社紹介_V02b_1--4671cf0b-7f88-ee68-63d5-62c81ed0de17-2026-04-01_10-20-07.prproj`
 - 参照素材: 8点（ユニーク 7）
 - 素材の内訳: {'mov': 2, 'wav': 3, 'mp3': 1, '(なし)': 2}
 - シーケンス名: Root Bin, Foot, IOHD0298, フルエング株式会社(15fps)_V01.mov, フルエング株式会社(15fps)_V02.mov, フルエング株式会社_本ナレ.wav, フルエング株式会社_Sample_V02.wav, 会社・学校案内・華やかなオープニングaudiostock_838805.wav, audiostock_838805_sample.mp3, 20260226_フルエング株式会社_会社紹介_V02b, フルエング株式会社(15fps)_V02a.mov, グラフィック
@@ -952,7 +952,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 20260226_フルエング株式会社_会社紹介_V02b_1--4671cf0b-7f88-ee68-63d5-62c81ed0de17-2026-04-01_10-38-33.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260401/Adobe Premiere Pro Auto-Save/20260226_フルエング株式会社_会社紹介_V02b_1--4671cf0b-7f88-ee68-63d5-62c81ed0de17-2026-04-01_10-38-33.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260401/Adobe Premiere Pro Auto-Save/20260226_フルエング株式会社_会社紹介_V02b_1--4671cf0b-7f88-ee68-63d5-62c81ed0de17-2026-04-01_10-38-33.prproj`
 - 参照素材: 8点（ユニーク 7）
 - 素材の内訳: {'mov': 2, 'wav': 3, 'mp3': 1, '(なし)': 2}
 - シーケンス名: Root Bin, Foot, IOHD0298, フルエング株式会社(15fps)_V01.mov, フルエング株式会社(15fps)_V02.mov, フルエング株式会社_本ナレ.wav, フルエング株式会社_Sample_V02.wav, 会社・学校案内・華やかなオープニングaudiostock_838805.wav, audiostock_838805_sample.mp3, 20260226_フルエング株式会社_会社紹介_V02b, フルエング株式会社(15fps)_V02a.mov, グラフィック
@@ -960,7 +960,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 20260226_フルエング株式会社_会社紹介_V02b_1--4671cf0b-7f88-ee68-63d5-62c81ed0de17-2026-04-01_10-44-38.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260401/Adobe Premiere Pro Auto-Save/20260226_フルエング株式会社_会社紹介_V02b_1--4671cf0b-7f88-ee68-63d5-62c81ed0de17-2026-04-01_10-44-38.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260401/Adobe Premiere Pro Auto-Save/20260226_フルエング株式会社_会社紹介_V02b_1--4671cf0b-7f88-ee68-63d5-62c81ed0de17-2026-04-01_10-44-38.prproj`
 - 参照素材: 8点（ユニーク 7）
 - 素材の内訳: {'mov': 2, 'wav': 3, 'mp3': 1, '(なし)': 2}
 - シーケンス名: Root Bin, Foot, IOHD0298, 0401修正, フルエング株式会社(15fps)_V01.mov, フルエング株式会社(15fps)_V02.mov, フルエング株式会社_本ナレ.wav, フルエング株式会社_Sample_V02.wav, 会社・学校案内・華やかなオープニングaudiostock_838805.wav, audiostock_838805_sample.mp3, 20260226_フルエング株式会社_会社紹介_V02b, フルエング株式会社(15fps)_V02a.mov
@@ -968,7 +968,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 20260226_フルエング株式会社_会社紹介_V02b_1--4671cf0b-7f88-ee68-63d5-62c81ed0de17-2026-04-01_10-50-39.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260401/Adobe Premiere Pro Auto-Save/20260226_フルエング株式会社_会社紹介_V02b_1--4671cf0b-7f88-ee68-63d5-62c81ed0de17-2026-04-01_10-50-39.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260401/Adobe Premiere Pro Auto-Save/20260226_フルエング株式会社_会社紹介_V02b_1--4671cf0b-7f88-ee68-63d5-62c81ed0de17-2026-04-01_10-50-39.prproj`
 - 参照素材: 9点（ユニーク 8）
 - 素材の内訳: {'mov': 2, 'wav': 4, 'mp3': 1, '(なし)': 2}
 - シーケンス名: Root Bin, Foot, IOHD0298, 0401修正, フルエング株式会社(15fps)_V01.mov, フルエング株式会社(15fps)_V02.mov, フルエング株式会社_本ナレ.wav, フルエング株式会社_Sample_V02.wav, 会社・学校案内・華やかなオープニングaudiostock_838805.wav, audiostock_838805_sample.mp3, フルエング_リテイク.wav, 20260226_フルエング株式会社_会社紹介_V02b
@@ -976,7 +976,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 20260401_フルエング株式会社_会社紹介_V03--0cad395e-8a65-41dc-1f28-605a0fb2ccd0-2026-04-02_16-36-29.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260401/Adobe Premiere Pro Auto-Save/20260401_フルエング株式会社_会社紹介_V03--0cad395e-8a65-41dc-1f28-605a0fb2ccd0-2026-04-02_16-36-29.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260401/Adobe Premiere Pro Auto-Save/20260401_フルエング株式会社_会社紹介_V03--0cad395e-8a65-41dc-1f28-605a0fb2ccd0-2026-04-02_16-36-29.prproj`
 - 参照素材: 9点（ユニーク 8）
 - 素材の内訳: {'mov': 2, 'wav': 4, 'mp3': 1, '(なし)': 2}
 - シーケンス名: Root Bin, Foot, IOHD0298, 0401修正, フルエング株式会社(15fps)_V01.mov, フルエング株式会社(15fps)_V02.mov, フルエング株式会社_本ナレ.wav, フルエング株式会社_Sample_V02.wav, 会社・学校案内・華やかなオープニングaudiostock_838805.wav, audiostock_838805_sample.mp3, フルエング_リテイク.wav, 20260226_フルエング株式会社_会社紹介_V03
@@ -984,7 +984,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 20260401_フルエング株式会社_会社紹介_V03--42cae000-cb02-65bb-40f8-fac0ca7f0874-2026-04-01_11-18-04.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260401/Adobe Premiere Pro Auto-Save/20260401_フルエング株式会社_会社紹介_V03--42cae000-cb02-65bb-40f8-fac0ca7f0874-2026-04-01_11-18-04.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260401/Adobe Premiere Pro Auto-Save/20260401_フルエング株式会社_会社紹介_V03--42cae000-cb02-65bb-40f8-fac0ca7f0874-2026-04-01_11-18-04.prproj`
 - 参照素材: 9点（ユニーク 8）
 - 素材の内訳: {'mov': 2, 'wav': 4, 'mp3': 1, '(なし)': 2}
 - シーケンス名: Root Bin, Foot, IOHD0298, 0401修正, フルエング株式会社(15fps)_V01.mov, フルエング株式会社(15fps)_V02.mov, フルエング株式会社_本ナレ.wav, フルエング株式会社_Sample_V02.wav, 会社・学校案内・華やかなオープニングaudiostock_838805.wav, audiostock_838805_sample.mp3, フルエング_リテイク.wav, 20260226_フルエング株式会社_会社紹介_V03
@@ -992,7 +992,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 名称未設定--d5c2985f-45e5-2d60-32e0-ee9f97ef53d8-2026-04-03_15-32-08.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260401/Adobe Premiere Pro Auto-Save/名称未設定--d5c2985f-45e5-2d60-32e0-ee9f97ef53d8-2026-04-03_15-32-08.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260401/Adobe Premiere Pro Auto-Save/名称未設定--d5c2985f-45e5-2d60-32e0-ee9f97ef53d8-2026-04-03_15-32-08.prproj`
 - 参照素材: 44点（ユニーク 44）
 - 素材の内訳: {'mp4': 44}
 - シーケンス名: Root Bin, A019C001_260323J3.mp4, A019C002_260323LY.mp4, A019C003_2603235Z.mp4, A019C004_26032343.mp4, A019C005_260323P0.mp4, A019C006_2603239L.mp4, A019C007_260323S1.mp4, A019C008_2603239I.mp4, A019C009_260323JJ.mp4, A019C010_260323MY.mp4, A019C011_2603235X.mp4
@@ -1000,7 +1000,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 名称未設定.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260401/名称未設定.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20251203_フルエング｜サクラアルカス/制作/編集/プロジェクト/260401/名称未設定.prproj`
 - 参照素材: 0点（ユニーク 0）
 - 素材の内訳: {}
 - シーケンス名: Root Bin
@@ -1008,7 +1008,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 確認用--1a44a3aa-c62f-dc31-a601-234424a63577-2026-05-11_16-53-42.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_トーテックアメニティ｜日本経済広告社/制作/編集/書き出し/第7稿/Adobe Premiere Pro Auto-Save/確認用--1a44a3aa-c62f-dc31-a601-234424a63577-2026-05-11_16-53-42.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_トーテックアメニティ｜日本経済広告社/制作/編集/書き出し/第7稿/Adobe Premiere Pro Auto-Save/確認用--1a44a3aa-c62f-dc31-a601-234424a63577-2026-05-11_16-53-42.prproj`
 - 参照素材: 2点（ユニーク 2）
 - 素材の内訳: {'mp4': 1, 'png': 1}
 - シーケンス名: Root Bin, 【長尺】FIX_v3.mp4, 【長尺】FIX_v3, スクリーンショット 2026-05-11 16.51.09.png, バランス, ボリューム, ミュート, 位置, スケール, スケール (幅),  , 回転
@@ -1016,7 +1016,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 確認用--1a44a3aa-c62f-dc31-a601-234424a63577-2026-05-11_16-59-43.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_トーテックアメニティ｜日本経済広告社/制作/編集/書き出し/第7稿/Adobe Premiere Pro Auto-Save/確認用--1a44a3aa-c62f-dc31-a601-234424a63577-2026-05-11_16-59-43.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_トーテックアメニティ｜日本経済広告社/制作/編集/書き出し/第7稿/Adobe Premiere Pro Auto-Save/確認用--1a44a3aa-c62f-dc31-a601-234424a63577-2026-05-11_16-59-43.prproj`
 - 参照素材: 4点（ユニーク 3）
 - 素材の内訳: {'mp4': 3, 'png': 1}
 - シーケンス名: Root Bin, 【長尺】FIX_v3.mp4, 【長尺】FIX_v3, スクリーンショット 2026-05-11 16.51.09.png, 【インタビュー】見守りライフ_v3.mp4, 【インタビュー】見守りライフ_v3, バランス, ボリューム, ミュート, エラーが発生しました, トランジションタイミング, 開始
@@ -1024,7 +1024,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 確認用--1a44a3aa-c62f-dc31-a601-234424a63577-2026-05-11_17-23-59.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_トーテックアメニティ｜日本経済広告社/制作/編集/書き出し/第7稿/Adobe Premiere Pro Auto-Save/確認用--1a44a3aa-c62f-dc31-a601-234424a63577-2026-05-11_17-23-59.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_トーテックアメニティ｜日本経済広告社/制作/編集/書き出し/第7稿/Adobe Premiere Pro Auto-Save/確認用--1a44a3aa-c62f-dc31-a601-234424a63577-2026-05-11_17-23-59.prproj`
 - 参照素材: 5点（ユニーク 4）
 - 素材の内訳: {'mp4': 3, 'png': 2}
 - シーケンス名: Root Bin, 【長尺】FIX_v3.mp4, 【長尺】FIX_v3, スクリーンショット 2026-05-11 16.51.09.png, 【インタビュー】見守りライフ_v3.mp4, 【インタビュー】見守りライフ_v3, 名称未設定.png, バランス, ボリューム, ミュート, エラーが発生しました, トランジションタイミング
@@ -1032,7 +1032,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 確認用.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_トーテックアメニティ｜日本経済広告社/制作/編集/書き出し/第7稿/確認用.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_トーテックアメニティ｜日本経済広告社/制作/編集/書き出し/第7稿/確認用.prproj`
 - 参照素材: 5点（ユニーク 4）
 - 素材の内訳: {'mp4': 3, 'png': 2}
 - シーケンス名: Root Bin, 【長尺】FIX_v3.mp4, 【長尺】FIX_v3, スクリーンショット 2026-05-11 16.51.09.png, 【インタビュー】見守りライフ_v3.mp4, 【インタビュー】見守りライフ_v3, 名称未設定.png, バランス, ボリューム, ミュート, エラーが発生しました, トランジションタイミング
@@ -1040,7 +1040,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 名称未設定--1bd4bb14-0ebd-eb92-5346-e5de72c2540b-2026-03-26_16-09-24.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/NA変更/Adobe Premiere Pro Auto-Save/名称未設定--1bd4bb14-0ebd-eb92-5346-e5de72c2540b-2026-03-26_16-09-24.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/NA変更/Adobe Premiere Pro Auto-Save/名称未設定--1bd4bb14-0ebd-eb92-5346-e5de72c2540b-2026-03-26_16-09-24.prproj`
 - 参照素材: 2点（ユニーク 2）
 - 素材の内訳: {'wav': 1, 'mp4': 1}
 - シーケンス名: Root Bin, 三重県トラック協会様60秒_04.wav, 三重トラック協会 15秒Ver 2稿.mp4, 三重県トラック協会様60秒_04, バランス, ボリューム, ミュート
@@ -1048,7 +1048,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 名称未設定.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/NA変更/名称未設定.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/NA変更/名称未設定.prproj`
 - 参照素材: 0点（ユニーク 0）
 - 素材の内訳: {}
 - シーケンス名: Root Bin
@@ -1056,7 +1056,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 名称未設定.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/NA追加/名称未設定.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/NA追加/名称未設定.prproj`
 - 参照素材: 4点（ユニーク 4）
 - 素材の内訳: {'mp4': 2, 'wav': 1, '(なし)': 1}
 - シーケンス名: Root Bin, 1773840047b60df4a311278b37ffa205a9a2488317.mp4, 1773840097e98fc1bdacb4092fbc9ee14fe84aa9b1.mp4, 三重県トラック協会様60秒_03.wav, 1773840047b60df4a311278b37ffa205a9a2488317, 1773840097e98fc1bdacb4092fbc9ee14fe84aa9b1, 三重トラック協会 15秒Ver 2稿, 三重トラック協会 15秒Ver(テロップあり)2稿, バランス, グラフィック, ボリューム, ミュート
@@ -1064,7 +1064,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_11-39-32.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_11-39-32.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_11-39-32.prproj`
 - 参照素材: 245点（ユニーク 238）
 - 素材の内訳: {'(なし)': 10, 'm4a': 3, 'mov': 45, 'wav': 14, 'mp3': 1, 'mp4': 166, 'png': 5, 'jpg': 1}
 - シーケンス名: Root Bin, DJI_0201, 調整レイヤー, 撮影, 仮ナレーション.m4a, AdobeStock_839831097_Video_HD_Preview.mov, AdobeStock_1018200793_Video_HD_Preview.mov, AdobeStock_809428838_Video_HD_Preview.mov, AdobeStock_281714279_Video_HD_Preview.mov, 23983235_MotionElements_road-0177-large-truck-running-away.wav, 22619681_MotionElements_road-0106-a-car-that-runs-away-vigorously.wav, Veaceslav Draganov - Home.mp3
@@ -1072,7 +1072,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_11-45-38.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_11-45-38.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_11-45-38.prproj`
 - 参照素材: 245点（ユニーク 238）
 - 素材の内訳: {'(なし)': 10, 'm4a': 3, 'mov': 45, 'wav': 14, 'mp3': 1, 'mp4': 166, 'png': 5, 'jpg': 1}
 - シーケンス名: Root Bin, DJI_0201, 調整レイヤー, 撮影, 仮ナレーション.m4a, AdobeStock_839831097_Video_HD_Preview.mov, AdobeStock_1018200793_Video_HD_Preview.mov, AdobeStock_809428838_Video_HD_Preview.mov, AdobeStock_281714279_Video_HD_Preview.mov, 23983235_MotionElements_road-0177-large-truck-running-away.wav, 22619681_MotionElements_road-0106-a-car-that-runs-away-vigorously.wav, Veaceslav Draganov - Home.mp3
@@ -1080,7 +1080,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_11-52-15.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_11-52-15.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_11-52-15.prproj`
 - 参照素材: 245点（ユニーク 238）
 - 素材の内訳: {'(なし)': 10, 'm4a': 3, 'mov': 45, 'wav': 14, 'mp3': 1, 'mp4': 166, 'png': 5, 'jpg': 1}
 - シーケンス名: Root Bin, DJI_0201, 調整レイヤー, 撮影, 仮ナレーション.m4a, AdobeStock_839831097_Video_HD_Preview.mov, AdobeStock_1018200793_Video_HD_Preview.mov, AdobeStock_809428838_Video_HD_Preview.mov, AdobeStock_281714279_Video_HD_Preview.mov, 23983235_MotionElements_road-0177-large-truck-running-away.wav, 22619681_MotionElements_road-0106-a-car-that-runs-away-vigorously.wav, Veaceslav Draganov - Home.mp3
@@ -1088,7 +1088,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_11-58-15.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_11-58-15.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_11-58-15.prproj`
 - 参照素材: 242点（ユニーク 235）
 - 素材の内訳: {'(なし)': 10, 'm4a': 3, 'mov': 42, 'wav': 14, 'mp3': 1, 'mp4': 166, 'png': 5, 'jpg': 1}
 - シーケンス名: Root Bin, DJI_0201, 調整レイヤー, 撮影, 仮ナレーション.m4a, AdobeStock_839831097_Video_HD_Preview.mov, AdobeStock_1018200793_Video_HD_Preview.mov, AdobeStock_809428838_Video_HD_Preview.mov, AdobeStock_281714279_Video_HD_Preview.mov, 23983235_MotionElements_road-0177-large-truck-running-away.wav, 22619681_MotionElements_road-0106-a-car-that-runs-away-vigorously.wav, Veaceslav Draganov - Home.mp3
@@ -1096,7 +1096,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-04-15.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-04-15.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-04-15.prproj`
 - 参照素材: 242点（ユニーク 235）
 - 素材の内訳: {'(なし)': 10, 'm4a': 3, 'mov': 42, 'wav': 14, 'mp3': 1, 'mp4': 166, 'png': 5, 'jpg': 1}
 - シーケンス名: Root Bin, DJI_0201, 調整レイヤー, 撮影, 仮ナレーション.m4a, AdobeStock_839831097_Video_HD_Preview.mov, AdobeStock_1018200793_Video_HD_Preview.mov, AdobeStock_809428838_Video_HD_Preview.mov, AdobeStock_281714279_Video_HD_Preview.mov, 23983235_MotionElements_road-0177-large-truck-running-away.wav, 22619681_MotionElements_road-0106-a-car-that-runs-away-vigorously.wav, Veaceslav Draganov - Home.mp3
@@ -1104,7 +1104,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-11-15.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-11-15.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-11-15.prproj`
 - 参照素材: 242点（ユニーク 235）
 - 素材の内訳: {'(なし)': 10, 'm4a': 3, 'mov': 42, 'wav': 14, 'mp3': 1, 'mp4': 166, 'png': 5, 'jpg': 1}
 - シーケンス名: Root Bin, DJI_0201, 調整レイヤー, 撮影, 仮ナレーション.m4a, AdobeStock_839831097_Video_HD_Preview.mov, AdobeStock_1018200793_Video_HD_Preview.mov, AdobeStock_809428838_Video_HD_Preview.mov, AdobeStock_281714279_Video_HD_Preview.mov, 23983235_MotionElements_road-0177-large-truck-running-away.wav, 22619681_MotionElements_road-0106-a-car-that-runs-away-vigorously.wav, Veaceslav Draganov - Home.mp3
@@ -1112,7 +1112,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-19-15.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-19-15.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-19-15.prproj`
 - 参照素材: 242点（ユニーク 235）
 - 素材の内訳: {'(なし)': 10, 'm4a': 3, 'mov': 42, 'wav': 14, 'mp3': 1, 'mp4': 166, 'png': 5, 'jpg': 1}
 - シーケンス名: Root Bin, DJI_0201, 調整レイヤー, 撮影, 仮ナレーション.m4a, AdobeStock_839831097_Video_HD_Preview.mov, AdobeStock_1018200793_Video_HD_Preview.mov, AdobeStock_809428838_Video_HD_Preview.mov, AdobeStock_281714279_Video_HD_Preview.mov, 23983235_MotionElements_road-0177-large-truck-running-away.wav, 22619681_MotionElements_road-0106-a-car-that-runs-away-vigorously.wav, Veaceslav Draganov - Home.mp3
@@ -1120,7 +1120,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-25-15.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-25-15.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-25-15.prproj`
 - 参照素材: 242点（ユニーク 235）
 - 素材の内訳: {'(なし)': 10, 'm4a': 3, 'mov': 42, 'wav': 14, 'mp3': 1, 'mp4': 166, 'png': 5, 'jpg': 1}
 - シーケンス名: Root Bin, DJI_0201, 調整レイヤー, 撮影, 仮ナレーション.m4a, AdobeStock_839831097_Video_HD_Preview.mov, AdobeStock_1018200793_Video_HD_Preview.mov, AdobeStock_809428838_Video_HD_Preview.mov, AdobeStock_281714279_Video_HD_Preview.mov, 23983235_MotionElements_road-0177-large-truck-running-away.wav, 22619681_MotionElements_road-0106-a-car-that-runs-away-vigorously.wav, Veaceslav Draganov - Home.mp3
@@ -1128,7 +1128,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-31-15.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-31-15.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-31-15.prproj`
 - 参照素材: 242点（ユニーク 235）
 - 素材の内訳: {'(なし)': 10, 'm4a': 3, 'mov': 42, 'wav': 14, 'mp3': 1, 'mp4': 166, 'png': 5, 'jpg': 1}
 - シーケンス名: Root Bin, DJI_0201, 調整レイヤー, 撮影, 仮ナレーション.m4a, AdobeStock_839831097_Video_HD_Preview.mov, AdobeStock_1018200793_Video_HD_Preview.mov, AdobeStock_809428838_Video_HD_Preview.mov, AdobeStock_281714279_Video_HD_Preview.mov, 23983235_MotionElements_road-0177-large-truck-running-away.wav, 22619681_MotionElements_road-0106-a-car-that-runs-away-vigorously.wav, Veaceslav Draganov - Home.mp3
@@ -1136,7 +1136,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-37-15.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-37-15.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-37-15.prproj`
 - 参照素材: 242点（ユニーク 235）
 - 素材の内訳: {'(なし)': 10, 'm4a': 3, 'mov': 42, 'wav': 14, 'mp3': 1, 'mp4': 166, 'png': 5, 'jpg': 1}
 - シーケンス名: Root Bin, DJI_0201, 調整レイヤー, 撮影, 仮ナレーション.m4a, AdobeStock_839831097_Video_HD_Preview.mov, AdobeStock_1018200793_Video_HD_Preview.mov, AdobeStock_809428838_Video_HD_Preview.mov, AdobeStock_281714279_Video_HD_Preview.mov, 23983235_MotionElements_road-0177-large-truck-running-away.wav, 22619681_MotionElements_road-0106-a-car-that-runs-away-vigorously.wav, Veaceslav Draganov - Home.mp3
@@ -1144,7 +1144,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-43-15.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-43-15.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-43-15.prproj`
 - 参照素材: 242点（ユニーク 235）
 - 素材の内訳: {'(なし)': 10, 'm4a': 3, 'mov': 42, 'wav': 14, 'mp3': 1, 'mp4': 166, 'png': 5, 'jpg': 1}
 - シーケンス名: Root Bin, DJI_0201, 調整レイヤー, 撮影, 仮ナレーション.m4a, AdobeStock_839831097_Video_HD_Preview.mov, AdobeStock_1018200793_Video_HD_Preview.mov, AdobeStock_809428838_Video_HD_Preview.mov, AdobeStock_281714279_Video_HD_Preview.mov, 23983235_MotionElements_road-0177-large-truck-running-away.wav, 22619681_MotionElements_road-0106-a-car-that-runs-away-vigorously.wav, Veaceslav Draganov - Home.mp3
@@ -1152,7 +1152,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-49-15.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-49-15.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-49-15.prproj`
 - 参照素材: 238点（ユニーク 234）
 - 素材の内訳: {'(なし)': 6, 'm4a': 3, 'mov': 42, 'wav': 14, 'mp3': 1, 'mp4': 166, 'png': 5, 'jpg': 1}
 - シーケンス名: Root Bin, DJI_0201, 調整レイヤー, 撮影, 仮ナレーション.m4a, AdobeStock_839831097_Video_HD_Preview.mov, AdobeStock_1018200793_Video_HD_Preview.mov, AdobeStock_809428838_Video_HD_Preview.mov, AdobeStock_281714279_Video_HD_Preview.mov, 23983235_MotionElements_road-0177-large-truck-running-away.wav, 22619681_MotionElements_road-0106-a-car-that-runs-away-vigorously.wav, Veaceslav Draganov - Home.mp3
@@ -1160,7 +1160,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-50-15.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-50-15.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-50-15.prproj`
 - 参照素材: 242点（ユニーク 235）
 - 素材の内訳: {'(なし)': 10, 'm4a': 3, 'mov': 42, 'wav': 14, 'mp3': 1, 'mp4': 166, 'png': 5, 'jpg': 1}
 - シーケンス名: Root Bin, DJI_0201, 調整レイヤー, 撮影, 仮ナレーション.m4a, AdobeStock_839831097_Video_HD_Preview.mov, AdobeStock_1018200793_Video_HD_Preview.mov, AdobeStock_809428838_Video_HD_Preview.mov, AdobeStock_281714279_Video_HD_Preview.mov, 23983235_MotionElements_road-0177-large-truck-running-away.wav, 22619681_MotionElements_road-0106-a-car-that-runs-away-vigorously.wav, Veaceslav Draganov - Home.mp3
@@ -1168,7 +1168,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-56-16.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-56-16.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_12-56-16.prproj`
 - 参照素材: 242点（ユニーク 235）
 - 素材の内訳: {'(なし)': 10, 'm4a': 3, 'mov': 42, 'wav': 14, 'mp3': 1, 'mp4': 166, 'png': 5, 'jpg': 1}
 - シーケンス名: Root Bin, DJI_0201, 調整レイヤー, 撮影, 仮ナレーション.m4a, AdobeStock_839831097_Video_HD_Preview.mov, AdobeStock_1018200793_Video_HD_Preview.mov, AdobeStock_809428838_Video_HD_Preview.mov, AdobeStock_281714279_Video_HD_Preview.mov, 23983235_MotionElements_road-0177-large-truck-running-away.wav, 22619681_MotionElements_road-0106-a-car-that-runs-away-vigorously.wav, Veaceslav Draganov - Home.mp3
@@ -1176,7 +1176,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_13-02-16.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_13-02-16.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_13-02-16.prproj`
 - 参照素材: 242点（ユニーク 235）
 - 素材の内訳: {'(なし)': 10, 'm4a': 3, 'mov': 42, 'wav': 14, 'mp3': 1, 'mp4': 166, 'png': 5, 'jpg': 1}
 - シーケンス名: Root Bin, DJI_0201, 調整レイヤー, 撮影, 仮ナレーション.m4a, AdobeStock_839831097_Video_HD_Preview.mov, AdobeStock_1018200793_Video_HD_Preview.mov, AdobeStock_809428838_Video_HD_Preview.mov, AdobeStock_281714279_Video_HD_Preview.mov, 23983235_MotionElements_road-0177-large-truck-running-away.wav, 22619681_MotionElements_road-0106-a-car-that-runs-away-vigorously.wav, Veaceslav Draganov - Home.mp3
@@ -1184,7 +1184,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_13-08-16.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_13-08-16.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_13-08-16.prproj`
 - 参照素材: 242点（ユニーク 235）
 - 素材の内訳: {'(なし)': 10, 'm4a': 3, 'mov': 42, 'wav': 14, 'mp3': 1, 'mp4': 166, 'png': 5, 'jpg': 1}
 - シーケンス名: Root Bin, DJI_0201, 調整レイヤー, 撮影, 仮ナレーション.m4a, AdobeStock_839831097_Video_HD_Preview.mov, AdobeStock_1018200793_Video_HD_Preview.mov, AdobeStock_809428838_Video_HD_Preview.mov, AdobeStock_281714279_Video_HD_Preview.mov, 23983235_MotionElements_road-0177-large-truck-running-away.wav, 22619681_MotionElements_road-0106-a-car-that-runs-away-vigorously.wav, Veaceslav Draganov - Home.mp3
@@ -1192,7 +1192,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_13-14-16.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_13-14-16.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_13-14-16.prproj`
 - 参照素材: 242点（ユニーク 235）
 - 素材の内訳: {'(なし)': 10, 'm4a': 3, 'mov': 42, 'wav': 14, 'mp3': 1, 'mp4': 166, 'png': 5, 'jpg': 1}
 - シーケンス名: Root Bin, DJI_0201, 調整レイヤー, 撮影, 仮ナレーション.m4a, AdobeStock_839831097_Video_HD_Preview.mov, AdobeStock_1018200793_Video_HD_Preview.mov, AdobeStock_809428838_Video_HD_Preview.mov, AdobeStock_281714279_Video_HD_Preview.mov, 23983235_MotionElements_road-0177-large-truck-running-away.wav, 22619681_MotionElements_road-0106-a-car-that-runs-away-vigorously.wav, Veaceslav Draganov - Home.mp3
@@ -1200,7 +1200,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_13-20-16.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_13-20-16.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_13-20-16.prproj`
 - 参照素材: 242点（ユニーク 235）
 - 素材の内訳: {'(なし)': 10, 'm4a': 3, 'mov': 42, 'wav': 14, 'mp3': 1, 'mp4': 166, 'png': 5, 'jpg': 1}
 - シーケンス名: Root Bin, DJI_0201, 調整レイヤー, 撮影, 仮ナレーション.m4a, AdobeStock_839831097_Video_HD_Preview.mov, AdobeStock_1018200793_Video_HD_Preview.mov, AdobeStock_809428838_Video_HD_Preview.mov, AdobeStock_281714279_Video_HD_Preview.mov, 23983235_MotionElements_road-0177-large-truck-running-away.wav, 22619681_MotionElements_road-0106-a-car-that-runs-away-vigorously.wav, Veaceslav Draganov - Home.mp3
@@ -1208,7 +1208,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_13-26-16.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_13-26-16.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_13-26-16.prproj`
 - 参照素材: 242点（ユニーク 235）
 - 素材の内訳: {'(なし)': 10, 'm4a': 3, 'mov': 42, 'wav': 14, 'mp3': 1, 'mp4': 166, 'png': 5, 'jpg': 1}
 - シーケンス名: Root Bin, DJI_0201, 調整レイヤー, 撮影, 仮ナレーション.m4a, AdobeStock_839831097_Video_HD_Preview.mov, AdobeStock_1018200793_Video_HD_Preview.mov, AdobeStock_809428838_Video_HD_Preview.mov, AdobeStock_281714279_Video_HD_Preview.mov, 23983235_MotionElements_road-0177-large-truck-running-away.wav, 22619681_MotionElements_road-0106-a-car-that-runs-away-vigorously.wav, Veaceslav Draganov - Home.mp3
@@ -1216,7 +1216,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_13-42-07.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_13-42-07.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/Adobe Premiere Pro Auto-Save/三重トラック協会_1--24a7c850-615c-98b6-5d0e-528292a8a57c-2026-03-27_13-42-07.prproj`
 - 参照素材: 242点（ユニーク 235）
 - 素材の内訳: {'(なし)': 10, 'm4a': 3, 'mov': 42, 'wav': 14, 'mp3': 1, 'mp4': 166, 'png': 5, 'jpg': 1}
 - シーケンス名: Root Bin, DJI_0201, 調整レイヤー, 撮影, 仮ナレーション.m4a, AdobeStock_839831097_Video_HD_Preview.mov, AdobeStock_1018200793_Video_HD_Preview.mov, AdobeStock_809428838_Video_HD_Preview.mov, AdobeStock_281714279_Video_HD_Preview.mov, 23983235_MotionElements_road-0177-large-truck-running-away.wav, 22619681_MotionElements_road-0106-a-car-that-runs-away-vigorously.wav, Veaceslav Draganov - Home.mp3
@@ -1224,7 +1224,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 三重トラック協会.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/三重トラック協会.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿/三重トラック協会.prproj`
 - 参照素材: 208点（ユニーク 201）
 - 素材の内訳: {'(なし)': 10, 'm4a': 3, 'mov': 8, 'wav': 14, 'mp3': 1, 'mp4': 166, 'png': 5, 'jpg': 1}
 - シーケンス名: Root Bin, DJI_0201, 調整レイヤー, 撮影, 仮ナレーション.m4a, AdobeStock_839831097_Video_HD_Preview.mov, AdobeStock_1018200793_Video_HD_Preview.mov, AdobeStock_809428838_Video_HD_Preview.mov, AdobeStock_281714279_Video_HD_Preview.mov, 23983235_MotionElements_road-0177-large-truck-running-away.wav, 22619681_MotionElements_road-0106-a-car-that-runs-away-vigorously.wav, Veaceslav Draganov - Home.mp3
@@ -1232,7 +1232,7 @@ EDL（カット表）から計算した1カットの長さ。
 
 
 ## 三重トラック協会_1.prproj
-- 置き場: `サムシングファン/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿修正/三重トラック協会_1.prproj`
+- 置き場: `前職/01_名古屋案件フォルダ/20260130_三重県トラック協会｜中日アド企画/制作/編集/プロジェクト/第3稿修正/三重トラック協会_1.prproj`
 - 参照素材: 242点（ユニーク 235）
 - 素材の内訳: {'(なし)': 10, 'm4a': 3, 'mov': 42, 'wav': 14, 'mp3': 1, 'mp4': 166, 'png': 5, 'jpg': 1}
 - シーケンス名: Root Bin, DJI_0201, 調整レイヤー, 撮影, 仮ナレーション.m4a, AdobeStock_839831097_Video_HD_Preview.mov, AdobeStock_1018200793_Video_HD_Preview.mov, AdobeStock_809428838_Video_HD_Preview.mov, AdobeStock_281714279_Video_HD_Preview.mov, 23983235_MotionElements_road-0177-large-truck-running-away.wav, 22619681_MotionElements_road-0106-a-car-that-runs-away-vigorously.wav, Veaceslav Draganov - Home.mp3
