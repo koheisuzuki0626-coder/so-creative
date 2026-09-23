@@ -121,7 +121,7 @@ def render(html, out_pdf):
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("kind", choices=["見積書", "請求書"])
+    ap.add_argument("kind", choices=["見積書", "請求書", "業務委託契約書"])
     ap.add_argument("--to", required=True, help="宛先（御中は自動で付きます）")
     ap.add_argument("--title", required=True, help="件名")
     ap.add_argument("--tier", default="竹", choices=list(PER_SEC))
@@ -135,16 +135,20 @@ def main(argv=None):
     ap.add_argument("--account", default="〔普通 1234567〕")
     ap.add_argument("--holder", default="スズキ コウヘイ")
     ap.add_argument("--note", default="", help="備考に1行足す")
+    ap.add_argument("--addr", default="〔住所〕", help="契約書：甲の住所")
+    ap.add_argument("--rep", default="〔代表取締役 ◯◯ ◯◯〕", help="契約書：甲の代表者")
     ap.add_argument("--out", help="書き出し先のPDF")
     a = ap.parse_args(argv)
 
     day = (datetime.date.fromisoformat(a.date) if a.date else datetime.date.today())
     rows, total = calc(a.tier, a.sec, a.count, a.nar)
     common = {
-        "宛先": a.to, "件名": a.title,
-        "発行日": f"{day.year}年{day.month}月{day.day}日",
-        "合計": yen(total), "内訳": rows_html(rows),
+        "件名": a.title,
     }
+    if a.kind in ("見積書", "請求書"):
+        common |= {"宛先": a.to,
+                   "発行日": f"{day.year}年{day.month}月{day.day}日",
+                   "合計": yen(total), "内訳": rows_html(rows)}
     if a.kind == "見積書":
         common |= {
             "番号": a.no or f"Q-{day:%Y%m%d}-01",
@@ -152,6 +156,19 @@ def main(argv=None):
             "納期": lead_time(a.sec, a.count),
             "修正": REVISIONS[a.tier],
             "備考": f"<li>{a.note}</li>" if a.note else "",
+        }
+    elif a.kind == "業務委託契約書":
+        NAR = {"ai": "AIナレーションあり（料金に含む）",
+               "human": "人物ナレーションあり（1名）", "none": "なし"}
+        common |= {
+            "甲": a.to, "甲住所": a.addr, "甲代表": a.rep,
+            "段": TIER_NOTE[a.tier],
+            "尺本数": f"{a.sec}秒 × {a.count}本",
+            "ナレーション": NAR[a.nar],
+            "納期": lead_time(a.sec, a.count),
+            "修正": REVISIONS[a.tier],
+            "委託料": yen(total),
+            "締結日": f"{day.year}年{day.month}月{day.day}日",
         }
     else:
         due = day + datetime.timedelta(days=30)
@@ -165,7 +182,8 @@ def main(argv=None):
         }
     html = fill((FMT / f"{a.kind}.html").read_text(encoding="utf-8"), common)
     OUT.mkdir(parents=True, exist_ok=True)
-    out = pathlib.Path(a.out) if a.out else OUT / f"{common['番号']}_{a.kind}_{a.to}.pdf"
+    stem = common.get("番号") or f"C-{day:%Y%m%d}-01"
+    out = pathlib.Path(a.out) if a.out else OUT / f"{stem}_{a.kind}_{a.to}.pdf"
     render(html, out)
     print(f"✅ {out}")
     print(f"   {a.title}／{a.tier}・{a.sec}秒×{a.count}本・ナレーション={a.nar}")

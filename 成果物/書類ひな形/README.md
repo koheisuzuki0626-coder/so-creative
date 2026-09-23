@@ -26,6 +26,15 @@ venv/bin/python tools/make_doc.py 見積書 --to 株式会社ABC --title 会社�
     --tier 竹 --sec 60 --count 1 --nar ai
 ```
 
+見積書・請求書・業務委託契約書の3つに対応しています。契約書だけ甲の住所と
+代表者名も要ります。
+
+```
+venv/bin/python tools/make_doc.py 業務委託契約書 --to 株式会社ABC \
+    --title 会社紹介動画 --tier 竹 --sec 60 --nar ai \
+    --addr "愛知県名古屋市〇〇" --rep "代表取締役 〇〇 〇〇"
+```
+
 | 指定 | 意味 |
 |---|---|
 | `--tier` | 梅 / 竹 / 松 |
