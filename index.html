@@ -6,9 +6,9 @@
          公開に切り替えるときは、この2行を消して robots.txt に Sitemap 行を戻す -->
     <meta name="robots" content="noindex, nofollow">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI動画制作 so.｜撮影なし・出演者なしで、最短2週間で納品</title>
-    <meta name="description" content="AI で動画を制作する so. のサービスサイト。撮影も出演者もスタジオも使いません。料金は尺と本数で決まり、30秒 ¥195,000〜（税込）。構成案と絵コンテをご確認いただいてから制作に入ります。">
-    <meta property="og:title" content="AI動画制作 so.｜撮影しない、映像制作。">
+    <title>AI動画制作 so.｜名古屋・愛知｜撮影なし・出演者なしで最短2週間</title>
+    <meta name="description" content="名古屋・愛知のAI動画制作 so.。会社紹介・採用・商品紹介の動画をAIでつくります。撮影も出演者もスタジオも使いません。料金は尺と本数で決まり、30秒 ¥195,000〜（税込）。構成案と絵コンテをご確認いただいてから制作に入ります。">
+    <meta property="og:title" content="AI動画制作 so.｜名古屋・愛知｜撮影しない、映像制作。">
     <meta property="og:description" content="撮影しない、映像制作。社内調整も現場対応も不要で、修正しても撮り直しになりません。">
     <meta property="og:type" content="website">
     <link rel="canonical" href="https://koheisuzuki0626-coder.github.io/so-portfolio/">
@@ -47,7 +47,12 @@
             "addressRegion": "愛知県",
             "addressLocality": "名古屋市"
           },
-          "areaServed": "JP"
+          "areaServed": [
+            { "@type": "AdministrativeArea", "name": "愛知県" },
+            { "@type": "AdministrativeArea", "name": "岐阜県" },
+            { "@type": "AdministrativeArea", "name": "三重県" },
+            { "@type": "Country", "name": "日本" }
+          ]
         },
         {
           "@type": "WebSite",
@@ -61,7 +66,10 @@
           "@type": "Service",
           "name": "AI動画制作",
           "provider": { "@id": "https://koheisuzuki0626-coder.github.io/so-portfolio/#org" },
-          "areaServed": "JP",
+          "areaServed": [
+            { "@type": "AdministrativeArea", "name": "愛知県" },
+            { "@type": "Country", "name": "日本" }
+          ],
           "description": "ヒアリング・構成案・絵コンテのご確認を経て、AI で映像を生成・編集して納品します。撮影工程がないため、出演者の手配も撮影日の調整も発生しません。",
           "offers": {
             "@type": "AggregateOffer",
@@ -874,6 +882,10 @@
             <a class="cta-mail" href="mailto:bonvoyage.ti@icloud.com">bonvoyage.ti@icloud.com</a>
             <p class="cta-actions"><a class="pill pill-invert" href="mailto:bonvoyage.ti@icloud.com">メールで相談する</a></p>
             <p class="cta-hint">ご用途・イメージされている尺・希望時期などを添えていただけると、より具体的にご提案できます。</p>
+            <!-- 地域は検索で探されるので、見える場所に書く。構造化データの中に
+                 しか無いと、地域で探している人に見つけてもらえない（2026-09-23）。
+                 撮影が無いぶん距離の制約が無いので、対応範囲も併せて書く。 -->
+            <p class="cta-hint"><strong>名古屋市</strong>を拠点に、<strong>愛知・岐阜・三重</strong>を中心としてご相談を承っています。撮影がないため打ち合わせはオンラインで完結し、全国どこからでもご依頼いただけます。</p>
         </div>
     </section>
 
@@ -885,6 +897,7 @@
                 <a href="#top" class="f-logo" aria-label="so."><img class="logo-mark" src="assets/logo-mark.png" alt="" width="256" height="257" decoding="async"><span class="logo-word">so<i class="logo-dot" aria-hidden="true"></i></span></a>
                 <p class="f-tagline">撮影しない、映像制作。</p>
                 <p class="f-note">AI で動画をつくる会社です。出演者の手配も、撮影日の調整も必要ありません。</p>
+                <p class="f-note">愛知県名古屋市／平日 10:00–18:00</p>
                 <a href="#contact" class="pill pill-solid f-cta">相談してみる</a>
             </div>
 
