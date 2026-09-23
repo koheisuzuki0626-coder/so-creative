@@ -4014,7 +4014,7 @@ TREND_MAX_MINUTES = int(os.getenv("TREND_MAX_MINUTES", "20"))  # これより長
 # 事故：「構成案エクセルで」が4回とも会話に落ち、そのうえ
 # 「了解。構成案を Excel でまとめます。」と答えていた（実際には何も作っていない）。
 # 原因は単純で、Excelを作る機能そのものが無かった。
-# 置き場は so-portfolio/projects/<案件>/ 。Gitで追跡するので、
+# 置き場は 成果物/<案件>/ 。Gitで追跡するので、
 # 入院中でもスマホのGitHubから読めるし、Macが落ちても消えない。
 # フォルダ名を「projects」にしていたら、GitHub上部の【Projectsタブ】
 # （カンバンボードの機能。ファイルとは無関係で常に空）と取り違えられ、
@@ -4161,7 +4161,7 @@ ARTIFACT_TO_MAIN = os.getenv("ARTIFACT_TO_MAIN", "1") not in ("0", "false", "no"
 
 
 GITHUB_REPO_URL = os.getenv(
-    "GITHUB_REPO_URL", "https://github.com/koheisuzuki0626-coder/so-portfolio")
+    "GITHUB_REPO_URL", "https://github.com/koheisuzuki0626-coder/so-creative")
 
 
 def _github_url(path):
