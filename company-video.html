@@ -27,6 +27,9 @@
     <link rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=Zen+Kaku+Gothic+New:wght@300;400;500&display=swap">
     <link rel="stylesheet" href="assets/site.css">
+    <!-- JSが動く端末にだけ出現アニメーションを掛ける。この1行が無いと、
+         JSが届く前や動かないときにページが真っ白になる（2026-09-24） -->
+    <script>document.documentElement.classList.add('js');</script>
 </head>
 <body class="subpage">
     <div class="progress" id="progress"></div>
@@ -51,7 +54,7 @@
             <div class="wrap reveal">
                 <p class="eyebrow">Company Profile Video</p>
                 <h1 class="display">会社紹介動画を、<br>撮影せずにつくる。</h1>
-                <p class="lead-line about-lead">名古屋・愛知の中小企業向けに、会社紹介動画をつくっています。撮影がないので、<b>役員や現場の スケジュールを押さえるところから始める必要がありません。</b>ご相談から納品まで、日単位で進みます。</p>
+                <p class="lead-line about-lead">名古屋・愛知の中小企業向けに、会社紹介動画をつくっています。撮影がないので、<b>役員や現場のスケジュールを押さえるところから始める必要がありません。</b>ご相談から納品まで、日単位で進みます。</p>
             </div>
         </section>
 
