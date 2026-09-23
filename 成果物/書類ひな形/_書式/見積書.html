@@ -1,0 +1,82 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<title>御見積書</title><link rel="stylesheet" href="base.css"></head><body>
+<div class="head">
+  <div><div class="doc-title">御見積書</div></div>
+  <div class="issuer">
+    <img class="logo" src="logo-lockup.png" alt="so-creative">
+    <b>so-creative</b>　鈴木 宏平<br>
+    愛知県名古屋市<br>bonvoyage.ti@icloud.com
+  </div>
+</div>
+
+<div class="to">{{宛先}} 御中</div>
+
+<table class="meta"><tbody>
+  <tr><td>見積番号</td><td>{{番号}}</td></tr>
+  <tr><td>発行日</td><td>{{発行日}}</td></tr>
+  <tr><td>有効期限</td><td>発行日より30日</td></tr>
+  <tr><td>件名</td><td>{{件名}}</td></tr>
+</tbody></table>
+
+<p class="lead">下記のとおりお見積り申し上げます。</p>
+
+<div class="total-band">
+  <span class="label">お見積金額</span>
+  <span class="yen">¥{{合計}}</span>
+  <span class="note">消費税は申し受けません（適格請求書発行事業者の登録なし）。この金額がそのまま総額です。</span>
+</div>
+
+<table class="grid">
+  <thead><tr><th>項目</th><th>内容</th><th class="num">金額</th></tr></thead>
+  <tbody>{{内訳}}
+    <tr class="sum"><td colspan="2">合計</td><td class="num">¥{{合計}}</td></tr>
+  </tbody>
+</table>
+
+<h2 class="sec">仕様</h2>
+<table class="grid"><tbody>
+  <tr><td style="width:30%">仕上げの段階</td><td>{{段}}</td></tr>
+  <tr><td>納品形式</td><td>MP4（1920×1080 / 30fps / H.264 / 音声 AAC）</td></tr>
+  <tr><td>納期</td><td>ご発注から <b>{{納期}}</b>（構成案・絵コンテのご確認を含む）</td></tr>
+  <tr><td>編集チェック</td><td><b>{{修正}}回まで無料</b>（梅2回／竹3回／松3回）</td></tr>
+  <tr><td>撮影・出演者</td><td>なし（手配費・撮影費は発生しません）</td></tr>
+</tbody></table>
+
+<h2 class="sec">お支払い条件</h2>
+<ul class="notes">
+  <li>制作費は<b>全額を納品後</b>にご請求します。着手金はいただきません</li>
+  <li>お支払い期日は<b>納品日から30日以内</b>でお願いしています。御社の経理サイクルに合わせた調整が必要な場合はご相談ください</li>
+  <li>お振込手数料は御社にてご負担ください</li>
+</ul>
+
+<h2 class="sec">著作権</h2>
+<ul class="notes">
+  <li>納品物の著作権（著作権法27条・28条の権利を含む）は、<b>お支払い完了をもって御社へ譲渡</b>します</li>
+  <li>用途・媒体・掲載期間の制限はありません</li>
+  <li>AI が生成した映像は、人の創作的関与の度合いによっては著作権による保護を受けない場合があります。お使いになるうえで支障はありませんが、第三者が類似の映像を公開した場合に差し止められることまでは保証できません</li>
+</ul>
+
+<h2 class="sec">追加費用が発生する場合</h2>
+<table class="grid">
+  <thead><tr><th>場合</th><th class="num">費用</th></tr></thead>
+  <tbody>
+    <tr><td>無料の編集チェック回数を超える修正</td><td class="num">1回 ¥30,000</td></tr>
+    <tr><td>構成案のご承認後に、構成から作り直す変更</td><td class="num">都度お見積り</td></tr>
+    <tr><td>縦型・正方形など別の画面比率</td><td class="num">2本目として ¥65,000〜</td></tr>
+    <tr><td>人物ナレーション（人に読んでもらう場合）</td><td class="num">1名 ¥70,000〜</td></tr>
+  </tbody>
+</table>
+<p class="fine">画面比率の変更は、横長を切り出すのではなく設計から作り直すため2本目の扱いになります。人物ナレーションは何本に入れても1名ぶんです（松には1名ぶんが含まれます）。</p>
+
+<h2 class="sec">キャンセル</h2>
+<ul class="notes">
+  <li>着手後のキャンセルは、進行の段階に応じてご請求します。絵コンテのご承認までは50%、映像の生成に入ったあとは80%、初稿のご提出後は100%です</li>
+</ul>
+
+<h2 class="sec">備考</h2>
+<ul class="notes">
+  <li>本見積はヒアリング内容に基づくものです。尺・本数・仕上げの段階が変わる場合は再見積いたします</li>
+  <li>素材（ロゴ・製品写真・既存の映像など）をご提供いただける場合、別途ご相談ください</li>
+  {{備考}}
+</ul>
+</body></html>
