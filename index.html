@@ -11,14 +11,14 @@
     <meta property="og:title" content="AI動画制作 so-creative｜名古屋・愛知｜撮影しない、映像制作。">
     <meta property="og:description" content="撮影しない、映像制作。社内調整も現場対応も不要で、修正しても撮り直しになりません。">
     <meta property="og:type" content="website">
-    <link rel="canonical" href="https://koheisuzuki0626-coder.github.io/so-portfolio/">
-    <meta property="og:url" content="https://koheisuzuki0626-coder.github.io/so-portfolio/">
+    <link rel="canonical" href="https://koheisuzuki0626-coder.github.io/so-creative/">
+    <meta property="og:url" content="https://koheisuzuki0626-coder.github.io/so-creative/">
     <link rel="icon" href="assets/favicon.png" type="image/png" sizes="any">
     <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
     <meta name="theme-color" content="#f5f5f7">
     <meta property="og:site_name" content="so-creative">
     <meta property="og:locale" content="ja_JP">
-    <meta property="og:image" content="https://koheisuzuki0626-coder.github.io/so-portfolio/assets/ogp.png">
+    <meta property="og:image" content="https://koheisuzuki0626-coder.github.io/so-creative/assets/ogp.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
@@ -33,11 +33,11 @@
       "@graph": [
         {
           "@type": "Organization",
-          "@id": "https://koheisuzuki0626-coder.github.io/so-portfolio/#org",
+          "@id": "https://koheisuzuki0626-coder.github.io/so-creative/#org",
           "name": "so-creative",
-          "url": "https://koheisuzuki0626-coder.github.io/so-portfolio/",
-          "logo": "https://koheisuzuki0626-coder.github.io/so-portfolio/assets/apple-touch-icon.png",
-          "image": "https://koheisuzuki0626-coder.github.io/so-portfolio/assets/ogp.png",
+          "url": "https://koheisuzuki0626-coder.github.io/so-creative/",
+          "logo": "https://koheisuzuki0626-coder.github.io/so-creative/assets/apple-touch-icon.png",
+          "image": "https://koheisuzuki0626-coder.github.io/so-creative/assets/ogp.png",
           "description": "AI で映像をつくる制作会社。撮影も出演者もスタジオも使いません。",
           "email": "bonvoyage.ti@icloud.com",
           "founder": { "@type": "Person", "name": "鈴木 宏平" },
@@ -56,16 +56,16 @@
         },
         {
           "@type": "WebSite",
-          "@id": "https://koheisuzuki0626-coder.github.io/so-portfolio/#site",
-          "url": "https://koheisuzuki0626-coder.github.io/so-portfolio/",
+          "@id": "https://koheisuzuki0626-coder.github.io/so-creative/#site",
+          "url": "https://koheisuzuki0626-coder.github.io/so-creative/",
           "name": "so-creative",
           "inLanguage": "ja",
-          "publisher": { "@id": "https://koheisuzuki0626-coder.github.io/so-portfolio/#org" }
+          "publisher": { "@id": "https://koheisuzuki0626-coder.github.io/so-creative/#org" }
         },
         {
           "@type": "Service",
           "name": "AI動画制作",
-          "provider": { "@id": "https://koheisuzuki0626-coder.github.io/so-portfolio/#org" },
+          "provider": { "@id": "https://koheisuzuki0626-coder.github.io/so-creative/#org" },
           "areaServed": [
             { "@type": "AdministrativeArea", "name": "愛知県" },
             { "@type": "Country", "name": "日本" }
@@ -1261,8 +1261,22 @@
             window.gtag('config', ANALYTICS_ID, { anonymize_ip: true });
         }
 
+        /* 保存キーを社名に合わせて変えた（2026-09-23）。ただの改名で
+           これまでの記録を捨てると、通過率が断絶して比べられなくなる。
+           古いキーが残っていたら1度だけ引き継いで、古いほうは消す。 */
+        (() => {
+            try {
+                const prev = localStorage.getItem('so.funnel');
+                if (!prev) { return; }
+                if (!localStorage.getItem('so-creative.funnel')) {
+                    localStorage.setItem('so-creative.funnel', prev);
+                }
+                localStorage.removeItem('so.funnel');
+            } catch { /* noop */ }
+        })();
+
         const track = (() => {
-            const LOG = 'so.funnel';
+            const LOG = 'so-creative.funnel';
             // 1回の訪問をまとめるための印。読み込みごとに変わる
             const SID = Math.random().toString(36).slice(2, 10);
             const push = (row) => {
@@ -1287,7 +1301,7 @@
            localStorage に溜まった記録を、訪問単位で数えて出す */
         window.soFunnel = () => {
             let rows = [];
-            try { rows = JSON.parse(localStorage.getItem('so.funnel') || '[]'); } catch { /* noop */ }
+            try { rows = JSON.parse(localStorage.getItem('so-creative.funnel') || '[]'); } catch { /* noop */ }
             const yen = (n) => `¥${Number(n).toLocaleString('ja-JP')}`;
             if (!rows.length) {
                 console.log('まだ記録がありません。「料金」まで進んで、尺か本数を選んでから、もう一度 soFunnel() と打ってください。');
@@ -1320,10 +1334,10 @@
             return undefined;
         };
         window.soFunnel.raw = () => {
-            try { return JSON.parse(localStorage.getItem('so.funnel') || '[]'); } catch { return []; }
+            try { return JSON.parse(localStorage.getItem('so-creative.funnel') || '[]'); } catch { return []; }
         };
         window.soFunnel.clear = () => {
-            try { localStorage.removeItem('so.funnel'); } catch { /* noop */ }
+            try { localStorage.removeItem('so-creative.funnel'); } catch { /* noop */ }
             console.log('記録を消しました。');
         };
 

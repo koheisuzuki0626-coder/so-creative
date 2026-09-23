@@ -110,7 +110,7 @@
             ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
         let rows = [];
-        try { rows = JSON.parse(localStorage.getItem('so.funnel') || '[]'); } catch { rows = []; }
+        try { rows = JSON.parse(localStorage.getItem('so-creative.funnel') || '[]'); } catch { rows = []; }
 
         const out = document.getElementById('out');
 
@@ -236,7 +236,7 @@
 
             document.getElementById('clear').addEventListener('click', () => {
                 if (!confirm('このブラウザに残っている記録を消します。よろしいですか？')) return;
-                try { localStorage.removeItem('so.funnel'); } catch { /* noop */ }
+                try { localStorage.removeItem('so-creative.funnel'); } catch { /* noop */ }
                 location.reload();
             });
         }
