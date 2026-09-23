@@ -139,6 +139,19 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     /* 花の重心は上寄りなので、文字の中心とそろうよう少しだけ下げる */
     transform: translateY(0.02em);
 }
+/* 社名を so.creative にしたときに足した尾。ドットの直後に続けて
+   「so.creative」と読ませる。少しだけ小さく・軽くして、ドットで一度
+   区切って見えるようにしてある（2026-09-23）。 */
+.logo-tail {
+    flex: none;
+    margin-left: 0.04em;
+    font-size: 0.82em;
+    font-weight: 300;
+    letter-spacing: 0.005em;
+}
+/* 狭い画面ではナビが詰まるので、尾を落として「so.」だけ見せる */
+@media (max-width: 420px) { .logo-tail { display: none; } }
+
 .logo-dot {
     flex: none;
     width: 0.235em;
