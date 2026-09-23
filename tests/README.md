@@ -29,6 +29,25 @@ Mac では `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm i playwright@<venvのplaywrig
 | `funnel.mjs` | 料金計算機の段差と `funnel.html` |
 | `a11y.mjs` | 全テキストのコントラスト（AA）と日本語の折り返し |
 
+## どのページに何があるか（2026-09-23 に動かした）
+
+トップが 100,000字 を超えていて、`title` を1つしか持てなかったので分けた。
+
+| ページ | 中身 | テストの主担当 |
+|---|---|---|
+| `index.html` | 事業内容・撮影しない理由・ジャンルの索引・写真1枚から・制作の流れ・料金の要約・FAQ | `content` `header` |
+| `pricing.html` | **料金の計算機**・尺ごとの実額の表・段の違い・支払条件 | `pricing` `funnel` |
+| `works.html` | **ジャンル9枚とサンプル動画**・実測した仕様 | `content` |
+| `about.html` `privacy.html` | 会社概要・プライバシーポリシー | `content` |
+
+計算機とジャンルのカードは**トップには無い**。二重に持つと式や文言が
+食い違うので、それぞれ1か所にしてある。テストを足すときは、
+その要素がどのページにあるかを先に確かめること。
+
+JSも分かれている。`assets/funnel.js`（通過率の計測。`track` はここだけ）、
+`assets/pricing.js`（計算機。即時関数で包んである）、
+`assets/sample.js`（サンプルの音声切り替え）。
+
 ## 置き場所について
 
 **一時ディレクトリに置かないこと。**
