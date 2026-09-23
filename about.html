@@ -242,7 +242,9 @@
                 io.unobserve(e.target);
             });
         }, { threshold: 0.12 });
-        document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+        /* .reveal-stagger も見る。カードの親だけがこのクラスで、
+           見落とすと中身が opacity:0 のまま消える（2026-09-24 に works.html で発生）。 */
+        document.querySelectorAll('.reveal, .reveal-stagger').forEach((el) => io.observe(el));
 
         document.getElementById('year').textContent = new Date().getFullYear();
 

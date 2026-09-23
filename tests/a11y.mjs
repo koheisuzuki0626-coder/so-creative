@@ -102,6 +102,21 @@ for (const [file, w, h, label] of revealCases) {
     await page.close();
 }
 
+/* カードが実際に見えることまで確かめる（親に .in が付かないと消える） */
+{
+    const p = await open(browser, { page: 'works.html', height: 940 });
+    const h = await p.evaluate(() => document.body.scrollHeight);
+    for (let y = 0; y < h; y += 700) {
+        await p.evaluate((v) => window.scrollTo(0, v), y);
+        await p.waitForTimeout(220);
+    }
+    await p.waitForTimeout(1200);
+    const dim = await p.evaluate(() => [...document.querySelectorAll('.genre')]
+        .filter((e) => +getComputedStyle(e).opacity < 0.9).length);
+    check('works.html のカード9枚が最後まで送れば見える', dim === 0, String(dim));
+    await p.close();
+}
+
 await browser.close();
 
 /* JSが動かない端末で真っ白にならないこと（2026-09-24 に実機で発生）。
@@ -134,6 +149,21 @@ await browser.close();
         const self = [...main.matchAll(/<a[^>]*href="([^"#]+\.html)"/g)]
             .map((m) => m[1]).filter((h) => h === file);
         check(`${file} の本文が自分自身にリンクしていない`, self.length === 0, String(self.length));
+    }
+}
+
+
+/* .reveal-stagger の中身が消えないこと（2026-09-24 に works.html で発生）。
+   カードの親だけが reveal-stagger で、下層ページのスクリプトは .reveal しか
+   見ていなかった。親に .in が付かず、9枚のカードが opacity:0 のまま消えていた。
+   .reveal だけを見るテストでは気づけなかったので、ここで押さえる。 */
+{
+    for (const file of ['index.html', 'works.html', 'pricing.html', 'company-video.html',
+                        'about.html', 'privacy.html']) {
+        const html = readFileSync(`${ROOT}/${file}`, 'utf8');
+        if (!html.includes('reveal-stagger')) { continue; }
+        check(`${file} は reveal-stagger も監視している`,
+              /querySelectorAll\('\.reveal, \.reveal-stagger'\)/.test(html));
     }
 }
 
