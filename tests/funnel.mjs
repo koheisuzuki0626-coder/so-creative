@@ -97,16 +97,39 @@ await leave(p); await p.waitForTimeout(200);
 check('相談済みなら cta=true', (await rows(p)).find(r => r.name === 'calc_leave')?.cta === true);
 await p.close();
 
-/* ---- 外部送信は既定で無効 ---- */
+/* ---- 計測とプライバシーポリシーが食い違っていないか ----
+   2026-09-23 に GA4 を入れた。ここでいちばん危ないのは、
+   **計測しているのにポリシーに書いていない**（逆も同じ）状態。
+   どちらの向きにもズレないよう、ANALYTICS_ID の中身で分岐して見る */
 p = await open(browser, {});
-/* 9/23：ANALYTICS_ID は宣言されているだけで、どこからも読まれていなかった。
-   ID を入れても何も起きない状態だったので、読み込む側を足した。
-   空のときは script も足さないので、外部への通信も Cookie も発生しない。
-   検査はソースの文字列ではなく、実際に何が起きたかで見る */
-check('計測IDが空なら外部に送らない', (await p.evaluate(() => typeof window.gtag)) === 'undefined');
-check('計測IDが空ならタグを足していない',
-    (await p.locator('script[src*="gtag/js"]').count()) === 0);
-check('Cookie を置いていない', (await p.context().cookies()).length === 0);
+const idxSrc = await (await p.request.get(`${BASE}/index.html`)).text();
+const gaId = (idxSrc.match(/const ANALYTICS_ID = '([^']*)'/) || [])[1] ?? null;
+const priv = await (await p.request.get(`${BASE}/privacy.html`)).text();
+check('ANALYTICS_ID が読み取れる', gaId !== null, String(gaId));
+if (gaId) {
+    check('計測IDの形が正しい', /^G-[A-Z0-9]{6,}$/.test(gaId), gaId);
+    check('タグを読み込んでいる',
+        (await p.locator(`script[src*="gtag/js?id=${gaId}"]`).count()) === 1);
+    check('gtag が使える', (await p.evaluate(() => typeof window.gtag)) === 'function');
+    check('IP を伏せて送る', /anonymize_ip: true/.test(idxSrc));
+    /* ポリシー側。使っていると明記し、送る中身・停止の方法・Google のポリシーへの導線があること */
+    check('ポリシーに解析の使用を明記している',
+        /Google アナリティクス 4/.test(priv) && /Cookie を使用します/.test(priv));
+    check('ポリシーに送信する中身を書いている',
+        /どこまでスクロールしたか/.test(priv) && /概算金額/.test(priv));
+    check('ポリシーに停止の方法を書いている',
+        /オプトアウト アドオン/.test(priv) && /gaoptout/.test(priv));
+    check('ポリシーに Google のポリシーへの導線がある', /policies\.google\.com\/privacy/.test(priv));
+    check('ポリシーに改定日が入っている', /改定日：2026年9月23日/.test(priv));
+    check('「使用していません」が残っていない',
+        !/アクセス解析ツールを使用しておらず/.test(priv));
+} else {
+    check('計測IDが空なら外部に送らない', (await p.evaluate(() => typeof window.gtag)) === 'undefined');
+    check('計測IDが空ならタグを足していない',
+        (await p.locator('script[src*="gtag/js"]').count()) === 0);
+    check('計測IDが空ならポリシーも使っていないと書く',
+        /アクセス解析ツールを使用しておらず/.test(priv));
+}
 /* ID を入れたら本当に動くか。ここが繋がっていないと、
    privacy.html だけ書き換えて「計測しているつもり」になる */
 {
