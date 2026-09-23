@@ -2,7 +2,8 @@
 import { check, report, open, PW } from './lib.mjs';
 const pwmod = (await import(PW)).default;
 const browser = await pwmod.chromium.launch();
-for (const file of ['index.html', 'about.html', 'privacy.html', 'funnel.html', 'roadmap.html', 'record.html']) {
+for (const file of ['index.html', 'works.html', 'pricing.html', 'about.html', 'privacy.html',
+                    'funnel.html', 'roadmap.html', 'record.html']) {
     const page = await open(browser, { page: file });
     const bad = await page.evaluate(() => {
         const L = (c) => { const v = c.map(x => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); });
@@ -86,7 +87,8 @@ for (const [file, w, h, label] of revealCases) {
     });
     check(`${label} 一番下まで送れば出現アニメーションが全部出る`,
         hidden.length === 0, JSON.stringify(hidden.slice(0, 5)));
-    if (file === 'index.html') {
+    /* ジャンルのカードは 2026-09-23 に works.html へ移した */
+    if (file === 'works.html') {
         const genres = await page.evaluate(() => {
             const all = [...document.querySelectorAll('.genre')];
             return { n: all.length, hidden: all.filter((e) => Number(getComputedStyle(e).opacity) < 0.5).length };

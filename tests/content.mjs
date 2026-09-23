@@ -12,6 +12,8 @@ const idx = readFileSync(`${ROOT}/index.html`, 'utf8');
 /* 計算機は 2026-09-23 に assets/pricing.js へ切り出した。
    値（秒単価・ナレーションの増減）はそちらにある */
 const calcSrc = readFileSync(`${ROOT}/assets/pricing.js`, 'utf8');
+/* ジャンルのカードとサンプルは 2026-09-23 に works.html へ移した */
+const worksSrc = readFileSync(`${ROOT}/works.html`, 'utf8');
 const pricingHtml = readFileSync(`${ROOT}/pricing.html`, 'utf8');
 const about = readFileSync(`${ROOT}/about.html`, 'utf8');
 const privacy = readFileSync(`${ROOT}/privacy.html`, 'utf8');
@@ -48,7 +50,7 @@ check('4人以上の行き先が FAQ にある',
     faqUi.some((u) => /登場人物が4人以上になる場合も同様です/.test(u.a))
     && faqUi.some((u) => /4人以上を出す場合は料金表の範囲を超えるため、個別にお見積りします/.test(u.a)));
 check('採用のサンプルが上限を超えていることを書いている',
-    /4人は料金表の上限（松で3人）を超えます/.test(idx));
+    /4人は料金表の上限（松で3人）を超えます/.test(worksSrc));
 /* 縦型は段の特典ではなく別の1本。機械で切らないことを明記しているか */
 check('縦型の扱いを FAQ で説明している',
     faqUi.some(u => /縦型/.test(u.q) && /設計し直します/.test(u.a) && /2本/.test(u.a)));
@@ -243,63 +245,65 @@ check('金額の表示は税込で揃っている',
 /* 実績の先頭に置いた会社紹介のサンプル。自前ホスティングで、
    架空の題材だと分かる書き方になっていること（クライアント実績に見せない） */
 {
-    const works = await page.locator('#genres').innerText();
-    const v = page.locator('.sample-video');
+    /* ジャンルのカードとサンプルは 2026-09-23 に works.html へ移した */
+    const wp = await open(browser, { page: 'works.html' });
+    const works = await wp.locator('#genres').innerText();
+    const v = wp.locator('.sample-video');
     check('ジャンルのカードにサンプル映像が入っている', (await v.count()) >= 1);
     /* 06 展示会は、同じ案件を無音・テロップ主体で別設計した1本。
        「短く切っただけではない」という主張の裏づけとして置いている */
     check('展示会のカードにもサンプルがある',
-        (await page.locator('#genre-event .sample-video').count()) === 1);
+        (await wp.locator('#genre-event .sample-video').count()) === 1);
     check('展示会のサンプルは無音だと書いてある',
-        /15秒・無音/.test(await page.locator('#genre-event').innerText()));
-    check('展示会のサンプルは実際に音が入っていない', await page.locator('#genre-event .sample-video').evaluate((v) => v.muted === true));
+        /15秒・無音/.test(await wp.locator('#genre-event').innerText()));
+    check('展示会のサンプルは実際に音が入っていない', await wp.locator('#genre-event .sample-video').evaluate((v) => v.muted === true));
     /* 02 サービス紹介と 04 広告CM のサンプル（2026-09-17 追加）。
        どちらも架空の題材で、クライアント実績には見せない書き方になっていること */
     check('サービス紹介のカードにサンプルがある',
-        (await page.locator('#genre-service .sample-video').count()) === 1);
+        (await wp.locator('#genre-service .sample-video').count()) === 1);
     check('サービス紹介のサンプルは架空の題材だと書いてある',
-        /架空の業務ソフト/.test(await page.locator('#genre-service').innerText()));
+        /架空の業務ソフト/.test(await wp.locator('#genre-service').innerText()));
     check('広告CMのカードにサンプルがある',
-        (await page.locator('#genre-ad .sample-video').count()) === 1);
+        (await wp.locator('#genre-ad .sample-video').count()) === 1);
     check('広告CMのサンプルは架空の題材だと書いてある',
-        /架空の冷凍餃子/.test(await page.locator('#genre-ad').innerText()));
+        /架空の冷凍餃子/.test(await wp.locator('#genre-ad').innerText()));
     check('追加した2本も自前で配信している',
-        /assets\/works\/service-15s\.mp4/.test(idx) && /assets\/works\/cm-15s-taste\.mp4/.test(idx));
+        /assets\/works\/service-15s\.mp4/.test(worksSrc) && /assets\/works\/cm-15s-taste\.mp4/.test(worksSrc));
     check('追加した2本にもポスター画像がある',
-        /poster="assets\/works\/service-15s\.jpg"/.test(idx)
-        && /poster="assets\/works\/cm-15s-taste\.jpg"/.test(idx));
+        /poster="assets\/works\/service-15s\.jpg"/.test(worksSrc)
+        && /poster="assets\/works\/cm-15s-taste\.jpg"/.test(worksSrc));
     /* 05 SNSショートと 07 社内向けのサンプル（2026-09-17 追加）。
        05 は最初から縦型で組んでいるので、16:9 のまま出していないことも見る */
     check('SNSショートのカードにサンプルがある',
-        (await page.locator('#genre-sns .sample-video').count()) === 1);
+        (await wp.locator('#genre-sns .sample-video').count()) === 1);
     check('SNSショートのサンプルは架空の題材だと書いてある',
-        /架空のコインランドリー/.test(await page.locator('#genre-sns').innerText()));
+        /架空のコインランドリー/.test(await wp.locator('#genre-sns').innerText()));
     check('SNSショートのサンプルは縦型で表示している',
-        (await page.locator('#genre-sns .sample-video.is-vertical').count()) === 1
-        && await page.locator('#genre-sns .sample-video').evaluate(
+        (await wp.locator('#genre-sns .sample-video.is-vertical').count()) === 1
+        && await wp.locator('#genre-sns .sample-video').evaluate(
             (v) => v.clientHeight > v.clientWidth));
     check('社内向けのカードにサンプルがある',
-        (await page.locator('#genre-internal .sample-video').count()) === 1);
+        (await wp.locator('#genre-internal .sample-video').count()) === 1);
     check('社内向けのサンプルは架空の題材だと書いてある',
-        /架空の倉庫/.test(await page.locator('#genre-internal').innerText()));
+        /架空の倉庫/.test(await wp.locator('#genre-internal').innerText()));
     check('さらに追加した2本も自前で配信している',
-        /assets\/works\/sns-15s-vertical\.mp4/.test(idx)
-        && /assets\/works\/internal-15s\.mp4/.test(idx));
+        /assets\/works\/sns-15s-vertical\.mp4/.test(worksSrc)
+        && /assets\/works\/internal-15s\.mp4/.test(worksSrc));
     check('さらに追加した2本にもポスター画像がある',
-        /poster="assets\/works\/sns-15s-vertical\.jpg"/.test(idx)
-        && /poster="assets\/works\/internal-15s\.jpg"/.test(idx));
+        /poster="assets\/works\/sns-15s-vertical\.jpg"/.test(worksSrc)
+        && /poster="assets\/works\/internal-15s\.jpg"/.test(worksSrc));
     /* 03 採用の3分版（2026-09-17 追加）。他のサンプルが15秒〜60秒なので、
        尺が違うことが分かる書き方になっていること */
     check('採用のカードにサンプルがある',
-        (await page.locator('#genre-recruit .sample-video').count()) === 1);
+        (await wp.locator('#genre-recruit .sample-video').count()) === 1);
     check('採用のサンプルは架空の題材だと書いてある',
-        /架空の製造業/.test(await page.locator('#genre-recruit').innerText()));
+        /架空の製造業/.test(await wp.locator('#genre-recruit').innerText()));
     check('採用のサンプルは3分だと書いてある',
-        /サンプル（3分）/.test(await page.locator('#genre-recruit').innerText()));
+        /サンプル（3分）/.test(await wp.locator('#genre-recruit').innerText()));
     check('採用のサンプルも自前で配信している',
-        /assets\/works\/recruit-3min\.mp4/.test(idx));
+        /assets\/works\/recruit-3min\.mp4/.test(worksSrc));
     check('採用のサンプルにもポスター画像がある',
-        /poster="assets\/works\/recruit-3min\.jpg"/.test(idx));
+        /poster="assets\/works\/recruit-3min\.jpg"/.test(worksSrc));
     /* サンプルは「見せられないものは売らない」の裏づけなので、欠けたら落とす。
        9/19〜9/21 はミュージックビデオ（現09）だけクレジット残が足りず例外にしていたが、
        9/22 に30秒版を入れたので例外は無くなった。空のカードを増やさないため、
@@ -314,34 +318,35 @@ check('金額の表示は税込で揃っている',
        実工数をまだ測っていないため。カードにその扱いを書いていないと、
        料金表に無いことが「出せない」に見える */
     check('ミュージックビデオのカードに料金の扱いが書いてある',
-        /料金表ではなく個別にお見積り/.test(await page.locator('#genre-mv').innerText()),
-        await page.locator('#genre-mv').innerText());
+        /料金表ではなく個別にお見積り/.test(await wp.locator('#genre-mv').innerText()),
+        await wp.locator('#genre-mv').innerText());
     check('ミュージックビデオのサンプルは30秒だと書いてある',
-        /サンプル（30秒）/.test(await page.locator('#genre-mv').innerText()));
+        /サンプル（30秒）/.test(await wp.locator('#genre-mv').innerText()));
     check('ミュージックビデオのサンプルも自前で配信している',
-        /assets\/works\/mv-30s-dance\.mp4/.test(idx));
+        /assets\/works\/mv-30s-dance\.mp4/.test(worksSrc));
     check('ミュージックビデオのサンプルにもポスター画像がある',
-        /poster="assets\/works\/mv-30s-dance\.jpg"/.test(idx));
+        /poster="assets\/works\/mv-30s-dance\.jpg"/.test(worksSrc));
     /* 曲は鈴木さん自身のもの。権利の出所を書いていないと、
        既存曲を無断で使ったように見える */
     check('ミュージックビデオの曲の出所を書いている',
-        /自作のオリジナル曲/.test(await page.locator('#genre-mv').innerText()));
+        /自作のオリジナル曲/.test(await wp.locator('#genre-mv').innerText()));
     /* 09 アニメーション・図解（9/19 追加）。生成AIを使っていない唯一のサンプル。
        文字が主役の題材はAIが画面内の文字を描けないので、プログラム描画だと
        明記してあること（これが売り文句であり、嘘をつかないための断りでもある） */
     {
-        const an = await page.locator('#genre-animation').innerText();
+        const an = await wp.locator('#genre-animation').innerText();
         check('アニメーションのカードにサンプルがある',
-            await page.locator('#genre-animation .sample-video').count() === 1);
+            await wp.locator('#genre-animation .sample-video').count() === 1);
         check('プログラム描画だと明記している', /すべてプログラムで描いています/.test(an), an.slice(0, 60));
         check('架空の題材だと断っている', /架空の健康保険組合/.test(an));
         check('尺違いに触れている', /尺違い/.test(an));
     }
-    /* about.html のフッターのジャンル一覧は静的に書いてある（トップは自動生成）。
-       「ズレたら e2e で落ちる」と about.html に書いてあったのに検査が無かったので、
-       ここで突き合わせる。09 追加のときに MV の載せ忘れも見つかった */
+    /* フッターのジャンル一覧は全ページ静的に書いてある（2026-09-23 に
+       カードからの自動生成をやめた。カードが works.html へ移ったため）。
+       ズレると案内が食い違うので、works.html の見出しと突き合わせる */
     {
-        const cards = await page.locator('#genres .genre h3').allInnerTexts();
+        const cards = await (await open(browser, { page: 'works.html' }))
+            .locator('#genres .genre h3').allInnerTexts();
         const ap = await open(browser, { page: 'about.html' });
         const foot = await ap.locator('#footer-genres li').allInnerTexts();
         check('about のフッターのジャンル一覧がトップのカードと一致',
@@ -355,7 +360,8 @@ check('金額の表示は税込で揃っている',
        最後の1枚が3分の1幅で取り残されることがある（08 を足したとき実際に起きた）。
        行ごとに幅を使い切っているかを見て、取り残しを機械で拾う */
     {
-        const wide = await open(browser, { width: 1280, page: 'index.html' });
+        /* カードは 2026-09-23 に works.html へ移した */
+        const wide = await open(browser, { width: 1280, page: 'works.html' });
         const rows = await wide.evaluate(() => {
             const by = new Map();
             for (const el of document.querySelectorAll('.genre')) {
@@ -372,43 +378,46 @@ check('金額の表示は税込で揃っている',
         check('ジャンルの各行が幅を使い切っている',
             rows.every((r) => Math.abs(r.total - full) <= 4),
             JSON.stringify(rows));
+        /* 1列に積む作りのときは「取り残し」という概念が無いので、
+           2枚以上並ぶ行があるときだけ見る */
         check('最後の行に1枚だけ取り残されていない',
-            rows[rows.length - 1].n >= 2, JSON.stringify(rows));
+            rows.length === 0 || !rows.some((r) => r.n >= 2)
+            || rows[rows.length - 1].n >= 2, JSON.stringify(rows));
         await wide.close();
     }
 
     check('ミュージックビデオのカードに金額を書いていない',
-        !/¥[\d,]+/.test(await page.locator('#genre-mv').innerText()));
+        !/¥[\d,]+/.test(await wp.locator('#genre-mv').innerText()));
     check('サンプルは「01 会社紹介」のカードの中にある',
-        (await page.locator('#genre-company .sample-video').count()) === 1
+        (await wp.locator('#genre-company .sample-video').count()) === 1
         && (await page.locator('#works .sample-video').count()) === 0);
     check('サンプルは自前で配信している（YouTube 埋め込みではない）',
-        /assets\/works\/company-60s-telop\.mp4/.test(idx) && !/youtube\.com\/embed/.test(idx));
+        /assets\/works\/company-60s-telop\.mp4/.test(worksSrc) && !/youtube\.com\/embed/.test(idx));
     check('ポスター画像を指定している（読み込み前に真っ黒にしない）',
-        /poster="assets\/works\/company-60s\.jpg"/.test(idx));
+        /poster="assets\/works\/company-60s\.jpg"/.test(worksSrc));
     check('サンプルだと分かる見出しになっている', /サンプル（60秒）/.test(works));
     /* 段の差（松はナレーション込み・梅竹は¥30,000で追加）を納品物そのもので確かめられる。
        同じ映像で音だけ差し替える。ナレーションは最終版（2026-09-17 差し替え） */
     check('ナレーションあり／なしを切り替えられる',
-        (await page.locator('.sample-sw').count()) === 2);
+        (await wp.locator('.sample-sw').count()) === 2);
     /* この音声は合成音声。人が読んだものと誤解されると、
        人物ナレーション（1名 ¥70,000〜）の見積りがずれる */
     check('サンプルの音声がAIだとボタンに書いてある',
-        /AIナレーションあり/.test(await page.locator('.sample-switch').innerText()));
+        /AIナレーションあり/.test(await wp.locator('.sample-switch').innerText()));
     check('サンプルの音声がAIだと注釈にも書いてある',
-        /このナレーションはAI音声です/.test(await page.locator('#genre-company').innerText()));
-    check('初期表示はテロップ版', /company-60s-telop\.mp4"/.test(idx));
+        /このナレーションはAI音声です/.test(await wp.locator('#genre-company').innerText()));
+    check('初期表示はテロップ版', /company-60s-telop\.mp4"/.test(worksSrc));
     check('切り替えで実際に音源が変わる', await (async () => {
-        const v = page.locator('#sample-video');
+        const v = wp.locator('#sample-video');
         const before = await v.getAttribute('src');
-        await page.locator('.sample-sw', { hasText: 'ナレーションあり' }).click();
-        await page.waitForTimeout(400);
+        await wp.locator('.sample-sw', { hasText: 'ナレーションあり' }).click();
+        await wp.waitForTimeout(400);
         const after = await v.evaluate((e) => e.getAttribute('src'));
-        await page.locator('.sample-sw', { hasText: 'ナレーションなし' }).click();
-        await page.waitForTimeout(200);
+        await wp.locator('.sample-sw', { hasText: 'ナレーションなし' }).click();
+        await wp.waitForTimeout(200);
         return before !== after && /narration/.test(after);
     })());
-    check('差し替え前の古いナレーション版を残していない', !/company-60s\.mp4/.test(idx));
+    check('差し替え前の古いナレーション版を残していない', !/company-60s\.mp4/.test(worksSrc));
     /* 人物ナレーションの額は、実績の注釈・FAQ・計算機の3か所に出る。
        どれかだけ直すとここが落ちる */
     check('人物ナレーションの値段が実績でも料金表と同じ', /1名 ¥70,000〜/.test(works));

@@ -50,8 +50,8 @@
         <section class="page-head">
             <div class="wrap reveal">
                 <p class="eyebrow">Works</p>
-                <h1 class="display">つくれるものを、<br>9本ぶん置いています。</h1>
-                <p class="lead-line about-lead">名古屋・愛知を拠点に、AI で映像をつくっています。下は用途ごとのサンプルです。尺・解像度・カット数は、書き出したファイルを実測した値をそのまま載せています。</p>
+                <h1 class="display">つくれる動画と、<br>そのサンプル。</h1>
+                <p class="lead-line about-lead">名古屋・愛知を拠点に、AI で映像をつくっています。用途ごとに、何がつくれるかと、実際につくったサンプルを並べています。尺・解像度・カット数は、書き出したファイルを実測した値です。</p>
             </div>
         </section>
 
@@ -64,148 +64,220 @@
             </div>
         </section>
 
-        <section class="section" id="w01">
-            <div class="wrap reveal">
-                <p class="eyebrow">01</p>
-                <h2 class="headline">会社紹介</h2>
-                <p class="body-text measure">架空の製造業を題材に、実際の進め方そのままで制作しました。登場人物は2人。撮影も出演者の手配もしていません。同じ映像でナレーションの有無を聴き比べられます（このナレーションはAI音声です）。</p>
-                <video class="sample-video" controls preload="none" playsinline
-                       poster="assets/works/company-60s.jpg"
-                       src="assets/works/company-60s-telop.mp4"
-                       aria-label="会社紹介のサンプル映像 59秒">
-                    お使いのブラウザでは再生できません。
-                </video>
-                <p class="body-text" style="margin-top:12px;font-size:.92em"><a href="assets/works/company-60s-telop.mp4">ナレーションなし（テロップのみ）</a> ／ <a href="assets/works/company-60s-narration.mp4">AIナレーションあり</a>（同じ映像で聴き比べられます）</p>
-                <p class="body-text" style="margin-top:14px;color:var(--muted);font-size:.92em">
-                    <b>59秒 ／ 1920×1080 / 30fps ／ 19カット</b>（書き出したファイルを実測した値）</p>
-                <p class="body-text measure" style="margin-top:14px">この1本は<b>着手から3日</b>。ここでつくった設計を使い回して、下の「展示会・イベント」の15秒版を出しています。<b>2本目にかかる手間は1本目の1割ほど</b>です。</p>
+            <section class="section section-alt" id="genres">
+        <div class="wrap">
+            <div class="section-head reveal">
+                <p class="eyebrow">Genres</p>
+                <h2 class="headline">つくれる動画のジャンル。</h2>
+                <p class="body-text measure">用途に合わせて、必要な映像をつくります。いずれも撮影を伴わないため、出演者の手配も撮影日の設定も発生しません。<br><a href="works.html">9本まとめて見る（尺・カット数つき）</a></p>
             </div>
-        </section>
-        <section class="section section-alt" id="w02">
-            <div class="wrap reveal">
-                <p class="eyebrow">02</p>
-                <h2 class="headline">サービス紹介</h2>
-                <p class="body-text measure">架空の業務ソフト「そのまま日報」を題材にしました。<b>まだ実物のないアプリを、画面を映さずに映像にしています。</b>画面は光と角度で見せ、中身はテロップで伝えています。</p>
-                <video class="sample-video" controls preload="none" playsinline
-                       poster="assets/works/service-15s.jpg"
-                       src="assets/works/service-15s.mp4"
-                       aria-label="サービス紹介のサンプル映像 15秒">
-                    お使いのブラウザでは再生できません。
-                </video>
-                <p class="body-text" style="margin-top:14px;color:var(--muted);font-size:.92em">
-                    <b>15秒 ／ 1920×1080 / 24fps</b>（書き出したファイルを実測した値）</p>
-                <p class="body-text measure" style="margin-top:14px">AIは画面内の文字を正しく描けません。だからUIそのものは生成せず、別の見せ方で回避しています。</p>
+            <div class="genre-grid reveal-stagger">
+                <article class="genre" id="genre-company">
+                    <div class="genre-no">01</div>
+                    <h3>会社紹介</h3>
+                    <p>事業内容や理念を伝える映像。社員に出演してもらう必要がないので、役員や現場のスケジュールを押さえるところから始めなくて済みます。</p>
+                <!-- 会社紹介（ジャンル01）のサンプル。YouTube ではなく自前で置いている（他社の関連動画が出ない・
+                     チャンネルの他の作品に飛ばない）。9.4MB・faststart なので途中から再生が始まる -->
+                <figure class="sample reveal">
+                    <video class="sample-video" id="sample-video" controls preload="none" playsinline
+                           poster="assets/works/company-60s.jpg"
+                           src="assets/works/company-60s-telop.mp4"
+                           aria-label="会社紹介のサンプル映像 60秒">
+                        お使いのブラウザでは再生できません。
+                    </video>
+                    <div class="sample-switch" role="group" aria-label="AIナレーションの有無を切り替える">
+                        <button type="button" class="sample-sw is-on" data-file="company-60s-telop.mp4" aria-pressed="true">ナレーションなし（テロップのみ）</button>
+                        <button type="button" class="sample-sw" data-file="company-60s-narration.mp4" aria-pressed="false">AIナレーションあり</button>
+                    </div>
+                    <figcaption class="sample-cap">
+                        <p class="sample-title">サンプル（60秒）</p>
+                        <p class="sample-note">架空の製造業を題材に、実際の進め方そのままで制作したものです。登場人物2人、撮影も出演者の手配もなし。<strong>同じ映像で、ナレーションの有無を聴き比べられます</strong>（<strong>このナレーションはAI音声です。</strong>AIナレーションは全段とも料金に含まれます。人に読んでもらう場合は、松には1名ぶん含まれ、梅・竹では1名 ¥70,000〜 の追加です）。</p>
+                    </figcaption>
+                </figure>
+                <p class="genre-note"><b>59秒 ／ 1920×1080・30fps ／ 19カット</b>（書き出したファイルを実測した値）</p>
+                </article>
+                <article class="genre" id="genre-service">
+                    <div class="genre-no">02</div>
+                    <h3>サービス紹介</h3>
+                    <p>商品やサービスの価値を短くまとめた映像。実物の撮影が難しいものや、まだ形になっていない構想段階のものでも映像にできます。</p>
+                    <!-- 架空の業務ソフトを題材にしたサンプル。UIそのものは生成していない
+                         （AIは画面内の文字を正しく描けない）。画面は光と角度で処理し、中身はテロップで出している -->
+                    <figure class="sample">
+                        <video class="sample-video" controls preload="none" playsinline
+                               poster="assets/works/service-15s.jpg"
+                               src="assets/works/service-15s.mp4"
+                               aria-label="サービス紹介のサンプル映像 15秒">
+                            お使いのブラウザでは再生できません。
+                        </video>
+                        <figcaption class="sample-cap">
+                            <p class="sample-title">サンプル（15秒）</p>
+                            <p class="sample-note">架空の業務ソフト「そのまま日報」を題材に制作したものです。<strong>まだ実物のないアプリを、画面を映さずに映像にしています</strong>（画面は光と角度で見せ、内容はテロップで伝えています）。現場の撮影も出演者の手配もありません。</p>
+                        </figcaption>
+                    </figure>
+                <p class="genre-note"><b>15秒 ／ 1920×1080・24fps</b>（書き出したファイルを実測した値）</p>
+                </article>
+                <article class="genre" id="genre-recruit">
+                    <div class="genre-no">03</div>
+                    <h3>採用</h3>
+                    <p>働く姿や職場の空気を伝える映像。現場の社員に出演を依頼せずに制作でき、退職や異動があっても差し替えが不要です。</p>
+                    <!-- 架空の製造業を題材にした3分。36カットで、登場人物4人は
+                         全カットで同じ顔。静止画の段階で顔を揃えてから動かしている -->
+                    <figure class="sample">
+                        <video class="sample-video" controls preload="none" playsinline
+                               poster="assets/works/recruit-3min.jpg"
+                               src="assets/works/recruit-3min.mp4"
+                               aria-label="採用のサンプル映像 3分">
+                            お使いのブラウザでは再生できません。
+                        </video>
+                        <figcaption class="sample-cap">
+                            <p class="sample-title">サンプル（3分）</p>
+                            <p class="sample-note">架空の製造業を題材に制作したものです。36カット・5章構成で、<strong>登場人物4人は全カットで同じ顔です</strong>（社員に出演を依頼していません）。社員数や残業時間といった数字は、本文と分けて白帯で出しています。なお<strong>4人は料金表の上限（松で3人）を超えます</strong>ので、この規模は個別にお見積りします。</p>
+                        </figcaption>
+                    </figure>
+                <p class="genre-note"><b>3分（180秒） ／ 1920×1080・24fps ／ 36カット・5章構成</b>（書き出したファイルを実測した値）</p>
+                </article>
+                <article class="genre" id="genre-ad">
+                    <div class="genre-no">04</div>
+                    <h3>広告・CM</h3>
+                    <p>商品やキャンペーンを訴求する映像。キャストの起用もロケも不要なので、訴求違いのパターンを複数つくって出し分けることもできます。</p>
+                    <!-- 架空の冷凍餃子のサンプル。調理・食卓・家族まで全部生成で、
+                         キャストもロケもスタジオも使っていない。
+                         9/20 に3カット→8カットへ組み直し、パッケージを足した。
+                         パッケージの意匠は scripts/package.py。刷る写真と右上の
+                         切り抜きは、どちらもこの15秒のカットから抜いている。
+                         容器は中にトレーが入って板のように平たい袋。枕型のパウチのように
+                         弧へ割り付けると大きな文字も金の縁も歪むので、面を平らと見て
+                         透視だけで刷っている -->
+                    <figure class="sample">
+                        <video class="sample-video" controls preload="none" playsinline
+                               poster="assets/works/cm-15s-taste.jpg"
+                               src="assets/works/cm-15s-taste.mp4"
+                               aria-label="広告・CMのサンプル映像 15秒">
+                            お使いのブラウザでは再生できません。
+                        </video>
+                        <figcaption class="sample-cap">
+                            <p class="sample-title">サンプル（15秒）</p>
+                            <p class="sample-note">架空の冷凍餃子「こがね餃子」を題材に制作したものです。15秒を<strong>8カットで割って</strong>、冷凍の状態から食卓までをひと続きに見せています。キャストもロケもスタジオも使っていません。締めは<strong>家族の食卓にパッケージを載せて5秒</strong>。そのパッケージは、無地の袋の写真に<strong>意匠をプログラムで刷った</strong>ものです。袋に刷った焼き上がりの写真も、右上の1個も、<strong>この15秒のカットから抜いたもの</strong>です。<strong>ナレーションはテロップと同じ文言</strong>を読ませ、最後に商品名を言わせています。これも<strong>合成音声</strong>で、ナレーターは立てていません。テロップは左から書き出す動きをつけています。商品名や内容量の差し替えは刷り直すだけで済みます。同じ素材から、順番とテロップを変えて訴求違いの2本目を出すこともできます。</p>
+                        </figcaption>
+                    </figure>
+                <p class="genre-note"><b>15秒 ／ 1920×1080・24fps ／ 8カット</b>（書き出したファイルを実測した値）</p>
+                </article>
+                <article class="genre" id="genre-sns">
+                    <div class="genre-no">05</div>
+                    <h3>SNSショート</h3>
+                    <p>縦型の短尺映像。1本ごとに撮影が発生しないため、本数を重ねて継続的に投稿していく運用に向いています。</p>
+                    <!-- 架空のコインランドリーのサンプル。1080x1920 で生成しており、
+                         16:9 を機械で縦に切り直したものではない -->
+                    <figure class="sample">
+                        <video class="sample-video is-vertical" controls preload="none" playsinline
+                               poster="assets/works/sns-15s-vertical.jpg"
+                               src="assets/works/sns-15s-vertical.mp4"
+                               aria-label="SNSショートのサンプル映像 15秒・縦型">
+                            お使いのブラウザでは再生できません。
+                        </video>
+                        <figcaption class="sample-cap">
+                            <p class="sample-title">サンプル（15秒・縦型）</p>
+                            <p class="sample-note">架空のコインランドリー「きらら」を題材に制作したものです。<strong>はじめから縦型で組んでいます</strong>（横長の映像を機械で切り直したものではありません）。テロップも文字数も、スマホで音を出さずに見られる前提で置いています。</p>
+                        </figcaption>
+                    </figure>
+                <p class="genre-note"><b>15秒 ／ 1080×1920（縦型）・24fps</b>（書き出したファイルを実測した値）</p>
+                </article>
+                <article class="genre" id="genre-event">
+                    <div class="genre-no">06</div>
+                    <h3>展示会・イベント</h3>
+                    <p>ブースや会場で流すループ映像。会期や出展内容に合わせた差し替えも、撮り直しなしで対応できます。</p>
+                    <!-- 01 と同じ案件の展示会用。音が出せないブースを前提に、無音・テロップ主体で
+                         別設計した1本（60秒を短く切ったものではない） -->
+                    <figure class="sample">
+                        <video class="sample-video" controls preload="none" playsinline muted loop
+                               poster="assets/works/exhibition-15s.jpg"
+                               src="assets/works/exhibition-15s.mp4"
+                               aria-label="展示会ブース用のサンプル映像 15秒・無音">
+                            お使いのブラウザでは再生できません。
+                        </video>
+                        <figcaption class="sample-cap">
+                            <p class="sample-title">サンプル（15秒・無音）</p>
+                            <p class="sample-note">01 と同じ架空の会社の、展示会ブース用。<strong>音を出せない会場を前提に、無音でテロップだけで伝わるよう組み直しています</strong>。60秒版を短く切ったものではなく、観客も文言も別に設計した1本です。</p>
+                        </figcaption>
+                    </figure>
+                <p class="genre-note"><b>15秒（無音） ／ 1920×1080・30fps ／ 5カット</b>（書き出したファイルを実測した値）</p>
+                </article>
+                <article class="genre" id="genre-internal">
+                    <div class="genre-no">07</div>
+                    <h3>社内向け</h3>
+                    <p>研修、業務マニュアル、社内広報など。内容が変わったときは、該当する箇所だけを生成し直せます。</p>
+                    <!-- 架空の倉庫の安全手順。研修用なので締めのロゴを付けず、
+                         STEP 3 を最後まで残している -->
+                    <figure class="sample">
+                        <video class="sample-video" controls preload="none" playsinline
+                               poster="assets/works/internal-15s.jpg"
+                               src="assets/works/internal-15s.mp4"
+                               aria-label="社内向けのサンプル映像 15秒">
+                            お使いのブラウザでは再生できません。
+                        </video>
+                        <figcaption class="sample-cap">
+                            <p class="sample-title">サンプル（15秒）</p>
+                            <p class="sample-note">架空の倉庫の安全手順を題材に制作したものです。<strong>手順が変わったときは、その STEP のカットだけを作り直せます</strong>。現場を止めて撮影する必要がないので、細かい改訂を重ねる用途に向いています。</p>
+                        </figcaption>
+                    </figure>
+                <p class="genre-note"><b>15秒 ／ 1920×1080・24fps</b>（書き出したファイルを実測した値）</p>
+                </article>
+                <!-- 08 アニメーション・図解。9/19 に追加。
+                     生成AIを使っていない唯一のサンプル。文字と図形が主役の題材は
+                     AIが画面内の文字を正しく描けないため、全部プログラムで描いている。
+                     だから原価は0クレジットで、修正も1ピクセル単位で確実に効く -->
+                <article class="genre" id="genre-animation">
+                    <div class="genre-no">08</div>
+                    <h3>アニメーション・図解</h3>
+                    <p>図形と文字だけで、仕組み・手順・数字を説明する映像。実写に向かない制度案内やサービス説明も、撮影なしで形になります。</p>
+                    <figure class="sample">
+                        <video class="sample-video" controls preload="none" playsinline
+                               poster="assets/works/animation-60s.jpg"
+                               src="assets/works/animation-60s.mp4"
+                               aria-label="アニメーション・図解のサンプル映像 60秒">
+                            お使いのブラウザでは再生できません。
+                        </video>
+                        <figcaption class="sample-cap">
+                            <p class="sample-title">サンプル（60秒）</p>
+                            <p class="sample-note">架空の健康保険組合の健診案内を題材に制作したものです。このジャンルは生成AIではなく<strong>すべてプログラムで描いています</strong>。画面の中の文字や数字が正確に出せるので、制度・料金・手順の説明に向いています。尺違い（15秒版など）も同じ絵柄のまま組み替えられます。</p>
+                        </figcaption>
+                    </figure>
+                <p class="genre-note"><b>60秒 ／ 1920×1080・30fps</b>（書き出したファイルを実測した値）</p>
+                </article>
+                <!-- 09 ミュージックビデオ。9/19 に枠だけ作り、9/22 にサンプルを入れた。
+                     曲は鈴木さん自身のもの（権利は本人）なので公開できる。
+                     踊り手は Reference Element で全カット同じ人物を通し、衣装は
+                     プロンプトの文言でも固定した（Element だけでは衣装が保たない）。
+                     料金は計算機に乗せない。尺が3〜4分になるとMVの相場（3分で30万前後）と
+                     2倍以上離れるうえ、MVの実工数をまだ測っていないので、
+                     定価を出すと測る前に金額を宣言することになる -->
+                <article class="genre" id="genre-mv">
+                    <div class="genre-no">09</div>
+                    <h3>ミュージックビデオ</h3>
+                    <p>楽曲に合わせた映像。歌詞を出すリリックビデオや、SNS向けの縦型ショートにも対応します。撮影もロケもないので、曲さえあれば進められます。</p>
+                    <figure class="sample">
+                        <video class="sample-video" controls preload="none" playsinline
+                               poster="assets/works/mv-30s-dance.jpg"
+                               src="assets/works/mv-30s-dance.mp4"
+                               aria-label="ミュージックビデオのサンプル映像 30秒">
+                            お使いのブラウザでは再生できません。
+                        </video>
+                        <figcaption class="sample-cap">
+                            <p class="sample-title">サンプル（30秒）</p>
+                            <p class="sample-note">自作のオリジナル曲に合わせて制作したものです。<strong>踊り手は実在せず、撮影もロケもありません</strong>。30秒を<strong>35カット</strong>で割り、うち22枚は0.1〜0.3秒のインサートです。<strong>曲のサビ頭だけカットを合わせて、ほかはあえてずらしています</strong>（等間隔で切ると曲に対して編集が引っ込むためです）。踊り手は全カットで同じ人物・同じ衣装です。お預かりした曲でも同じ作り方で進められます。</p>
+                        </figcaption>
+                    </figure>
+                <p class="genre-note"><b>30秒 ／ 1920×1080・24fps</b>（書き出したファイルを実測した値）</p>
+                    <p class="genre-note">料金は尺と構成で大きく変わるため、<strong>料金表ではなく個別にお見積りします</strong>。</p>
+                </article>
             </div>
-        </section>
-        <section class="section" id="w03">
-            <div class="wrap reveal">
-                <p class="eyebrow">03</p>
-                <h2 class="headline">採用</h2>
-                <p class="body-text measure">架空の製造業を題材にした3分。<b>登場人物4人は全カットで同じ顔です。</b>静止画の段階で顔を揃えてから動かしています。社員数や残業時間といった数字は、本文と分けて白帯で出しています。</p>
-                <video class="sample-video" controls preload="none" playsinline
-                       poster="assets/works/recruit-3min.jpg"
-                       src="assets/works/recruit-3min.mp4"
-                       aria-label="採用のサンプル映像 3分（180秒）">
-                    お使いのブラウザでは再生できません。
-                </video>
-                <p class="body-text" style="margin-top:14px;color:var(--muted);font-size:.92em">
-                    <b>3分（180秒） ／ 1920×1080 / 24fps ／ 36カット・5章構成</b>（書き出したファイルを実測した値）</p>
-                <p class="body-text measure" style="margin-top:14px">登場人物4人は料金表の上限（松で3人）を超えます。この規模は個別にお見積りします。</p>
-            </div>
-        </section>
-        <section class="section section-alt" id="w04">
-            <div class="wrap reveal">
-                <p class="eyebrow">04</p>
-                <h2 class="headline">広告・CM</h2>
-                <p class="body-text measure">架空の冷凍餃子「こがね餃子」。15秒を8カットで割り、冷凍の状態から食卓までをひと続きに見せています。キャストもロケもスタジオも使っていません。</p>
-                <video class="sample-video" controls preload="none" playsinline
-                       poster="assets/works/cm-15s-taste.jpg"
-                       src="assets/works/cm-15s-taste.mp4"
-                       aria-label="広告・CMのサンプル映像 15秒">
-                    お使いのブラウザでは再生できません。
-                </video>
-                <p class="body-text" style="margin-top:14px;color:var(--muted);font-size:.92em">
-                    <b>15秒 ／ 1920×1080 / 24fps ／ 8カット</b>（書き出したファイルを実測した値）</p>
-                <p class="body-text measure" style="margin-top:14px">締めのパッケージは、無地の袋の写真に<b>意匠をプログラムで刷った</b>ものです。袋に刷った焼き上がりの写真も、右上の1個も、この15秒のカットから抜いています。商品名や内容量の差し替えは刷り直すだけで済みます。</p>
-            </div>
-        </section>
-        <section class="section" id="w05">
-            <div class="wrap reveal">
-                <p class="eyebrow">05</p>
-                <h2 class="headline">SNSショート</h2>
-                <p class="body-text measure">架空のコインランドリー「きらら」。<b>はじめから縦型で組んでいます</b>（横長を機械で切り直したものではありません）。テロップも文字数も、スマホで音を出さずに見られる前提です。</p>
-                <video class="sample-video is-vertical" controls preload="none" playsinline
-                       poster="assets/works/sns-15s-vertical.jpg"
-                       src="assets/works/sns-15s-vertical.mp4"
-                       aria-label="SNSショートのサンプル映像 15秒">
-                    お使いのブラウザでは再生できません。
-                </video>
-                <p class="body-text" style="margin-top:14px;color:var(--muted);font-size:.92em">
-                    <b>15秒 ／ 1080×1920（縦型） / 24fps</b>（書き出したファイルを実測した値）</p>
-            </div>
-        </section>
-        <section class="section section-alt" id="w06">
-            <div class="wrap reveal">
-                <p class="eyebrow">06</p>
-                <h2 class="headline">展示会・イベント</h2>
-                <p class="body-text measure">01 と同じ架空の会社の、展示会ブース用。<b>音を出せない会場を前提に、無音でテロップだけで伝わるよう組み直しています。</b>60秒版を短く切ったものではなく、観客も文言も別に設計した1本です。</p>
-                <video class="sample-video" controls preload="none" playsinline
-                       poster="assets/works/exhibition-15s.jpg"
-                       src="assets/works/exhibition-15s.mp4"
-                       aria-label="展示会・イベントのサンプル映像 15秒（無音）">
-                    お使いのブラウザでは再生できません。
-                </video>
-                <p class="body-text" style="margin-top:14px;color:var(--muted);font-size:.92em">
-                    <b>15秒（無音） ／ 1920×1080 / 30fps ／ 5カット</b>（書き出したファイルを実測した値）</p>
-                <p class="body-text measure" style="margin-top:14px">同じ案件から派生させた2本目です。設計が残っているので、<b>1本目の1割ほどの手間</b>で出せました。撮り直しが無いぶん、2本目以降は <b>¥65,000</b> です。</p>
-            </div>
-        </section>
-        <section class="section" id="w07">
-            <div class="wrap reveal">
-                <p class="eyebrow">07</p>
-                <h2 class="headline">社内向け</h2>
-                <p class="body-text measure">架空の倉庫の安全手順。<b>手順が変わったときは、その STEP のカットだけを作り直せます。</b>現場を止めて撮影する必要がないので、細かい改訂を重ねる用途に向いています。</p>
-                <video class="sample-video" controls preload="none" playsinline
-                       poster="assets/works/internal-15s.jpg"
-                       src="assets/works/internal-15s.mp4"
-                       aria-label="社内向けのサンプル映像 15秒">
-                    お使いのブラウザでは再生できません。
-                </video>
-                <p class="body-text" style="margin-top:14px;color:var(--muted);font-size:.92em">
-                    <b>15秒 ／ 1920×1080 / 24fps</b>（書き出したファイルを実測した値）</p>
-            </div>
-        </section>
-        <section class="section section-alt" id="w08">
-            <div class="wrap reveal">
-                <p class="eyebrow">08</p>
-                <h2 class="headline">アニメーション・図解</h2>
-                <p class="body-text measure">図形と文字だけで、仕組み・手順・数字を説明する映像。実写に向かない制度案内やサービス説明も、撮影なしで形になります。</p>
-                <video class="sample-video" controls preload="none" playsinline
-                       poster="assets/works/animation-60s.jpg"
-                       src="assets/works/animation-60s.mp4"
-                       aria-label="アニメーション・図解のサンプル映像 60秒">
-                    お使いのブラウザでは再生できません。
-                </video>
-                <p class="body-text" style="margin-top:14px;color:var(--muted);font-size:.92em">
-                    <b>60秒 ／ 1920×1080 / 30fps</b>（書き出したファイルを実測した値）</p>
-                <p class="body-text measure" style="margin-top:14px"><b>9本のうち、これだけ生成AIを使っていません。</b>文字と図形が主役の題材はAIが画面内の文字を正しく描けないため、全部プログラムで描いています。だから<b>原価は0クレジット</b>で、修正も1ピクセル単位で確実に効きます。</p>
-            </div>
-        </section>
-        <section class="section" id="w09">
-            <div class="wrap reveal">
-                <p class="eyebrow">09</p>
-                <h2 class="headline">ミュージックビデオ</h2>
-                <p class="body-text measure">曲に合わせて画を切り替える短尺。実在の人物を使わないので、肖像や出演料の調整が発生しません。</p>
-                <video class="sample-video" controls preload="none" playsinline
-                       poster="assets/works/mv-30s-dance.jpg"
-                       src="assets/works/mv-30s-dance.mp4"
-                       aria-label="ミュージックビデオのサンプル映像 30秒">
-                    お使いのブラウザでは再生できません。
-                </video>
-                <p class="body-text" style="margin-top:14px;color:var(--muted);font-size:.92em">
-                    <b>30秒 ／ 1920×1080 / 24fps</b>（書き出したファイルを実測した値）</p>
-            </div>
-        </section>
+            <p class="flow-note reveal">ここに当てはまらない用途でもご相談ください。「こういう映像がほしい」という段階からお話を伺います。</p>
+        </div>
+    </section>
+
+    <!-- 9/20 に「制作サンプル」欄を差し替えた。ジャンル欄に同じ動画が並んで
+         いて中身が重複していたため。代わりに、商品写真1枚から動画までを
+         並べて見せる。実在の商品・人物は使っていない -->
 
         <section class="cta-band" id="contact">
             <div class="wrap reveal">
@@ -232,15 +304,15 @@
                 <h2 class="f-head" id="f-genres-h">ジャンル</h2>
                 <!-- トップの Genres と同じ並び。ズレたら e2e で落ちる -->
                 <ul class="f-list" id="footer-genres">
-                    <li><a href="index.html#genres">会社紹介</a></li>
-                    <li><a href="index.html#genres">サービス紹介</a></li>
-                    <li><a href="index.html#genres">採用</a></li>
-                    <li><a href="index.html#genres">広告・CM</a></li>
-                    <li><a href="index.html#genres">SNSショート</a></li>
-                    <li><a href="index.html#genres">展示会・イベント</a></li>
-                    <li><a href="index.html#genres">社内向け</a></li>
-                    <li><a href="index.html#genres">アニメーション・図解</a></li>
-                    <li><a href="index.html#genres">ミュージックビデオ</a></li>
+                    <li><a href="#genre-company">会社紹介</a></li>
+                    <li><a href="#genre-service">サービス紹介</a></li>
+                    <li><a href="#genre-recruit">採用</a></li>
+                    <li><a href="#genre-ad">広告・CM</a></li>
+                    <li><a href="#genre-sns">SNSショート</a></li>
+                    <li><a href="#genre-event">展示会・イベント</a></li>
+                    <li><a href="#genre-internal">社内向け</a></li>
+                    <li><a href="#genre-animation">アニメーション・図解</a></li>
+                    <li><a href="#genre-mv">ミュージックビデオ</a></li>
                 </ul>
             </nav>
 
@@ -248,7 +320,7 @@
                 <h2 class="f-head" id="f-site-h">サイトマップ</h2>
                 <ul class="f-list">
                     <li><a href="index.html#service">Service — 事業内容</a></li>
-                    <li><a href="index.html#genres">Genres — つくれる動画</a></li>
+                    <li><a href="#genres">Genres — つくれる動画とサンプル</a></li>
                     <li><a href="index.html#why">Why AI — 撮影しない理由</a></li>
                     <li><a href="index.html#process">Process — 制作の流れ</a></li>
                     <li><a href="works.html">Works — 制作サンプル</a></li>
@@ -332,5 +404,6 @@
         document.getElementById('year').textContent = new Date().getFullYear();
 
     </script>
+    <script src="assets/sample.js" defer></script>
 </body>
 </html>
