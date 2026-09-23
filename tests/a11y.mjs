@@ -104,17 +104,21 @@ for (const [file, w, h, label] of revealCases) {
 
 /* カードが実際に見えることまで確かめる（親に .in が付かないと消える） */
 {
-    const p = await open(browser, { page: 'works.html', height: 940 });
-    const h = await p.evaluate(() => document.body.scrollHeight);
-    for (let y = 0; y < h; y += 700) {
+    /* PCだけでなくスマホでも見る。背の高い塊は画面より大きいので、
+       割合（threshold）で判定していると永久に出てこない（2026-09-24）。 */
+    for (const [w, vh, mob] of [[1280, 940, false], [375, 667, true]]) {
+    const p = await open(browser, { page: 'works.html', width: w, height: vh, mobile: mob });
+    const docH = await p.evaluate(() => document.body.scrollHeight);
+    for (let y = 0; y < docH; y += Math.round(vh * 0.6)) {
         await p.evaluate((v) => window.scrollTo(0, v), y);
         await p.waitForTimeout(220);
     }
     await p.waitForTimeout(1200);
     const dim = await p.evaluate(() => [...document.querySelectorAll('.genre')]
         .filter((e) => +getComputedStyle(e).opacity < 0.9).length);
-    check('works.html のカード9枚が最後まで送れば見える', dim === 0, String(dim));
+    check(`works.html のカード9枚が最後まで送れば見える（${w}px）`, dim === 0, String(dim));
     await p.close();
+    }
 }
 
 await browser.close();
@@ -164,6 +168,12 @@ await browser.close();
         if (!html.includes('reveal-stagger')) { continue; }
         check(`${file} は reveal-stagger も監視している`,
               /querySelectorAll\('\.reveal, \.reveal-stagger'\)/.test(html));
+        /* 割合（threshold）だけで見ると、画面より背の高い塊は永久に出てこない。
+           出現アニメーションは rootMargin で判定していること。
+           ※ヒーロー動画の再生制御にも IntersectionObserver を使っているが、
+           そちらは画面いっぱいの要素なので割合で問題ない */
+        check(`${file} の出現アニメーションは rootMargin で判定している`,
+              /threshold: 0, rootMargin: '0px 0px -1\d% 0px'/.test(html));
     }
 }
 

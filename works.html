@@ -395,16 +395,33 @@
         window.addEventListener('scroll', onScroll, { passive: true });
         window.addEventListener('resize', onScroll, { passive: true });
 
-        const io = new IntersectionObserver((entries) => {
-            entries.forEach((e) => {
-                if (!e.isIntersecting) return;
-                e.target.classList.add('in');
-                io.unobserve(e.target);
+        /* 出現アニメーション。index.html と同じ作りにしてある（2026-09-24）。
+           ・.reveal-stagger も見る。カードの親だけがこのクラスで、
+             見落とすと中身が opacity:0 のまま消える
+           ・threshold を割合（0.12）で見ると、画面より背の高い塊は
+             「12%が同時に見える」状態を作れず永久に出てこない。
+             works.html のジャンル欄はスマホで6,000px以上あり、9枚とも
+             消えていた。塊の高さに依存しない rootMargin で判定する
+           ・IntersectionObserver が無い環境では、最初から見せる */
+        const revealEls = document.querySelectorAll('.reveal, .reveal-stagger');
+        if ('IntersectionObserver' in window) {
+            const io = new IntersectionObserver((entries) => {
+                entries.forEach((e) => {
+                    if (!e.isIntersecting) return;
+                    e.target.classList.add('in');
+                    io.unobserve(e.target);
+                });
+            }, { threshold: 0, rootMargin: '0px 0px -12% 0px' });
+            revealEls.forEach((el) => io.observe(el));
+        } else {
+            revealEls.forEach((el) => el.classList.add('in'));
+        }
+        /* 子要素を少しずつ遅らせて、順番に立ち上がって見えるようにする */
+        document.querySelectorAll('.reveal-stagger').forEach((group) => {
+            [...group.children].forEach((child, i) => {
+                child.style.transitionDelay = `${Math.min(i * 70, 560)}ms`;
             });
-        }, { threshold: 0.12 });
-        /* .reveal-stagger も見る。カードの親だけがこのクラスで、
-           見落とすと中身が opacity:0 のまま消える（2026-09-24 に works.html で発生）。 */
-        document.querySelectorAll('.reveal, .reveal-stagger').forEach((el) => io.observe(el));
+        });
 
         document.getElementById('year').textContent = new Date().getFullYear();
 
