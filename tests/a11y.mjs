@@ -121,4 +121,20 @@ await browser.close();
     }
 }
 
+
+/* ページの本文が自分自身にリンクしていないこと（2026-09-24）。
+   トップからジャンルの節を works.html へ移したとき、「9本まとめて見る」という
+   リンクが一緒に付いてきて、works.html が自分を指していた。
+   フッターのサイトマップは全ページを並べる場所なので対象外。 */
+{
+    for (const file of ['index.html', 'works.html', 'pricing.html', 'company-video.html',
+                        'about.html', 'privacy.html']) {
+        const html = readFileSync(`${ROOT}/${file}`, 'utf8');
+        const main = html.slice(html.indexOf('<main>'), html.indexOf('</main>'));
+        const self = [...main.matchAll(/<a[^>]*href="([^"#]+\.html)"/g)]
+            .map((m) => m[1]).filter((h) => h === file);
+        check(`${file} の本文が自分自身にリンクしていない`, self.length === 0, String(self.length));
+    }
+}
+
 report();
