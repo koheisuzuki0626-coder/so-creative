@@ -1,7 +1,7 @@
 /* 文言と実装がズレていないか。
    同じことを複数箇所に書いているので、片方だけ直すと嘘になる。
    ここはその突き合わせ専用。 */
-import { check, report, open, BASE, PW, TIERS, LENGTHS, leadWeeks, RATE } from './lib.mjs';
+import { check, report, open, BASE, PW, TIERS, LENGTHS, leadWeeks, RATE, PRICE, price, hours } from './lib.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 const pwmod = (await import(PW)).default;
@@ -906,7 +906,29 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     const keiyaku = readFileSync(`${ROOT}/${T}/業務委託契約書.md`, 'utf8');
     const seikyu = readFileSync(`${ROOT}/${T}/請求書.md`, 'utf8');
     const hearing = readFileSync(`${ROOT}/${T}/ヒアリングシート.md`, 'utf8');
+    const eigyo = readFileSync(`${ROOT}/${T}/営業文面.md`, 'utf8');
     const all = mitsu + keiyaku + seikyu;
+
+    /* 営業文面の「料金について聞かれたときの答え方」（9/23）。
+       金額と時間単価を本文に書いている以上、モデルとズレたら
+       お客様の前で違う数字を言うことになるので、ここで突き合わせる。
+       また「工数だからこの値段」と言わない方針そのものも守る
+       （価格の倍率 1.0/1.4/1.9 は市場向けの値で、工数の 1.0/1.22/1.36 とは違う） */
+    {
+        const y = (n) => `¥${n.toLocaleString('ja-JP')}`;
+        check('営業文面に料金の答え方がある', /料金について聞かれたときの答え方/.test(eigyo));
+        check('答え方の時間単価がモデルと合っている',
+            TIERS.every((t) => eigyo.includes(`${y(Math.round(price(t, 90, 1, 'ai') / hours(t, 90, 1, 'ai')))}/h`)),
+            TIERS.map((t) => Math.round(price(t, 90, 1, 'ai') / hours(t, 90, 1, 'ai'))).join());
+        check('答え方の金額がモデルと合っている',
+            eigyo.includes(y(PRICE.base)) && eigyo.includes(y(PRICE.noNarration))
+            && eigyo.includes(y(PRICE.narrationHuman)));
+        check('「工数だからこの値段」と言わない方針が書いてある',
+            /「工数だからこの値段」とは言わない/.test(eigyo)
+            && /価格は市場を見て決めています/.test(eigyo));
+        check('2人目がタダなことを取り繕わない方針が書いてある',
+            /段の中では同じです/.test(eigyo) && /取り繕って/.test(eigyo));
+    }
 
     check('ひな形3点が空でない', [mitsu, keiyaku, seikyu].every(x => x.length > 500));
     check('ひな形に税別・税抜が残っていない', !/税別|税抜/.test(all));
