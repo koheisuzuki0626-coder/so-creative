@@ -115,10 +115,14 @@ const track = window.soTrack || (() => {});
            仕上げの段階で工数が変わるので、納期も段によって変わる。
            修正を3回とも使う場合は、別途1回1週間ほど見てもらう(本文に明記) */
         const LEAD_WEEK_HOURS = 25, LEAD_REVIEW = 1;
-        const HOURS = { base: 3.0, perSec: 0.15, narration: 1.0 };   // 工数モデル（実測×約1.5）。tests/lib.mjs と同じ値
-        const leadWeeks = (sec, t, narN = 0) =>
-            Math.max(2, Math.round((HOURS.base + HOURS.perSec * t.hours * sec + HOURS.narration * narN) / LEAD_WEEK_HOURS + LEAD_REVIEW));
-        const leadTime = (sec, t, narN) => `約${leadWeeks(sec, t, narN)}週間`;
+        const HOURS = { base: 3.0, perSec: 0.15, perExtra: 1.5, narration: 1.0 };   // 工数モデル（実測×約1.5）。tests/lib.mjs と同じ値
+        /* 2026-09-24：本数ぶんの 1.5h/本 を足し忘れていて、複数本のときだけ
+           納期を短く見せていた（工数モデルには入っているのに納期だけ落ちていた）。
+           この式は上の「工数」の定義と1対1で対応させること */
+        const leadWeeks = (sec, t, narN = 0, n = 1) =>
+            Math.max(2, Math.round((HOURS.base + HOURS.perSec * t.hours * sec
+                + HOURS.perExtra * (n - 1) + HOURS.narration * narN) / LEAD_WEEK_HOURS + LEAD_REVIEW));
+        const leadTime = (sec, t, narN, n) => `約${leadWeeks(sec, t, narN, n)}週間`;
         const yen = (n) => `¥${n.toLocaleString('ja-JP')}`;
         /* 合計は選択肢に無い秒数になりうる（120+90=210秒など）ので、その場で組み立てる */
         const secLabel = (sec) => {
@@ -440,7 +444,7 @@ const track = window.soTrack || (() => {});
                 document.getElementById('calc-narfee').textContent =
                     narFeeNow < 0 ? `−${yen(-narFeeNow)}`
                     : approx ? `${yen(narFeeNow)}〜` : yen(narFeeNow);
-                document.getElementById('calc-lead-v').textContent = leadTime(sec, tier, narN);
+                document.getElementById('calc-lead-v').textContent = leadTime(sec, tier, narN, n);
                 settled(total);
 
                 /* 尺・本数は件名と内訳の両方に出るので、選んだ内容では繰り返さない。
@@ -453,7 +457,7 @@ const track = window.soTrack || (() => {});
                     `・仕上げ：${tier.label}（${tier.sub}）`,
                     `・ナレーション：${narJoin}`,
                     `・概算金額：${yen(total)}（税込）`,
-                    `・納品目安：${leadTime(sec, tier, narN)}`,
+                    `・納品目安：${leadTime(sec, tier, narN, n)}`,
                     '',
                     '■ 内訳',
                     `・基本料金：${yen(PRICE.base)}`,

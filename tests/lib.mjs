@@ -141,9 +141,11 @@ export const hoursModes = (t, sec, modes) =>
     HOURS.base + HOURS.perSec * t.hours * sec + HOURS.perExtra * (modes.length - 1)
     + HOURS.narration * narTracks(t, modes);
 export const hours = (t, sec, n, nar = 'ai') => hoursModes(t, sec, sameModes(n, nar));
+/* 納期 = 工数 ÷ 週25h ＋ 確認の往復1週（最低2週）。
+   2026-09-24：ここだけ hoursModes の 1.5h×(本数−1) を落としていて、
+   複数本のときに納期を短く見せていた。工数と別式にしない。 */
 export const leadWeeks = (t, sec, nar = 'ai', n = 1) =>
-    Math.max(2, Math.round((HOURS.base + HOURS.perSec * t.hours * sec
-        + HOURS.narration * narTracks(t, sameModes(n, nar))) / 25 + 1));
+    Math.max(2, Math.round(hoursModes(t, sec, sameModes(n, nar)) / 25 + 1));
 /* 目標の時間単価。以前の ¥14,900 は「60秒の松が32h かかる」という重いモデルからの
    逆算だった。モデルを実測に合わせた結果、同じ価格で ¥23,000/h を下回らない */
 export const RATE = 23000;
