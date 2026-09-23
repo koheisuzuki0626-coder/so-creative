@@ -928,6 +928,26 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
             && /価格は市場を見て決めています/.test(eigyo));
         check('2人目がタダなことを取り繕わない方針が書いてある',
             /段の中では同じです/.test(eigyo) && /取り繕って/.test(eigyo));
+
+        /* 金額を詰められたときの返し方（9/23）。下げていい限界を実数で
+           書いているので、料金や工数を動かしたらここもズレる。
+           とくに「梅は5〜6%しか下げられない」は、感覚で応じると壊れる線 */
+        const limit = (id, sec) => {
+            const t = TIERS.find((x) => x.id === id);
+            const nar = t.narration ? 'human' : 'ai';
+            return Math.round(RATE * 0.95 * hours(t, sec, 1, nar));
+        };
+        check('詰められたときの返し方がある', /金額を詰められたときの返し方/.test(eigyo));
+        check('下げていい限界がモデルと合っている',
+            [['ume', 30], ['ume', 90], ['take', 90], ['matsu', 90]]
+                .every(([id, sec]) => eigyo.includes(y(limit(id, sec)))),
+            [['ume', 30], ['ume', 90], ['take', 90], ['matsu', 90]].map(([i, s]) => limit(i, s)).join());
+        /* 30秒ぶんの差は尺によらず一定（秒単価 × 30）。本文にその額を書いている */
+        check('尺を縮めたときの差額が合っている',
+            eigyo.includes(y(TIERS[1].perSec * 30)));
+        check('値引きではなく構成で答える方針が書いてある',
+            /値引きで答えない。構成で答える/.test(eigyo) && /初回3社限定|最初の3社に限って/.test(eigyo));
+        check('引く基準が書いてある', /引くとき/.test(eigyo) && /当て馬/.test(eigyo));
     }
 
     check('ひな形3点が空でない', [mitsu, keiyaku, seikyu].every(x => x.length > 500));
