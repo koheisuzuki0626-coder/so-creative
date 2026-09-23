@@ -72,8 +72,14 @@ await p.close();
 
     await q.goto(`${BASE}/funnel.html`, { waitUntil: 'networkidle' });
     const t = await q.locator('body').innerText();
-    check('どこまで読んで帰ったかの表が出る',
-        /どこまで読んで帰ったか/.test(t) && /つくれる動画/.test(t) && /いちばん落ちているのは/.test(t));
+    /* 節は別表ではなく「どこで落ちているか」の段そのものに出す（9/23）。
+       2か所に置くと片方だけ古くなるので、表は持たない */
+    const labels = await q.locator('.step .lbl').allInnerTexts();
+    check('節が段として並んでいる',
+        labels.join() === 'サイトに来た,事業内容,撮影しない理由,つくれる動画,サンプル,制作の流れ,料金,条件を選んだ,相談まで進んだ',
+        labels.join());
+    check('料金より下の到達も出る', /料金より下まで読んだ人/.test(t));
+    check('節の別表を持っていない', !/どこまで読んで帰ったか/.test(t));
     await q.close();
 }
 
@@ -127,8 +133,11 @@ await visit(300, false); await visit(300, false); await visit(90, true);
 await p.goto(`${BASE}/funnel.html`, { waitUntil: 'networkidle' });
 await p.waitForTimeout(300);
 const steps = await p.locator('.step').evaluateAll(els => els.map(e => e.querySelector('.n').textContent.trim()));
-check('4段階が数えられる', steps.length === 4, JSON.stringify(steps));
-check('検討した人と相談した人が分かる', steps[2] === '3人' && steps[3] === '1人', JSON.stringify(steps));
+/* 9/23：料金までの節を段に組み込んだので 4段 → 9段
+   （訪問＋節6つ＋条件を選んだ＋相談まで進んだ） */
+check('9段階が数えられる', steps.length === 9, JSON.stringify(steps));
+check('検討した人と相談した人が分かる',
+    steps[7] === '3人' && steps[8] === '1人', JSON.stringify(steps));
 check('落ちた人数が一番上に出る', /2人/.test(await p.locator('.headline-num b').innerText()));
 const tbl = await p.locator('#bysec tbody tr').evaluateAll(els => els.map(e => [...e.querySelectorAll('td')].map(t => t.textContent.trim())));
 check('尺ごとの通過率が出る(値下げの判断材料)',
@@ -136,6 +145,6 @@ check('尺ごとの通過率が出る(値下げの判断材料)',
     JSON.stringify(tbl));
 check('落ちている尺に印が付く', (await p.locator('#bysec tbody tr.bad').count()) === 1);
 const bars = await p.locator('.bar').evaluateAll(els => els.map(e => e.getBoundingClientRect().width));
-check('棒に幅がある', bars.length === 4 && bars.every(w => w > 1), JSON.stringify(bars.map(Math.round)));
+check('棒に幅がある', bars.length === 9 && bars.every(w => w > 1), JSON.stringify(bars.map(Math.round)));
 await browser.close();
 report();

@@ -134,24 +134,6 @@
             const use = useS.size, cta = ctaS.size;
             const lost = use - cta;
 
-            const steps = [
-                ['サイトに来た',     visit, null],
-                ['料金を見た',       plans, visit],
-                ['条件を選んだ',     use,   plans],
-                ['相談まで進んだ',   cta,   use],
-            ];
-            const stepHtml = steps.map(([lbl, n, prev], i) => {
-                const p = prev === null ? '' : `${pct(n, prev)}%`;
-                const drop = prev !== null && prev > 0 && pct(n, prev) < 50 ? ' drop' : '';
-                const w = visit ? Math.max(2, (n / visit) * 100) : 2;
-                return `<div class="step${drop}">
-                    <span class="lbl">${esc(lbl)}</span>
-                    <span class="n">${n}人</span>
-                    <span class="p">${p}</span>
-                    <span class="bar-wrap"><span class="bar" style="width:${w}%"></span></span>
-                </div>`;
-            }).join('');
-
             /* 節ごとの到達。どこまで読んで帰ったかを出す。
                途中の節を飛ばしてスクロールすると記録が抜けるので、
                訪問ごとに「いちばん深く到達した節」を取り、そこまでは通ったとみなす。
@@ -169,30 +151,32 @@
             });
             const reach = SECTIONS.map((_, i) =>
                 [...deepest.values()].filter((d) => d >= i).length);
-            // いちばん落ちた段（前の段からの減りが最大）
-            let worst = -1, worstLost = 0;
-            reach.forEach((n, i) => {
-                const prev = i === 0 ? visit : reach[i - 1];
-                if (prev - n > worstLost) { worstLost = prev - n; worst = i; }
-            });
-            const secReach = deepest.size ? `
-                <table id="reach">
-                    <thead><tr>
-                        <th>どこまで読んだか</th><th class="num">来た人</th><th class="num">通過率</th>
-                    </tr></thead>
-                    <tbody>${SECTIONS.map(([, label], i) => {
-                        const n = reach[i];
-                        const prev = i === 0 ? visit : reach[i - 1];
-                        return `<tr class="${i === worst && worstLost > 0 ? 'bad' : ''}">
-                            <td>${esc(label)}</td>
-                            <td class="num">${n}</td>
-                            <td class="num">${prev ? pct(n, prev) + '%' : '—'}</td>
-                        </tr>`;
-                    }).join('')}</tbody>
-                </table>
-                ${worst >= 0 && worstLost > 0
-                    ? `<p class="hint">いちばん落ちているのは <b>${esc(SECTIONS[worst][1])}</b>（${worstLost}人）。</p>`
-                    : ''}` : '<p class="hint">まだ節ごとの記録がありません。トップページを下までスクロールすると溜まります。</p>';
+            const upto0 = SECTIONS.findIndex(([id]) => id === 'plans');
+            /* 料金より下は一本の流れにならない（計算機を触ってから
+               下まで読まずに帰る人がいる）ので、段には入れず一行で出す */
+            const below = SECTIONS.slice(upto0 + 1)
+                .map(([, label], i) => `${label} ${reach[upto0 + 1 + i]}人`).join('／');
+
+            /* 料金までの間にある節を、そのまま段として並べる。
+               「料金を見なかった人がどこで止まったか」は、ここに出ないと分からない。
+               節の到達は下の reach（いちばん深く到達した節から逆算したもの）を使う */
+            const steps = [
+                ['サイトに来た', visit, null],
+                ...SECTIONS.slice(0, upto0 + 1).map(([, label], i) => [label, reach[i], null]),
+                ['条件を選んだ', use, null],
+                ['相談まで進んだ', cta, null],
+            ].map((row, i, all) => [row[0], row[1], i === 0 ? null : all[i - 1][1]]);
+            const stepHtml = steps.map(([lbl, n, prev], i) => {
+                const p = prev === null ? '' : `${pct(n, prev)}%`;
+                const drop = prev !== null && prev > 0 && pct(n, prev) < 50 ? ' drop' : '';
+                const w = visit ? Math.max(2, (n / visit) * 100) : 2;
+                return `<div class="step${drop}">
+                    <span class="lbl">${esc(lbl)}</span>
+                    <span class="n">${n}人</span>
+                    <span class="p">${p}</span>
+                    <span class="bar-wrap"><span class="bar" style="width:${w}%"></span></span>
+                </div>`;
+            }).join('');
 
             // 尺ごとに「見た人」と「相談まで行った人」を出す。
             // どの価格帯で落ちているかが分かれば、下げる範囲を絞れる
@@ -231,17 +215,11 @@
 
                 <section>
                     <h2>どこで落ちているか</h2>
-                    <p class="hint">通過率が半分を切った段階に印を付けている。</p>
-                    ${stepHtml}
-                </section>
-
-                <section>
-                    <h2>どこまで読んで帰ったか</h2>
                     <p class="hint">
-                        上の4段は料金までの大きな流れ。ここは節ごとの内訳で、
-                        <b>料金にたどり着く前にどこで止まったか</b>が分かる。
+                        ページの節をそのまま段に並べている。通過率が半分を切った段に印を付けた。
                     </p>
-                    ${secReach}
+                    ${stepHtml}
+                    ${deepest.size ? `<p class="hint">料金より下まで読んだ人：${esc(below)}</p>` : ''}
                 </section>
 
                 <section>
