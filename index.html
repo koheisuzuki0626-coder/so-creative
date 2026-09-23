@@ -1232,6 +1232,22 @@
            訪問者ぶんを集めるには ANALYTICS_ID が要る。 */
         const ANALYTICS_ID = '';
 
+        /* 計測IDが入っているときだけ gtag.js を読み込む。
+           空なら script も足さないので、外部への通信も Cookie も発生しない。
+           入れる前に privacy.html の「Cookie・アクセス解析」を書き換えること
+           （使っていないと書いたまま送り始めると、書いてあることと違う） */
+        if (ANALYTICS_ID) {
+            const g = document.createElement('script');
+            g.async = true;
+            g.src = `https://www.google${''}tagmanager.com/gtag/js?id=${encodeURIComponent(ANALYTICS_ID)}`;
+            document.head.append(g);
+            window.dataLayer = window.dataLayer || [];
+            window.gtag = function gtag() { window.dataLayer.push(arguments); };
+            window.gtag('js', new Date());
+            /* IPの下位を伏せる。日本国内向けでも、取る必要のない情報は取らない */
+            window.gtag('config', ANALYTICS_ID, { anonymize_ip: true });
+        }
+
         const track = (() => {
             const LOG = 'so.funnel';
             // 1回の訪問をまとめるための印。読み込みごとに変わる

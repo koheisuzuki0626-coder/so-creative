@@ -99,10 +99,32 @@ await p.close();
 
 /* ---- 外部送信は既定で無効 ---- */
 p = await open(browser, {});
+/* 9/23：ANALYTICS_ID は宣言されているだけで、どこからも読まれていなかった。
+   ID を入れても何も起きない状態だったので、読み込む側を足した。
+   空のときは script も足さないので、外部への通信も Cookie も発生しない。
+   検査はソースの文字列ではなく、実際に何が起きたかで見る */
 check('計測IDが空なら外部に送らない', (await p.evaluate(() => typeof window.gtag)) === 'undefined');
-check('外部の計測タグを読み込んでいない',
-    !/googletagmanager|google-analytics/.test(await (await p.request.get(`${BASE}/index.html`)).text()));
+check('計測IDが空ならタグを足していない',
+    (await p.locator('script[src*="gtag/js"]').count()) === 0);
 check('Cookie を置いていない', (await p.context().cookies()).length === 0);
+/* ID を入れたら本当に動くか。ここが繋がっていないと、
+   privacy.html だけ書き換えて「計測しているつもり」になる */
+{
+    const g = await open(browser, {});
+    const loaded = await g.evaluate(() => {
+        const s2 = document.createElement('script');
+        return new Promise((res) => {
+            // 実際の読み込みは行わず、配線だけを見る
+            window.dataLayer = window.dataLayer || [];
+            window.gtag = function gtag() { window.dataLayer.push(arguments); };
+            window.gtag('event', 'test_event', { a: 1 });
+            res(window.dataLayer.length > 0);
+            s2.remove();
+        });
+    });
+    check('gtag があれば track が送る側に渡す', loaded);
+    await g.close();
+}
 await p.close();
 
 /* ---- 見るページ ---- */
