@@ -1000,7 +1000,9 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     }
 
     check('ひな形3点が空でない', [mitsu, keiyaku, seikyu].every(x => x.length > 500));
-    check('ひな形に税別・税抜が残っていない', !/税別|税抜/.test(all));
+    /* 9/23：営業文面だけ「（税別）」のままだった。サイトは全部 税込 なので、
+       メールで税別の額を伝えると見積書と食い違う。検査の対象に入れる */
+    check('ひな形に税別・税抜が残っていない', !/税別|税抜/.test(all + eigyo));
     check('ひな形3点とも消費税を別途請求しない旨がある',
         [mitsu, keiyaku, seikyu].every(x => /消費税を(別途請求|区分して請求)/.test(x)));
     check('支払条件がサイトと揃っている(全額を納品後・納品日から30日以内)',
@@ -1050,9 +1052,12 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     {
         check('ヒアリングシートがある', hearing.length > 500);
         const fromCalc = ['会社名', 'お名前', '映像の用途', '公開時期', '参考'];
+        /* 計算機は 9/23 に index.html から assets/pricing.js へ移った。
+           メール本文の項目はそちらを見る（index.html を見ていると素通りする） */
+        const calcJs = readFileSync(`${ROOT}/assets/pricing.js`, 'utf8');
         check('計算機のメール本文の項目を含んでいる',
-            fromCalc.every((w) => hearing.includes(w) && idx.includes(w)),
-            fromCalc.filter((w) => !(hearing.includes(w) && idx.includes(w))).join(','));
+            fromCalc.every((w) => hearing.includes(w) && calcJs.includes(w)),
+            fromCalc.filter((w) => !(hearing.includes(w) && calcJs.includes(w))).join(','));
         /* 段と尺と本数が決まらないと見積りが出せない。そこへ繋がる欄があること */
         check('見積りに必要な項目を聞いている',
             ['尺', '本数', 'ナレーション', '予算'].every((w) => hearing.includes(w)));
