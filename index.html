@@ -27,6 +27,9 @@
     <link rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=Zen+Kaku+Gothic+New:wght@300;400;500&display=swap">
     <link rel="stylesheet" href="assets/site.css">
+    <!-- JSが動く端末にだけ出現アニメーションを掛ける。この1行が無いと、
+         JSが届く前や動かないときにページが真っ白になる（2026-09-24） -->
+    <script>document.documentElement.classList.add('js');</script>
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",

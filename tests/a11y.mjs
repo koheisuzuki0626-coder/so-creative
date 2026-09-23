@@ -1,6 +1,9 @@
 /* 読みやすさ。全テキストのコントラストと、日本語の折り返し。 */
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { check, report, open, PW } from './lib.mjs';
 const pwmod = (await import(PW)).default;
+const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
 const browser = await pwmod.chromium.launch();
 for (const file of ['index.html', 'works.html', 'pricing.html', 'company-video.html', 'about.html', 'privacy.html',
                     'funnel.html', 'roadmap.html', 'record.html']) {
@@ -100,4 +103,22 @@ for (const [file, w, h, label] of revealCases) {
 }
 
 await browser.close();
+
+/* JSが動かない端末で真っ白にならないこと（2026-09-24 に実機で発生）。
+   .reveal を無条件に opacity:0 にしていたため、JSが届く前や動かないときに
+   ヘッダー以外が全部消えていた。隠すのは html に .js が付いてから。
+   JSを切ったページは evaluate できないので、ソースの作りで見る。 */
+{
+    const css = readFileSync(`${ROOT}/assets/site.css`, 'utf8');
+    check('隠すのは .js が付いてから', /\.js \.reveal \{[^}]*opacity: 0/.test(css),
+          (css.match(/^[^\n]*\.reveal \{[^\n]*/m) || [''])[0]);
+    check('無条件に隠していない', !/^\.reveal \{[^}]*opacity: 0/m.test(css));
+    for (const file of ['index.html', 'works.html', 'pricing.html', 'company-video.html',
+                        'about.html', 'privacy.html']) {
+        const html = readFileSync(`${ROOT}/${file}`, 'utf8');
+        check(`${file} に .js を付ける1行がある`,
+              /classList\.add\('js'\)/.test(html));
+    }
+}
+
 report();

@@ -1483,10 +1483,14 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
 .footer-bottom p { margin: 0; font-size: 0.83rem; color: #66666b; }
 
 /* ---------- Reveal ---------- */
-.reveal { opacity: 0; transform: translateY(30px); transition: opacity 0.9s var(--ease), transform 0.9s var(--ease); }
-.reveal.in { opacity: 1; transform: translateY(0); }
-.reveal-stagger > * { opacity: 0; transform: translateY(26px); transition: opacity 0.8s var(--ease), transform 0.8s var(--ease); }
-.reveal-stagger.in > * { opacity: 1; transform: translateY(0); }
+/* 出現アニメーション。隠すのは【JSが動くと分かってから】。
+   無条件に opacity:0 にしていると、JSが届く前や動かないときにページが
+   真っ白になる（2026-09-24 に実機で発生）。<head> の1行で html に .js が
+   付くので、付かなかった端末では最初から見える。 */
+.js .reveal { opacity: 0; transform: translateY(30px); transition: opacity 0.9s var(--ease), transform 0.9s var(--ease); }
+.js .reveal.in { opacity: 1; transform: translateY(0); }
+.js .reveal-stagger > * { opacity: 0; transform: translateY(26px); transition: opacity 0.8s var(--ease), transform 0.8s var(--ease); }
+.js .reveal-stagger.in > * { opacity: 1; transform: translateY(0); }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1000px) {
@@ -1552,7 +1556,7 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
 @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
     .scroll-hint::after, .skeleton .thumb, .skeleton .bar { animation: none; }
-    .reveal, .reveal-stagger > * { transition: none; opacity: 1; transform: none; }
+    .js .reveal, .js .reveal-stagger > * { transition: none; opacity: 1; transform: none; }
     .card.enter { animation: none; }
     .hero-inner, .stage-copy, .stack, .stage-bg, .stage-mark { transform: none !important; opacity: 1 !important; }
     /* 背景の映像は opacity を戻さない。0.22 は文字を読ませるための濃さで、
