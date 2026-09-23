@@ -722,11 +722,11 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         (await rm.evaluate(() => document.querySelector('meta[name="robots"]')?.content || '')).includes('noindex'));
     check('ロードマップで横溢れなし',
         (await rm.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 0);
-    /* 要約版なので長さそのものを見る。ここが膨らんだら分割した意味がなくなる。
-       上限の履歴：4000 →（9/21 入札の宿題）4200 →（9/21 収支の推移の表を載せると決めた）4900。
-       月ごとの推移は record.html に置いていたが、開業の可否を決める数字なので
-       ロードマップ側で読めるようにした。文章ではなく表なので、壁にはならない。 */
-    check('要約版が長くなりすぎていない', t.length < 4900, String(t.length));
+    /* 長さの上限は外した（2026-09-23・本人の判断）。
+       4000 →（9/21 入札の宿題）4200 →（9/21 収支の推移の表）4900 と上げてきて、
+       足すたびに上限に当たる状態になっていた。数えるのはやめ、
+       代わりに「折りたたみを置いていない」（下の検査）で読みやすさを守る。
+       記録として、外した時点の長さは約4,900字。 */
     await rm.close();
 }
 
