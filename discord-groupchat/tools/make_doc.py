@@ -45,20 +45,45 @@ TIER_NOTE = {"梅": "梅（標準）／人物は出ません",
              "竹": "竹（上）／登場人物2人まで",
              "松": "松（特上）／登場人物3人まで・人物ナレーション1名込み"}
 
+# 工数と納期（tests/lib.mjs の hoursModes / leadWeeks と同じ式）。
+#   工数 = 3.0h ＋ 0.15h×倍率×合計秒数 ＋ 1.5h×(本数−1) ＋ 1.0h×ナレーション本数
+#   納期 = 工数 ÷ 週25h ＋ 確認の往復1週（最低2週）
+HOUR_MULT = {"梅": 1.0, "竹": 1.22, "松": 1.36}
+HOURS = {"base": 3.0, "per_sec": 0.15, "per_extra": 1.5, "narration": 1.0}
+LEAD_WEEK_HOURS = 25
+LEAD_REVIEW = 1
+
 
 def yen(n):
     return f"{n:,}"
 
 
-def lead_time(sec, count):
-    total = sec * count
-    if total <= 30:
-        return "約2週間"
-    if total <= 120:
-        return "約2週間"
-    if total <= 300:
-        return "約2〜3週間"
-    return "約3〜4週間"
+def nar_tracks(tier, count, nar):
+    """工数に乗るナレーションの本数。入れない本は0。
+    松で人物を使う時だけ、秒単価に溶けている1本ぶんを引く。"""
+    if nar == "none":
+        return 0
+    return count - (1 if tier == "松" and nar == "human" else 0)
+
+
+def work_hours(tier, sec, count, nar):
+    return (HOURS["base"]
+            + HOURS["per_sec"] * HOUR_MULT[tier] * sec * count
+            + HOURS["per_extra"] * (count - 1)
+            + HOURS["narration"] * nar_tracks(tier, count, nar))
+
+
+def lead_time(tier, sec, count, nar):
+    """納期。サイトの計算機と同じ式で出す。
+
+    2026-09-24 まで固定の早見表（300秒以下は一律「約2〜3週間」など）だった。
+    63通り中33通りでサイトと食い違い、しかも**見積書の方が短い**という
+    守れない約束になっていた（竹300秒×3本で 約3〜4週間 と サイト 約8週間）。
+    尺だけの表では、本数とナレーションで増える工数を数えられない。
+    """
+    weeks = max(2, round(work_hours(tier, sec, count, nar)
+                         / LEAD_WEEK_HOURS + LEAD_REVIEW))
+    return f"約{weeks}週間"
 
 
 def calc(tier, sec, count, nar):
@@ -168,7 +193,7 @@ def main(argv=None):
         common |= {
             "番号": a.no or f"Q-{day:%Y%m%d}-01",
             "段": TIER_NOTE[a.tier],
-            "納期": lead_time(a.sec, a.count),
+            "納期": lead_time(a.tier, a.sec, a.count, a.nar),
             "修正": REVISIONS[a.tier],
             "備考": f"<li>{a.note}</li>" if a.note else "",
         }
@@ -180,7 +205,7 @@ def main(argv=None):
             "段": TIER_NOTE[a.tier],
             "尺本数": f"{a.sec}秒 × {a.count}本",
             "ナレーション": NAR[a.nar],
-            "納期": lead_time(a.sec, a.count),
+            "納期": lead_time(a.tier, a.sec, a.count, a.nar),
             "修正": REVISIONS[a.tier],
             "委託料": yen(total),
             "締結日": f"{day.year}年{day.month}月{day.day}日",

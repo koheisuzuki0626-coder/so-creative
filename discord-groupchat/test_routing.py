@@ -3033,6 +3033,31 @@ def run():
           "約15.2時間" in bot._quote_text(60, "松", 1, "human"), True)
     check("実測（74秒で11.5時間）は残す", round(bot.HOURS_MEASURED * 74, 1), 11.5)
 
+    # 納期も同じ工数から出す。2026-09-24 まで make_doc.py だけ固定の早見表で、
+    # 63通り中33通りサイトと食い違い、しかも**見積書の方が短かった**。
+    # 守れない納期を書類に書くのが一番まずい。
+    def _site_lead(tier, sec, count, nar):
+        """tests/lib.mjs の leadWeeks をそのまま写した参照実装。
+        納期 = 工数 ÷ 週25h ＋ 確認の往復1週（最低2週）"""
+        return f"約{max(2, round(_site_hours(tier, sec, count, nar) / 25 + 1))}週間"
+
+    _ng4 = []
+    for _tier in ("梅", "竹", "松"):
+        for _sec in (15, 30, 45, 60, 90, 120, 180, 300):
+            for _cnt in (1, 2, 3):
+                for _nar in ("ai", "human", "none"):
+                    if _md.lead_time(_tier, _sec, _cnt, _nar) != _site_lead(_tier, _sec, _cnt, _nar):
+                        _ng4.append(f"{_tier}{_sec}秒x{_cnt}本/{_nar}")
+    check("納期もサイトと同じ式", _ng4[:3], [])
+    # 早見表に戻すと、本数とナレーションで増える工数を数えられなくなる
+    check("短い案件は最低2週間", _md.lead_time("梅", 15, 1, "none"), "約2週間")
+    check("本数が増えれば納期も伸びる",
+          _md.lead_time("竹", 300, 3, "ai"), "約8週間")
+    check("見積書がサイトより短い納期を約束しない",
+          all(_md.lead_time(t, s, c, n) == _site_lead(t, s, c, n)
+              for t in ("梅", "竹", "松") for s in (180, 300)
+              for c in (1, 2, 3) for n in ("ai", "human", "none")), True)
+
     # 消費税は申し受けない（適格請求書発行事業者の登録をしていないため）。
     # 「小計＋消費税10%」に戻すと、同じ案件でサイトより高い書類が出る
     check("消費税を足していない", "消費税は申し受けません" in _make_doc_src(), True)
