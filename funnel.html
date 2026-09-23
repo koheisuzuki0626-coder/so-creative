@@ -152,6 +152,48 @@
                 </div>`;
             }).join('');
 
+            /* 節ごとの到達。どこまで読んで帰ったかを出す。
+               途中の節を飛ばしてスクロールすると記録が抜けるので、
+               訪問ごとに「いちばん深く到達した節」を取り、そこまでは通ったとみなす。
+               並びは index.html の SECTIONS と同じにすること */
+            const SECTIONS = [
+                ['service', '事業内容'], ['why', '撮影しない理由'], ['genres', 'つくれる動画'],
+                ['works', 'サンプル'], ['process', '制作の流れ'], ['plans', '料金'],
+                ['faq', 'よくあるご質問'], ['contact', 'お問い合わせ'],
+            ];
+            const deepest = new Map();   // 訪問ID → いちばん深い節の番号
+            rows.filter((r) => r.name === 'section_view').forEach((r) => {
+                const i = SECTIONS.findIndex(([id]) => id === r.id);
+                if (i < 0) return;
+                deepest.set(r.s, Math.max(deepest.get(r.s) ?? -1, i));
+            });
+            const reach = SECTIONS.map((_, i) =>
+                [...deepest.values()].filter((d) => d >= i).length);
+            // いちばん落ちた段（前の段からの減りが最大）
+            let worst = -1, worstLost = 0;
+            reach.forEach((n, i) => {
+                const prev = i === 0 ? visit : reach[i - 1];
+                if (prev - n > worstLost) { worstLost = prev - n; worst = i; }
+            });
+            const secReach = deepest.size ? `
+                <table id="reach">
+                    <thead><tr>
+                        <th>どこまで読んだか</th><th class="num">来た人</th><th class="num">通過率</th>
+                    </tr></thead>
+                    <tbody>${SECTIONS.map(([, label], i) => {
+                        const n = reach[i];
+                        const prev = i === 0 ? visit : reach[i - 1];
+                        return `<tr class="${i === worst && worstLost > 0 ? 'bad' : ''}">
+                            <td>${esc(label)}</td>
+                            <td class="num">${n}</td>
+                            <td class="num">${prev ? pct(n, prev) + '%' : '—'}</td>
+                        </tr>`;
+                    }).join('')}</tbody>
+                </table>
+                ${worst >= 0 && worstLost > 0
+                    ? `<p class="hint">いちばん落ちているのは <b>${esc(SECTIONS[worst][1])}</b>（${worstLost}人）。</p>`
+                    : ''}` : '<p class="hint">まだ節ごとの記録がありません。トップページを下までスクロールすると溜まります。</p>';
+
             // 尺ごとに「見た人」と「相談まで行った人」を出す。
             // どの価格帯で落ちているかが分かれば、下げる範囲を絞れる
             const bySec = new Map();
@@ -166,7 +208,7 @@
             });
             const secRows = [...bySec.values()].sort((a, b) => b.sec - a.sec);
             const secHtml = secRows.length ? `
-                <table>
+                <table id="bysec">
                     <thead><tr>
                         <th>尺</th><th class="num">金額</th>
                         <th class="num">見た人</th><th class="num">相談へ</th><th class="num">通過率</th>
@@ -191,6 +233,15 @@
                     <h2>どこで落ちているか</h2>
                     <p class="hint">通過率が半分を切った段階に印を付けている。</p>
                     ${stepHtml}
+                </section>
+
+                <section>
+                    <h2>どこまで読んで帰ったか</h2>
+                    <p class="hint">
+                        上の4段は料金までの大きな流れ。ここは節ごとの内訳で、
+                        <b>料金にたどり着く前にどこで止まったか</b>が分かる。
+                    </p>
+                    ${secReach}
                 </section>
 
                 <section>

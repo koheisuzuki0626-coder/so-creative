@@ -1770,13 +1770,30 @@
 
             render();
 
-            // 料金セクションが実際に画面に入ったか(母数)
-            const plans = document.getElementById('plans');
-            if (plans && 'IntersectionObserver' in window) {
+            /* どこまで読んで帰ったかを残す。料金だけ見ていても
+               「料金を見なかった人がどこで止まったか」が分からないので、
+               節ごとに1回だけ記録する。plans_view は母数として残す（既存の集計が使う） */
+            const SECTIONS = ['service', 'why', 'genres', 'works', 'process', 'plans', 'faq', 'contact'];
+            if ('IntersectionObserver' in window) {
+                const seen = new Set();
                 const io = new IntersectionObserver((es) => {
-                    if (es.some((e) => e.isIntersecting)) { track('plans_view'); io.disconnect(); }
-                }, { threshold: 0.25 });
-                io.observe(plans);
+                    for (const e of es) {
+                        if (!e.isIntersecting) continue;
+                        const id = e.target.id;
+                        if (seen.has(id)) continue;
+                        seen.add(id);
+                        track('section_view', { id });
+                        if (id === 'plans') track('plans_view');
+                        io.unobserve(e.target);
+                    }
+                /* threshold ではなく rootMargin で見る。つくれる動画の節は 4,000px 以上あり、
+                   画面に 25% 入りきらないので threshold だと一生発火しない。
+                   下を 20% 削って「画面の上 80% に入ったら到達」とする */
+                }, { threshold: 0, rootMargin: '0px 0px -20% 0px' });
+                for (const id of SECTIONS) {
+                    const el = document.getElementById(id);
+                    if (el) io.observe(el);
+                }
             }
 
             /* 離脱時の最終状態。used かつ !cta が「価格で黙って帰った人」。
