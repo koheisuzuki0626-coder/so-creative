@@ -1,0 +1,109 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<style>
+:root{--fg:#1d1d1f;--accent:#b08733;--line:rgba(0,0,0,.12);--muted:#8c8c92}
+*{box-sizing:border-box;margin:0}
+body{width:1200px;background:#fff;font-family:Inter,'Helvetica Neue',sans-serif;color:var(--fg);padding:48px 56px}
+h1{font-size:19px;font-weight:600;letter-spacing:.02em;margin-bottom:6px}
+.sub{font-size:13px;color:var(--muted);margin-bottom:34px}
+.row{display:flex;align-items:center;gap:36px;padding:30px 0;border-top:1px solid var(--line)}
+.tag{flex:none;width:112px;font-size:12px;color:var(--muted);line-height:1.6}
+.tag b{display:block;font-size:15px;color:var(--fg);font-weight:600;margin-bottom:3px}
+.stage{flex:1;display:flex;align-items:center;gap:56px}
+.note{flex:none;width:250px;font-size:11.5px;color:var(--muted);line-height:1.75}
+.mini{font-size:10px;color:var(--muted);margin-top:8px}
+
+/* A ワードマーク一本 */
+.wmA{display:inline-flex;align-items:center;font-size:46px;font-weight:600;letter-spacing:-.018em}
+.dashA{width:.30em;height:.075em;background:var(--accent);margin:0 .07em;border-radius:1px}
+.tailA{font-weight:300;font-size:.84em;letter-spacing:.005em}
+
+/* B 括弧で囲う */
+.wmB{display:inline-flex;align-items:center;font-size:46px;font-weight:600;letter-spacing:-.018em}
+.boxB{display:inline-flex;align-items:center;justify-content:center;
+  width:1.30em;height:1.30em;border:.085em solid var(--fg);border-radius:.26em;margin-right:.24em;font-size:.82em}
+.tailB{font-weight:300;font-size:.84em;margin-left:.16em;color:var(--fg)}
+.dotB{width:.19em;height:.19em;border-radius:50%;background:var(--accent);margin:0 .13em 0 .04em;align-self:center}
+
+/* C 下線 */
+.wmC{display:inline-block;font-size:46px;font-weight:600;letter-spacing:-.018em;
+  padding-bottom:.12em;border-bottom:.075em solid var(--accent)}
+.wmC .tail{font-weight:300;font-size:.84em}
+.wmC .dash{display:inline-block;width:.30em;height:.075em;background:var(--fg);vertical-align:.26em;margin:0 .07em;border-radius:1px}
+
+/* D 花を1色の線に */
+.wmD{display:inline-flex;align-items:center;gap:.30em;font-size:46px;font-weight:600;letter-spacing:-.018em}
+.tailD{font-weight:300;font-size:.84em}
+.dashD{display:inline-block;width:.30em;height:.075em;background:var(--accent);margin:0 .06em;border-radius:1px}
+
+/* 小さいとき・1色の確認 */
+.chip{display:flex;align-items:center;gap:14px;margin-top:12px}
+.sq{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  font-size:15px;font-weight:700;letter-spacing:-.02em}
+.sq.d{background:var(--fg);color:#fff}
+.sq.a{background:var(--accent);color:#fff}
+.sq.o{border:1px solid var(--line);color:var(--fg)}
+.small{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.small .t{font-weight:300}
+.small .h{display:inline-block;width:.30em;height:.09em;background:var(--accent);vertical-align:.28em;margin:0 .07em}
+.mono{filter:grayscale(1)}
+</style></head><body>
+<h1>so-creative ロゴ案</h1>
+<p class="sub">すべてHTML/CSSで組んで書き出し。文字の崩れなし・あとから何度でも調整可。右端は小さく使ったとき（favicon・名刺・白黒）の見え方。</p>
+
+<div class="row">
+  <div class="tag"><b>A</b>文字だけ</div>
+  <div class="stage">
+    <div><span class="wmA">so<i class="dashA"></i><span class="tailA">creative</span></span>
+      <div class="chip"><div class="sq d">so</div><div class="sq a">so</div><div class="sq o">so</div>
+        <span class="small mono">so<i class="h"></i><span class="t">creative</span></span></div>
+      <div class="mini">小さいとき／1色（白黒印刷・FAX）</div>
+    </div>
+    <p class="note"><b>いまの延長。</b>マークを使わず社名だけで立たせる。<br>金色のハイフンだけが色。<br><br>小さくしても読め、白黒でも潰れない。B2Bで最も外さない。</p>
+  </div>
+</div>
+
+<div class="row">
+  <div class="tag"><b>B</b>囲み＋文字</div>
+  <div class="stage">
+    <div><span class="wmB"><span class="boxB">so</span><span class="tailB">creative</span></span>
+      <div class="chip"><div class="sq d">so</div><div class="sq a">so</div><div class="sq o">so</div></div>
+      <div class="mini">囲みだけを favicon に使える</div>
+    </div>
+    <p class="note"><b>印になる部分を持つ。</b>「so」を角丸の枠に入れ、それ単体を小さい場所（favicon・SNSのアイコン）で使う。<br><br>社名が長くなっても、印は変わらない。</p>
+  </div>
+</div>
+
+<div class="row">
+  <div class="tag"><b>C</b>下線</div>
+  <div class="stage">
+    <div><span class="wmC">so<i class="dash"></i><span class="tail">creative</span></span>
+      <div class="chip"><div class="sq o">so</div><span class="small">so<i class="h"></i><span class="t">creative</span></span></div>
+      <div class="mini">横に伸びるので小さい正方形には不向き</div>
+    </div>
+    <p class="note"><b>映像の帯に寄せる。</b>下線をテロップ帯・タイムラインに見立てる。<br><br>横長なので、正方形のアイコンには別の案が要る。</p>
+  </div>
+</div>
+
+<div class="row">
+  <div class="tag"><b>D</b>花を残す</div>
+  <div class="stage">
+    <div><span class="wmD">
+      <svg width="52" height="52" viewBox="0 0 100 100" aria-hidden="true">
+        <g fill="none" stroke="#b08733" stroke-width="5" stroke-linejoin="round">
+          <path d="M50 14 C40 30 40 40 50 48 C60 40 60 30 50 14Z"/>
+          <path d="M84 39 C67 39 58 44 55 55 C66 60 75 57 84 39Z"/>
+          <path d="M16 39 C33 39 42 44 45 55 C34 60 25 57 16 39Z"/>
+          <path d="M71 79 C65 63 58 57 47 58 C46 70 52 77 71 79Z"/>
+          <path d="M29 79 C35 63 42 57 53 58 C54 70 48 77 29 79Z"/>
+        </g>
+      </svg>
+      so<i class="dashD"></i><span class="tailD">creative</span></span>
+      <div class="chip"><div class="sq o">✿</div><span class="mini">花だけを印にできる</span></div>
+    </div>
+    <p class="note"><b>いまの花を1色の線画に。</b>これまでのマークとのつながりが残る。<br><br>ただし花は「制作会社」より「工芸・サロン」に見えやすい。製造業の担当者に出す看板としては弱い。</p>
+  </div>
+</div>
+</body></html>
