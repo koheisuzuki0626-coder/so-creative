@@ -56,7 +56,7 @@ venv/bin/python tools/make_doc.py 業務委託契約書 --to 株式会社ABC \
 ```
 
 見積書の数字とサイトの計算機が食い違うと、それだけで信用を落とす。
-迷ったら https://koheisuzuki0626-coder.github.io/so-portfolio/#pricing で確認する。
+迷ったら https://koheisuzuki0626-coder.github.io/so-creative/pricing.html で確認する。
 
 ## 使い分け
 
