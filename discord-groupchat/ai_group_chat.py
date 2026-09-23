@@ -5991,16 +5991,24 @@ def _is_voice_sample(v):
 
 
 # 自分の料金表（サイトの計算機と同じ式）と、実測の工数。
+# ナレーションの調整は tools/make_doc.py の calc()／サイトの narFee と同じ形にする。
+# 2026-09-24：ここだけ「ナレーション一律＋3万円」という、サイトに存在しない
+# 古い式が残っていた（見積書側は同日に直した）。1か所でも違う式が残っていると、
+# お客様に出す書類と、自分が見るリサーチのまとめとで金額が食い違う。
 PRICE_BASE = 90000                  # 基本料
 PRICE_PER_SEC = {"梅": 3500, "竹": 4900, "松": 6650}
 PRICE_EXTRA_CUT = 65000             # 2本目以降
-PRICE_NARRATION = 30000             # ナレーション1本あたり
+PRICE_NARRATION_HUMAN = 70000       # 人物ナレーション（梅・竹。何本に入れても1名ぶん）
+PRICE_NO_NARRATION = 25000          # ナレーションを入れない本は1本につき引く
+PRICE_MATSU_TO_AI = 25000           # 松で人物を使わない時に返す「手配1回ぶん」
 HOUR_MULT = {"梅": 1.0, "竹": 1.22, "松": 1.36}
 HOURS_PER_SEC = 11.5 / 74           # 実測：本編59秒＋15秒版＝74秒で11.5時間
 
 MY_PRICING_NOTE = (
     "【自分の値段】秒単価 梅3,500／竹4,900／松6,650円、基本料9万円、"
-    "2本目以降＋6.5万円、ナレーション＋3万円。"
+    "2本目以降＋6.5万円、人物ナレーション＋7万円（何本に入れても1名ぶん。"
+    "松は秒単価に1名ぶんが込みで＋0円、使わないなら−2.5万円）、"
+    "ナレーションを入れない本は1本につき−2.5万円、AIナレーションは料金に込み。"
     "実測は74秒（本編59秒＋15秒版）で11.5時間、納品1秒あたり33クレジット。"
 )
 
@@ -6008,21 +6016,35 @@ _QUOTE_RE = re.compile(
     r"見積り条件[:：]\s*尺\s*=\s*(\d+)\s*秒?\s*[,、 ]*階層\s*=\s*([梅竹松])")
 
 
-def _quote_text(sec, tier, count=1, narration=False):
-    """自分の料金表で見積もる。
+def _quote_text(sec, tier, count=1, nar="ai"):
+    """自分の料金表で見積もる。nar は ai / human / none。
 
     AIに算数をさせない（2026-09-22：「20秒×4,900＋基本料9万」を17.8万円と
     書いて1万円ずれた。同じ回で梅の金額を出しながら松向きと結論もした）。
-    式はサイトの計算機と同じ。松はナレーション1本目が込み。
+    式はサイトの計算機（narFee）＝ tools/make_doc.py の calc() と同じにする。
+    ここを触るときは、必ず両方を見比べること。
+
+    まとめの「見積り条件」にはナレーションが書かれないので、既定は AI
+    （料金に込み＝加算なし）。出す行にもその前提を添える。黙って松だけ
+    人物ナレーション込みの額を出すと、見積書と2.5万円ずれる。
     """
     if tier not in PRICE_PER_SEC:
         return ""
     sec = max(1, int(sec))
-    nar = (max(0, count - 1) if tier == "松" else count) if narration else 0
-    yen = (PRICE_BASE + PRICE_PER_SEC[tier] * sec
-           + PRICE_EXTRA_CUT * max(0, count - 1) + PRICE_NARRATION * nar)
-    hours = HOURS_PER_SEC * sec * HOUR_MULT[tier]
-    return f"→ 自分の料金表だと **約{yen:,}円**／工数の見込み **約{hours:.1f}時間**"
+    count = max(1, int(count))
+    if tier == "松":                       # 人物1名が秒単価に溶けている
+        nar_fee = 0 if nar == "human" else -PRICE_MATSU_TO_AI
+    else:
+        nar_fee = PRICE_NARRATION_HUMAN if nar == "human" else 0
+    if nar == "none":
+        nar_fee -= PRICE_NO_NARRATION * count
+    yen = (PRICE_BASE + PRICE_PER_SEC[tier] * sec * count
+           + PRICE_EXTRA_CUT * (count - 1) + nar_fee)
+    hours = HOURS_PER_SEC * sec * count * HOUR_MULT[tier]
+    note = {"ai": "AIナレーション", "human": "人物ナレーション1名",
+            "none": "ナレーションなし"}[nar]
+    return (f"→ 自分の料金表だと **約{yen:,}円**（{note}の場合）"
+            f"／工数の見込み **約{hours:.1f}時間**")
 
 
 _QUOTE_WRAP = "『』「」【】〈〉《》\"\'`"

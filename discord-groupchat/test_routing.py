@@ -2930,10 +2930,15 @@ def run():
     # ずれた。同じ回で梅の金額を出しながら「松向き」とも結論した。
     check("竹20秒＝基本料9万＋9.8万", bot._quote_text(20, "竹").count("188,000"), 1)
     check("梅60秒＝基本料9万＋21万", bot._quote_text(60, "梅").count("300,000"), 1)
-    check("松はナレーション1本目が込み",
-          bot._quote_text(60, "松", 1, True) == bot._quote_text(60, "松", 1, False), True)
-    check("竹はナレーションが加算される",
-          bot._quote_text(60, "竹", 1, True) != bot._quote_text(60, "竹", 1, False), True)
+    check("松は人物ナレーション1名が込み",
+          bot._quote_text(60, "松", 1, "human").count("489,000"), 1)
+    check("松で人物を使わないなら手配ぶんを返す",
+          bot._quote_text(60, "松", 1, "ai").count("464,000"), 1)
+    check("竹は人物ナレーションが加算される",
+          bot._quote_text(60, "竹", 1, "human").count("454,000"), 1)
+    # 既定は AI ナレーション（まとめの見積り条件に種別が書かれないため）。
+    # どの前提で出した額かを行に書いておかないと、見積書との差を誤解する。
+    check("どの前提の額かを添える", "AIナレーションの場合" in bot._quote_text(60, "竹"), True)
     check("知らない階層は見積もらない", bot._quote_text(60, "特"), "")
     check("条件があれば計算を足す",
           "円" in bot._attach_quote("見積り条件: 尺=20秒 階層=竹"), True)
@@ -2991,6 +2996,18 @@ def run():
     check("松60秒・なしは二重に返す＝439,000",
           _md.calc("松", 60, 1, "none")[1], 439000)
     check("梅15秒・なし＝117,500", _md.calc("梅", 15, 1, "none")[1], 117500)
+    # リサーチのまとめに出す概算（_quote_text）も同じ式で出す。
+    # 2026-09-24：ここだけ「ナレーション一律＋3万円」という、サイトにも
+    # 見積書にも無い式が残っていた。松の既定が2.5万円高く出ていた。
+    _ng2 = []
+    for _tier in ("梅", "竹", "松"):
+        for _sec in (15, 30, 60, 120):
+            for _cnt in (1, 2):
+                for _nar in ("ai", "human", "none"):
+                    _want = _md.calc(_tier, _sec, _cnt, _nar)[1]
+                    if f"約{_want:,}円" not in bot._quote_text(_sec, _tier, _cnt, _nar):
+                        _ng2.append(f"{_tier}{_sec}秒x{_cnt}本/{_nar}")
+    check("まとめの概算も見積書と同額", _ng2[:3], [])
     # 消費税は申し受けない（適格請求書発行事業者の登録をしていないため）。
     # 「小計＋消費税10%」に戻すと、同じ案件でサイトより高い書類が出る
     check("消費税を足していない", "消費税は申し受けません" in _make_doc_src(), True)
