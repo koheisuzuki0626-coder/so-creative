@@ -1,7 +1,11 @@
-# so. — Portfolio
+# so-creative — Portfolio
+
+> **Mac のフォルダ名は `~/so-portfolio` のまま。**GitHub 側だけ `so-creative` に
+> 改名した（2026-09-23）。常駐設定（launchd）・CLAUDE.md・動作中のボットが
+> すべてこのパスを見ているため。両者は一致していなくてよい。
 
 映像ポートフォリオサイト(静的HTML / GitHub Pages)。
-公開URL: https://koheisuzuki0626-coder.github.io/so-portfolio/
+公開URL: https://koheisuzuki0626-coder.github.io/so-creative/
 
 ## 公開範囲
 
@@ -45,7 +49,7 @@ node scripts/set-site-url.mjs https://xxx.github.io/    # github.io へ(CNAME �
 | ファイル | 内容 |
 |----------|------|
 | `index.html` | トップ。サービス〜料金〜実績〜お問い合わせ |
-| `about.html` | 会社紹介(so. について)。トップのフッター「About — so. について」から辿れる |
+| `about.html` | 会社紹介(so-creative について)。トップのフッター「About — so-creative について」から辿れる |
 | `assets/site.css` | 2ページ共通のスタイル。**両方に効く**ので変更時は両ページを確認すること |
 
 ## 社内用ページ
@@ -86,7 +90,7 @@ P0 の残りタスク／崩れる条件。それ以外は `record.html`。
 | 入口 | クラウドソーシング | 紹介中心（クラウドは単価が半分以下） |
 | 出発点 | ポートフォリオ3作品から | サイト・料金表・実績23本がある |
 
-so. の料金表なら、独立条件だった「月30万」は 90秒1本（週4.1h）で超える。
+so-creative の料金表なら、独立条件だった「月30万」は 90秒1本（週4.1h）で超える。
 独立ロードマップのフェーズ1〜3は、サイトをつくった時点で飛ばせていた。
 
 ### ロードマップが2つだった（2026-09-23 に解消）
@@ -524,7 +528,7 @@ Higgsfield の規約では、送信した内容が AI モデルの学習に利�
 **`funnel.html` を開く。** これだけ。開発者ツールは要らない。
 
 ```
-https://koheisuzuki0626-coder.github.io/so-portfolio/funnel.html
+https://koheisuzuki0626-coder.github.io/so-creative/funnel.html
 ```
 
 - 一番上に「条件まで選んだのに相談せずに閉じた人」の数
@@ -569,7 +573,7 @@ https://koheisuzuki0626-coder.github.io/so-portfolio/funnel.html
 
 | いまの行 | 法人化後 |
 |----------|----------|
-| 屋号 `so.` | 商号（登記した正式名称） |
+| 屋号 `so-creative` | 商号（登記した正式名称） |
 | 代表者 | 代表取締役 |
 | 開業 | 設立 |
 | —— | 資本金（行を追加） |
@@ -619,42 +623,58 @@ Instagram はログインなしのスクレイピングを弾くので、YouTube
 
 ## ロゴ
 
-シンボルマーク（五弁の花）＋社名の組み。マークはヘッダー・フッターとも
+シンボルマーク（五弁花の線画）＋社名の組み。マークはヘッダー・フッターとも
 社名の左に置き、大きさは文字サイズに連動する（`1.62em`）ので画面幅が変わっても比率は崩れない。
-社名の「.」は録画ボタンの ● として **CSS の図形**で描いており（`.logo-dot`）、
-文字のピリオドに戻すとロゴでなくなる。どちらも e2e で固定してある。
+社名の区切りは **CSS の図形**で描いた金色のハイフン（`.logo-dash`）で、
+文字の `-` に戻すとブランドの色が消える。e2e で固定してある。
+
+### 2026-09-23 に作り直した
+
+社名が `so-creative` になったのに合わせ、マークを**極彩色の花から五弁花の線画へ**
+差し替えた。以前の絵は小さくすると溶け、白黒印刷で成立しなかった
+（見積書・請求書・FAX で使えない）。
+
+つまずいた点を3つ残しておく。同じことをやると同じ所で転ぶ。
+
+- **塗りから輪郭を機械的に抜かない。** 花びら1枚ずつの境目が消えて「網のボール」に見えた。
+  花びらを1枚ずつ描いて 72 度ずつ回している
+- **花びらの先を尖らせない。** 尖るほど葉に近づき、**大麻の葉に見える**
+- **枠（viewBox）を目分量で決めない。** 書き出して実測すること。
+  小サイズ版は四方が切れていた（絵は x 8.9〜91.1 ／ y 7.2〜86.6 まで広がっていた）
 
 | ファイル | 用途 |
 |----------|------|
-| `assets/logo-mark.png` | シンボルマーク。サイトが読むのはこれ（256px・減色済み 31KB） |
-| `assets/logo-full.png` | 茎まで入った原寸版（401px）。大きく使うとき |
-| `assets/logo-lockup.png` | マーク＋社名の組み。明るい地に置く用 |
-| `assets/logo-lockup-dark.png` | 同上、暗い地に置く用（社名が白・点が明るい金） |
-| `assets/logo-word.svg` / `logo-word-dark.svg` | 社名だけのワードマーク。文字はアウトライン化済み |
-| `assets/favicon.png` | ブラウザのタブ（64px・透過） |
-| `assets/apple-touch-icon.png` | iOS のホーム画面用（180×180）。透過は黒く潰れるので白地を敷いてある |
+| `assets/logo-mark.svg` | シンボルマーク（黒）。**サイトが読むのはこれ** |
+| `assets/logo-mark-gold.svg` | 同・金（`#b08733`）。大きく出す場所用 |
+| `assets/logo-mark-light.svg` | 同・白。暗い地に置く用 |
+| `assets/logo-mark-small.svg` | **輪を外して線を太らせた版**（線幅 4.6）。24px 以下はこちら |
+| `assets/logo-mark-small-gold.svg` | 同・金 |
+| `assets/logo-mark.png` | マークの PNG（512px）。SVG が使えない場所用 |
+| `assets/logo-full.png` | マーク＋社名の縦組み |
+| `assets/logo-lockup.png` | マーク＋社名の横組み。明るい地に置く用 |
+| `assets/logo-lockup-dark.png` | 同上、暗い地に置く用 |
+| `assets/favicon.png` | ブラウザのタブ（64px・透過・輪なし版） |
+| `assets/apple-touch-icon.png` | iOS のホーム画面用（180×180・輪なし版） |
 | `assets/ogp.png` | SNS 共有時の画像（1200×630） |
-| `assets/src/logo-original.jpg` | **元の絵**。ここから全部を作り直せる |
 
 ### 作り直すとき
 
-```
-npm i sharp
-node scripts/build-logo.mjs
-```
+`assets/src/` の HTML をブラウザで開いて書き出す（`lockup.html` / `ogp.html` / `full.html`）。
+**マークの SVG は元 HTML に直接書いてある。**`<img src>` で読むと、SVG が `viewBox` しか
+持たないためブラウザによって幅が 0 になったり、読み込み前に撮ってしまう。
+マークを直したら `assets/logo-mark*.svg` と元 HTML の両方を更新すること。
 
-元は白地の JPEG なので、外周から塗りつぶして「地に繋がっている白」だけを透明にしている。
-単純な白キーだと花の内側の淡い色まで穴が開くため。しきい値は暗い地でモヤが出ない値にしてある。
-
-`ogp.png` と `logo-lockup*.png` は `assets/src/` の HTML をブラウザで開いて
-書き出したもの（OGP は 1200×630、組みロゴは要素だけを背景透過で切り出し）。
+横組みは**旧寸法（749×372）に押し込まない**。社名が長くなって縦横比が変わったので、
+押し込むと横に潰れる。参照しているのはこの README だけなので寸法の制約は無い。
 
 ### 小さくしたときの見え方
 
-元の絵は細かい渦と細い輪郭でできているので、**30px 以下ではディテールが溶けて
-「色のついた花」までしか読めない**。ヘッダー（約 32px）とファビコン（16〜32px）は
-その前提で使っている。単色印刷やスタンプなど、色が使えない場面で必要になったら
-別途シルエット版を起こす必要がある。
+実際にその寸法で描いて確かめてある。**32px から花びらが 5 枚に分かれて読める。**
+16px では輪と花びらがくっつくので、輪を外して線を太らせた
+`logo-mark-small.svg` に切り替える（ファビコンと iOS アイコンはこちら）。
+
+線画なので単色で成立する。白黒印刷・FAX・印鑑でも同じ形で出るので、
+見積書・請求書・契約書にそのまま置ける。
 
 `about.html` はトップのようなスクロール演出やライトボックスを持たず、
 ヘッダーの導線もトップへ戻すだけの簡易版にしている(ドロップダウンなし＝ハンバーガーも不要)。
@@ -823,7 +843,7 @@ node scripts/setup-remote-control.mjs
 
 ```bash
 brew install tmux                 # 未インストールなら
-cd ~/so-portfolio
+cd ~/so-portfolio                 # Mac のフォルダ名は so-portfolio のまま
 tmux new -s claude                # claude という名前の常駐枠を作る
 claude                            # その中で起動(自動でスマホに繋がる)
 ```
