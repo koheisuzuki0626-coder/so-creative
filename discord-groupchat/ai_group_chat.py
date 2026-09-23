@@ -4448,10 +4448,14 @@ TREND_SEARCH_DAYS = int(os.getenv("TREND_SEARCH_DAYS", "90"))  # 検索対象は
 # 毎日の自動リサーチだけは短い窓で見る。90日＋再生数順だと上位が何ヶ月も
 # 入れ替わらず、分析済みを飛ばしても同じ固定ランキングを下へ辿るだけになる
 # （本人の指摘：「毎日のリサーチがいつも同じ動画」。2026-08-22）。
-TREND_DAILY_DAYS = int(os.getenv("TREND_DAILY_DAYS", "14"))
+# 毎日のリサーチが見る期間。14日にしていたのは、再生数順だと窓を狭めないと
+# 毎日同じ顔ぶれになったため。関連順に変えた今は不要で、むしろ有害だった
+# （企業VPの制作事例で直近14日に公開されたものはごく僅かで、雑多な新着しか
+#  残らない。2026-09-23）。分析済みを飛ばす仕組みがあるので顔ぶれは変わる。
+TREND_DAILY_DAYS = int(os.getenv("TREND_DAILY_DAYS", "180"))
 # 毎日のリサーチで、その中から選ぶ母数（TOP何本まで見るか）。
 # 検索APIは1回50件なので、既定は50（増やすとページを繰る）。
-TREND_POOL = int(os.getenv("TREND_POOL", "50"))
+TREND_POOL = int(os.getenv("TREND_POOL", "100"))
 
 
 def _query_variants(query):
@@ -4485,9 +4489,38 @@ _CORP_CHANNEL_RE = re.compile(
     r"\b(inc|corp|corporation|co\.,?\s*ltd|company)\b", re.I)
 _CORP_TITLE_RE = re.compile(
     r"会社紹介|企業紹介|事業紹介|コーポレート|corporate|ブランドムービー|"
-    r"ブランドフィルム|brand\s*(movie|film)|企業(VP|PV|CM|ムービー)|"
+    r"ブランドフィルム|brand\s*(movie|film)|企業(VP|PV|CM|PR|ムービー|動画)|"
     r"採用(動画|ムービー|映像)|リクルート(動画|ムービー)|周年(記念)?(動画|ムービー)|"
-    r"会社案内|社員インタビュー|1日密着|密着", re.I)
+    r"会社案内|社員インタビュー|1日密着|密着|"
+    # 2026-09-23 追加。制作会社の事例集は、まさに見たいものなのに
+    # 落ちていた（「【制作事例・〇〇様】サービス紹介動画」など）。
+    r"制作(事例|実績)|(サービス|製品|商品|施設|工場|学校|店舗)紹介|"
+    r"紹介(動画|ムービー|映像)|プロモーション(動画|ムービー|ビデオ)|"
+    r"PV制作|VP制作", re.I)
+
+
+# このお題は「企業VPを探している」と見なす語
+_CORP_QUERY_RE = re.compile(
+    r"会社紹介|企業|採用|コーポレート|事業紹介|ブランド|"
+    r"制作(事例|実績)|VP|PR動画|プロモーション", re.I)
+
+
+def _corp_gate(videos, query):
+    """企業VPのお題では、企業VPらしくないものを落とし、らしい順に並べ替える。
+
+    事故（2026-09-23）：「会社紹介動画 制作事例」で「TikTok崩壊話」
+    「Instagram運用代行」「外構ツアー」といった個人の喋り動画が選ばれていた。
+    らしさを測る _corporate_score は前からあったのに、どこからも
+    呼ばれていなかった（死んだコード）。
+    戻り値: (残った動画, 落とした本数)
+    """
+    if not (query and _CORP_QUERY_RE.search(query)):
+        return videos, 0
+    kept = [v for v in videos if _corporate_score(v) > 0]
+    if not kept:                 # 全部落ちる時は落とさない（0本で終わらせない）
+        return videos, 0
+    kept.sort(key=_corporate_score, reverse=True)
+    return kept, len(videos) - len(kept)
 
 
 def _corporate_score(v):
@@ -5915,7 +5948,8 @@ _NOT_PROMO_PATTERNS = (
     ("本編でない（舞台裏・反応・切り抜き）", re.compile(
         r"メイキング|舞台裏|making\s*of|behind\s*the\s*scenes|"
         r"リアクション|reaction|切り抜き|まとめてみた|"
-        r"(して|見て|聴いて)みた|比較してみた|検証してみた", re.I)),
+        r"(して|見て|聴いて)みた|比較してみた|検証してみた|"
+        r"対訳|和訳|歌詞付き|歌ってみた|弾いてみた|cover|カラオケ", re.I)),
     ("ゲーム・実況", re.compile(
         r"実況|ゲーム実況|gameplay|プレイ動画|攻略|roblox|minecraft", re.I)),
 )
@@ -6059,7 +6093,12 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
             _used_queries.append(_q)
             if len(videos) >= max(10, TREND_DEEP_COUNT * 3):
                 break
-        videos.sort(key=lambda v: v["views"], reverse=True)
+        # ここで再生数順に並べ替えてはいけない（2026-09-23）。
+        # APIから検索語との関連順で受け取ったものを、この1行が毎回
+        # 再生数順に戻していた。企業VPは数百〜数千回が普通なので、
+        # 並べ直すと検索語と関係の薄い有名動画が必ず上に来る。
+        # 並びはAPIの関連順のまま使う（企業VPのお題は _corp_gate が
+        # 「らしい順」に並べ替える）。
         if not videos:
             await _trend_say(channel, f"🔎 {label}に合う動画が見つかりませんでした。")
             return False
@@ -6108,6 +6147,10 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
         else:
             _kept.append(v)
     candidates = _kept
+    # 企業VPのお題では、企業VPらしくないものを落とす（らしい順に並ぶ）
+    candidates, _ungated = _corp_gate(candidates, query)
+    if _ungated:
+        _drop_why["企業VPでない"] = _drop_why.get("企業VPでない", 0) + _ungated
     _excluded = _before - len(candidates)
     if _drop_why:
         print("[trend] 除外: "
