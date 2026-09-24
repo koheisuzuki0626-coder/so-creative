@@ -159,6 +159,7 @@
         .c-svg .c-dot { stroke: #fff; stroke-width: 2; }
         .c-svg .c-dot.c-sa { fill: #c8841a; }
         .c-svg .c-dot.c-sb { fill: #1f6f9c; }
+        .c-svg .c-dot.c-sc { fill: #2f7d32; }
         .c-svg .c-lab { font-size: 16px; text-anchor: middle; fill: var(--ink); font-weight: 500; }
         .c-svg .c-lab.c-l { text-anchor: start; }
         .c-svg .c-end { font-size: 16px; font-weight: 500; fill: var(--ink); }
@@ -317,6 +318,8 @@
   <path d="M 46.0 199.4 L 81.3 201.5 L 116.7 170.3 L 152.0 172.4 L 187.3 168.6 L 222.7 152.5 L 258.0 136.5 L 293.3 120.4 L 328.7 104.4 L 364.0 88.3 L 399.3 72.2 L 434.7 56.2 L 470.0 40.1" class="c-line c-lc"/>
   <path d="M 46.0 253.9 L 81.3 255.9 L 116.7 258.0 L 152.0 260.1 L 187.3 256.3 L 222.7 240.2 L 258.0 224.2 L 293.3 208.1 L 328.7 192.1 L 364.0 176.0 L 399.3 159.9 L 434.7 143.9 L 470.0 127.8" class="c-line c-lb"/>
   <path d="M 46.0 253.9 L 81.3 258.0 L 116.7 262.2 L 152.0 266.4 L 187.3 264.7 L 222.7 250.7 L 258.0 236.7 L 293.3 222.7 L 328.7 208.8 L 364.0 194.8 L 399.3 180.8 L 434.7 166.8 L 470.0 152.9" class="c-line c-la"/>
+  <circle cx="46" cy="199.4" r="5" class="c-dot c-sc"/>
+  <text x="54" y="221.4" class="c-lab c-l">遡及 ＋180万</text>
   <line id="cash-cross" class="c-cross" x1="0" y1="24" x2="0" y2="272" style="display:none"/>
   <text x="52" y="285.4" class="c-lab c-l">底 −41.4万（年金ありなら −20.7万）</text>
   <text x="481" y="45.1" class="c-end">一時金まで<tspan x="481" dy="17">706.7万</tspan></text>
@@ -325,11 +328,9 @@
 </svg>
 <figcaption>
   <span class="c-lg"><i class="c-sw c-sa"></i>実額（いま確定しているぶんだけ）</span>
-  <span class="c-lg"><i class="c-sw c-sb"></i>＋障害年金（月6.9万）</span>
+  <span class="c-lg"><i class="c-sw c-sb"></i>＋障害年金（月6.9万）<b>※遡及なし</b></span>
   <span class="c-lg"><i class="c-sw c-sc"></i>＋一時金（遡及・再就職手当）</span>
-  <span class="c-cap">単位は万円。貯金ゼロからの累積。<b>数字は下の表と同じもの</b>で、グラフは形を見るためのもの。<br>
-  一番上の線は<b>遡及の約180万を持った状態で開業する</b>ので +180 から始まり、M+1 に<b>再就職手当110万</b>が乗る。
-  <b>一時金が入れば、底（−41.4万）は誤差になって一度も沈まない。</b>青と緑は<b>未請求・見込み</b>。</span>
+  <span class="c-cap">単位は万円。貯金ゼロからの累積。<b>数字は下の表と同じもの</b>で、グラフは形を見るためのもの。青と緑は<b>未請求・見込み</b>。<br><b>青と緑の差は「2024年8〜11月の診断書が取れるか」で決まる。</b>取れなければ事後重症請求になって<b>遡及は消え、月6.9万だけ</b>（青）。取れれば<b>遡及 約180万</b>が開業前に入るので、緑は +180 から始まる。さらに<b>再就職手当110万</b>が M+1 に乗る。<br><b>一時金が入れば、底（−41.4万）は誤差になって一度も沈まない。</b></span>
 </figcaption>
 <p class="c-tip" id="cash-tip">グラフを指でなぞる（PCならマウスを乗せる）と、その月の数字が出ます。</p>
 </figure>
