@@ -137,6 +137,43 @@
         .ck-local { margin-top: 14px; padding: 11px 15px; background: var(--bg-alt); border-radius: 9px;
                     font-size: .85rem; color: var(--ink-2); }
         .ck-local b { color: var(--ink); font-weight: 500; }
+
+        /* お金の推移の折れ線。2026-09-25 追加。
+           色は dataviz の validate_palette.js で検証して選んだ
+           （#c8841a × #1f6f9c：CVD ΔE 22.2 / 通常視 28.2 / 彩度・明度・コントラスト全てPASS）。
+           サイトの金（--accent #b08733）と緑（--ok）で組もうとしたら
+           通常視でも ΔE 11.9 で「色だけでは区別できない」と出たので使わなかった。
+           見込みの線は破線にしてある＝色だけに頼らせない（色覚・白黒印刷でも分かる）。
+           数字そのものは下の表が持つ。グラフは形を見るためのもの */
+        .c-fig { margin: 24px 0 0; }
+        .c-svg { width: 100%; max-width: 640px; height: auto; display: block; touch-action: pan-y; }
+        .c-svg .g { stroke: rgba(0,0,0,.08); }
+        .c-svg .c-g0 { stroke: rgba(0,0,0,.3); stroke-width: 1.5; }
+        .c-svg .c-ax { stroke: rgba(0,0,0,.18); }
+        .c-svg .c-ylab { fill: var(--ink-dim); font-size: 13px; text-anchor: end; font-variant-numeric: tabular-nums; }
+        .c-svg .c-xlab { fill: var(--ink-dim); font-size: 13px; text-anchor: middle; }
+        .c-svg .c-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+        .c-svg .c-la { stroke: #c8841a; }
+        .c-svg .c-lb { stroke: #1f6f9c; stroke-dasharray: 6 4; }
+        .c-svg .c-dot { stroke: #fff; stroke-width: 2; }
+        .c-svg .c-dot.c-sa { fill: #c8841a; }
+        .c-svg .c-dot.c-sb { fill: #1f6f9c; }
+        .c-svg .c-lab { font-size: 16px; text-anchor: middle; fill: var(--ink); font-weight: 500; }
+        .c-svg .c-end { font-size: 16px; font-weight: 500; fill: var(--ink); }
+        .c-svg .c-cross { stroke: rgba(0,0,0,.35); }
+        /* 狭い画面では目盛りを1つ飛ばしに間引く。全部出すと文字が重なる */
+        @media (max-width: 620px) { .c-svg .c-x2 { display: none; } }
+        .c-fig figcaption { margin-top: 12px; display: flex; flex-wrap: wrap;
+                            gap: 8px 20px; align-items: center; font-size: .88rem; color: var(--ink-2); }
+        .c-fig .c-lg { display: inline-flex; align-items: center; gap: 7px; }
+        .c-fig .c-sw { width: 22px; height: 0; border-top: 2px solid; display: inline-block; }
+        .c-fig .c-sw.c-sa { border-color: #c8841a; }
+        .c-fig .c-sw.c-sb { border-color: #1f6f9c; border-top-style: dashed; }
+        .c-fig .c-cap { flex-basis: 100%; color: var(--ink-dim); font-size: .84rem; }
+        .c-fig .c-tip { margin-top: 10px; font-size: .88rem; color: var(--ink-2);
+                        min-height: 1.6em; font-variant-numeric: tabular-nums; }
+        .c-fig .c-tip b { font-weight: 500; color: var(--ink); }
+
         .ck-local button { font: inherit; font-size: .85rem; color: var(--accent-ink); background: none;
                            border: 0; padding: 0; margin-left: 6px; cursor: pointer;
                            text-decoration: underline; text-underline-offset: 3px; }
@@ -267,6 +304,30 @@
             <li><b>右端の列</b>障害年金（月6.9万）は<b>まだ請求していない</b>。「通ったら」の見込み。
                 <b>左の実額と混ぜないこと</b>（上の P0）</li>
         </ul>
+<figure class="c-fig">
+<svg viewBox="0 0 600 340" class="c-svg" role="img" aria-labelledby="cash-t cash-d">
+  <title id="cash-t">手元のお金の推移（開業からの相対月・万円）</title>
+  <desc id="cash-d">実額は M+2 で −41.4万まで沈み、M+4 に ＋10.5万へ戻る。障害年金が通った場合は底が −20.7万に浅くなり、同じ M+4 で ＋45.0万になる。正確な数値はこの下の表にある。</desc>
+  <g class="c-grid"><line x1="46" y1="262.1" x2="470" y2="262.1" class="g"/><text x="37" y="266.6" class="c-ylab">-40</text><line x1="46" y1="242.2" x2="470" y2="242.2" class="c-g0"/><text x="37" y="246.7" class="c-ylab">0</text><line x1="46" y1="192.6" x2="470" y2="192.6" class="g"/><text x="37" y="197.1" class="c-ylab">100</text><line x1="46" y1="143.0" x2="470" y2="143.0" class="g"/><text x="37" y="147.5" class="c-ylab">200</text><line x1="46" y1="93.4" x2="470" y2="93.4" class="g"/><text x="37" y="97.9" class="c-ylab">300</text><line x1="46" y1="43.8" x2="470" y2="43.8" class="g"/><text x="37" y="48.3" class="c-ylab">400</text></g>
+  <line x1="46" y1="24" x2="46" y2="272" class="c-ax"/>
+  <text x="46.0" y="302" class="c-xlab ">開業</text><text x="81.3" y="302" class="c-xlab c-x2">M+0</text><text x="152.0" y="302" class="c-xlab ">M+2</text><text x="222.7" y="302" class="c-xlab c-x2">M+4</text><text x="293.3" y="302" class="c-xlab ">M+6</text><text x="364.0" y="302" class="c-xlab c-x2">M+8</text><text x="470.0" y="302" class="c-xlab ">M+11</text>
+  <path d="M 46.0 242.2 L 81.3 245.7 L 116.7 249.1 L 152.0 252.5 L 187.3 246.3 L 222.7 219.9 L 258.0 193.6 L 293.3 167.2 L 328.7 140.9 L 364.0 114.6 L 399.3 88.2 L 434.7 61.9 L 470.0 35.6" class="c-line c-lb"/>
+  <path d="M 46.0 242.2 L 81.3 249.1 L 116.7 255.9 L 152.0 262.8 L 187.3 259.9 L 222.7 237.0 L 258.0 214.1 L 293.3 191.2 L 328.7 168.3 L 364.0 145.4 L 399.3 122.5 L 434.7 99.5 L 470.0 76.6" class="c-line c-la"/>
+  <line id="cash-cross" class="c-cross" x1="0" y1="24" x2="0" y2="272" style="display:none"/>
+  <circle cx="152.0" cy="252.5" r="5" class="c-dot c-sb"/>
+  <circle cx="152.0" cy="262.8" r="5" class="c-dot c-sa"/>
+  <text x="152.0" y="236.5" class="c-lab">底 −20.7万</text>
+  <text x="152.0" y="279.8" class="c-lab">底 −41.4万</text>
+  <text x="481" y="40.6" class="c-end">年金が通れば<tspan x="481" dy="17">416.7万</tspan></text>
+  <text x="481" y="81.6" class="c-end">実額<tspan x="481" dy="17">333.9万</tspan></text>
+</svg>
+<figcaption>
+  <span class="c-lg"><i class="c-sw c-sa"></i>手元（実額）</span>
+  <span class="c-lg"><i class="c-sw c-sb"></i>手元（年金が通れば）<b>※未請求・見込み</b></span>
+  <span class="c-cap">単位は万円。貯金ゼロからの累積。<b>数字は下の表と同じもの</b>で、グラフは形を見るためのもの。</span>
+</figcaption>
+<p class="c-tip" id="cash-tip">グラフを指でなぞる（PCならマウスを乗せる）と、その月の数字が出ます。</p>
+</figure>
         <div class="wrap-x"><table class="t-wide">
             <thead><tr><th>時期</th><th>その月にやること</th><th class="num">入金</th><th class="num">支出</th><th class="num">手元（実額）</th><th class="num">手元（年金が通れば）</th></tr></thead>
             <tbody>
@@ -582,5 +643,40 @@
         }
     </script>
 
+
+    <script>
+    /* 折れ線のなぞり読み。スマホで見るページなので pointer で touch も拾う。
+       数字は下の表が正で、ここは補助。JSが動かなくてもグラフと表は読める */
+    (() => {
+        const svgEl = document.querySelector('.c-svg');
+        const tipEl = document.getElementById('cash-tip');
+        const crossEl = document.getElementById('cash-cross');
+        if (!svgEl || !tipEl || !crossEl) return;
+        const LABELS = ["開業", "M+0", "M+1", "M+2", "M+3", "M+4", "M+5", "M+6", "M+7", "M+8", "M+9", "M+10", "M+11"];
+        const XS = [46.0, 81.3, 116.7, 152.0, 187.3, 222.7, 258.0, 293.3, 328.7, 364.0, 399.3, 434.7, 470.0];
+        const VA = [0, -13.8, -27.6, -41.4, -35.7, 10.5, 56.7, 102.9, 149.1, 195.3, 241.5, 287.7, 333.9];
+        const VB = [0, -6.9, -13.8, -20.7, -8.1, 45.0, 98.1, 151.2, 204.3, 257.4, 310.5, 363.6, 416.7];
+        const baseText = tipEl.textContent;
+        const fmt = (v) => (v > 0 ? '＋' : v < 0 ? '−' : '±') + Math.abs(v).toFixed(1) + '万';
+        function showAt(clientX) {
+            const r = svgEl.getBoundingClientRect();
+            const vx = (clientX - r.left) / r.width * 600;
+            let k = 0;
+            for (let i = 1; i < XS.length; i++) {
+                if (Math.abs(XS[i] - vx) < Math.abs(XS[k] - vx)) k = i;
+            }
+            crossEl.setAttribute('x1', XS[k]);
+            crossEl.setAttribute('x2', XS[k]);
+            crossEl.style.display = '';
+            tipEl.innerHTML = '<b>' + LABELS[k] + '</b>　実額 <b>' + fmt(VA[k])
+                + '</b>　／　年金が通れば <b>' + fmt(VB[k]) + '</b>';
+        }
+        const clearTip = () => { crossEl.style.display = 'none'; tipEl.textContent = baseText; };
+        svgEl.addEventListener('pointermove', (e) => showAt(e.clientX));
+        svgEl.addEventListener('pointerdown', (e) => showAt(e.clientX));
+        svgEl.addEventListener('pointerleave', clearTip);
+        svgEl.addEventListener('pointercancel', clearTip);
+    })();
+    </script>
 </body>
 </html>
