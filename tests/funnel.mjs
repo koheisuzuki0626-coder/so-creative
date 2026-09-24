@@ -80,7 +80,7 @@ await p.close();
        2か所に置くと片方だけ古くなるので、表は持たない */
     const labels = await q.locator('.step .lbl').allInnerTexts();
     check('節が段として並んでいる',
-        labels.join() === 'サイトに来た,事業内容,撮影しない理由,つくれる動画,サンプル,制作の流れ,料金,条件を選んだ,相談まで進んだ',
+        labels.join() === 'サイトに来た,トップを開いた,事業内容,撮影しない理由,つくれる動画,サンプル,制作の流れ,料金,条件を選んだ,相談まで進んだ',
         labels.join());
     check('料金より下の到達も出る', /料金より下まで読んだ人/.test(t));
     check('節の別表を持っていない', !/どこまで読んで帰ったか/.test(t));
@@ -128,6 +128,10 @@ await p.close();
     const n = await q.locator('.step .n').allInnerTexts();
     const at = (name) => n[lbl.findIndex((x) => x.trim() === name)].trim();
     check('料金ページ直行でも訪問は1人', at('サイトに来た') === '1人', JSON.stringify(n));
+    /* 9/24：トップを開いていないので、トップの節の分母には入らない。
+       ここが 0 でないと「26人中7人しか読まなかった」のような誤った落ち方が出る */
+    check('トップを開いていない人はトップの分母に入らない',
+        at('トップを開いた') === '0人', JSON.stringify(n));
     check('そのページに無い節は通ったことにしない', at('事業内容') === '0人', JSON.stringify(n));
     check('そのページにある節は通ったことにする', at('料金') === '1人', JSON.stringify(n));
     await q.close();
@@ -272,10 +276,12 @@ await p.goto(`${BASE}/funnel.html`, { waitUntil: 'networkidle' });
 await p.waitForTimeout(300);
 const steps = await p.locator('.step').evaluateAll(els => els.map(e => e.querySelector('.n').textContent.trim()));
 /* 9/23：料金までの節を段に組み込んだので 4段 → 9段
-   （訪問＋節6つ＋条件を選んだ＋相談まで進んだ） */
-check('9段階が数えられる', steps.length === 9, JSON.stringify(steps));
+   （訪問＋節6つ＋条件を選んだ＋相談まで進んだ）。
+   9/24：トップを開いた人の段を足して 10段。料金ページに直接来た人は
+   トップの節を通らないので、分母を分けないと「ここで落ちる」と誤って出る */
+check('10段階が数えられる', steps.length === 10, JSON.stringify(steps));
 check('検討した人と相談した人が分かる',
-    steps[7] === '3人' && steps[8] === '1人', JSON.stringify(steps));
+    steps[8] === '3人' && steps[9] === '1人', JSON.stringify(steps));
 check('落ちた人数が一番上に出る', /2人/.test(await p.locator('.headline-num b').innerText()));
 const tbl = await p.locator('#bysec tbody tr').evaluateAll(els => els.map(e => [...e.querySelectorAll('td')].map(t => t.textContent.trim())));
 check('尺ごとの通過率が出る(値下げの判断材料)',
@@ -283,6 +289,6 @@ check('尺ごとの通過率が出る(値下げの判断材料)',
     JSON.stringify(tbl));
 check('落ちている尺に印が付く', (await p.locator('#bysec tbody tr.bad').count()) === 1);
 const bars = await p.locator('.bar').evaluateAll(els => els.map(e => e.getBoundingClientRect().width));
-check('棒に幅がある', bars.length === 9 && bars.every(w => w > 1), JSON.stringify(bars.map(Math.round)));
+check('棒に幅がある', bars.length === 10 && bars.every(w => w > 1), JSON.stringify(bars.map(Math.round)));
 await browser.close();
 report();
