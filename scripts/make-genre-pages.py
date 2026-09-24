@@ -130,7 +130,7 @@ def build(g):
                 <p class="body-text measure" style="margin-top:18px">{g['price_note']}</p>
                 <p class="body-text measure"><b>2本目以降は ¥65,000 です。</b>{g['second_note']}</p>
                 <div class="genre-calc">
-                    <p class="genre-calc-head">この尺で、いくらになるか</p>
+                    <p class="genre-calc-head">条件を変えて、いくらになるか</p>
                     <div class="calc" data-calc-len="{g['sample_sec']}" data-calc-id="{g['uid']}" data-calc-where="page-{g['uid']}"></div>
                 </div>
             </div>

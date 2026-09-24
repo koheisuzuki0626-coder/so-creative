@@ -1147,6 +1147,13 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
 }
 .calc-picks { background: #fff; padding: clamp(26px, 3.4vw, 40px); }
 
+/* ジャンルの中に置く料金表（2026-09-24）。計算機とセットで出す。
+   表で相場をつかんでから、計算機で自分の条件に寄せる、という順番 */
+.genre-price-table { margin-top: 20px; }
+.genre-price-table .compare-wrap { margin-top: 8px; }
+.genre-price-table table.compare { min-width: 460px; font-size: 0.9rem; }
+.genre-price-table table.compare th, .genre-price-table table.compare td { padding: 13px 14px; }
+
 /* ジャンルの中に置く計算機（2026-09-24）。
    つくれる動画からこのページへ来た人が、サンプルを見たその場で額を出せるようにする。
    ジャンルの本文より一段下げて、サンプルの付属だと分かるようにしてある */

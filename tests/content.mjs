@@ -721,6 +721,51 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         && locs.some((u) => u.endsWith('/so-creative/'))
         && want.every((f) => locs.some((u) => u.endsWith(`/${f}`))),
         `${locs.length}件 / ${want.length + 1}件`);
+    /* ---- 料金を出すページは、表と計算機の両方を載せる（2026-09-24） ----
+       表だけだと自分の条件の額が分からず、計算機だけだと相場がつかめない。
+       片方しか無いページがあると、そのページから来た人だけ情報が欠ける */
+    {
+        const BOTH = ['index.html', 'pricing.html', 'company-video.html', 'recruit-video.html',
+            'service-video.html', 'ad-video.html', 'sns-video.html',
+            'exhibition-video.html', 'internal-video.html', 'animation-video.html'];
+        for (const f of BOTH) {
+            const h = readFileSync(`${ROOT}/${f}`, 'utf8');
+            check(`${f} に料金表がある`,
+                /<tr><th scope="row">(15秒|30秒)<\/th>/.test(h));
+            check(`${f} に計算機がある`,
+                /class="calc[ "]/.test(h) && /<script[^>]+src="assets\/pricing\.js"/.test(h));
+        }
+        /* ミュージックビデオは料金表の対象外。どちらも置かない */
+        const mv = readFileSync(`${ROOT}/music-video.html`, 'utf8');
+        check('music-video.html はどちらも置かない',
+            !/<tr><th scope="row">(15秒|30秒)<\/th>/.test(mv) && !/class="calc[ "]/.test(mv));
+
+        /* works.html は8ジャンルとも表と計算機が並ぶ。額はモデルから出す */
+        const w = readFileSync(`${ROOT}/works.html`, 'utf8');
+        const arts = [...w.matchAll(
+            /<article class="genre" id="(genre-[a-z]+)">([\s\S]*?)<\/article>/g)];
+        const S = { '15秒': 15, '30秒': 30, '60秒': 60, '90秒': 90, '3分': 180 };
+        for (const [, gid, body] of arts) {
+            if (gid === 'genre-mv') {
+                check('works の mv は表も計算機も置かない',
+                    !/genre-price-table/.test(body) && !/class="calc"/.test(body));
+                continue;
+            }
+            check(`works の ${gid} に表と計算機が並んでいる`,
+                /genre-price-table/.test(body) && /class="calc"/.test(body));
+            const rows = [...body.matchAll(
+                /<tr><th scope="row">(15秒|30秒|60秒|90秒|3分)<\/th>((?:<td>[^<]*<\/td>){3})<\/tr>/g)];
+            check(`works の ${gid} の表がモデルと合っている`,
+                rows.length >= 3 && rows.every((m) => {
+                    const cells = [...m[2].matchAll(/<td>([^<]*)<\/td>/g)].map((x) => x[1]);
+                    return TIERS.every((t, i) => cells[i]
+                        === `¥${(PRICE.base + t.perSec * S[m[1]]).toLocaleString('ja-JP')}`);
+                }), `${rows.length}段`);
+            check(`works の ${gid} がナレーション込みだと書いている`,
+                /梅・竹はAIナレーション、松は人に読んでもらうぶん1名が含まれた額です/.test(body));
+        }
+    }
+
     /* ---- 用途別のページ（2026-09-24 に7つ足した） ----
        9ジャンルのうち専用ページがあるのは会社紹介と採用だけで、
        残り7つは works.html のアンカーだった。地域×用途の検索で
