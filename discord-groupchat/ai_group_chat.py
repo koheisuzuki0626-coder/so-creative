@@ -2315,7 +2315,9 @@ async def _gemini_recovery_loop():
             # 枠が戻るたびに、設定してあるジャンルを回す（1日の上限まで）。
             # 分析済みは飛ばすので、回すたびにリストの奥へ進む。
             _trend_redo.pop(cid, None)
-            _genres_now = _genres_of(gen_settings.get("trend_query")) or [None]
+            # 日替わりの切り出しは復活側でも同じものを使う。ここだけ全部にすると、
+            # 枠が戻るたびに設定した全ジャンルが走って枠を食い直す
+            _genres_now = _todays_genres(gen_settings.get("trend_query")) or [None]
             # すでに走っている時は起動しない。2本目の枠待ちの最中に
             # ここがもう1本立ち上げると、同じお題が二重に回る。
             _already = any("YouTubeリサーチ" in n for n, _ in _busy_tasks(cid))
@@ -6570,7 +6572,9 @@ _TREND_GENRE_SET_RE = re.compile(
     r"(?:毎日の|毎朝の|毎朝|自動)?\s*(?:リサーチ|調査|トレンド)"
     r"(?:の(?:ジャンル|テーマ|内容|対象|条件)\s*(?:は|を|、)?|\s*(?:は|を|、))\s*"
     r"(?:日替わりで|日替わりに|交互に)?\s*"
-    r"(.{1,60}?)\s*"
+    # 2026-09-25：9ジャンル設定すると103字になるので 60 → 160 に広げた。
+    # 拾いすぎの防止は、この後ろの「注文の形は落とす」判定が引き続き担う
+    r"(.{1,160}?)\s*"
     r"(?:の\s*[0-9０-９]+\s*(?:テーマ|ジャンル))?\s*(?:に|で)?\s*"
     r"(?:して|してほしい|絞って|しぼって|変えて|かえて|切り替えて|きりかえて|"
     r"限定|にして)\s*[。、!！]?$"
@@ -6596,6 +6600,29 @@ _GENRE_SPLIT_RE = re.compile(r"\s*(?:、|,|/|・|と|および|&)\s*")
 def _genres_of(query):
     """設定されたジャンル文字列を、個々のジャンルの一覧にする。"""
     return [g for g in _GENRE_SPLIT_RE.split((query or "").strip()) if g]
+
+
+# 1日に回すジャンルの数。2026-09-25：サイトに載せている9ジャンル全部を
+# リサーチしたくなったが、【毎朝その全部】だと 1ジャンル5本×9＝45本を
+# Gemini に視聴させることになり、無料枠が確実に足りない。
+# 枠切れで落ちたジャンルは「📭 分析できませんでした」で終わるので、
+# 増やすほど当たりが減るという逆効果になる。
+# そこで日替わりで n 個ずつ切り出して一巡させる。
+# 既定は2＝いまの消費（10本/日）と同じ。9ジャンルなら9日で一巡する。
+TREND_GENRES_PER_DAY = int(os.getenv("TREND_GENRES_PER_DAY", "2"))
+
+
+def _todays_genres(query, day=None, n=None):
+    """今日見るジャンル。設定が n 個より多いときだけ日替わりで切り出す。
+
+    同じ日は何度呼んでも同じものを返す（結果を再現できないと調査ができない）。
+    n 個以下しか設定していなければ、従来どおり全部を返す。"""
+    gs = _genres_of(query)
+    n = TREND_GENRES_PER_DAY if n is None else n
+    if not gs or n <= 0 or len(gs) <= n:
+        return gs
+    start = ((day or datetime.now(JST)).toordinal() * n) % len(gs)
+    return [gs[(start + i) % len(gs)] for i in range(n)]
 
 
 # 2本目以降を回す前に Gemini の枠が戻るのを待つ上限（既定90分）。
@@ -6723,7 +6750,10 @@ def _match_trend_genre(text):
     # 助詞があっても設定に触らせない。触ると翌朝そのままYouTubeを検索しに行く。
     if _TREND_GENRE_NG_RE.search(genre):
         return None
-    return "set", genre[:40]
+    # 2026-09-25：9ジャンル設定すると題材だけで101字になる。40字で切ると
+    # 「…、webc」のように途中で落ちて、黙って4ジャンルになっていた。
+    # 上の取り出し（160字）と揃える。長すぎるものを弾くのは別の判定の担当
+    return "set", genre[:160]
 
 
 def _match_trend_schedule(text, recent_topic=False):
@@ -6775,13 +6805,16 @@ async def _daily_trend_loop():
             # ジャンルを複数設定してあるときは、日替わりで1つではなく
             # 【毎日その全部】を順に見る（2026-09-18 の要望）。
             # 同時に走らせると Gemini の枠をすぐ使い切るので、1つずつ順番に。
-            _genres = _genres_of(gen_settings.get("trend_query"))
+            _genres = _todays_genres(gen_settings.get("trend_query"))
+            _all_genres = _genres_of(gen_settings.get("trend_query"))
             await send_as(
                 orch, cid,
                 f"📊 毎日の自動リサーチ（{now.strftime('%m/%d %H:%M')}）"
                 f"：{_wname}が"
                 + ("／".join(f"「{g}」" for g in _genres) + "で伸びている動画"
                    if _genres else "YouTube急上昇TOP100")
+                + (f"（全{len(_all_genres)}ジャンルを日替わりで一巡中）"
+                   if len(_all_genres) > len(_genres) else "")
                 + "を見てきます…"
             )
             _spawn(_run_trend_all(cid, _genres), cid, "YouTubeリサーチ")
@@ -6848,7 +6881,7 @@ async def _trend_drive_loop():
                 continue
             if any("YouTubeリサーチ" in n for n, _ in _busy_tasks(cid)):
                 continue                  # 走っている最中に二重に立てない
-            _spawn(_run_trend_all(cid, _genres_of(gen_settings.get("trend_query"))),
+            _spawn(_run_trend_all(cid, _todays_genres(gen_settings.get("trend_query"))),
                    cid, "YouTubeリサーチ")
         except Exception as e:  # noqa: BLE001
             print(f"[trend] 連続実行に失敗: {str(e)[:200]}")
@@ -14382,14 +14415,19 @@ async def _dispatch_message(message):
         # ジャンルが消えたように見える（本人から「会話が噛み合わない」。2026-08-25）
         _q = gen_settings.get("trend_query") or ""
         _gs = _genres_of(_q)
+        _per = min(TREND_GENRES_PER_DAY, len(_gs)) if _gs else 0
+        _rot = len(_gs) > _per
         _what = (f"「**{_q}**」で伸びている動画"
-                 + (f"（{len(_gs)}ジャンルとも毎日）" if len(_gs) > 1 else "")
+                 + (f"（{len(_gs)}ジャンルを日替わりで1日{_per}つずつ・"
+                    f"{len(_gs)}日で一巡）" if _rot
+                    else f"（{len(_gs)}ジャンルとも毎日）" if len(_gs) > 1 else "")
                  if _q else "YouTube急上昇**TOP100**")
         await message.channel.send(
             f"📊 毎日 **{_h}:{_m:02d}（JST）** に {_what}を"
             "リサーチして、このチャンネルに結果を投稿します。\n"
             + ("・" + "／".join(f"「{g}」" for g in _gs)
-               + " を毎朝この順で見ます\n" if len(_gs) > 1 else "")
+               + (" を日替わりで順に見ます（毎朝その日のぶんだけ）\n" if _rot
+                  else " を毎朝この順で見ます\n") if len(_gs) > 1 else "")
             + "・上位数本は実際に視聴して分析し、前に見た動画は飛ばします\n"
             "・勝ちパターンは学習して以降の企画に反映\n"
             "・無料です（YouTube APIとGeminiの無料枠のみ／クレジットは使いません）\n"

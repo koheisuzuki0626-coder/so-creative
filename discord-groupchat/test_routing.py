@@ -1499,6 +1499,35 @@ def run():
           "_all_excluded" in _srcV and "全部が営業素材" in _srcV, True)
     check("検索語の変え方を案内する", "リサーチのジャンルを" in _srcV, True)
 
+    print("■ ジャンルは日替わりで一巡させる（枠が足りないため）")
+    # 事故の芽（2026-09-25）：サイトの9ジャンル全部をリサーチしたくなったが、
+    # 毎朝その全部だと 1ジャンル5本×9＝45本を Gemini に視聴させることになり、
+    # 無料枠が確実に足りない。枠切れのジャンルは「📭 分析できませんでした」で
+    # 終わるので、増やすほど当たりが減る。日替わりで切り出して一巡させる。
+    _9 = "A、B、C、D、E、F、G、H、I"
+    check("設定が1日ぶん以下なら、そのまま全部返す",
+          bot._todays_genres("A、B", n=2), ["A", "B"])
+    check("多いときは1日ぶんだけ切り出す",
+          len(bot._todays_genres(_9, n=2)), 2)
+    from datetime import datetime as _dt
+    _d1 = _dt(2026, 9, 25, tzinfo=bot.JST)
+    check("同じ日は何度呼んでも同じ（結果を再現できる）",
+          bot._todays_genres(_9, day=_d1, n=2),
+          bot._todays_genres(_9, day=_d1, n=2))
+    check("日が変われば別のジャンルになる",
+          bot._todays_genres(_9, day=_d1, n=2)
+          != bot._todays_genres(_9, day=_dt(2026, 9, 26, tzinfo=bot.JST), n=2), True)
+    # 一巡して【全ジャンルが必ず出る】こと。ここが抜けると、永遠に
+    # 回ってこないジャンルができて型が溜まらない
+    _seen = set()
+    for _i in range(9):
+        _seen |= set(bot._todays_genres(
+            _9, day=_dt(2026, 9, 25, tzinfo=bot.JST).replace(day=25) if _i == 0
+            else _dt(2026, 9, 25, tzinfo=bot.JST).fromordinal(
+                _dt(2026, 9, 25).toordinal() + _i).replace(tzinfo=bot.JST), n=2))
+    check("9日で全9ジャンルが一巡する", sorted(_seen), list("ABCDEFGHI"))
+    check("空の設定でも落ちない", bot._todays_genres("", n=2), [])
+
     print("■ 毎日のリサーチのジャンルを変えられること")
     for _t, _want in (
         ("リサーチはアート系にして", ("set", "アート系")),
@@ -1681,8 +1710,11 @@ def run():
           "# 静かモードでは復活の通知も出さない" in _srcK, True)
     check("レポートに何巡目かを出す（回っていることが分かる）",
           "巡目>" in _srcK, True)
-    check("枠が戻るたびに設定した全ジャンルを回す",
-          "_genres_now = _genres_of(gen_settings.get(\"trend_query\")) or [None]"
+    # 2026-09-25：9ジャンルに増やしたので「全部を毎回」から「その日のぶん」へ。
+    # ここだけ全ジャンルのままにすると、枠が戻るたびに9ジャンルが走って
+    # 枠を食い直し、朝のぶんが落ちる
+    check("枠が戻るたびに、その日のぶんのジャンルを回す",
+          "_genres_now = _todays_genres(gen_settings.get(\"trend_query\")) or [None]"
           in _srcK and "_run_trend_all(cid, _genres_now)" in _srcK, True)
     check("リサーチが止めてある時・上限超過では回さない",
           "if _trend_conf()[0] and _trend_can_run() and not _already:" in _srcK,
@@ -3314,6 +3346,16 @@ def run():
           bot._genres_of(bot._match_trend_genre(
               "自動リサーチを日替わりでMVと広告に切り替えて")[1]),
           ["MV", "広告"])
+    # 2026-09-25：9ジャンル設定すると題材だけで103字になる。
+    # 取り出しの上限が60字だと丸ごと読めず、設定が黙って失敗していた
+    _long = ("会社紹介動画 制作事例、サービス紹介動画 制作事例、採用動画 制作事例、"
+             "webcm、SNS広告 縦型 事例、展示会 サイネージ 動画、社内報 動画、"
+             "アニメーション 説明動画 制作事例、ミュージックビデオ")
+    _got = bot._match_trend_genre(f"リサーチのジャンルを {_long} にして")
+    check("9ジャンルぶんの長い指定も読める", _got and _got[0], "set")
+    check("9ジャンルに割れる",
+          len(bot._genres_of(_got[1])) if _got else 0, 9)
+
     check("聞き返しの受け皿がある",
           "リサーチの何を変えるか読み取れませんでした" in bot_src(), True)
     # 時刻・停止の指定は、これまでどおりそちらで処理される
