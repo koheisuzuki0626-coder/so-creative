@@ -44,7 +44,7 @@ DASH_W, DASH_H = 0.30 * EM, 0.075 * EM       # .logo-dash
 DASH_MARGIN = 0.06 * EM
 DASH_LIFT = 0.30 * EM                        # transform: translateY(-.30em)
 
-INK, GOLD = '#1d1d1f', '#b08733'
+INK, ACCENT = '#1d1d1f', '#1c5c45'   # 2026-09-24：金から深緑へ
 
 def build(ink):
     d_so, x = run('inter500.ttf', 'so', MAIN_FS, MAIN_TRACK, 0.0)
@@ -70,7 +70,7 @@ def build(ink):
        文字はアウトライン化してあるので、フォントが無くても同じ形で出る。
        作り直すときは、ヘッダー側の数値（.82em / .30em / .075em / .06em / .04em）と合わせること。 -->
   <path fill="{ink}" d="{d_so}"/>
-  <rect x="{dash_x:.2f}" y="{dash_y:.2f}" width="{DASH_W:.2f}" height="{DASH_H:.2f}" rx="1" fill="{GOLD}"/>
+  <rect x="{dash_x:.2f}" y="{dash_y:.2f}" width="{DASH_W:.2f}" height="{DASH_H:.2f}" rx="1" fill="{ACCENT}"/>
   <path fill="{ink}" d="{d_tail}"/>
 </svg>
 '''

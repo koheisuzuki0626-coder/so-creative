@@ -117,7 +117,7 @@
                 ['4. 相談まで進んだ', cta,   pct(cta, use)],
             ];
             // console.table が読みづらい環境もあるので、文字でも出す
-            console.log('%c so-creative ファネル ', 'background:#1d1d1f;color:#d9b45f;font-weight:600');
+            console.log('%c so-creative ファネル ', 'background:#1d1d1f;color:#79c2a1;font-weight:600');
             steps.forEach(([name, n, p]) => {
                 console.log(`${name.padEnd(16, '　')} ${String(n).padStart(4)}人  ${String(p).padStart(4)}  ${bar(n)}`);
             });

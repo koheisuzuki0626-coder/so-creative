@@ -4,7 +4,7 @@
        やり方だと花びらの境目が消えて網に見えたため（2026-09-23）。
        中心は y=50。55にしていたとき、輪が枠の下へはみ出して縦長に見えた。
        小さく使うときは輪を外す（24px以下で輪と花びらがくっつく）。 -->
-  <g fill="none" stroke="#b08733" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round">
+  <g fill="none" stroke="#1c5c45" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round">
     <circle cx="50" cy="50" r="46" stroke-width="1.4400000000000002" opacity="0.55"/>
     <path d="M 50 52 C 26 44, 24 22, 45 12 Q 50 7, 55 12 C 76 22, 74 44, 50 52 Z" transform="rotate(0 50 50)"/>
     <path d="M 50 52 C 26 44, 24 22, 45 12 Q 50 7, 55 12 C 76 22, 74 44, 50 52 Z" transform="rotate(72 50 50)"/>

@@ -5,9 +5,12 @@
     --ink-dim: #6e6e73;
     --ink-2: #3d3d41;               /* 読ませる本文。--ink よりわずかに軽い */
     --line: rgba(0, 0, 0, 0.10);
-    --accent: #b08733;              /* 装飾用(罫線・グラデーション) */
-    --accent-ink: #856420;          /* 文字用。白/薄灰の上で AA を満たす濃さ */
-    --accent-soft: rgba(176, 135, 51, 0.14);
+    /* ブランドの色。2026-09-24 に金（#b08733 系）から深緑へ変えた。
+       濃い地の上では明るいほう（#79c2a1）を使う。site.css 内を検索すれば全部出る。
+       ロゴの SVG と PNG（lockup / full / ogp）にも同じ色が入っている */
+    --accent: #1c5c45;              /* 装飾用(罫線・グラデーション・ロゴの区切り) */
+    --accent-ink: #14503c;          /* 文字用。白/薄灰の上で AA を満たす濃さ（9.4:1） */
+    --accent-soft: rgba(28, 92, 69, 0.14);
     --max: 1120px;
     --ease: cubic-bezier(0.28, 0.11, 0.32, 1);
     --nav-h: 52px;
@@ -124,7 +127,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
 .pill-ghost:hover { border-color: var(--ink); transform: translateY(-1px); }
 /* 黒い帯（Contact）の上に置く主ボタン。背景が黒なので白抜きにする */
 .pill-invert { background: #fff; color: var(--ink); }
-.pill-invert:hover { background: #d9b45f; color: #1d1d1f; transform: translateY(-1px); }
+.pill-invert:hover { background: #79c2a1; color: #1d1d1f; transform: translateY(-1px); }
 
 /* ---------- Logo ---------- */
 /* シンボルマーク(花)＋社名の組み。
@@ -182,7 +185,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     top: 0; left: 0;
     height: 2px; width: 0%;
     z-index: 160;
-    background: linear-gradient(90deg, var(--accent), #d9b45f);
+    background: linear-gradient(90deg, var(--accent), #79c2a1);
     transition: width 0.1s linear;
 }
 #nav {
@@ -212,7 +215,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
 #nav.on-dark { background: rgba(0, 0, 0, 0.6); border-bottom-color: rgba(255,255,255,0.12); }
 #nav.on-dark .logo { color: #f5f5f7; }
 #nav.on-dark .logo-dot,
-#nav.on-dark .logo-dash { background: #d9b45f; }
+#nav.on-dark .logo-dash { background: #79c2a1; }
 #nav.on-dark .nav-item { color: rgba(245,245,247,0.66); }
 #nav.on-dark .nav-item:hover, #nav.on-dark .nav-item.active,
 #nav.on-dark .nav-trigger[aria-expanded="true"] { color: #fff; }
@@ -263,7 +266,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
 #nav.on-dark .nav-uses { border-top-color: rgba(255, 255, 255, 0.18); }
 #nav.on-dark .nav-uses a { color: rgba(245, 245, 247, 0.66); }
 #nav.on-dark .nav-uses a:hover { color: #fff; }
-#nav.on-dark .nav-uses a[aria-current="page"] { color: #d9b45f; }
+#nav.on-dark .nav-uses a[aria-current="page"] { color: #79c2a1; }
 
 .nav-item {
     position: relative;
@@ -443,7 +446,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     font-weight: 400;
     letter-spacing: 0.12em;
     color: var(--accent-ink);
-    border: 1px solid rgba(176,135,51,0.38);
+    border: 1px solid rgba(28,92,69,0.38);
     background: rgba(255,255,255,0.66);
     border-radius: 980px;
     padding: 6px 16px;
@@ -559,7 +562,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
 }
 .stage-dark { background: #000; color: #f5f5f7; }
 .stage-dark .body-text { color: #a1a1a6; }
-.stage-dark .eyebrow, .cta-band .eyebrow { color: #d9b45f; }
+.stage-dark .eyebrow, .cta-band .eyebrow { color: #79c2a1; }
 .stage-light { background: var(--bg-alt); }
 
 .stage-bg {
@@ -606,7 +609,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     border-radius: 50%;
     border: 1.6px solid var(--accent);
 }
-.stage-dark .stage-list li::before { border-color: #d9b45f; }
+.stage-dark .stage-list li::before { border-color: #79c2a1; }
 
 /* ステージ右側のビジュアル(サムネイルを重ねたスタック) */
 .stack {
@@ -806,7 +809,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     transition: opacity 0.5s ease;
     pointer-events: none;
 }
-.genre:hover { transform: translateY(-6px); box-shadow: 0 28px 56px -34px rgba(0,0,0,0.35); border-color: rgba(176,135,51,0.4); }
+.genre:hover { transform: translateY(-6px); box-shadow: 0 28px 56px -34px rgba(0,0,0,0.35); border-color: rgba(28,92,69,0.4); }
 .genre:hover::after { opacity: 1; }
 .genre:target { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
 .genre-no { font-size: 0.72rem; font-weight: 500; letter-spacing: 0.2em; color: var(--accent-ink); }
@@ -866,7 +869,7 @@ table.compare thead th {
 table.compare thead th:last-child { color: var(--accent-ink); }
 table.compare tbody th { width: 24%; font-weight: 400; }
 table.compare td.old { color: var(--ink-dim); }
-table.compare td.new { font-weight: 400; color: var(--ink); background: rgba(176,135,51,0.05); }
+table.compare td.new { font-weight: 400; color: var(--ink); background: rgba(28,92,69,0.05); }
 table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 0; }
 
 /* ---------- Process ---------- */
@@ -919,7 +922,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     border: 1px solid var(--line);
     color: var(--ink-dim);
 }
-.who.human { color: var(--accent-ink); border-color: rgba(176,135,51,0.4); }
+.who.human { color: var(--accent-ink); border-color: rgba(28,92,69,0.4); }
 .flow-note {
     margin-top: 46px;
     padding: 26px 28px;
@@ -948,7 +951,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
 }
 .plan:hover { transform: translateY(-5px); box-shadow: 0 26px 54px -34px rgba(0,0,0,0.3); }
 .plan-featured {
-    border-color: rgba(176,135,51,0.5);
+    border-color: rgba(28,92,69,0.5);
     box-shadow: 0 20px 50px -32px rgba(0,0,0,0.35);
 }
 .plan-badge {
@@ -1306,7 +1309,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     font: inherit; font-size: 0.9rem;
     display: inline-flex; align-items: baseline; gap: 8px;
     padding: 8px 16px; border-radius: 980px;
-    border: 1px dashed rgba(176,135,51,0.5);
+    border: 1px dashed rgba(28,92,69,0.5);
     background: transparent; color: var(--ink-2); cursor: pointer;
     transition: background 0.22s ease, border-color 0.22s ease;
 }
@@ -1543,7 +1546,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     word-break: break-all;
     transition: color 0.3s ease, border-color 0.3s ease;
 }
-.cta-mail:hover { color: #d9b45f; border-color: #d9b45f; }
+.cta-mail:hover { color: #79c2a1; border-color: #79c2a1; }
 /* メールアドレスだけだと、とくにスマホで押せるものに見えない。
    文字組みとしてのアドレスは残したまま、押す先をボタンで明示する */
 .cta-actions { margin-top: 26px; }

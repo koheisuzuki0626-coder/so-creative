@@ -1434,8 +1434,10 @@ for (const f of ['assets/logo-word.svg', 'assets/logo-word-dark.svg',
 for (const f of ['assets/logo-word.svg', 'assets/logo-word-dark.svg']) {
     const t = await (await page.request.get(`${BASE}/${f}`)).text();
     check(`${f} の文字がアウトライン化されている`, !/<text[\s>]/.test(t));
-    /* 金色の区切りが図形で入っていること（文字の「-」にすると色を変えられない） */
-    check(`${f} に金色の区切りがある`, /<rect[^>]*#b08733/.test(t));
+    check(`${f} に旧ブランド色（金）が残っていない`, !/b08733|856420|d9b45f/i.test(t));
+    /* ブランド色の区切りが図形で入っていること（文字の「-」にすると色を変えられない）。
+       2026-09-24 に金から深緑へ変えた。CSS の --accent と同じ値であること */
+    check(`${f} にブランド色の区切りがある`, /<rect[^>]*#1c5c45/.test(t));
 }
 await browser.close();
 report();
