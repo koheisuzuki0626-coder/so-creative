@@ -776,13 +776,36 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
 .genre-note strong { color: var(--ink); font-weight: 500; }
 
 /* ---------- Comparison ---------- */
+/* 表が画面より広いとき、横に続きがあることを見せる（2026-09-24）。
+   スマホ（390px）では4列の表が 292px ぶんはみ出し、いちばん高い「松」の列が
+   まるごと画面の外に出ていた。印が無いので、見られないまま帰る人がいた。
+   端に影を出す。background-attachment: local の層が content と一緒に動くので、
+   端まで送ると影が自然に消える。JS を使わないため、JS が動かない端末でも出る */
 .compare-wrap {
     margin-top: 12px;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     border-radius: 20px;
     border: 1px solid var(--line);
-    background: #fff;
+    background:
+        linear-gradient(to right, var(--bg) 40%, rgba(255, 255, 255, 0)) 0 0 / 34px 100% no-repeat local,
+        linear-gradient(to left, var(--bg) 40%, rgba(255, 255, 255, 0)) 100% 0 / 34px 100% no-repeat local,
+        radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0)) 0 0 / 16px 100% no-repeat scroll,
+        radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0)) 100% 0 / 16px 100% no-repeat scroll,
+        var(--bg);
 }
+/* キーボードだけで操作する人も横へ送れるように、入れ物自体を focus できるようにする */
+.compare-wrap:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 3px; }
+
+/* 影だけだと気づかない人がいるので、狭いときは言葉でも出す */
+.swipe-hint {
+    display: none;
+    margin: 9px 2px 0;
+    font-size: 0.82rem;
+    color: var(--ink-dim);
+}
+.swipe-hint::before { content: "↔ "; }
+@media (max-width: 760px) { .swipe-hint { display: block; } }
 table.compare { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 0.96rem; }
 table.compare th, table.compare td {
     padding: 22px 24px;

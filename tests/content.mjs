@@ -580,6 +580,48 @@ for (const [f, html] of [['index.html', idx], ['about.html', about], ['privacy.h
 const rb = await (await page.request.get(`${BASE}/robots.txt`)).text();
 check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) && !/Disallow: \//.test(rb));
 
+/* ---- 検索に出す／出さないの足並み（2026-09-24） ----
+   sitemap.xml は公開5ページを載せているのに、全ページが noindex だった。
+   いまは公開前なので意図どおりだが、切り替えのときに片方だけ直すと
+   「sitemap では出しておいて中身は拒否する」食い違った状態が残る。
+   noindex の有無と、robots.txt が sitemap を出しているかを、必ず一緒に動かす */
+{
+    const PUBLIC = ['index.html', 'pricing.html', 'works.html',
+        'company-video.html', 'about.html', 'privacy.html'];
+    const INTERNAL = ['funnel.html', 'roadmap.html', 'record.html'];
+    const robotsOf = async (f) => {
+        const h = await (await page.request.get(`${BASE}/${f}`)).text();
+        return (h.match(/name="robots" content="([^"]*)"/) || [])[1] ?? '';
+    };
+    const pub = [];
+    for (const f of PUBLIC) pub.push([f, await robotsOf(f)]);
+    const noindexed = pub.filter(([, v]) => /noindex/.test(v)).map(([f]) => f);
+    check('公開ページの noindex が全部そろっている',
+        noindexed.length === 0 || noindexed.length === PUBLIC.length,
+        pub.map(([f, v]) => `${f}:${v || '-'}`).join(' '));
+
+    for (const f of INTERNAL) {
+        check(`${f} は社内用なので必ず noindex`, /noindex/.test(await robotsOf(f)));
+    }
+
+    const sm = await (await page.request.get(`${BASE}/sitemap.xml`)).text();
+    const locs = [...sm.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+    const advertised = /^\s*Sitemap:/m.test(rb);
+    /* 公開前は sitemap を robots.txt から出さない。出すのは noindex を外すのと同時 */
+    check('noindex の間は robots.txt が sitemap を出していない',
+        noindexed.length === 0 ? advertised : !advertised,
+        `noindex:${noindexed.length} sitemap行:${advertised}`);
+    /* sitemap が載せてよいのは公開ページだけ。社内用が混ざると外から辿られる */
+    check('sitemap に社内用のページが入っていない',
+        !INTERNAL.some((f) => locs.some((u) => u.endsWith(`/${f}`))), locs.join(' '));
+    check('sitemap の中身が公開ページの並びと合っている',
+        locs.length === 5 && locs.every((u) => u.endsWith('/')
+            || PUBLIC.some((f) => u.endsWith(`/${f}`))), locs.join(' '));
+    /* 切り替えの手順を書いた場所が消えていないこと。消えると順番を思い出せない */
+    check('公開に切り替える手順が sitemap.xml に書いてある',
+        /noindex, nofollow を外す/.test(sm) && /Sitemap: の行を足す/.test(sm));
+}
+
 /* ---- ロードマップ(社内用・要約版) ----
    9/17 に2ページに割った。roadmap.html は判断だけを短く置き、
    根拠（各段階の中身・松2本の実測・12ヶ月の計算）は record.html に移した。

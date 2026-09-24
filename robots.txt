@@ -1,4 +1,9 @@
 # 検索結果には出さない方針。各ページの <meta name="robots" content="noindex"> で制御する。
 # ここで Disallow にすると noindex 自体を読んでもらえなくなるので、クロールは許可する。
+#
+# 公開に切り替えたら、下の Sitemap: の行のコメントを外す。
+# 手順は sitemap.xml の先頭に書いてある（noindex を外すのと同時にやること）。
 User-agent: *
 Allow: /
+
+# Sitemap: https://koheisuzuki0626-coder.github.io/so-creative/sitemap.xml

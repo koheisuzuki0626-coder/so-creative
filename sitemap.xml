@@ -1,4 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  いまは検索に出していない。全ページに <meta name="robots" content="noindex, nofollow"> が入っている。
+  このファイルは「公開に切り替えたとき、どのページを出すか」の一覧として先に用意してあるもの。
+
+  公開に切り替えるときは、次を一度にやる（片方だけだと、
+  sitemap では出しておいて中身は拒否する、という食い違った状態になる）。
+
+    1. 公開6ページの <meta name="robots"> から noindex, nofollow を外す
+       （index / pricing / works / company-video / about / privacy）
+    2. funnel.html・roadmap.html・record.html は社内用。noindex のまま残す
+    3. robots.txt に Sitemap: の行を足す
+    4. 下の <loc> が公開ページと合っているか確かめる（tests/content.mjs が見ている）
+
+  privacy.html はここには入れない。検索から直接来る種類のページではないため。
+-->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
   <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/about.html</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
