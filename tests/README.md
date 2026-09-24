@@ -7,12 +7,23 @@
 ## 走らせ方
 
 ```
-python3 -m http.server 8899 --directory . &
 node tests/run.mjs
 ```
 
-個別に走らせるなら `node tests/pricing.mjs` など。
-配信先を変えるなら `BASE=http://127.0.0.1:8899 node tests/run.mjs`。
+**配信サーバーは run.mjs が自分で立てて、終わったら落とす**（2026-09-24）。
+それまでは手で立てる前提で、立てっぱなしのサーバーが毎回残っていた。
+すでに 8899 が応答していればそちらを使い、**横から落とさない**
+（手で立てて開発している最中のため）。
+
+個別に走らせるときは、サーバーが要る。
+
+```
+python3 -m http.server 8899 --directory . &
+node tests/pricing.mjs
+```
+
+配信先を変えるなら `BASE=https://... node tests/run.mjs`。
+外のホストを指したときは run.mjs は立てない。
 
 Playwright は既定で `/opt/node22/lib/node_modules/playwright` を見る。
 別の場所にあるときは `PW=/path/to/playwright/index.js node tests/run.mjs`。
