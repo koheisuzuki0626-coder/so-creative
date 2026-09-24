@@ -421,6 +421,79 @@ check('金額の表示は税込で揃っている',
     /* 人物ナレーションの額は、実績の注釈・FAQ・計算機の3か所に出る。
        どれかだけ直すとここが落ちる */
     check('人物ナレーションの値段が実績でも料金表と同じ', /1名 ¥70,000〜/.test(works));
+
+    /* ---- ジャンルごとの料金の目安（2026-09-24） ----
+       トップの「つくれる動画」から works.html へ飛ぶと、サンプルは見られるのに
+       いくらかが分からないまま帰る形になっていた。サンプルの実尺で目安を出す。
+       金額は料金ページと同じ式から出すので、手で打ち直すとここで落ちる。
+       ミュージックビデオだけは料金表の対象外なので、目安を出さない */
+    {
+        const y = (n) => `¥${n.toLocaleString('ja-JP')}`;
+        const SEC = { 'genre-company': 60, 'genre-service': 15, 'genre-recruit': 180,
+            'genre-ad': 15, 'genre-sns': 15, 'genre-event': 15,
+            'genre-internal': 15, 'genre-animation': 60 };
+        const blocks = [...worksSrc.matchAll(
+            /<article class="genre" id="(genre-[a-z]+)">([\s\S]*?)<\/article>/g)]
+            .map((m) => [m[1], m[2]]);
+        check('ジャンルは9つある', blocks.length === 9, String(blocks.length));
+        for (const [id, body] of blocks) {
+            const has = /class="genre-price"/.test(body);
+            if (id === 'genre-mv') {
+                check('ミュージックビデオには目安を出さない', !has);
+                continue;
+            }
+            check(`${id} に料金の目安がある`, has);
+            const sec = SEC[id];
+            /* 表に出している額は 基本料金 ＋ 秒単価 × 尺 そのもの。
+               梅・竹はAIナレーション込み、松は人物ナレーション1名ぶん込みの額 */
+            check(`${id} の目安がモデルと合っている`,
+                TIERS.every((t) => body.includes(`${t.label} ${y(PRICE.base + t.perSec * sec)}`)),
+                TIERS.map((t) => PRICE.base + t.perSec * sec).join());
+            check(`${id} の目安から料金ページへ行ける`,
+                /href="pricing\.html#plans"/.test(body));
+        }
+    }
+
+    /* トップの料金表が料金ページと同じ段を出していること。
+       9/24 まで 30秒・60秒・3分 の3行しか出しておらず、15秒（SNS・展示会）と
+       90秒（会社紹介でいちばん多い尺）が抜けていた */
+    {
+        const rowsOf = (html) => [...html.matchAll(
+            /<tr><th scope="row">(15秒|30秒|60秒|90秒|3分)<\/th>((?:<td>[^<]*<\/td>){3})<\/tr>/g)]
+            .map((m) => [m[1], [...m[2].matchAll(/<td>([^<]*)<\/td>/g)].map((x) => x[1])]);
+        const idxRows = rowsOf(idx);
+        const priRows = rowsOf(pricingHtml);
+        check('トップの料金表が5段ある',
+            idxRows.length === 5, idxRows.map((r) => r[0]).join());
+        check('トップと料金ページの表が一致している',
+            JSON.stringify(idxRows) === JSON.stringify(priRows.slice(0, 5)),
+            `${idxRows.map((r) => r[0]).join()} / ${priRows.map((r) => r[0]).join()}`);
+        const SECS = { '15秒': 15, '30秒': 30, '60秒': 60, '90秒': 90, '3分': 180 };
+        const y = (n) => `¥${n.toLocaleString('ja-JP')}`;
+        /* 9/24：見出しが「ナレーションなし」だったが、表の額は
+           基本料金＋秒単価×尺そのもの。梅・竹はAIナレーション込み、
+           松は人物1名ぶん込みの額で、計算機で「なし」を選ぶと
+           松60秒で ¥489,000 → ¥439,000 と5万ずれていた。
+           同じ条件で違う額を出す状態を、3ページとも作らない */
+        for (const [name, html] of [['index.html', idx], ['pricing.html', pricingHtml],
+            ['company-video.html', readFileSync(`${ROOT}/company-video.html`, 'utf8')]]) {
+            check(`${name} の料金表が「ナレーションなし」と名乗っていない`,
+                !/ナレーションなし）<\/th>/.test(html) && !/料金（1本・ナレーションなし）/.test(html));
+            check(`${name} にナレーション込みだと書いてある`,
+                /この表はナレーション込みの額です/.test(html)
+                && /1本につき ¥25,000 を引きます/.test(html));
+        }
+        /* 引く額はモデルと同じであること。ここを手で打つとズレる */
+        check('引く額がモデルと合っている',
+            idx.includes(`¥${PRICE.noNarration.toLocaleString('ja-JP')} を引きます`)
+            && PRICE.noNarration === PRICE.matsuToAi,
+            `${PRICE.noNarration}/${PRICE.matsuToAi}`);
+
+        check('トップの料金表の金額がモデルと合っている',
+            idxRows.every(([lab, cells]) => TIERS.every((t, i) =>
+                cells[i] === y(PRICE.base + t.perSec * SECS[lab]))),
+            JSON.stringify(idxRows));
+    }
     check('AIナレーションが込みだと実績にも書いてある', /全段とも料金に含まれます/.test(works));
     check('架空の題材だと書いてある', /架空の製造業を題材に/.test(works));
     check('架空クライアントの名前を出していない', !/想工業/.test(works));

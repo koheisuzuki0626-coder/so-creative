@@ -100,7 +100,11 @@
 
         <section class="section section-alt">
             <div class="wrap reveal">
-                <h2 class="headline">尺ごとの料金（1本・ナレーションなし）</h2>
+                <!-- 2026-09-24：見出しが「ナレーションなし」だったが、表の額は
+                     基本料金＋秒単価×尺そのもので、梅・竹はAIナレーション込み、
+                     松は人物1名ぶん込みの額。計算機で「なし」を選ぶと
+                     松60秒で ¥489,000 → ¥439,000 と5万ずれていた -->
+                <h2 class="headline">尺ごとの料金（1本）</h2>
                 <p class="body-text measure">よく聞かれる尺の実額です。この表の金額がそのまま総額で、あとから追加されるものはありません。</p>
                 <div class="compare-wrap" tabindex="0" role="region" aria-label="尺ごとの料金の表（横にスクロールできます）">
                 <table class="compare">
@@ -109,6 +113,7 @@
                 </table>
                 </div>
                 <p class="swipe-hint">横にスクロールすると、表の続きが見られます。</p>
+                <p class="body-text measure" style="margin-top:14px"><b>この表はナレーション込みの額です。</b>梅・竹は<b>AIナレーション</b>が、松は<b>人に読んでもらうぶん1名</b>が含まれています。ナレーションを入れない（テロップだけにする）場合は、<b>1本につき ¥25,000 を引きます</b>。松で人ではなくAIにする場合も ¥25,000 引きです。<a href="pricing.html#plans">料金ページの計算機</a>で、その組み合わせの実額が出ます。</p>
                 <p class="body-text measure" style="margin-top:18px">
                     <b>2本目以降は1本につき ¥65,000</b>です。合計の尺が同じでも、本数が増えれば構成案も絵コンテもご確認も本数ぶん必要になるためです。
                     尺は1本ずつ別々に選べます（30秒と90秒を1本ずつ、のような組み合わせもそのまま出ます）。</p>

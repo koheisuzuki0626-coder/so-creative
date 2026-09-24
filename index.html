@@ -578,16 +578,23 @@
                 <h2 class="headline">料金プラン。</h2>
                 <p class="section-lead">料金は <strong>基本料金 ¥90,000 ＋ 秒単価 × 尺の合計 ＋ ¥65,000 ×（本数 − 1）</strong> という、ひとつの式だけで決まります。秒単価は仕上げの段階で変わります（梅 ¥3,500／竹 ¥4,900／松 ¥6,650）。表示は税込です。</p>
             </div>
-            <div class="compare-wrap reveal">
+            <!-- 2026-09-24：30秒・60秒・3分の3行しか出していなかった。
+                 15秒（SNS・展示会）と90秒（会社紹介でいちばん多い尺）が抜けていて、
+                 料金ページの表とも段が食い違っていた。料金ページと同じ5行に揃える -->
+            <div class="compare-wrap reveal" tabindex="0" role="region" aria-label="尺ごとの料金の表（横にスクロールできます）">
                 <table class="compare">
-                    <thead><tr><th scope="col">尺（1本・ナレーションなし）</th><th scope="col">梅（標準）</th><th scope="col">竹（上）</th><th scope="col">松（特上）</th></tr></thead>
+                    <thead><tr><th scope="col">尺（1本）</th><th scope="col">梅（標準）</th><th scope="col">竹（上）</th><th scope="col">松（特上）</th></tr></thead>
                     <tbody>
+                        <tr><th scope="row">15秒</th><td>¥142,500</td><td>¥163,500</td><td>¥189,750</td></tr>
                         <tr><th scope="row">30秒</th><td>¥195,000</td><td>¥237,000</td><td>¥289,500</td></tr>
                         <tr><th scope="row">60秒</th><td>¥300,000</td><td>¥384,000</td><td>¥489,000</td></tr>
+                        <tr><th scope="row">90秒</th><td>¥405,000</td><td>¥531,000</td><td>¥688,500</td></tr>
                         <tr><th scope="row">3分</th><td>¥720,000</td><td>¥972,000</td><td>¥1,287,000</td></tr>
                     </tbody>
                 </table>
             </div>
+            <p class="swipe-hint">横にスクロールすると、表の続きが見られます。</p>
+            <p class="section-lead reveal" style="margin-top:14px"><b>この表はナレーション込みの額です。</b>梅・竹は<b>AIナレーション</b>が、松は<b>人に読んでもらうぶん1名</b>が含まれています。ナレーションを入れない（テロップだけにする）場合は、<b>1本につき ¥25,000 を引きます</b>。松で人ではなくAIにする場合も ¥25,000 引きです。<a href="pricing.html#plans">料金ページの計算機</a>で、その組み合わせの実額が出ます。</p>
             <p class="cta-actions reveal" style="margin-top:26px">
                 <a class="pill pill-solid" href="pricing.html">料金ページで、尺と本数を選んで試算する</a></p>
             <p class="section-lead reveal" style="margin-top:14px">出演者の手配費・撮影費は一切かかりません。編集チェックは段階に応じて2〜3回まで無料です。納品はすべて 1080p（フルHD）です。</p>

@@ -781,6 +781,19 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
               font-size: 0.9rem !important; line-height: 1.8; }
 .genre-note strong { color: var(--ink); font-weight: 500; }
 
+/* ジャンルごとの料金の目安（2026-09-24）。
+   つくれる動画からこのページへ来た人が、サンプルは見られるのに
+   いくらかは分からないまま帰っていた。サンプルの実尺で出す。
+   金額は料金ページの式から出したもので、手で打ち直さないこと（検査が見ている） */
+.genre-price {
+    margin-top: 10px !important;
+    font-size: 0.9rem;
+    line-height: 1.85;
+    color: var(--ink-2);
+}
+.genre-price b { color: var(--ink); font-weight: 500; }
+.genre-price a { color: var(--accent-ink); }
+
 /* ---------- Comparison ---------- */
 /* 表が画面より広いとき、横に続きがあることを見せる（2026-09-24）。
    スマホ（390px）では4列の表が 292px ぶんはみ出し、いちばん高い「松」の列が
