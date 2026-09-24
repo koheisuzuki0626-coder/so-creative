@@ -587,7 +587,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
    noindex の有無と、robots.txt が sitemap を出しているかを、必ず一緒に動かす */
 {
     const PUBLIC = ['index.html', 'pricing.html', 'works.html',
-        'company-video.html', 'about.html', 'privacy.html'];
+        'company-video.html', 'recruit-video.html', 'about.html', 'privacy.html'];
     const INTERNAL = ['funnel.html', 'roadmap.html', 'record.html'];
     const robotsOf = async (f) => {
         const h = await (await page.request.get(`${BASE}/${f}`)).text();
@@ -615,7 +615,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     check('sitemap に社内用のページが入っていない',
         !INTERNAL.some((f) => locs.some((u) => u.endsWith(`/${f}`))), locs.join(' '));
     check('sitemap の中身が公開ページの並びと合っている',
-        locs.length === 5 && locs.every((u) => u.endsWith('/')
+        locs.length === 6 && locs.every((u) => u.endsWith('/')
             || PUBLIC.some((f) => u.endsWith(`/${f}`))), locs.join(' '));
     /* 切り替えの手順を書いた場所が消えていないこと。消えると順番を思い出せない */
     check('公開に切り替える手順が sitemap.xml に書いてある',
