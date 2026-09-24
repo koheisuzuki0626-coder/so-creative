@@ -144,7 +144,7 @@ await p.close();
 {
     const q = await open(browser, {});
     const PUBLIC = ['index.html', 'pricing.html', 'works.html',
-        'company-video.html', 'about.html', 'privacy.html'];
+        'company-video.html', 'recruit-video.html', 'about.html', 'privacy.html'];
     /* 本文で funnel.js に言及しているだけの箇所に引っかからないよう、
        script タグで読み込んでいるかどうかで見る */
     const loads = (html) => /<script[^>]+src="assets\/funnel\.js"/.test(html);

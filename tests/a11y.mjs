@@ -5,7 +5,7 @@ import { check, report, open, PW } from './lib.mjs';
 const pwmod = (await import(PW)).default;
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
 const browser = await pwmod.chromium.launch();
-for (const file of ['index.html', 'works.html', 'pricing.html', 'company-video.html', 'about.html', 'privacy.html',
+for (const file of ['index.html', 'works.html', 'pricing.html', 'company-video.html', 'recruit-video.html', 'about.html', 'privacy.html',
                     'funnel.html', 'roadmap.html', 'record.html']) {
     const page = await open(browser, { page: file });
     const bad = await page.evaluate(() => {
@@ -132,7 +132,7 @@ await browser.close();
     check('隠すのは .js が付いてから', /\.js \.reveal \{[^}]*opacity: 0/.test(css),
           (css.match(/^[^\n]*\.reveal \{[^\n]*/m) || [''])[0]);
     check('無条件に隠していない', !/^\.reveal \{[^}]*opacity: 0/m.test(css));
-    for (const file of ['index.html', 'works.html', 'pricing.html', 'company-video.html',
+    for (const file of ['index.html', 'works.html', 'pricing.html', 'company-video.html', 'recruit-video.html',
                         'about.html', 'privacy.html']) {
         const html = readFileSync(`${ROOT}/${file}`, 'utf8');
         check(`${file} に .js を付ける1行がある`,
@@ -146,7 +146,7 @@ await browser.close();
    リンクが一緒に付いてきて、works.html が自分を指していた。
    フッターのサイトマップは全ページを並べる場所なので対象外。 */
 {
-    for (const file of ['index.html', 'works.html', 'pricing.html', 'company-video.html',
+    for (const file of ['index.html', 'works.html', 'pricing.html', 'company-video.html', 'recruit-video.html',
                         'about.html', 'privacy.html']) {
         const html = readFileSync(`${ROOT}/${file}`, 'utf8');
         const main = html.slice(html.indexOf('<main>'), html.indexOf('</main>'));
@@ -162,7 +162,7 @@ await browser.close();
    見ていなかった。親に .in が付かず、9枚のカードが opacity:0 のまま消えていた。
    .reveal だけを見るテストでは気づけなかったので、ここで押さえる。 */
 {
-    for (const file of ['index.html', 'works.html', 'pricing.html', 'company-video.html',
+    for (const file of ['index.html', 'works.html', 'pricing.html', 'company-video.html', 'recruit-video.html',
                         'about.html', 'privacy.html']) {
         const html = readFileSync(`${ROOT}/${file}`, 'utf8');
         if (!html.includes('reveal-stagger')) { continue; }
