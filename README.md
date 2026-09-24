@@ -659,10 +659,10 @@ site.css・ロゴの SVG・PNG（lockup / full / ogp）まで入れ替えてあ�
 | ファイル | 用途 |
 |----------|------|
 | `assets/logo-mark.svg` | シンボルマーク（黒）。**サイトが読むのはこれ** |
-| `assets/logo-mark-gold.svg` | 同・ブランド色（`#1c5c45`）。大きく出す場所用。**ファイル名は金だった頃のまま** |
+| `assets/logo-mark-accent.svg` | 同・ブランド色（`#1c5c45`）。大きく出す場所用 |
 | `assets/logo-mark-light.svg` | 同・白。暗い地に置く用 |
 | `assets/logo-mark-small.svg` | **輪を外して線を太らせた版**（線幅 4.6）。24px 以下はこちら |
-| `assets/logo-mark-small-gold.svg` | 同・ブランド色。**ファイル名は金だった頃のまま** |
+| `assets/logo-mark-small-accent.svg` | 同・ブランド色 |
 | `assets/logo-mark.png` | マークの PNG（512px）。SVG が使えない場所用 |
 | `assets/logo-full.png` | マーク＋社名の縦組み |
 | `assets/logo-lockup.png` | マーク＋社名の横組み。明るい地に置く用 |

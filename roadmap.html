@@ -138,11 +138,17 @@
                     font-size: .85rem; color: var(--ink-2); }
         .ck-local b { color: var(--ink); font-weight: 500; }
 
-        /* お金の推移の折れ線。2026-09-25 追加。
-           色は dataviz の validate_palette.js で検証して選んだ
-           （#c8841a × #1f6f9c：CVD ΔE 22.2 / 通常視 28.2 / 彩度・明度・コントラスト全てPASS）。
-           サイトの金（--accent #1c5c45）と緑（--ok）で組もうとしたら
-           通常視でも ΔE 11.9 で「色だけでは区別できない」と出たので使わなかった。
+        /* お金の推移の折れ線。2026-09-25 追加、2026-09-24 に色を入れ替えた。
+           ブランドの色を金から深緑に変えたので、オレンジをやめて
+           ブランドと同じ緑の系統に寄せた。dataviz の validate_palette.js で検証
+           （#2b8560 × #7c4dbf：CVD ΔE 17.9 / 通常視 25.9 / 明度・彩度・コントラスト全てPASS）。
+
+           **ブランドの深緑（--accent #1c5c45）をそのまま線に使うことはできない。**
+           ブランド色と元の青で測ると 通常視 ΔE 14.0 で下限（15）を割り、
+           明度も彩度も基準の外に出る（暗すぎ・くすみすぎ）。線に要るのは中間の明るさと
+           彩度なので、同じ緑でも一段明るい #2b8560 を使う。
+           もう一方は元の青だと緑と近すぎたので紫（#7c4dbf）に替えた。
+           （金だった頃も、金と --ok の緑で組もうとして 通常視 ΔE 11.9 で弾かれている。）
            見込みの線は破線にしてある＝色だけに頼らせない（色覚・白黒印刷でも分かる）。
            数字そのものは下の表が持つ。グラフは形を見るためのもの */
         .c-fig { margin: 24px 0 0; }
@@ -153,12 +159,12 @@
         .c-svg .c-ylab { fill: var(--ink-dim); font-size: 13px; text-anchor: end; font-variant-numeric: tabular-nums; }
         .c-svg .c-xlab { fill: var(--ink-dim); font-size: 13px; text-anchor: middle; }
         .c-svg .c-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-        .c-svg .c-la { stroke: #c8841a; }
-        .c-svg .c-lb { stroke: #1f6f9c; stroke-dasharray: 6 4; }
+        .c-svg .c-la { stroke: #2b8560; }
+        .c-svg .c-lb { stroke: #7c4dbf; stroke-dasharray: 6 4; }
         .c-svg .c-lc { stroke: #2f7d32; stroke-dasharray: 2 4; }
         .c-svg .c-dot { stroke: #fff; stroke-width: 2; }
-        .c-svg .c-dot.c-sa { fill: #c8841a; }
-        .c-svg .c-dot.c-sb { fill: #1f6f9c; }
+        .c-svg .c-dot.c-sa { fill: #2b8560; }
+        .c-svg .c-dot.c-sb { fill: #7c4dbf; }
         .c-svg .c-dot.c-sc { fill: #2f7d32; }
         .c-svg .c-lab { font-size: 16px; text-anchor: middle; fill: var(--ink); font-weight: 500; }
         .c-svg .c-lab.c-l { text-anchor: start; }
@@ -170,8 +176,8 @@
                             gap: 8px 20px; align-items: center; font-size: .88rem; color: var(--ink-2); }
         .c-fig .c-lg { display: inline-flex; align-items: center; gap: 7px; }
         .c-fig .c-sw { width: 22px; height: 0; border-top: 2px solid; display: inline-block; }
-        .c-fig .c-sw.c-sa { border-color: #c8841a; }
-        .c-fig .c-sw.c-sb { border-color: #1f6f9c; border-top-style: dashed; }
+        .c-fig .c-sw.c-sa { border-color: #2b8560; }
+        .c-fig .c-sw.c-sb { border-color: #7c4dbf; border-top-style: dashed; }
         .c-fig .c-sw.c-sc { border-color: #2f7d32; border-top-style: dotted; border-top-width: 3px; }
         .c-fig .c-cap { flex-basis: 100%; color: var(--ink-dim); font-size: .84rem; }
         .c-fig .c-tip { margin-top: 10px; font-size: .88rem; color: var(--ink-2);
