@@ -14043,7 +14043,18 @@ async def _handle_key_register(message, cid, content):
     except Exception:  # noqa: BLE001
         erased = False          # 権限が無い等。手で消してもらう
     if not pairs:
-        await send_as(orch, cid, "⚠️ 形が読み取れませんでした。\n" + KEY_REG_USAGE)
+        # 事故（2026-09-24 18:34）：`鍵登録 <値>` と名前抜きで送られ、ここに落ちた。
+        # 削除に失敗していた（『メッセージの管理』権限が無い）のに、この道だけ
+        # 【削除できなかったことを伝えていなかった】ため、値がチャンネルに
+        # 残ったまま本人は気づかなかった。形が読めない時ほど危ない
+        # （＝登録もされていないのに、値だけ公開されている状態）。
+        await send_as(
+            orch, cid,
+            "⚠️ 形が読み取れませんでした。\n" + KEY_REG_USAGE
+            + ("" if erased else
+               "\n\n🚨 **いま送った発言を削除できませんでした。"
+               "値がチャンネルに残っています。手で消してください。**"
+               "（ボットに「メッセージの管理」権限がありません）"))
         return
     try:
         names = _env_set(pairs)

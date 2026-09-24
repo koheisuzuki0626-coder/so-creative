@@ -4651,6 +4651,15 @@ def run():
           "add_history" in _disp, False)
     check("鍵登録の判定より前でログ共有していない",
           "_autoshare_log" in _disp, False)
+    # 事故（2026-09-24 18:34）：`鍵登録 <値>` と名前抜きで送られて
+    # 「形が読み取れませんでした」に落ちたが、削除にも失敗していたのに
+    # その道だけ【消してくださいと言っていなかった】。登録もされないまま
+    # 値だけチャンネルに残った。形が読めない時ほど危ない。
+    _kr = bot_src()
+    _kr = _kr[_kr.index("形が読み取れませんでした"):]
+    _kr = _kr[:_kr.index("return")]
+    check("形が読めない時も、消せなかったら知らせる", "erased" in _kr, True)
+    check("その知らせに手で消すよう書いてある", "手で消して" in _kr, True)
 
     print("■ 外部フォルダ（HDD）の読み取り：許可した場所の中しか読まない")
     _hdd_root = _plX.Path(tempfile.mkdtemp()) / "元データ"
