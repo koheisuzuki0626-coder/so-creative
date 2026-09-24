@@ -823,6 +823,29 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
                     }), `${rows.length}段`);
             }
         }
+        /* ---- 用途から選ぶ帯（2026-09-24） ----
+           用途別のページどうしが互いに繋がっていること。1ページでも外れると、
+           そこから他の用途へ行けないうえ、検索側から見ても孤立する */
+        const USES = ['company-video.html', 'recruit-video.html', 'service-video.html',
+            'ad-video.html', 'sns-video.html', 'exhibition-video.html',
+            'internal-video.html', 'animation-video.html', 'music-video.html'];
+        for (const f of USES) {
+            const h = readFileSync(`${ROOT}/${f}`, 'utf8');
+            const bar = (h.match(/<div class="nav-uses">([\s\S]*?)<\/div>/) || [])[1] || '';
+            const hrefs = [...bar.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
+            check(`${f} のヘッダーに用途の帯がある`, hrefs.length === 9, `${hrefs.length}件`);
+            check(`${f} の帯が9つの用途をすべて指している`,
+                USES.every((u) => hrefs.includes(u)), hrefs.join());
+            /* いま見ているページに aria-current が1つだけ付いていること */
+            const cur = [...bar.matchAll(/href="([^"]+)" aria-current="page"/g)].map((m) => m[1]);
+            check(`${f} の帯が現在地を示している`,
+                cur.length === 1 && cur[0] === f, cur.join());
+            /* 折り返しの指定は帯を持つページだけ。全体に掛けると
+               幅900px のトップでナビが折り返して CTA に重なる */
+            check(`${f} のナビに has-uses が付いている`,
+                /<nav id="nav" class="has-uses">/.test(h));
+        }
+
         /* 手で書き足すと骨組みがズレるので、つくり手が残っていること */
         check('ジャンルのページをつくる手順が残っている',
             existsSync(`${ROOT}/scripts/make-genre-pages.py`)

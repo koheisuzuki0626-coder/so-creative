@@ -224,7 +224,12 @@ def build(g):
             </div>
         </section>
 '''
-    page = head_top + meta + head_mid + ld + head_rest + main + tail
+    # 用途の帯は company-video.html の骨組みから来るので、
+    # aria-current をこのページへ付け替える（付いたままだと全ページが「会社紹介」になる）
+    nav = head_rest
+    nav = nav.replace(' aria-current="page"', '')
+    nav = nav.replace(f'<a href="{g["file"]}">', f'<a href="{g["file"]}" aria-current="page">')
+    page = head_top + meta + head_mid + ld + nav + main + tail
     # 計算機を置くページは pricing.js も読む
     if not g.get('no_price'):
         page = page.replace('    <script src="assets/funnel.js" defer></script>',

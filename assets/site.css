@@ -229,6 +229,42 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     gap: clamp(18px, 2.3vw, 34px);
     margin-left: clamp(22px, 3vw, 46px);
 }
+/* 用途から選ぶ帯（2026-09-24）。用途別のページの見出しの下に、ほかの用途を並べる。
+   ページどうしが互いに繋がるので、行き来できるうえに検索にも拾われやすくなる。
+   #nav の中に置いてあるので、--nav-h（JS が実測）にこの行の高さが入り、
+   本文の余白が自動で下がる。狭い画面では横に流す */
+/* 折り返すのは帯を持つページだけ。全体に掛けると、幅900pxのトップで
+   ナビの項目が折り返して「相談する」に重なる（検査が拾った） */
+#nav.has-uses { flex-wrap: wrap; }
+.nav-uses {
+    /* 狭い画面では .nav-main が order:3 で2段目に来るので、その後ろに置く */
+    order: 4;
+    flex: 1 0 100%;
+    display: flex;
+    gap: clamp(13px, 1.7vw, 24px);
+    margin-top: 9px;
+    padding: 9px 0 2px;
+    border-top: 1px solid var(--line);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.nav-uses::-webkit-scrollbar { display: none; }
+.nav-uses a {
+    flex: none;
+    font-size: 0.8rem;
+    letter-spacing: 0.01em;
+    color: var(--ink-dim);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color 0.3s ease;
+}
+.nav-uses a:hover { color: var(--ink); }
+.nav-uses a[aria-current="page"] { color: var(--accent-ink); font-weight: 500; }
+#nav.on-dark .nav-uses { border-top-color: rgba(255, 255, 255, 0.18); }
+#nav.on-dark .nav-uses a { color: rgba(245, 245, 247, 0.66); }
+#nav.on-dark .nav-uses a:hover { color: #fff; }
+#nav.on-dark .nav-uses a[aria-current="page"] { color: #d9b45f; }
+
 .nav-item {
     position: relative;
     font: inherit;
@@ -1602,6 +1638,14 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
                 mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent);
     }
     .nav-main::-webkit-scrollbar { display: none; }
+    /* 用途の帯も同じ扱い。画面端まで使って、切れているのが分かるようぼかす */
+    .nav-uses {
+        margin-inline: -16px;
+        padding: 8px 16px 7px;
+        gap: 16px;
+        -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent);
+                mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent);
+    }
     .nav-item { font-size: inherit; }
     /* 端まで流しきったらぼかしを外す(JS が .nav-main-end を付ける) */
     .nav-main.nav-main-end {

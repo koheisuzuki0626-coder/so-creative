@@ -77,7 +77,7 @@
 <body class="subpage">
     <div class="progress" id="progress"></div>
 
-    <nav id="nav">
+    <nav id="nav" class="has-uses">
         <a href="index.html" class="logo" aria-label="so-creative"><img class="logo-mark" src="assets/logo-mark.svg" alt="" width="100" height="100" decoding="async"><span class="logo-word">so<i class="logo-dash" aria-hidden="true"></i><span class="logo-tail">creative</span></span></a>
 
         <!-- 下層ページなので、導線はトップの主要セクションへ戻すだけにする -->
@@ -89,6 +89,22 @@
 
         <div class="nav-end">
             <a href="#contact" class="nav-cta">相談する</a>
+        </div>
+
+        <!-- 用途から選ぶ帯（2026-09-24）。用途別のページどうしを行き来できるようにする。
+             メニューに隠さず、その場に全部出す（9/19 の方針と同じ）。
+             いま見ているページには aria-current を付ける。
+             --nav-h は JS が実測するので、この行が増えたぶんは本文の余白が自動で下がる -->
+        <div class="nav-uses">
+            <a href="company-video.html">会社紹介</a>
+            <a href="recruit-video.html">採用</a>
+            <a href="service-video.html" aria-current="page">サービス紹介</a>
+            <a href="ad-video.html">広告・CM</a>
+            <a href="sns-video.html">SNSショート</a>
+            <a href="exhibition-video.html">展示会・イベント</a>
+            <a href="internal-video.html">社内向け</a>
+            <a href="animation-video.html">アニメーション・図解</a>
+            <a href="music-video.html">ミュージックビデオ</a>
         </div>
     </nav>
 
