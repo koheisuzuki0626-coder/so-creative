@@ -149,8 +149,11 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     font-weight: 300;
     letter-spacing: 0.005em;
 }
-/* 狭い画面ではナビが詰まるので、尾を落として「so.」だけ見せる */
-@media (max-width: 420px) { .logo-tail { display: none; } }
+/* かつては狭い画面で尾を落としていたが、2026-09-24 に外した。
+   ナビの項目は2段目の横スクロールへ移っていて、ロゴの行は空いている。
+   落としたままだと、iPhone（390px）で「so-」としか出ず、
+   社名を so-creative に変えたことが端末によっては一度も見えなかった。
+   320px でも「相談する」まで 86px 空いているのを実測して確認した */
 
 .logo-dot {
     flex: none;
@@ -663,7 +666,10 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     padding: 15px 0; border-bottom: 1px solid var(--line);
 }
 .about-facts dt { font-size: 0.9rem; color: var(--ink-dim); }
-.about-facts dd { margin: 0; font-size: 0.94rem; }
+/* メールアドレスは途中で折り返せないので、320px の端末だと
+   1行が画面より広くなって、ページ全体が横に伸びていた（2026-09-24）。
+   長い語はどこでも折り返してよいことにする */
+.about-facts dd { margin: 0; font-size: 0.94rem; overflow-wrap: anywhere; }
 .about-facts a { color: var(--accent-ink); text-decoration: none; border-bottom: 1px solid rgba(133,100,32,0.35); }
 .about-facts a:hover { border-bottom-color: var(--accent-ink); }
 

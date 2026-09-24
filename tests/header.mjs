@@ -43,6 +43,30 @@ for (const w of [1440, 1280, 1000, 900]) {
                  overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth };
     });
     check('スマホでも項目を隠さない', m.n === 8 && m.below && m.rows === 1, JSON.stringify(m));
+    /* 2026-09-24：420px 以下で社名の尾を落としていたため、iPhone（390px）では
+       ヘッダーが「so-」としか出ず、so-creative に変えたことが見えなかった。
+       ロゴの行は2段構成で空いているので、狭い画面でも最後まで出す */
+    const nameAt = async (w) => {
+        const q = await open(browser, { width: w, height: 780, mobile: true });
+        const r = await q.evaluate(() => {
+            const t = document.querySelector('#nav .logo-tail');
+            const cs = t ? getComputedStyle(t) : null;
+            const lg = document.querySelector('#nav .logo').getBoundingClientRect();
+            const cta = document.querySelector('.nav-end').getBoundingClientRect();
+            return { shown: !!cs && cs.display !== 'none' && cs.visibility !== 'hidden',
+                     text: (document.querySelector('#nav .logo-word')?.textContent || '').trim(),
+                     toCta: Math.round(cta.left - lg.right),
+                     over: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+        });
+        await q.close();
+        return r;
+    };
+    for (const w of [320, 360, 390]) {
+        const r = await nameAt(w);
+        check(`幅${w} 社名を最後まで出す`, r.shown && r.text === 'socreative', JSON.stringify(r));
+        check(`幅${w} 社名が CTA と重ならない`, r.toCta > 0, `${r.toCta}px`);
+        check(`幅${w} 横に溢れない`, r.over <= 0, `${r.over}px`);
+    }
     check('入りきらないぶんは横に流せる', m.scrollable);
     check('文字を小さくしすぎていない', m.font >= 12.5, `${m.font}px`);
     check('ヘッダーの高さが --nav-h に入る', m.navVar === `${m.navH}px`, `${m.navH}px`);
