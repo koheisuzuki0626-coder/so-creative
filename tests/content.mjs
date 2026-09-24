@@ -2,7 +2,7 @@
    同じことを複数箇所に書いているので、片方だけ直すと嘘になる。
    ここはその突き合わせ専用。 */
 import { check, report, open, BASE, PW, TIERS, LENGTHS, leadWeeks, RATE, PRICE, price, hours } from './lib.mjs';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 const pwmod = (await import(PW)).default;
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
@@ -948,9 +948,13 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
    お客様に出ていくので、突き合わせて見張る（9/18 作成） */
 {
     const T = '成果物/_テンプレート';
-    const mitsu = readFileSync(`${ROOT}/${T}/見積書.md`, 'utf8');
-    const keiyaku = readFileSync(`${ROOT}/${T}/業務委託契約書.md`, 'utf8');
-    const seikyu = readFileSync(`${ROOT}/${T}/請求書.md`, 'utf8');
+    /* 9/24：見積書・契約書・請求書が _テンプレート/ と 書類ひな形/ の
+       2か所にあり、中身が食い違っていた（片方は消費税を10%上乗せしていて、
+       サイトの表示額より高く見積もる形になっていた）。書類ひな形/ に寄せた */
+    const D = '成果物/書類ひな形';
+    const mitsu = readFileSync(`${ROOT}/${D}/見積書.md`, 'utf8');
+    const keiyaku = readFileSync(`${ROOT}/${D}/業務委託契約書.md`, 'utf8');
+    const seikyu = readFileSync(`${ROOT}/${D}/請求書.md`, 'utf8');
     const hearing = readFileSync(`${ROOT}/${T}/ヒアリングシート.md`, 'utf8');
     const eigyo = readFileSync(`${ROOT}/${T}/営業文面.md`, 'utf8');
     const all = mitsu + keiyaku + seikyu;
@@ -1012,7 +1016,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
        メールで税別の額を伝えると見積書と食い違う。検査の対象に入れる */
     check('ひな形に税別・税抜が残っていない', !/税別|税抜/.test(all + eigyo));
     check('ひな形3点とも消費税を別途請求しない旨がある',
-        [mitsu, keiyaku, seikyu].every(x => /消費税を(別途請求|区分して請求)/.test(x)));
+        [mitsu, keiyaku, seikyu].every(x => /消費税を(別途請求|別途申し受け|区分して請求)/.test(x)));
     check('支払条件がサイトと揃っている(全額を納品後・納品日から30日以内)',
         [mitsu, keiyaku].every(x => /納品後/.test(x) && /納品日から30日以内/.test(x)));
     /* 9/22 に着手金を外した。ひな形に古い条件が残っているとお客様に出ていく */
@@ -1020,6 +1024,20 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         [mitsu, keiyaku, seikyu, hearing].every(x => !/着手金として/.test(x) && !/着手金の請求書/.test(x)));
     check('ひな形3点とも着手金を取らないと分かる',
         [mitsu, keiyaku, seikyu].every(x => /着手金(は|その他)/.test(x)));
+    /* 9/24：サイトは「表示はすべて税込」「適格請求書発行事業者の登録はしておりません」
+       と公開している。ひな形が小計（税別）＋消費税10%で組まれていて、
+       竹60秒1本を ¥384,000 ではなく ¥422,400 で見積もる形になっていた */
+    check('ひな形に消費税の上乗せが残っていない',
+        [mitsu, seikyu].every(x => !/小計（税別）/.test(x) && !/消費税（10%）/.test(x)));
+    check('見積書の例がサイトの式と合っている',
+        mitsu.includes(`¥〔${(PRICE.base + TIERS[1].perSec * 60).toLocaleString('ja-JP')}〕（税込`),
+        String(PRICE.base + TIERS[1].perSec * 60));
+    /* ひな形は1か所だけ。2か所に置いて片方だけ直すと、高いほうで出てしまう */
+    check('ひな形が2か所に無い',
+        !existsSync(`${ROOT}/${T}/見積書.md`) && !existsSync(`${ROOT}/${T}/請求書.md`)
+        && !existsSync(`${ROOT}/${T}/業務委託契約書.md`));
+    check('元の置き場から書類ひな形へ案内している',
+        /書類ひな形/.test(readFileSync(`${ROOT}/${T}/README.md`, 'utf8')));
     check('キャンセルの按分がサイトと揃っている',
         [mitsu, keiyaku].every(x => /80%/.test(x) && /100%/.test(x) && /絵コンテ/.test(x)));
     check('修正回数がサイトと揃っている(梅2・竹3・松3)',
@@ -1030,8 +1048,9 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         /¥90,000/.test(mitsu) && /¥65,000/.test(mitsu));
     check('契約書にAI特有の免責がある',
         /著作権による保護を\s*受けない場合がある/.test(keiyaku) && /意図しない類似/.test(keiyaku));
-    check('契約書に権利の帰属がある', /報酬の完済をもって/.test(keiyaku) && /制限なく利用できる/.test(keiyaku));
-    check('実績掲載は相手が断れる形になっている', /公開を\s*希望しない場合/.test(keiyaku));
+    check('契約書に権利の帰属がある',
+        /支払完了をもって/.test(keiyaku) && /制限なく使用できる/.test(keiyaku));
+    check('実績掲載は相手が断れる形になっている', /掲載を望まない場合/.test(keiyaku));
     check('請求書に登録番号の欄が無い', !/登録番号 \||T\d{13}/.test(seikyu), (seikyu.match(/T\d{13}/) || [''])[0]);
     /* 番号の例(S-20261001-001)に7桁以上の数字が含まれるので、全文の数字検索ではなく
        振込先の行が空欄(＿)のままかを見る */
@@ -1040,17 +1059,18 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
        サイトの 08 のカードは「料金表ではなく個別にお見積り」と書いてあるので、
        見積書側にも料金表の対象外であることが書かれていること */
     check('契約書に楽曲の特約がある',
-        /## 第7条（楽曲を扱う場合の特約）/.test(keiyaku)
+        /### 第13条（楽曲を扱う場合の特約）/.test(keiyaku)
         && /乙は本楽曲の権利処理を行わない/.test(keiyaku));
+    /* 9/24：末尾に置いたので、消しても前の条番号が動かない */
     check('楽曲の特約がMV以外では外せると書いてある',
-        /この条を丸ごと削除する/.test(keiyaku) && /条番号を1つずつ繰り上げる/.test(keiyaku));
+        /この条を丸ごと削除する/.test(keiyaku) && /前の条番号は動かない/.test(keiyaku));
     check('楽曲の特約に権利・差替え・容姿・クレジットが入っている',
         ['著作隣接権', '差し替わった場合', '容姿', 'クレジット'].every((w) => keiyaku.includes(w)));
     /* 条番号を繰り下げたので、重複や飛びが出ていないこと */
     check('契約書の条番号が第1条から連番',
-        (keiyaku.match(/^## 第(\d+)条/gm) || []).map((x) => Number(x.match(/\d+/)[0]))
+        (keiyaku.match(/^### 第(\d+)条/gm) || []).map((x) => Number(x.match(/\d+/)[0]))
             .every((n, i) => n === i + 1),
-        (keiyaku.match(/^## 第\d+条/gm) || []).join(','));
+        (keiyaku.match(/^### 第\d+条/gm) || []).join(','));
     check('見積書にMVの扱いが書いてある',
         /料金表の対象外/.test(mitsu) && /楽曲の権利処理/.test(mitsu));
 
@@ -1081,8 +1101,10 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         check('聞き直しを1通にまとめると書いてある', /1通にまとめる/.test(hearing));
     }
 
+    /* 口座は 〔〕 の差し込みのまま。実在の番号を置いたまま配ると事故になる */
     check('実在の口座番号を書いていない',
-        /＿＿銀行 ＿＿支店/.test(seikyu) && /普通 ＿/.test(seikyu) && /名義 \| ＿/.test(seikyu));
+        /金融機関 \| 〔/.test(seikyu) && /種別・口座番号 \| 〔/.test(seikyu)
+        && /口座名義 \| 〔/.test(seikyu) && !/〕\s*\d{7}/.test(seikyu));
 }
 
 /* ---- 配信できるか ---- */
