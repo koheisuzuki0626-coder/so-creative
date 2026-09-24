@@ -664,8 +664,16 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
        日付ではなく着手条件で書くと決めたので、各項目に条件が要る */
     const next = await rm.locator('.ck.next li').allInnerTexts();
     check('このあとの宿題が載っている', next.length >= 5, String(next.length));
-    check('宿題は未チェックで置いてある',
-        await rm.locator('.ck.next li.done').count() === 0);
+    /* 9/24：宿題が1つ実際に終わった（送り先リスト30件）ので、
+       「全部未チェック」では回らなくなった。守りたいのは
+       「やっていないものを勝手にチェックしない」なので、
+       チェックが付いたものには済んだ日付が入っていること、に変える */
+    const doneNext = await rm.locator('.ck.next li.done').allInnerTexts();
+    check('終わった宿題には済んだ日付が入っている',
+        doneNext.every((x) => /\d+\/\d+/.test(x)),
+        doneNext.find((x) => !/\d+\/\d+/.test(x)) || `${doneNext.length}件`);
+    check('宿題がまだ残っている',
+        (await rm.locator('.ck.next li:not(.done)').count()) >= 4);
     check('宿題に着手条件が書いてある',
         next.every((x) => /てから|届いたら|ときに|まで|次号|1本目/.test(x)),
         next.find((x) => !/てから|届いたら|ときに|まで|次号|1本目/.test(x)) || '');
