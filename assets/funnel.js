@@ -52,10 +52,31 @@
             } catch { /* noop */ }
         })();
 
+        /* いま見ているページ。どの入口から入ったかを残すために送る。
+           ファイル名だけにする（ディレクトリやクエリは要らない） */
+        const PAGE = (location.pathname.split('/').pop() || 'index.html');
+
+        /* 1回の訪問をまとめるための印。
+           2026-09-24：sessionStorage に持たせた。サイトが複数ページに分かれたあと、
+           読み込みごとに振り直していたので、トップ→料金 と進んだ1人が
+           「別人2人」として数えられていた。分母（訪問）と分子（条件を選んだ）が
+           別ページのものになり、通過率が構造的に低く出ていた。
+           sessionStorage はタブを閉じるまで残るので、「同じタブの中＝1訪問」になる。
+           使えない環境（プライベートモード等）では、これまでどおりページ単位に落ちる */
+        const SID = (() => {
+            const KEY = 'so-creative.sid';
+            const mk = () => Math.random().toString(36).slice(2, 10);
+            try {
+                const had = sessionStorage.getItem(KEY);
+                if (had) { return had; }
+                const made = mk();
+                sessionStorage.setItem(KEY, made);
+                return made;
+            } catch { return mk(); }
+        })();
+
         const track = (() => {
             const LOG = 'so-creative.funnel';
-            // 1回の訪問をまとめるための印。読み込みごとに変わる
-            const SID = Math.random().toString(36).slice(2, 10);
             const push = (row) => {
                 try {
                     const a = JSON.parse(localStorage.getItem(LOG) || '[]');
@@ -64,7 +85,7 @@
                 } catch { /* プライベートモード等では黙って諦める */ }
             };
             return (name, params = {}) => {
-                push({ t: new Date().toISOString(), s: SID, name, ...params });
+                push({ t: new Date().toISOString(), s: SID, p: PAGE, name, ...params });
                 /* page_view は gtag('config') が自分で送るので、こちらからは送らない。
                    両方送ると GA4 側で訪問が2回数えられ、以降の通過率が全部ずれる。
                    手元の localStorage には残すので、通過率を見るページの母数は変わらない */
@@ -118,15 +139,23 @@
             console.log('記録を消しました。');
         };
 
+        /* どこまで読んで帰ったかを残す。料金だけ見ていても
+           「料金を見なかった人がどこで止まったか」が分からないので、
+           節ごとに1回だけ記録する。plans_view は母数として残す（既存の集計が使う）。
+           並びは通過率のページ（funnel.html）の段と同じにすること */
+        const SECTIONS = ['service', 'why', 'genres', 'works', 'process', 'plans', 'faq', 'contact'];
+        /* そのページに実際に置かれている節だけ。
+           2026-09-24：ページが分かれたので、「読まずに帰った節」と
+           「そもそもそのページに無い節」を取り違えないように、一緒に送る。
+           例：料金ページを直接開いた人には plans しか無い。
+           その手前の節まで到達したことにしてはいけない */
+        const PRESENT = SECTIONS.filter((id) => document.getElementById(id));
+
         // 訪問そのもの。ここが母数になる
-        track('page_view');
+        track('page_view', { secs: PRESENT.join(',') });
 
 window.soTrack = track;
 
-        /* どこまで読んで帰ったかを残す。料金だけ見ていても
-           「料金を見なかった人がどこで止まったか」が分からないので、
-           節ごとに1回だけ記録する。plans_view は母数として残す（既存の集計が使う） */
-        const SECTIONS = ['service', 'why', 'genres', 'works', 'process', 'plans', 'faq', 'contact'];
         if ('IntersectionObserver' in window) {
             const seen = new Set();
             const io = new IntersectionObserver((es) => {
@@ -143,8 +172,7 @@ window.soTrack = track;
                画面に 25% 入りきらないので threshold だと一生発火しない。
                下を 20% 削って「画面の上 80% に入ったら到達」とする */
             }, { threshold: 0, rootMargin: '0px 0px -20% 0px' });
-            for (const id of SECTIONS) {
-                const el = document.getElementById(id);
-                if (el) io.observe(el);
+            for (const id of PRESENT) {
+                io.observe(document.getElementById(id));
             }
         }

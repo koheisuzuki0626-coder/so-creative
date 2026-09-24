@@ -92,6 +92,12 @@
     <div id="out"></div>
 
     <p class="note">
+        <b>1訪問＝ブラウザのタブ1つ。</b>タブを開いている間は、
+        トップ → サンプル → 料金 と移っても同じ1人として数える
+        （2026-09-24 まではページを開くたびに別人として数えていたので、
+        それ以前の記録は通過率が実際より低く出ている）。<br>
+        計測しているのは公開ページ6枚（トップ・料金・サンプル・会社紹介動画・運営者情報・
+        プライバシーポリシー）。このページやロードマップなど内部用のものは数えない。<br>
         <b>ここに出るのは、このブラウザで開いたぶんだけ。</b>
         訪問者ぶんは 2026-09-23 から GA4（<code>G-21JRKTWE3V</code>）にも送っていて、
         そちらは <a href="https://analytics.google.com/" target="_blank" rel="noopener">Google アナリティクス</a> で見る。
@@ -138,20 +144,46 @@
             /* 節ごとの到達。どこまで読んで帰ったかを出す。
                途中の節を飛ばしてスクロールすると記録が抜けるので、
                訪問ごとに「いちばん深く到達した節」を取り、そこまでは通ったとみなす。
-               並びは index.html の SECTIONS と同じにすること */
+               並びは assets/funnel.js の SECTIONS と同じにすること */
             const SECTIONS = [
                 ['service', '事業内容'], ['why', '撮影しない理由'], ['genres', 'つくれる動画'],
                 ['works', 'サンプル'], ['process', '制作の流れ'], ['plans', '料金'],
                 ['faq', 'よくあるご質問'], ['contact', 'お問い合わせ'],
             ];
-            const deepest = new Map();   // 訪問ID → いちばん深い節の番号
+            const idx = (id) => SECTIONS.findIndex(([s]) => s === id);
+            const key = (r) => `${r.s}|${r.p || ''}`;
+
+            /* そのページに置かれている節。page_view が一緒に送ってくる。
+               2026-09-24 より前の記録には入っていないので、無ければ null にして、
+               これまでどおり「いちばん深い節までは通った」で埋める */
+            const onPage = new Map();    // 訪問ID|ページ → その節の番号の配列
+            rows.filter((r) => r.name === 'page_view').forEach((r) => {
+                if (typeof r.secs !== 'string') return;
+                onPage.set(key(r), r.secs.split(',').map(idx).filter((i) => i >= 0));
+            });
+
+            const deepest = new Map();   // 訪問ID|ページ → いちばん深い節の番号
             rows.filter((r) => r.name === 'section_view').forEach((r) => {
-                const i = SECTIONS.findIndex(([id]) => id === r.id);
+                const i = idx(r.id);
                 if (i < 0) return;
-                deepest.set(r.s, Math.max(deepest.get(r.s) ?? -1, i));
+                deepest.set(key(r), Math.max(deepest.get(key(r)) ?? -1, i));
+            });
+
+            /* 到達した節を訪問ごとにまとめる。
+               ページをまたぐので、ページごとに出してから足し合わせる。
+               そのページに無い節は数えない（料金ページを直接開いた人の手前の節を、
+               「読まずに飛ばした」と数えてしまうため） */
+            const reachedBy = new Map();  // 訪問ID → 到達した節の番号の Set
+            deepest.forEach((d, k) => {
+                const sid = k.split('|')[0];
+                if (!reachedBy.has(sid)) reachedBy.set(sid, new Set());
+                const got = reachedBy.get(sid);
+                const here = onPage.get(k);
+                if (here) { here.filter((i) => i <= d).forEach((i) => got.add(i)); }
+                else { for (let i = 0; i <= d; i += 1) got.add(i); }
             });
             const reach = SECTIONS.map((_, i) =>
-                [...deepest.values()].filter((d) => d >= i).length);
+                [...reachedBy.values()].filter((got) => got.has(i)).length);
             const upto0 = SECTIONS.findIndex(([id]) => id === 'plans');
             /* 料金より下は一本の流れにならない（計算機を触ってから
                下まで読まずに帰る人がいる）ので、段には入れず一行で出す */
@@ -220,7 +252,7 @@
                         ページの節をそのまま段に並べている。通過率が半分を切った段に印を付けた。
                     </p>
                     ${stepHtml}
-                    ${deepest.size ? `<p class="hint">料金より下まで読んだ人：${esc(below)}</p>` : ''}
+                    ${reachedBy.size ? `<p class="hint">料金より下まで読んだ人：${esc(below)}</p>` : ''}
                 </section>
 
                 <section>

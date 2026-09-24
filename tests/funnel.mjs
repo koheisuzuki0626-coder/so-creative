@@ -87,6 +87,75 @@ await p.close();
     await q.close();
 }
 
+/* ---- ページをまたいでも1訪問として数えるか（2026-09-24） ----
+   サイトが複数ページに分かれたあとも、訪問IDをページごとに振り直していた。
+   トップ→料金 と進んだ1人が「別人2人」になり、分母（訪問）と分子（条件を選んだ）が
+   別ページのものになって、通過率が構造的に低く出ていた。 */
+{
+    const q = await open(browser, {});
+    const sid = () => q.evaluate(() => sessionStorage.getItem('so-creative.sid'));
+    const first = await sid();
+    check('訪問IDが発行される', !!first, String(first));
+    /* トップで節を1つ通ってから料金ページへ移る */
+    await q.locator('#why').scrollIntoViewIfNeeded();
+    await q.waitForTimeout(500);
+    await q.goto(`${BASE}/pricing.html`, { waitUntil: 'networkidle' });
+    await q.waitForTimeout(400);
+    check('ページを移っても訪問IDが変わらない', (await sid()) === first, `${first} / ${await sid()}`);
+
+    await q.locator('#plans').scrollIntoViewIfNeeded();
+    await q.waitForTimeout(700);
+    await q.goto(`${BASE}/funnel.html`, { waitUntil: 'networkidle' });
+    await q.waitForTimeout(300);
+    const n = await q.locator('.step .n').allInnerTexts();
+    check('2ページ見ても訪問は1人', n[0].trim() === '1人', JSON.stringify(n));
+    /* 節の段：トップを読んでいるので料金まで通っている */
+    check('トップを経由したぶんは手前の節も通る', n[1].trim() === '1人', JSON.stringify(n));
+    await q.close();
+}
+
+/* ---- 料金ページを直接開いた人 ----
+   pricing.html にも id="plans" があるので、そこを直接開いただけで
+   「料金まで到達」が立つ。手前の節はそのページに無いだけで、
+   読まずに飛ばしたわけではない。数えてはいけない。 */
+{
+    const q = await open(browser, { page: 'pricing.html' });
+    await q.locator('#plans').scrollIntoViewIfNeeded();
+    await q.waitForTimeout(700);
+    await q.goto(`${BASE}/funnel.html`, { waitUntil: 'networkidle' });
+    await q.waitForTimeout(300);
+    const lbl = await q.locator('.step .lbl').allInnerTexts();
+    const n = await q.locator('.step .n').allInnerTexts();
+    const at = (name) => n[lbl.findIndex((x) => x.trim() === name)].trim();
+    check('料金ページ直行でも訪問は1人', at('サイトに来た') === '1人', JSON.stringify(n));
+    check('そのページに無い節は通ったことにしない', at('事業内容') === '0人', JSON.stringify(n));
+    check('そのページにある節は通ったことにする', at('料金') === '1人', JSON.stringify(n));
+    await q.close();
+}
+
+/* ---- 計測が入っているページ（2026-09-24） ----
+   9/23 に GA4 を入れたとき、funnel.js はトップと料金にしか入っていなかった。
+   サンプル・会社紹介動画・運営者情報は訪問すら記録されず、
+   「どこで脱落したか」を見たいのに入口ページが丸ごと暗かった。 */
+{
+    const q = await open(browser, {});
+    const PUBLIC = ['index.html', 'pricing.html', 'works.html',
+        'company-video.html', 'about.html', 'privacy.html'];
+    /* 本文で funnel.js に言及しているだけの箇所に引っかからないよう、
+       script タグで読み込んでいるかどうかで見る */
+    const loads = (html) => /<script[^>]+src="assets\/funnel\.js"/.test(html);
+    for (const f of PUBLIC) {
+        const html = await (await q.request.get(`${BASE}/${f}`)).text();
+        check(`${f} は計測している`, loads(html));
+    }
+    /* 内部用のページは数えない。自分で開いたぶんが通過率に混ざる */
+    for (const f of ['funnel.html', 'roadmap.html', 'record.html']) {
+        const html = await (await q.request.get(`${BASE}/${f}`)).text();
+        check(`${f} は計測しない(内部用)`, !loads(html));
+    }
+    await q.close();
+}
+
 /* ---- 相談まで進んだ場合 ---- */
 p = await open(browser, { page: 'pricing.html' });
 await p.locator('#plans').scrollIntoViewIfNeeded(); await p.waitForTimeout(700);
@@ -183,6 +252,11 @@ await p.close();
 // 実際に数字が出るか
 p = await open(browser, { page: 'pricing.html' });
 const visit = async (sec, contact) => {
+    /* 別の人の訪問として数えさせる。
+       2026-09-24 から訪問IDは sessionStorage に持っているので、
+       同じタブで開き直しただけでは同じ1人のままになる（それが正しい挙動）。
+       記録そのものは localStorage なので、消すのは訪問IDだけにする */
+    await p.evaluate(() => { try { sessionStorage.removeItem('so-creative.sid'); } catch { /* noop */ } });
     await p.goto(`${BASE}/pricing.html`, { waitUntil: 'networkidle' });
     await p.locator('#plans').scrollIntoViewIfNeeded(); await p.waitForTimeout(700);
     await p.locator('#calc-len select[data-kind="len"][data-row="0"]').selectOption(String(sec));
