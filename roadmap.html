@@ -137,6 +137,47 @@
         .ck-local { margin-top: 14px; padding: 11px 15px; background: var(--bg-alt); border-radius: 9px;
                     font-size: .85rem; color: var(--ink-2); }
         .ck-local b { color: var(--ink); font-weight: 500; }
+
+        /* お金の推移の折れ線。2026-09-25 追加。
+           色は dataviz の validate_palette.js で検証して選んだ
+           （#c8841a × #1f6f9c：CVD ΔE 22.2 / 通常視 28.2 / 彩度・明度・コントラスト全てPASS）。
+           サイトの金（--accent #b08733）と緑（--ok）で組もうとしたら
+           通常視でも ΔE 11.9 で「色だけでは区別できない」と出たので使わなかった。
+           見込みの線は破線にしてある＝色だけに頼らせない（色覚・白黒印刷でも分かる）。
+           数字そのものは下の表が持つ。グラフは形を見るためのもの */
+        .c-fig { margin: 24px 0 0; }
+        .c-svg { width: 100%; max-width: 640px; height: auto; display: block; touch-action: pan-y; }
+        .c-svg .g { stroke: rgba(0,0,0,.08); }
+        .c-svg .c-g0 { stroke: rgba(0,0,0,.3); stroke-width: 1.5; }
+        .c-svg .c-ax { stroke: rgba(0,0,0,.18); }
+        .c-svg .c-ylab { fill: var(--ink-dim); font-size: 13px; text-anchor: end; font-variant-numeric: tabular-nums; }
+        .c-svg .c-xlab { fill: var(--ink-dim); font-size: 13px; text-anchor: middle; }
+        .c-svg .c-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+        .c-svg .c-la { stroke: #c8841a; }
+        .c-svg .c-lb { stroke: #1f6f9c; stroke-dasharray: 6 4; }
+        .c-svg .c-lc { stroke: #2f7d32; stroke-dasharray: 2 4; }
+        .c-svg .c-dot { stroke: #fff; stroke-width: 2; }
+        .c-svg .c-dot.c-sa { fill: #c8841a; }
+        .c-svg .c-dot.c-sb { fill: #1f6f9c; }
+        .c-svg .c-dot.c-sc { fill: #2f7d32; }
+        .c-svg .c-lab { font-size: 16px; text-anchor: middle; fill: var(--ink); font-weight: 500; }
+        .c-svg .c-lab.c-l { text-anchor: start; }
+        .c-svg .c-end { font-size: 16px; font-weight: 500; fill: var(--ink); }
+        .c-svg .c-cross { stroke: rgba(0,0,0,.35); }
+        /* 狭い画面では目盛りを1つ飛ばしに間引く。全部出すと文字が重なる */
+        @media (max-width: 620px) { .c-svg .c-x2 { display: none; } }
+        .c-fig figcaption { margin-top: 12px; display: flex; flex-wrap: wrap;
+                            gap: 8px 20px; align-items: center; font-size: .88rem; color: var(--ink-2); }
+        .c-fig .c-lg { display: inline-flex; align-items: center; gap: 7px; }
+        .c-fig .c-sw { width: 22px; height: 0; border-top: 2px solid; display: inline-block; }
+        .c-fig .c-sw.c-sa { border-color: #c8841a; }
+        .c-fig .c-sw.c-sb { border-color: #1f6f9c; border-top-style: dashed; }
+        .c-fig .c-sw.c-sc { border-color: #2f7d32; border-top-style: dotted; border-top-width: 3px; }
+        .c-fig .c-cap { flex-basis: 100%; color: var(--ink-dim); font-size: .84rem; }
+        .c-fig .c-tip { margin-top: 10px; font-size: .88rem; color: var(--ink-2);
+                        min-height: 1.6em; font-variant-numeric: tabular-nums; }
+        .c-fig .c-tip b { font-weight: 500; color: var(--ink); }
+
         .ck-local button { font: inherit; font-size: .85rem; color: var(--accent-ink); background: none;
                            border: 0; padding: 0; margin-left: 6px; cursor: pointer;
                            text-decoration: underline; text-underline-offset: 3px; }
@@ -183,7 +224,7 @@
 
     <div class="ck-head">
         <p class="eyebrow">残っていること</p>
-        <p class="ck-count" id="ck-count">P0 は 13項目中 10件 完了</p>
+        <p class="ck-count" id="ck-count">P0 は 15項目中 10件 完了</p>
     </div>
     <ul class="ck p0">
         <li data-id="p0-eigyo"><button type="button" class="box" role="checkbox" aria-checked="false"></button><div>声かけを始める
@@ -195,6 +236,25 @@
         <li data-id="p0-kaigyo"><button type="button" class="box" role="checkbox" aria-checked="false"></button><div>開業届を出す
             <em>書類も支払条件もそろっている。出した時点で傷病手当金（月17万）が止まるので、働ける状態になってから。
             出したあとの流れは <a href="record.html#kaigyo-flow">実測記録と裏づけ</a></em></div></li>
+        <li data-id="p0-nenkin"><button type="button" class="box" role="checkbox" aria-checked="false"></button><div><b>障害年金（障害基礎年金2級）を請求する</b>
+            <em><b>2026-09-25 に前提が揃った。まだ請求していない。</b><br>
+            <b>【事実】</b>初診日 2023年3月・そのとき<b>国民健康保険／国民年金</b>で厚生年金には未加入・<b>国民年金を納めている＝納付要件クリア</b>（国保と国民年金は別の制度で、納付要件を見るのは国民年金のほう）。
+            障害認定日は <b>2024年9月</b>（初診日＋1年6ヶ月）で、すでに過ぎている。精神障害者保健福祉手帳2級を所持。<br>
+            <b>【制度上そうなること】</b>初診日が国民年金なので<b>障害基礎年金のみ</b>。<b>あとから厚生年金に入っても初診日は動かない</b>ので障害厚生年金にはならない（いま受けている傷病手当金は、初診のあとに入った会社の健康保険から出ているもの。国保に傷病手当金は無い）。
+            健康保険法の調整規定は<b>障害厚生年金だけ</b>が対象なので、<b>傷病手当金は1円も減らない（完全併給）</b>。
+            遡及分の返還も発生しない。所得制限が無いので<b>開業しても原則止まらない</b>。
+            受給すると国民年金保険料が<b>法定免除</b>になる。<br>
+            <b>【見込み・未確定】</b>通れば月 約¥69,000（年約83万・非課税）。
+            遡及は2024年10月分から24ヶ月で <b>約165万〜200万の一括</b>。<b>等級は審査次第で、手帳2級＝年金2級ではない。</b><br>
+            <b>【残る関門】</b>①<b>2024年8〜11月ごろの受診記録</b>——認定日請求には認定日の前後3ヶ月の診断書が要る。
+            無ければ事後重症請求になり<b>遡及分が消える</b>。②等級の審査。<br>
+            <b>【次の一手】</b>当時の病院に診断書が書けるか確認 → 障害年金専門の社労士へ。
+            遡及は5年で時効なので、待つほど古い月から消える</em></div></li>
+        <li data-id="p0-koyou"><button type="button" class="box" role="checkbox" aria-checked="false"></button><div><b>失業保険の受給期間延長を申請する</b>
+            <em>離職日の翌日から1年で権利が消えるが、病気で働けない期間は<b>最大3年延長（合計4年）</b>できる。<b>申請しないと延長されない。</b><br>
+            <b>手帳2級があるので「就職困難者」扱いになり、所定給付日数が 90日 → 300日</b>（45歳未満・被保険者期間1年以上）。
+            働ける状態になってから受給し、<b>待期7日が明けてから開業届</b>を出せば<b>再就職手当</b>（残日数×日額×70%）の対象になる。<br>
+            傷病手当金と失業保険は<b>同時に受けられない</b>（「働けない」と「働ける」で要件が正反対）。順番でしか取れない</em></div></li>
         <li data-id="p0-shikin"><button type="button" class="box" role="checkbox" aria-checked="false"></button><div>主治医と「いつ働ける状態になるか」を確認する
             <em>資金は尽きない（月＋5.5万・15ヶ月で82万）。開業日を決めるのは体調だけになった</em></div></li>
     </ul>
@@ -223,101 +283,125 @@
             <b style="color:var(--warn)">営業ができない（2026-09-20・保険者に確認）。</b>
             傷病手当金は <b>月17万・2027年12月まで</b>（残り15ヶ月・総額255万）。
             保険者の回答は「<b>開業届を出すと支給は止まる</b>」「<b>営業活動も労務にあたる</b>」。
+            <b>ただし止まるのは傷病手当金だけで、障害年金は別</b>——所得制限が無いので開業しても原則続く（上の P0・未請求）。
             声かけも受注も、手当を受けている間はできない。
             <b>開業日 ＝ 働ける状態になった日</b>で、これは主治医と決めること。
         </div>
 
-        <h3>いまの月次（実数）</h3>
-        <div class="wrap-x"><table>
-            <thead><tr><th>項目</th><th class="num">月額</th><th>備考</th></tr></thead>
+        <h3>お金の流れ（ここに全部ある）</h3>
+        <p class="lead">
+            <b>2026-09-25 に1本にまとめた。</b>それまで「いまの月次」「収支の推移」
+            「開業したらどうなるか」「ベストシナリオ」と<b>4つの表に分かれていて、
+            同じお金を別の切り口で3回書いていた</b>。どれが最新か分からなくなるので、
+            <b>時系列の1本</b>に畳んだ。<b>お金の話はこの表がすべて。</b>
+        </p>
+        <p class="lead"><b>前提（これを変えたら、表ごと置き直す）</b></p>
+        <ul class="calc-why">
+            <li><b>開業前の実額</b>傷病手当金 <b>＋¥170,000</b>／生活費 <b>−¥80,000</b>／
+                ツール代 −¥35,280（Higgsfield Plus ¥4,600 ＋ Claude Max ¥30,680）
+                ＝ <b>手元に残る ＋¥54,720</b>（月11.5万の支出）</li>
+            <li><b>開業後の支出</b>Higgsfield を Max（¥27,155）へ戻すので、
+                生活費8万＋ツール代5.8万＝<b>支出 月13.8万</b>になる</li>
+            <li><b>入金</b>制作費は<b>全額を納品後に請求</b>（期日は納品日から30日以内）。着手金は取らない（9/22 決定）。
+                だから<b>納品した月には入らず、翌月に入る</b></li>
+            <li><b>時期</b>開業日は体調しだいで未定なので、日付ではなく<b>開業した月からの相対</b>で置く</li>
+            <li><b>右端の列</b>障害年金（月6.9万）は<b>まだ請求していない</b>。「通ったら」の見込み。
+                <b>左の実額と混ぜないこと</b>（上の P0）</li>
+        </ul>
+<figure class="c-fig">
+<svg viewBox="0 0 600 340" class="c-svg" role="img" aria-labelledby="cash-t cash-d">
+  <title id="cash-t">手元のお金の推移・ベストの場合（開業からの相対月・万円）</title>
+  <desc id="cash-d">障害年金の遡及・月額・再就職手当が全部入った場合。遡及の約180万を持った状態で開業するので +180 から始まり、M+1 に再就職手当110万が乗って276.2万。以後は月53.1万ずつ増え、1年で706.7万になる。一度も0を下回らない。これは未請求の見込みで、実額は下の表の左の列にある。</desc>
+  <g class="c-grid"><line x1="46" y1="272.0" x2="470" y2="272.0" class="c-g0"/><text x="37" y="276.5" class="c-ylab">0</text><line x1="46" y1="206.7" x2="470" y2="206.7" class="g"/><text x="37" y="211.2" class="c-ylab">200</text><line x1="46" y1="141.5" x2="470" y2="141.5" class="g"/><text x="37" y="146.0" class="c-ylab">400</text><line x1="46" y1="76.2" x2="470" y2="76.2" class="g"/><text x="37" y="80.7" class="c-ylab">600</text></g>
+  <line x1="46" y1="24" x2="46" y2="272" class="c-ax"/>
+  <text x="46.0" y="302" class="c-xlab ">開業</text><text x="81.3" y="302" class="c-xlab c-x2">M+0</text><text x="152.0" y="302" class="c-xlab ">M+2</text><text x="222.7" y="302" class="c-xlab c-x2">M+4</text><text x="293.3" y="302" class="c-xlab ">M+6</text><text x="364.0" y="302" class="c-xlab c-x2">M+8</text><text x="470.0" y="302" class="c-xlab ">M+11</text>
+  <path d="M 46.0 213.3 L 81.3 215.5 L 116.7 181.9 L 152.0 184.1 L 187.3 180.0 L 222.7 162.7 L 258.0 145.4 L 293.3 128.0 L 328.7 110.7 L 364.0 93.4 L 399.3 76.0 L 434.7 58.7 L 470.0 41.4" class="c-line c-lc"/>
+  <line id="cash-cross" class="c-cross" x1="0" y1="24" x2="0" y2="272" style="display:none"/>
+  <circle cx="46.0" cy="213.3" r="5" class="c-dot c-sc"/>
+  <circle cx="116.7" cy="181.9" r="5" class="c-dot c-sc"/>
+  <text x="54" y="235.3" class="c-lab c-l">遡及 ＋180万（開業前に入る）</text>
+  <text x="124.7" y="211.9" class="c-lab c-l">再就職手当 ＋110万</text>
+  <text x="481" y="46.4" class="c-end">1年で<tspan x="481" dy="17">706.7万</tspan></text>
+</svg>
+<figcaption>
+  <span class="c-lg"><i class="c-sw c-sc"></i><b>ベストの場合の手元</b>（遡及・障害年金・再就職手当が全部入る）<b>※未請求・見込み</b></span>
+  <span class="c-cap">単位は万円。貯金ゼロからの累積。<b>数字は下の表と同じもの</b>で、グラフは形を見るためのもの。<br>
+  <b>この線は一度も0を下回らない</b>——一時金290万の前では、開業時の資金不足（実額なら底 −41.4万）は誤差になる。<br>
+  <b>通らなかった場合は載せていない</b>（2026-09-25 の判断）。実額は下の表の<b>「手元（実額）」の列</b>にある。</span>
+</figcaption>
+<p class="c-tip" id="cash-tip">グラフを指でなぞる（PCならマウスを乗せる）と、その月の数字が出ます。</p>
+</figure>
+        <div class="wrap-x"><table class="t-wide">
+            <thead><tr><th>時期</th><th>その月にやること</th><th class="num">入金</th><th class="num">支出</th><th class="num">手元（実額）</th><th class="num">手元（年金が通れば）</th></tr></thead>
             <tbody>
-                <tr><td>傷病手当金</td><td class="num">＋¥170,000</td><td>2027年12月まで（残り15ヶ月）</td></tr>
-                <tr><td>生活費</td><td class="num">−¥80,000</td><td>ツール代は別</td></tr>
-                <tr><td>Higgsfield Plus</td><td class="num">−¥4,600</td><td>$29・600クレジット。<b>9/24 に Max から変更済み</b>。受注が入ったら Max（¥27,155）へ戻す</td></tr>
-                <tr><td>Claude Max</td><td class="num">−¥30,680</td><td>$200。維持する（9/20 判断）</td></tr>
-                <tr><td><b>手元に残る</b></td><td class="num"><b>＋¥54,720</b></td><td><b>15ヶ月で 約82万</b></td></tr>
+                <tr><td><b>開業前</b>（毎月）</td><td>傷病手当金だけ。<b>営業も受注もできない</b>（労務にあたる）</td><td class="num">＋17.0万</td><td class="num">−11.5万</td><td class="num"><b>＋5.5万/月</b></td><td class="num"><b>＋12.4万/月</b></td></tr>
+                <tr><td><b>一時金</b></td><td><b>障害年金の遡及</b>（2024年10月分から24ヶ月）。請求から3〜6ヶ月後に一括</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num"><b>＋165〜200万</b></td></tr>
+                <tr><td><b>M+0</b></td><td>開業届 → インボイス登録申請 → 通知待ち。<b>手当停止</b>。登録通知まで数週間かかるので声かけは始められない</td><td class="num">0</td><td class="num">−13.8万</td><td class="num">−13.8万</td><td class="num">−6.9万</td></tr>
+                <tr><td><b>一時金</b></td><td><b>再就職手当</b>（待期7日が明けてから開業した場合）。<b>確度は低〜中</b>——開業準備が進んでいるので受給資格自体が争点になる</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">＋約110万</td></tr>
+                <tr><td><b>M+1</b></td><td>登録通知 → サイトと書類を書き換え → <b>声かけ開始</b>。書き換えは1日で済むが、声かけから商談までに時間がかかる</td><td class="num">0</td><td class="num">−13.8万</td><td class="num">−27.6万</td><td class="num">−13.8万</td></tr>
+                <tr><td><b>M+2</b></td><td>初受注・制作・納品（30秒1件 ¥195,000）。制作は約2週間。<b>納品しても入金は30日後</b></td><td class="num">0</td><td class="num">−13.8万</td><td class="num"><b>−41.4万（底）</b></td><td class="num"><b>−20.7万（底）</b></td></tr>
+                <tr><td><b>M+3</b></td><td><b>初入金</b>（納品日から30日以内）</td><td class="num">19.5万</td><td class="num">−13.8万</td><td class="num">−35.7万</td><td class="num">−8.1万</td></tr>
+                <tr><td><b>M+4</b></td><td>月2件 ¥600,000 のペースへ（P1）。声かけが回り始めてから</td><td class="num">60.0万</td><td class="num">−13.8万</td><td class="num"><b>＋10.5万</b></td><td class="num"><b>＋45.0万</b></td></tr>
+                <tr><td>M+6</td><td>〃</td><td class="num">60.0万</td><td class="num">−13.8万</td><td class="num">102.9万</td><td class="num">151.2万</td></tr>
+                <tr><td>M+9</td><td>〃</td><td class="num">60.0万</td><td class="num">−13.8万</td><td class="num">241.5万</td><td class="num">310.5万</td></tr>
+                <tr><td>M+11</td><td>〃</td><td class="num">60.0万</td><td class="num">−13.8万</td><td class="num">333.9万</td><td class="num">416.7万</td></tr>
             </tbody>
         </table></div>
+        <p class="swipe-hint">横にスクロールすると、表の続きが見られます。</p>
+
+        <p class="lead" style="margin-top:20px">
+            <b>この表から読み取ること。</b>
+        </p>
+        <ul class="calc-why">
+            <li><b>入金のない月が3つ続く</b>M+0〜M+2。底は <b>M+2</b>。手元がプラスに戻るのは <b>M+4</b>。
+                2026-09-24 に置き直した——同じ日に<b>「インボイスの登録が通ってから声かけを始める」</b>と
+                決めたので、それまでの「開業月に受注して納品、翌月入金」では成り立たなくなった。
+                <b>開業月は登録申請と通知待ちで終わる。受注も納品もできない月が先に来る。</b></li>
+            <li><b>開業時点で 42万</b>が要る（底の −41.4万）。開業前は月5.5万しか貯まらないので、
+                <b>つくるのに約8ヶ月</b>。9/24 まで「14万」と書いていたのは、開業月に受注して納品できる前提の数字だった</li>
+            <li><b>年金が通ると、ここが一番変わる。</b>底が −20.7万になるので<b>必要なのは21万</b>。
+                しかも月12.4万貯まるので、<b>準備期間が8ヶ月 → 約2ヶ月に縮む</b>。
+                遡及の一括が入れば、<b>その場で足りる</b></li>
+            <li><b>受注ゼロのまま続いたら</b>手当が止まり Higgsfield も Max に戻すので、
+                出ていくのは月 <b>−¥137,835</b>。<b>手当期間中に貯めた82万で 約6ヶ月</b>もつ。
+                <b>年金が通っていれば −¥68,835 で、もつ期間は倍になる</b></li>
+            <li><b>月数は前提であって実績ではない</b>登録通知が早ければ1ヶ月前倒しになるし、初受注が遅れれば
+                もう1ヶ月後ろへ動く。<b>実際に開業したら、この表を実数で置き直すこと</b></li>
+            <li><b>資金は尽きない。貯まる。</b>以前ここに置いていた「生活費20〜30万・収入ゼロ・貯蓄40〜60万が要る」
+                という表は、退職直後の想定で、いまの実態と1つも合っていなかったので外した</li>
+            <li><b>待つほど開業時の貯金は増えるが、待っても事業は進まない。</b>貯金は保険で、事業の前進ではない</li>
+        </ul>
         <p class="lead" style="margin-top:14px">
-            <b>資金は尽きない。貯まる。</b>以前ここに置いていた「生活費20〜30万・収入ゼロ・
-貯蓄40〜60万が要る」という表は、退職直後の想定で、いまの実態と1つも合っていなかったので外した。
+            着手金を外した代償と、外した理由は <a href="record.html">実測記録と裏づけ</a>。
+            登録を先に通すと決めた理由は <a href="record.html">同じページの「インボイス」</a>。
         </p>
 
-        <h3>収支の推移（開業月を M+0 とした相対）</h3>
-        <p class="lead">
-            開業日は体調しだいで未定なので、日付ではなく<b>開業した月からの相対</b>で置く。
-            前提は 生活費8万／ツール代は開業後 Max に戻して5.8万（＝支出 月13.8万）／
-            <b>制作費は全額を納品後に請求</b>（期日は納品日から30日以内）で、着手金は取らない（9/22 決定）。
-        </p>
-        <p class="lead">
-            <b>2026-09-24 に置き直した。</b>それまでは「開業月に30秒1件を受注して納品、翌月入金」で組んでいたが、
-            同じ日に<b>「インボイスの登録が通ってから声かけを始める」</b>と決めたので、その順番では成り立たなくなった。
-            開業月は登録申請と通知待ちで終わる。<b>受注も納品もできない月が先に来る。</b>
-        </p>
-        <div class="wrap-x"><table class="t-wide">
-            <thead><tr><th>月</th><th>その月にやること</th><th>置いた理由</th></tr></thead>
-            <tbody>
-                <tr><td><b>M+0</b></td><td>開業届 → 登録申請 → 通知待ち</td>
-                    <td>登録通知まで数週間。声かけは始められない</td></tr>
-                <tr><td><b>M+1</b></td><td>通知 → サイトと書類を書き換え → 声かけ開始</td>
-                    <td>書き換えは1日で済むが、声かけから商談までに時間がかかる</td></tr>
-                <tr><td><b>M+2</b></td><td>初受注・制作・納品（30秒1件 ¥195,000）</td>
-                    <td>制作は約2週間。納品しても入金は30日後</td></tr>
-                <tr><td><b>M+3</b></td><td>初入金</td><td>納品日から30日以内（9/22 決定）</td></tr>
-                <tr><td><b>M+4〜</b></td><td>月2件 ¥600,000（P1 のペース）</td>
-                    <td>声かけが回り始めてから</td></tr>
-            </tbody>
-        </table></div>
-        <p class="lead">
-            <b>ここの月数は前提であって実績ではない。</b>登録通知が早ければ1ヶ月前倒しになるし、
-            初受注が遅れればもう1ヶ月後ろへ動く。<b>実際に開業したら、この表を実数で置き直すこと。</b>
-        </p>
-        <div class="wrap-x"><table class="t-wide">
-            <thead><tr><th>時期</th><th class="num">入金</th><th class="num">支出</th><th class="num">その月</th><th class="num">手元（貯金ゼロから）</th></tr></thead>
-            <tbody>
-                <tr><td>開業前（手当あり・営業不可）</td><td class="num">17.0万</td><td class="num">−11.5万</td><td class="num">＋5.5万</td><td class="num">待った月数 × 5.5万</td></tr>
-                <tr><td><b>M+0</b>　開業・手当停止・登録申請</td><td class="num">0</td><td class="num">−13.8万</td><td class="num"><b>−13.8万</b></td><td class="num">−13.8万</td></tr>
-                <tr><td>M+1　通知待ち → 声かけ開始</td><td class="num">0</td><td class="num">−13.8万</td><td class="num">−13.8万</td><td class="num">−27.6万</td></tr>
-                <tr><td>M+2　初受注・納品</td><td class="num">0</td><td class="num">−13.8万</td><td class="num">−13.8万</td><td class="num"><b>−41.4万</b>（底）</td></tr>
-                <tr><td>M+3　初入金</td><td class="num">19.5万</td><td class="num">−13.8万</td><td class="num">＋5.7万</td><td class="num">−35.7万</td></tr>
-                <tr><td>M+4</td><td class="num">60.0万</td><td class="num">−13.8万</td><td class="num">＋46.2万</td><td class="num">＋10.5万</td></tr>
-                <tr><td>M+6</td><td class="num">60.0万</td><td class="num">−13.8万</td><td class="num">＋46.2万</td><td class="num">102.9万</td></tr>
-                <tr><td>M+9</td><td class="num">60.0万</td><td class="num">−13.8万</td><td class="num">＋46.2万</td><td class="num">241.5万</td></tr>
-                <tr><td>M+11</td><td class="num">60.0万</td><td class="num">−13.8万</td><td class="num">＋46.2万</td><td class="num"><b>333.9万</b></td></tr>
-            </tbody>
-        </table></div>
-        <p class="lead" style="margin-top:14px">
-            <b>入金のない月が3つ続く。</b>底は <b>M+2 の −41.4万</b>。
-            手元がプラスに戻るのは <b>M+4</b>。<br>
-            <b>必要なのは開業時点で 42万。</b>9/24 まで「14万」と書いていたが、
-            それは開業月に受注して納品できる前提の数字だった。
-            インボイスの登録を先に通すと決めたので、<b>3倍に増えた</b>。
-            開業前は月 +5.5万 貯まるので、<b>42万をつくるには約8ヶ月</b>。<br>
-            <b>これは開業を遅らせる理由ではなく、開業日を決めるときに見る数字。</b>
-            体調で開業日が決まるのは変わらない。足りないぶんをどうするか（開業月を
-            早めて登録を後回しにする・生活費を削る・1件目を前倒しで取る）は、
-            開業日が見えた時点で決める。<br>
-            着手金を外した代償と、外した理由は <a href="record.html#chakushukin">実測記録と裏づけ</a>。
-            登録を先に通すと決めた理由は <a href="record.html#invoice">同じページの「インボイス」</a>。<br>
-            待つほど開業時の貯金は増えるが（15ヶ月で82万）、<b>待っても事業は進まない</b>。
-            貯金は保険で、<b>事業の前進ではない</b>。
-        </p>
+        <div class="flag">
+            <b>⚠️ 右端の列（年金）を、左の実額と混ぜないこと。</b>
+            <p>障害年金は<b>まだ請求していない</b>。再就職手当も<b>まだ相談していない</b>。
+            当て込んで開業日を決めると、通らなかったときに計画ごと崩れる。<b>動くときは左の列で判断する。</b><br>
+            <b>そして通らない可能性は現実にある。</b>障害基礎年金は<b>1級と2級しかなく、3級という枠が無い</b>
+            （3級は障害厚生年金だけの制度で、初診日が国民年金のこの件には無い）。
+            <b>2級に届かなければ、遡及も月額もまるごとゼロ。</b>手帳2級＝年金2級ではない——
+            手帳は自治体、年金は日本年金機構で、審査基準も判定機関も別。<br>
+            給付だけで最大 <b>約630〜670万</b>。うち<b>確度が高いのは約520〜560万</b>
+            （遡及・傷病手当金・障害年金）で、<b>確度が低いのは再就職手当の110万</b>。</p>
+        </div>
 
-        <h3>開業したらどうなるか</h3>
-        <div class="wrap-x"><table>
-            <thead><tr><th>開業後の月</th><th class="num">出ていく</th><th>もつ期間</th></tr></thead>
+        <h3>順番を間違えると消えるもの</h3>
+        <div class="wrap-x"><table class="t-wide">
+            <thead><tr><th>消えるもの</th><th>理由</th><th>いつまで</th></tr></thead>
             <tbody>
-                <tr><td>収入ゼロの月（手当は停止・Higgsfield は Max に戻す）</td>
-                    <td class="num">−¥137,835</td>
-                    <td>貯めた82万で <b>約6ヶ月</b></td></tr>
+                <tr><td>遡及の古い月</td><td><b>5年で時効。</b>待つほど1ヶ月ずつ消える</td><td><b>毎月</b></td></tr>
+                <tr><td>失業保険 300日</td><td>受給期間延長を<b>申請しないと権利が消える</b></td><td>離職から1年（延長すれば4年）</td></tr>
+                <tr><td>再就職手当</td><td><b>待期7日の間に開業すると対象外</b></td><td>求職申込の7日後まで待つ</td></tr>
+                <tr><td>認定日請求（遡及）</td><td>2024年8〜11月の診断書が取れないと<b>事後重症請求</b>に落ち、遡及がゼロになる</td><td>カルテ保存は2029年9月まで</td></tr>
             </tbody>
         </table></div>
-        <p class="lead" style="margin-top:14px">
-            支払条件は <b>全額を納品後に請求、期日は納品日から30日以内</b>（9/17 決定 → 9/22 に着手金を外した）。
-            初入金は納品の翌月。<b>手当期間中に貯まる82万は、開業後6ヶ月ぶんの運転資金</b>にあたる。
-            以前「40〜60万を貯めておく必要がある」としていた水準は、手当だけで超える。<br>
-            <b>9/24 に置き直した：開業前に残しておくのは 42万</b>（14万ではない）。
-            インボイスの登録を先に通すぶん、入金のない月が3つ続くため。上の表のとおり。
+        <p class="swipe-hint">横にスクロールすると、表の続きが見られます。</p>
+        <p class="lead" style="margin-top:16px">
+            <b>いちばん急ぐのは、当時の病院に「2024年9月前後の診断書が書けるか」を確認すること。</b>
+            ここが取れれば遡及180万が生き、取れなければ月6.9万だけになる。社労士より先にここ。
         </p>
         </div>
     </section>
@@ -562,5 +646,38 @@
         }
     </script>
 
+
+    <script>
+    /* 折れ線のなぞり読み。スマホで見るページなので pointer で touch も拾う。
+       数字は下の表が正で、ここは補助。JSが動かなくてもグラフと表は読める */
+    (() => {
+        const svgEl = document.querySelector('.c-svg');
+        const tipEl = document.getElementById('cash-tip');
+        const crossEl = document.getElementById('cash-cross');
+        if (!svgEl || !tipEl || !crossEl) return;
+        const LABELS = ["開業", "M+0", "M+1", "M+2", "M+3", "M+4", "M+5", "M+6", "M+7", "M+8", "M+9", "M+10", "M+11"];
+        const XS = [46.0, 81.3, 116.7, 152.0, 187.3, 222.7, 258.0, 293.3, 328.7, 364.0, 399.3, 434.7, 470.0];
+        const VC = [180.0, 173.1, 276.2, 269.3, 281.9, 335.0, 388.1, 441.2, 494.3, 547.4, 600.5, 653.6, 706.7];
+        const baseText = tipEl.textContent;
+        const fmt = (v) => (v > 0 ? '＋' : v < 0 ? '−' : '±') + Math.abs(v).toFixed(1) + '万';
+        function showAt(clientX) {
+            const r = svgEl.getBoundingClientRect();
+            const vx = (clientX - r.left) / r.width * 600;
+            let k = 0;
+            for (let i = 1; i < XS.length; i++) {
+                if (Math.abs(XS[i] - vx) < Math.abs(XS[k] - vx)) k = i;
+            }
+            crossEl.setAttribute('x1', XS[k]);
+            crossEl.setAttribute('x2', XS[k]);
+            crossEl.style.display = '';
+            tipEl.innerHTML = '<b>' + LABELS[k] + '</b>　ベストの場合 <b>' + fmt(VC[k]) + '</b>';
+        }
+        const clearTip = () => { crossEl.style.display = 'none'; tipEl.textContent = baseText; };
+        svgEl.addEventListener('pointermove', (e) => showAt(e.clientX));
+        svgEl.addEventListener('pointerdown', (e) => showAt(e.clientX));
+        svgEl.addEventListener('pointerleave', clearTip);
+        svgEl.addEventListener('pointercancel', clearTip);
+    })();
+    </script>
 </body>
 </html>
