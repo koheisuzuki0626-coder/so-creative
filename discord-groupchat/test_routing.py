@@ -916,6 +916,25 @@ def run():
     finally:
         bot._git_self = _keep_git
 
+    print("■ 既定の画像モデルに、存在しないIDを置かない")
+    # 事故（2026-09-24）：既定の3つのうち【2つが存在しないID】だった
+    # （gemini-2.5-flash-image-preview / gemini-2.0-flash-preview-image-generation）。
+    # 生きているのは gemini-2.5-flash-image だけで、それが429になった瞬間に
+    # 全滅し、本番ログに同じ失敗が6回並んだ。
+    # mark_dead は実行時に404を外してくれるが、既定に死んだIDを書いてあると
+    # 【起動のたびに1往復ずつ捨てる】うえ、逃げ場の本数を人間が数え間違える。
+    _DEAD_IMG = ("gemini-2.5-flash-image-preview",
+                 "gemini-2.0-flash-preview-image-generation")
+    for _d in _DEAD_IMG:
+        check(f"既定に死んだIDを戻していない（{_d}）",
+              _d not in bot.GEMINI_IMAGE_MODELS, True)
+    # 枠切れは「時間で戻る」ので、逃げ場が1本だと戻るまで何も作れない。
+    check("画像モデルの逃げ場が2本以上ある",
+          len(bot.GEMINI_IMAGE_MODELS) >= 2, True)
+    # 本人の希望（2026-09-24）：古い方を優先する。先頭が入れ替わっていたら気づく。
+    check("古い方（2.5）が先頭のまま",
+          bot.GEMINI_IMAGE_MODELS[0] == "gemini-2.5-flash-image", True)
+
     print("■ 消えたモデルIDは恒久的に外す（テキスト側）")
     # 本番で gemini-2.0-flash / -lite が404になったが、テキスト側は
     # mark_quota（30分クールダウン）扱いだったため、永久に叩き直していた。

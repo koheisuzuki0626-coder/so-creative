@@ -3462,9 +3462,20 @@ def _gen_settings_summary():
 GEMINI_IMAGE_MODELS = [
     m.strip() for m in os.getenv(
         "GEMINI_IMAGE_MODEL",
+        # 2026-09-24：APIのモデル一覧と突き合わせたら、既定3つのうち【2つが
+        # 存在しなかった】（-preview と 2.0-flash-preview-image-generation）。
+        # 生きているのは gemini-2.5-flash-image だけで、それが429（枠切れ）に
+        # なった瞬間に全滅していた（本番ログで6回、同じ失敗）。
+        # 「もっと古いID」は存在しないので、戻す先は無い。直す方向は前。
+        #
+        # 【古い方（2.5）は先頭のまま】＝通常はこれが使われる（本人の希望）。
+        # 後ろの3つは枠切れのときの逃げ場。モデルごとに日次の無料枠が別なので、
+        # 候補を増やすほど「枠は残っているのに作れない」が起きにくくなる。
+        # 並びは枠の厚そうな順（lite → flash → pro）。
         "gemini-2.5-flash-image,"
-        "gemini-2.5-flash-image-preview,"
-        "gemini-2.0-flash-preview-image-generation",
+        "gemini-3.1-flash-lite-image,"
+        "gemini-3.1-flash-image,"
+        "gemini-3-pro-image",
     ).split(",") if m.strip()
 ]
 _gemini_image_ok = {"model": ""}      # 一度通ったモデルを次回から先に試す
