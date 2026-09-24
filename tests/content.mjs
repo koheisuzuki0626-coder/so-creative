@@ -493,8 +493,11 @@ check('金額の表示は税込で揃っている',
            松は人物1名ぶん込みの額で、計算機で「なし」を選ぶと
            松60秒で ¥489,000 → ¥439,000 と5万ずれていた。
            同じ条件で違う額を出す状態を、3ページとも作らない */
-        for (const [name, html] of [['index.html', idx], ['pricing.html', pricingHtml],
-            ['company-video.html', readFileSync(`${ROOT}/company-video.html`, 'utf8')]]) {
+        /* 尺ごとの料金表を載せているページは全部見る。1ページだけ古い言い方が
+           残ると、そのページから来た人にだけ違う額を伝えることになる */
+        const WITH_TABLE = ['index.html', 'pricing.html', 'company-video.html', 'recruit-video.html'];
+        for (const name of WITH_TABLE) {
+            const html = readFileSync(`${ROOT}/${name}`, 'utf8');
             check(`${name} の料金表が「ナレーションなし」と名乗っていない`,
                 !/ナレーションなし）<\/th>/.test(html) && !/料金（1本・ナレーションなし）/.test(html));
             check(`${name} にナレーション込みだと書いてある`,
@@ -677,8 +680,12 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
    「sitemap では出しておいて中身は拒否する」食い違った状態が残る。
    noindex の有無と、robots.txt が sitemap を出しているかを、必ず一緒に動かす */
 {
-    const PUBLIC = ['index.html', 'pricing.html', 'works.html',
-        'company-video.html', 'recruit-video.html', 'about.html', 'privacy.html'];
+    /* 2026-09-24：ジャンルごとのページを7つ足した（用途別で検索の受け皿にする）。
+       ここに並べたページは、noindex の付け外しも計測も足並みをそろえる */
+    const PUBLIC = ['index.html', 'pricing.html', 'works.html', 'about.html', 'privacy.html',
+        'company-video.html', 'recruit-video.html', 'service-video.html', 'ad-video.html',
+        'sns-video.html', 'exhibition-video.html', 'internal-video.html',
+        'animation-video.html', 'music-video.html'];
     const INTERNAL = ['funnel.html', 'roadmap.html', 'record.html'];
     const robotsOf = async (f) => {
         const h = await (await page.request.get(`${BASE}/${f}`)).text();
@@ -705,9 +712,78 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     /* sitemap が載せてよいのは公開ページだけ。社内用が混ざると外から辿られる */
     check('sitemap に社内用のページが入っていない',
         !INTERNAL.some((f) => locs.some((u) => u.endsWith(`/${f}`))), locs.join(' '));
+    /* privacy.html は検索から直接来る種類のページではないので sitemap に入れない。
+       それ以外の公開ページは全部載っていること（ジャンルのページを足したら自動で増える） */
+    const SITEMAP_OUT = ['privacy.html'];
+    const want = PUBLIC.filter((f) => !SITEMAP_OUT.includes(f) && f !== 'index.html');
     check('sitemap の中身が公開ページの並びと合っている',
-        locs.length === 6 && locs.every((u) => u.endsWith('/')
-            || PUBLIC.some((f) => u.endsWith(`/${f}`))), locs.join(' '));
+        locs.length === want.length + 1
+        && locs.some((u) => u.endsWith('/so-creative/'))
+        && want.every((f) => locs.some((u) => u.endsWith(`/${f}`))),
+        `${locs.length}件 / ${want.length + 1}件`);
+    /* ---- 用途別のページ（2026-09-24 に7つ足した） ----
+       9ジャンルのうち専用ページがあるのは会社紹介と採用だけで、
+       残り7つは works.html のアンカーだった。地域×用途の検索で
+       当たるページが無かったので、1用途1ページにした。
+       つくるのは scripts/make-genre-pages.py。手で7ページを直さない */
+    {
+        const GENRE_PAGES = [
+            ['service-video.html', 'genre-service', false],
+            ['ad-video.html', 'genre-ad', false],
+            ['sns-video.html', 'genre-sns', false],
+            ['exhibition-video.html', 'genre-event', false],
+            ['internal-video.html', 'genre-internal', false],
+            ['animation-video.html', 'genre-animation', false],
+            /* ミュージックビデオは料金表の対象外なので、表も計算機も置かない */
+            ['music-video.html', 'genre-mv', true],
+        ];
+        const worksSrcNow = readFileSync(`${ROOT}/works.html`, 'utf8');
+        for (const [file, anchor, noPrice] of GENRE_PAGES) {
+            const h = readFileSync(`${ROOT}/${file}`, 'utf8');
+            check(`${file} に h1 が1つある`,
+                (h.match(/<h1[^>]*>/g) || []).length === 1);
+            check(`${file} の canonical が自分を指している`,
+                h.includes(`<link rel="canonical" href="https://koheisuzuki0626-coder.github.io/so-creative/${file}">`));
+            check(`${file} に構造化データがある`,
+                /"@type": "Service"/.test(h) && /"@type": "VideoObject"/.test(h)
+                && /"@type": "BreadcrumbList"/.test(h));
+            check(`${file} が地域を書いている`, /名古屋/.test(h) && /愛知/.test(h));
+            check(`${file} がサンプルのページへ戻れる`,
+                h.includes(`href="works.html#${anchor}"`));
+            check(`works.html の ${anchor} から ${file} へ行ける`,
+                new RegExp(`id="${anchor}"[\\s\\S]{0,900}?href="${file}"`).test(worksSrcNow));
+            check(`${file} が計測している`,
+                /<script[^>]+src="assets\/funnel\.js"/.test(h));
+            if (noPrice) {
+                check(`${file} は料金表を置かない`,
+                    !/<table class="compare">[\s\S]*?¥/.test(h.split('<h2 class="headline">料金</h2>')[1] || '')
+                    && /個別にお見積り/.test(h));
+                check(`${file} は計算機を置かない`, !/class="calc"/.test(h));
+            } else {
+                check(`${file} に計算機がある`,
+                    /<div class="calc" data-calc-len="(\d+)"/.test(h)
+                    && /<script[^>]+src="assets\/pricing\.js"/.test(h));
+                check(`${file} の料金表がナレーション込みだと書いている`,
+                    /この表はナレーション込みの額です/.test(h)
+                    && !/ナレーションなし）<\/th>/.test(h));
+                /* 表の額は基本料金＋秒単価×尺。手で打ち直すとここで落ちる */
+                const rows = [...h.matchAll(
+                    /<tr><th scope="row">(15秒|30秒|60秒|90秒|3分)<\/th>((?:<td>[^<]*<\/td>){3})<\/tr>/g)];
+                const S = { '15秒': 15, '30秒': 30, '60秒': 60, '90秒': 90, '3分': 180 };
+                check(`${file} の料金表がモデルと合っている`,
+                    rows.length >= 3 && rows.every((m) => {
+                        const cells = [...m[2].matchAll(/<td>([^<]*)<\/td>/g)].map((x) => x[1]);
+                        return TIERS.every((t, i) => cells[i]
+                            === `¥${(PRICE.base + t.perSec * S[m[1]]).toLocaleString('ja-JP')}`);
+                    }), `${rows.length}段`);
+            }
+        }
+        /* 手で書き足すと骨組みがズレるので、つくり手が残っていること */
+        check('ジャンルのページをつくる手順が残っている',
+            existsSync(`${ROOT}/scripts/make-genre-pages.py`)
+            && existsSync(`${ROOT}/scripts/genre_data.py`));
+    }
+
     /* 切り替えの手順を書いた場所が消えていないこと。消えると順番を思い出せない */
     check('公開に切り替える手順が sitemap.xml に書いてある',
         /noindex, nofollow を外す/.test(sm) && /Sitemap: の行を足す/.test(sm));

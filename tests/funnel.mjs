@@ -143,8 +143,12 @@ await p.close();
    「どこで脱落したか」を見たいのに入口ページが丸ごと暗かった。 */
 {
     const q = await open(browser, {});
-    const PUBLIC = ['index.html', 'pricing.html', 'works.html',
-        'company-video.html', 'recruit-video.html', 'about.html', 'privacy.html'];
+    /* 2026-09-24：ジャンルごとのページを7つ足した（用途別で検索の受け皿にする）。
+       ここに並べたページは、noindex の付け外しも計測も足並みをそろえる */
+    const PUBLIC = ['index.html', 'pricing.html', 'works.html', 'about.html', 'privacy.html',
+        'company-video.html', 'recruit-video.html', 'service-video.html', 'ad-video.html',
+        'sns-video.html', 'exhibition-video.html', 'internal-video.html',
+        'animation-video.html', 'music-video.html'];
     /* 本文で funnel.js に言及しているだけの箇所に引っかからないよう、
        script タグで読み込んでいるかどうかで見る */
     const loads = (html) => /<script[^>]+src="assets\/funnel\.js"/.test(html);

@@ -1170,10 +1170,13 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
 
 /* スマホではジャンル欄の内側が 290px しかなく、選ぶところが窮屈になる。
    カードの左右の余白（30px）ぶん外へ出して、画面の幅いっぱいを使う */
+/* 外へ出すのは、ジャンルのカードの中に置いたときだけ（カードの padding は 30px）。
+   用途別のページでは .wrap の中に置くので、そのままで幅が足りる。
+   ここを絞らないと、ジャンルのページが横に 11px はみ出す */
 @media (max-width: 760px) {
-    .genre-calc { margin-left: -31px; margin-right: -31px; }
-    .genre-calc .genre-calc-head { margin-left: 31px; margin-right: 31px; }
-    .genre-calc .calc { border-radius: 0; border-left: 0; border-right: 0; }
+    .genre .genre-calc { margin-left: -31px; margin-right: -31px; }
+    .genre .genre-calc .genre-calc-head { margin-left: 31px; margin-right: 31px; }
+    .genre .genre-calc .calc { border-radius: 0; border-left: 0; border-right: 0; }
 }
 .calc-row + .calc-row { margin-top: 30px; }
 .calc-label {
