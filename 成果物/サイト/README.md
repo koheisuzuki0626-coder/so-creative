@@ -16,6 +16,13 @@
 
 サイトを直すときは `main` を見ること。
 
+## ドメインと Search Console
+
+**`so-creative.jp` が空いている**（2026-09-24・RDAP で確認）。
+独自ドメインはSEOの土台であると同時に、**28社へ送る営業メールの信用**でもある
+（いまはURLもメールも借り物）。**noindex を外す前に移すのが一番安い。**
+手順とSearch Consoleの段取りは [`ドメインとSearch Console.md`](ドメインとSearch%20Console.md)。
+
 ## 直し方
 
 `git checkout` は使わない（ボットがこの作業ブランチのツリーで動いているため、
