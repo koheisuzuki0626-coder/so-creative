@@ -709,7 +709,10 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     const doneTxt = await rm.locator('.ck.p0 li.done').allInnerTexts();
     check('決着ぶんが済に入っている',
         doneTxt.some((d) => /支払条件/.test(d) && /9\/17/.test(d))
-        && doneTxt.some((d) => /インボイス/.test(d) && /登録しない/.test(d)), doneTxt.join(' | '));
+        /* 9/24：インボイスは「登録しない」から「登録する」に変わった。
+           決着の項目としては残るが、中身が逆になったので両方の経緯が書いてあること */
+        && doneTxt.some((d) => /インボイス/.test(d) && /登録しない/.test(d)
+            && /9\/24/.test(d) && /登録する/.test(d)), doneTxt.join(' | '));
     /* 済の項目はいつ終わったかが分かること。日付のない「済」は後から検算できない */
     check('済の項目に日付が入っている',
         doneTxt.every((d) => /\d+\/\d+/.test(d)), doneTxt.find((d) => !/\d+\/\d+/.test(d)) || '');
