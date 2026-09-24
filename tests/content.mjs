@@ -1159,5 +1159,26 @@ for (const f of ['assets/site.css', 'assets/logo-mark.png', 'assets/favicon.png'
     const st = (await page.request.get(`${BASE}/${f}`)).status();
     check(`${f} が配信できる`, st === 200, `HTTP ${st}`);
 }
+
+/* ---- ロゴに旧社名が残っていないか（2026-09-24） ----
+   ワードマークの SVG が「so.」のまま 9/11 から取り残されていた。
+   いまはどこからも使っていないので表示には出なかったが、
+   あとで使うと旧社名が復活する。作り直したので、戻ったら落とす */
+for (const f of ['assets/logo-word.svg', 'assets/logo-word-dark.svg',
+                 'assets/logo-mark.svg']) {
+    const r = await page.request.get(`${BASE}/${f}`);
+    const t = r.status() === 200 ? await r.text() : '';
+    check(`${f} が配信できる`, r.status() === 200, `HTTP ${r.status()}`);
+    check(`${f} に旧社名が残っていない`, !/>so\.</.test(t) && !/aria-label="so\."/.test(t));
+    check(`${f} が so-creative を名乗っている`, /so-creative/.test(t));
+}
+/* 文字はアウトライン化してあること。<text> だと、フォントの無い環境で
+   別の字形になったり、まるごと出なかったりする */
+for (const f of ['assets/logo-word.svg', 'assets/logo-word-dark.svg']) {
+    const t = await (await page.request.get(`${BASE}/${f}`)).text();
+    check(`${f} の文字がアウトライン化されている`, !/<text[\s>]/.test(t));
+    /* 金色の区切りが図形で入っていること（文字の「-」にすると色を変えられない） */
+    check(`${f} に金色の区切りがある`, /<rect[^>]*#b08733/.test(t));
+}
 await browser.close();
 report();
