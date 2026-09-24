@@ -132,23 +132,81 @@ const track = window.soTrack || (() => {});
             return m ? (r ? `${m}分${r}秒` : `${m}分`) : `${sec}秒`;
         };
 
-        const calc = document.querySelector('.calc');
-        if (calc) {
-            const lenBox = document.getElementById('calc-len');
-            const lenHint = document.getElementById('calc-len-hint');
-            const cntBox = document.getElementById('calc-cnt');
-            const cntHint = document.getElementById('calc-cnt-hint');
+        /* 2026-09-24：1ページに1台の作りだったのを、何台でも置けるようにした。
+           つくれる動画のジャンルごとに、その尺を入れた計算機を置くため。
+
+           台ごとに変えたのは3つ。
+             1. DOM の参照を id から、計算機の中の data-c にした
+                （id はページに1つしか置けない）
+             2. ラジオの name に台ごとの印を付けた
+                （同じ name だと、別の台で選んだものが連動して外れる）
+             3. ファネルの記録に where を足した
+                （どの計算機で触ったのかが分からないと、通過率が読めない）
+
+           器が空のときは JS で組み立てる。料金ページは自前の器を持っているので
+           そのまま使い、ジャンルの側は <div class="calc" data-calc-len="60"> だけ置く。 */
+        const shellHtml = (uid) => `
+            <div class="calc-picks">
+                <div class="calc-row">
+                    <p class="calc-label" id="calc-tier-label-${uid}"><span class="calc-step">1</span>仕上げの段階を選ぶ</p>
+                    <div class="calc-opts" role="radiogroup" aria-labelledby="calc-tier-label-${uid}" data-c="tier"></div>
+                    <p class="calc-hint" data-c="tier-hint"></p>
+                </div>
+                <div class="calc-row">
+                    <p class="calc-label" id="calc-cnt-label-${uid}"><span class="calc-step">2</span>何本つくるかを選ぶ</p>
+                    <div class="calc-opts" role="radiogroup" aria-labelledby="calc-cnt-label-${uid}" data-c="cnt"></div>
+                    <p class="calc-hint" data-c="cnt-hint"></p>
+                </div>
+                <div class="calc-row">
+                    <p class="calc-label" id="calc-len-label-${uid}"><span class="calc-step">3</span>それぞれの尺とナレーションを選ぶ</p>
+                    <div class="calc-lens" data-c="len"></div>
+                    <p class="calc-hint" data-c="len-hint"></p>
+                    <p class="calc-hint" data-c="nar-hint"></p>
+                </div>
+            </div>
+            <div class="calc-out">
+                <p class="calc-out-head">お見積り</p>
+                <p class="calc-total"><span data-c="total">¥195,000</span><small>税込</small></p>
+                <dl class="calc-break">
+                    <div><dt>基本料金</dt><dd data-c="base">¥90,000</dd></div>
+                    <div><dt data-c="len-dt">尺</dt><dd data-c="lenfee">¥0</dd></div>
+                    <div><dt data-c="cnt-dt">本数 1本</dt><dd data-c="cntfee">¥0</dd></div>
+                    <div><dt data-c="nar-dt">ナレーション</dt><dd data-c="narfee">¥0</dd></div>
+                </dl>
+                <p class="calc-lead">納品目安 <strong data-c="lead-v">約2週間</strong></p>
+                <div class="calc-actions">
+                    <a href="mailto:" class="pill pill-solid calc-cta" data-c="mail">この内容で相談する</a>
+                    <button type="button" class="calc-copy" data-c="copy">内容をコピー</button>
+                </div>
+                <p class="calc-note" data-c="copy-msg">メールソフトが開き、選んだ内容が本文に入ります。</p>
+            </div>`;
+
+        document.querySelectorAll('.calc').forEach((el, i) => setupCalc(el, i));
+
+        function setupCalc(calc, ci) {
+            const uid = calc.dataset.calcId || `c${ci}`;
+            if (!calc.querySelector('[data-c="tier"]')) calc.innerHTML = shellHtml(uid);
+            const q = (k) => calc.querySelector(`[data-c="${k}"]`);
+            /* どの計算機で触ったのか。ジャンルの側は data-calc-where に
+               そのジャンルの id を入れる。料金ページは 'plans' */
+            const where = calc.dataset.calcWhere || 'plans';
+            const lenBox = q('len');
+            const lenHint = q('len-hint');
+            const cntBox = q('cnt');
+            const cntHint = q('cnt-hint');
             /* 本ごとの尺（秒）。長さが本数、合計が尺の合計。
                料金は base + 秒単価 × 合計秒数 + ¥65,000 × (本数 − 1) なので、
                どう割り振っても合計が同じなら金額は変わらない。
                変わるのは「何を何秒で作るか」が相手に伝わるかどうか */
-            let lens = [30];
+            /* 置いた場所の尺で始める。ジャンルの計算機は、そのサンプルの実尺 */
+            const initLen = Number(calc.dataset.calcLen) || 30;
+            let lens = [initLen];
             /* 本ごとのナレーション。lens と同じ長さで、同じ添字が同じ本を指す。
                'none' | 'ai' | 'human' */
-            let nars = ['ai'];
+            let nars = [];   // tier が決まってから defaultNar で埋める
             const MAX_COUNT = 6;
             const totalSec = () => lens.reduce((a, b) => a + b, 0);
-            let tier = TIERS[0];
+            let tier = TIERS.find((t) => t.id === calc.dataset.calcTier) || TIERS[0];
             /* 初期は 'ai'。AIナレーションは料金に含まれているので、これが素の状態。
                'none' を初期にすると表示額が差し引き後になり、
                「AIは込み」と言いながら AI を選ぶと上がる見え方になる */
@@ -157,14 +215,17 @@ const track = window.soTrack || (() => {});
                段を変えたら既定に戻す。持ち越すと、松を選んだのに人物ぶんが
                引かれた額が出る、という分かりにくい状態になる */
             const defaultNar = (t) => (t.narration ? 'human' : 'ai');
+            /* 段が決まってから埋める。松で始める計算機なら 'human'、梅・竹なら 'ai' */
+            nars = lens.map(() => defaultNar(tier));
             let summary = '';
             // 段差の状態。used=自分で条件を変えた / cta=相談ボタンまで進んだ
             let used = false, cta = false, resultTimer;
 
             // 送信先はお問い合わせ欄のリンクを唯一の出どころにする(二重管理を避ける)
-            const mailLink = document.getElementById('calc-mail');
+            const mailLink = q('mail');
             const mailAddr = (document.querySelector('.cta-mail')?.getAttribute('href') || '')
                 .replace(/^mailto:/, '') || mailLink.getAttribute('href').replace(/^mailto:/, '');
+            if (!mailAddr) { return; }   // 宛先が分からない器は動かさない（空のメールを出さない）
 
             // 実物のラジオボタンで組む。丸が見えることで「選ぶところ」だと分かる
             function makeOpt(text, box, group, value, onPick) {
@@ -187,17 +248,17 @@ const track = window.soTrack || (() => {});
                 return { label, input };
             }
 
-            const tierBox = document.getElementById('calc-tier');
-            const tierHint = document.getElementById('calc-tier-hint');
+            const tierBox = q('tier');
+            const tierHint = q('tier-hint');
             TIERS.forEach((t) => {
-                const o = makeOpt(`${t.label} ${t.sub}`, tierBox, 'calc-tier', t.id,
+                const o = makeOpt(`${t.label} ${t.sub}`, tierBox, `calc-tier-${uid}`, t.id,
                     () => { tier = t; nars = nars.map(() => defaultNar(t)); touch(); render(); });
                 o.label.dataset.tier = t.id;
                 o.input.dataset.tier = t.id;
             });
 
             for (let n = 1; n <= MAX_COUNT; n += 1) {
-                const o = makeOpt(`${n}本`, cntBox, 'calc-cnt', n, () => { setCount(n); touch(); render(); });
+                const o = makeOpt(`${n}本`, cntBox, `calc-cnt-${uid}`, n, () => { setCount(n); touch(); render(); });
                 o.label.dataset.count = String(n);
                 o.input.dataset.count = String(n);
             }
@@ -230,7 +291,7 @@ const track = window.soTrack || (() => {});
                     row.className = 'calc-len-row';
                     row.dataset.row = String(i);
                     const name = document.createElement('span');
-                    name.id = `calc-len-name-${i}`;
+                    name.id = `calc-len-name-${uid}-${i}`;
                     name.textContent = `${i + 1}本目`;
                     row.append(name);
 
@@ -274,7 +335,7 @@ const track = window.soTrack || (() => {});
                     lenBox.append(row);
                 });
             }
-            const narHint = document.getElementById('calc-nar-hint');
+            const narHint = q('nar-hint');
             /* 行の select は単体で読めるように長め、内訳とメールは短く */
             const NAR_LABEL = { none: 'ナレーションなし', ai: 'AIナレーション', human: '人物ナレーション' };
             const NAR_SHORT = { none: 'なし', ai: 'AI', human: '人物' };
@@ -335,14 +396,14 @@ const track = window.soTrack || (() => {});
             const totalNow = () => PRICE.base + tier.perSec * totalSec() + PRICE.perExtra * (count() - 1) + narFee();
 
             function touch() {
-                if (!used) { used = true; track('calc_use', { sec: totalSec(), count: count(), tier: tier.id, nar: narSummary() }); }
+                if (!used) { used = true; track('calc_use', { where, sec: totalSec(), count: count(), tier: tier.id, nar: narSummary() }); }
             }
 
             // 選び終えたところを1回だけ拾う(連打のたびに送らない)
             function settled(total) {
                 clearTimeout(resultTimer);
                 resultTimer = setTimeout(() => {
-                    if (used) track('calc_result', { sec: totalSec(), count: count(), total, tier: tier.id, nar: narSummary() });
+                    if (used) track('calc_result', { where, sec: totalSec(), count: count(), total, tier: tier.id, nar: narSummary() });
                 }, 900);
             }
 
@@ -430,21 +491,21 @@ const track = window.soTrack || (() => {});
                     .map(([m, c]) => `${NAR_SHORT[m]}${n === 1 ? '' : c}`)
                     .join('/');
 
-                document.getElementById('calc-total').textContent = yen(total) + (approx ? '〜' : '');
-                document.getElementById('calc-base').textContent = yen(PRICE.base);
-                document.getElementById('calc-len-dt').textContent = n === 1
+                q('total').textContent = yen(total) + (approx ? '〜' : '');
+                q('base').textContent = yen(PRICE.base);
+                q('len-dt').textContent = n === 1
                     ? `尺 ${lenLabel} × ${yen(tier.perSec)}（${tier.label}）`
                     : `尺 合計${lenLabel}（${lensText()}） × ${yen(tier.perSec)}（${tier.label}）`;
-                document.getElementById('calc-lenfee').textContent = yen(lenFee);
-                document.getElementById('calc-cnt-dt').textContent = n === 1
+                q('lenfee').textContent = yen(lenFee);
+                q('cnt-dt').textContent = n === 1
                     ? '本数 1本'
                     : `本数 ${n}本（2本目以降 ${n - 1}本）`;
-                document.getElementById('calc-cntfee').textContent = yen(cntFee);
-                document.getElementById('calc-nar-dt').textContent = narText;
-                document.getElementById('calc-narfee').textContent =
+                q('cntfee').textContent = yen(cntFee);
+                q('nar-dt').textContent = narText;
+                q('narfee').textContent =
                     narFeeNow < 0 ? `−${yen(-narFeeNow)}`
                     : approx ? `${yen(narFeeNow)}〜` : yen(narFeeNow);
-                document.getElementById('calc-lead-v').textContent = leadTime(sec, tier, narN, n);
+                q('lead-v').textContent = leadTime(sec, tier, narN, n);
                 settled(total);
 
                 /* 尺・本数は件名と内訳の両方に出るので、選んだ内容では繰り返さない。
@@ -485,17 +546,17 @@ const track = window.soTrack || (() => {});
             // 相談まで進んだ人。ここまで来た人と calc_use の差が、価格で落ちた人数
             mailLink.addEventListener('click', () => {
                 cta = true;
-                track('calc_cta', { sec: totalSec(), count: count(), total: totalNow(), tier: tier.id, nar: narSummary(), how: 'mail' });
+                track('calc_cta', { where, sec: totalSec(), count: count(), total: totalNow(), tier: tier.id, nar: narSummary(), how: 'mail' });
             });
 
             // メールソフトが開かない環境向けに、同じ本文をコピーできるようにする
-            const copyBtn = document.getElementById('calc-copy');
-            const copyMsg = document.getElementById('calc-copy-msg');
+            const copyBtn = q('copy');
+            const copyMsg = q('copy-msg');
             const defaultMsg = copyMsg.textContent;
             let msgTimer;
             copyBtn.addEventListener('click', async () => {
                 cta = true;
-                track('calc_cta', { sec: totalSec(), count: count(), total: totalNow(), tier: tier.id, nar: narSummary(), how: 'copy' });
+                track('calc_cta', { where, sec: totalSec(), count: count(), total: totalNow(), tier: tier.id, nar: narSummary(), how: 'copy' });
                 let ok = false;
                 try {
                     await navigator.clipboard.writeText(summary);
@@ -517,13 +578,18 @@ const track = window.soTrack || (() => {});
                 msgTimer = setTimeout(() => { copyMsg.textContent = defaultMsg; }, 4000);
             });
 
-            document.querySelectorAll('.calc-preset').forEach((b) => {
+            calc.querySelectorAll('.calc-preset').forEach((b) => {
                 b.addEventListener('click', () => {
                     // よくある組み合わせは全部そろいの尺。同じ尺を本数ぶん並べる
                     lens = Array.from({ length: Number(b.dataset.cnt) }, () => Number(b.dataset.len));
                     tier = TIERS.find((t) => t.id === b.dataset.tier) || tier;
+                    /* 2026-09-24：段を変えてもナレーションを既定に戻していなかった。
+                       ラジオで松を選ぶと ¥1,287,000、同じ条件をプリセットで選ぶと
+                       ¥1,262,000（松＋AIで −25,000）になり、料金表とも食い違っていた。
+                       本数も変わるので、nars の長さも lens に合わせる */
+                    nars = lens.map(() => defaultNar(tier));
                     touch();
-                    track('calc_preset', { preset: b.querySelector('b')?.textContent || '', sec: totalSec(), count: count(), tier: tier.id });
+                    track('calc_preset', { where, preset: b.querySelector('b')?.textContent || '', sec: totalSec(), count: count(), tier: tier.id });
                     render();
                 });
             });
@@ -538,7 +604,7 @@ const track = window.soTrack || (() => {});
             const onLeave = () => {
                 if (left || !used) return;
                 left = true;
-                track('calc_leave', { sec: totalSec(), count: count(), total: totalNow(), tier: tier.id, nar: narSummary(), used, cta });
+                track('calc_leave', { where, sec: totalSec(), count: count(), total: totalNow(), tier: tier.id, nar: narSummary(), used, cta });
             };
             window.addEventListener('pagehide', onLeave);
             document.addEventListener('visibilitychange', () => {

@@ -422,36 +422,54 @@ check('金額の表示は税込で揃っている',
        どれかだけ直すとここが落ちる */
     check('人物ナレーションの値段が実績でも料金表と同じ', /1名 ¥70,000〜/.test(works));
 
-    /* ---- ジャンルごとの料金の目安（2026-09-24） ----
+    /* ---- ジャンルごとの計算機（2026-09-24） ----
        トップの「つくれる動画」から works.html へ飛ぶと、サンプルは見られるのに
-       いくらかが分からないまま帰る形になっていた。サンプルの実尺で目安を出す。
-       金額は料金ページと同じ式から出すので、手で打ち直すとここで落ちる。
-       ミュージックビデオだけは料金表の対象外なので、目安を出さない */
+       いくらかが分からないまま帰る形だった。サンプルを見たその場で出せるように、
+       ジャンルごとに計算機を置いた。尺はそのサンプルの実尺で始める。
+       ミュージックビデオは料金表の対象外なので置かない */
     {
-        const y = (n) => `¥${n.toLocaleString('ja-JP')}`;
         const SEC = { 'genre-company': 60, 'genre-service': 15, 'genre-recruit': 180,
             'genre-ad': 15, 'genre-sns': 15, 'genre-event': 15,
             'genre-internal': 15, 'genre-animation': 60 };
-        const blocks = [...worksSrc.matchAll(
-            /<article class="genre" id="(genre-[a-z]+)">([\s\S]*?)<\/article>/g)]
-            .map((m) => [m[1], m[2]]);
-        check('ジャンルは9つある', blocks.length === 9, String(blocks.length));
-        for (const [id, body] of blocks) {
-            const has = /class="genre-price"/.test(body);
-            if (id === 'genre-mv') {
-                check('ミュージックビデオには目安を出さない', !has);
-                continue;
-            }
-            check(`${id} に料金の目安がある`, has);
-            const sec = SEC[id];
-            /* 表に出している額は 基本料金 ＋ 秒単価 × 尺 そのもの。
-               梅・竹はAIナレーション込み、松は人物ナレーション1名ぶん込みの額 */
-            check(`${id} の目安がモデルと合っている`,
-                TIERS.every((t) => body.includes(`${t.label} ${y(PRICE.base + t.perSec * sec)}`)),
-                TIERS.map((t) => PRICE.base + t.perSec * sec).join());
-            check(`${id} の目安から料金ページへ行ける`,
-                /href="pricing\.html#plans"/.test(body));
+        const got = await wp.evaluate(() => [...document.querySelectorAll('.calc')].map((c) => ({
+            where: c.dataset.calcWhere,
+            len: Number(c.dataset.calcLen),
+            total: Number((c.querySelector('[data-c="total"]')?.textContent || '').replace(/[^\d]/g, '')),
+            /* ラジオの name が台ごとに違うこと。同じだと別の台の選択が外れる */
+            names: [...new Set([...c.querySelectorAll('input[type="radio"]')].map((i) => i.name))],
+            inArticle: c.closest('article.genre')?.id || null,
+        })));
+        check('ジャンルの計算機が8台ある', got.length === 8, String(got.length));
+        check('ミュージックビデオには置いていない',
+            !got.some((g) => g.where === 'genre-mv'));
+        for (const g of got) {
+            check(`${g.where} の計算機がその記事の中にある`, g.inArticle === g.where, String(g.inArticle));
+            check(`${g.where} がサンプルの実尺で始まる`, g.len === SEC[g.where], `${g.len}/${SEC[g.where]}`);
+            /* 初期は梅・1本・AIナレーション。表と同じ 基本料金＋秒単価×尺 */
+            check(`${g.where} の初期の額がモデルと合っている`,
+                g.total === PRICE.base + TIERS[0].perSec * g.len, String(g.total));
+            check(`${g.where} のラジオが他の台と混ざらない`,
+                g.names.length === 2 && g.names.every((n) => n.endsWith(`-${g.where.replace('genre-', '')}`)),
+                g.names.join());
         }
+        /* 1台を変えても、ほかの台が動かないこと */
+        const before = await wp.evaluate(() =>
+            document.querySelectorAll('.calc')[1].querySelector('[data-c="total"]').textContent);
+        await wp.evaluate(() => {
+            const c = document.querySelectorAll('.calc')[0];
+            const r = [...c.querySelectorAll('[data-c="tier"] input')].find((i) => i.dataset.tier === 'matsu');
+            r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        await wp.waitForTimeout(250);
+        const after = await wp.evaluate(() => [...document.querySelectorAll('.calc')]
+            .slice(0, 2).map((c) => c.querySelector('[data-c="total"]').textContent));
+        check('1台を変えてもほかの台は動かない', after[1] === before, `${before} → ${after[1]}`);
+        check('変えた台だけが動く',
+            after[0] === `¥${(PRICE.base + TIERS[2].perSec * 60).toLocaleString('ja-JP')}`, after[0]);
+        /* どの計算機で触ったのかがファネルに残ること */
+        const ev = await wp.evaluate(() => window.soFunnel.raw()
+            .filter((r) => r.name === 'calc_use').map((r) => r.where));
+        check('ファネルにどの計算機かが残る', ev.includes('genre-company'), ev.join());
     }
 
     /* トップの料金表が料金ページと同じ段を出していること。

@@ -132,19 +132,19 @@
                 <div class="calc-picks">
                     <div class="calc-row">
                         <p class="calc-label" id="calc-tier-label"><span class="calc-step">1</span>仕上げの段階を選ぶ</p>
-                        <div class="calc-opts" role="radiogroup" aria-labelledby="calc-tier-label" id="calc-tier"></div>
-                        <p class="calc-hint" id="calc-tier-hint"></p>
+                        <div class="calc-opts" role="radiogroup" aria-labelledby="calc-tier-label" id="calc-tier" data-c="tier"></div>
+                        <p class="calc-hint" id="calc-tier-hint" data-c="tier-hint"></p>
                     </div>
                     <div class="calc-row">
                         <p class="calc-label" id="calc-cnt-label"><span class="calc-step">2</span>何本つくるかを選ぶ</p>
-                        <div class="calc-opts" role="radiogroup" aria-labelledby="calc-cnt-label" id="calc-cnt"></div>
-                        <p class="calc-hint" id="calc-cnt-hint"></p>
+                        <div class="calc-opts" role="radiogroup" aria-labelledby="calc-cnt-label" id="calc-cnt" data-c="cnt"></div>
+                        <p class="calc-hint" id="calc-cnt-hint" data-c="cnt-hint"></p>
                     </div>
                     <div class="calc-row">
                         <p class="calc-label" id="calc-len-label"><span class="calc-step">3</span>それぞれの尺とナレーションを選ぶ</p>
-                        <div class="calc-lens" id="calc-len"></div>
-                        <p class="calc-hint" id="calc-len-hint"></p>
-                        <p class="calc-hint" id="calc-nar-hint"></p>
+                        <div class="calc-lens" id="calc-len" data-c="len"></div>
+                        <p class="calc-hint" id="calc-len-hint" data-c="len-hint"></p>
+                        <p class="calc-hint" id="calc-nar-hint" data-c="nar-hint"></p>
                     </div>
                     <div class="calc-presets">
                         <span class="calc-presets-head">よくある組み合わせ</span>
@@ -156,19 +156,19 @@
 
                 <div class="calc-out">
                     <p class="calc-out-head">お見積り</p>
-                    <p class="calc-total"><span id="calc-total">¥195,000</span><small>税込</small></p>
+                    <p class="calc-total"><span id="calc-total" data-c="total">¥195,000</span><small>税込</small></p>
                     <dl class="calc-break">
-                        <div><dt>基本料金</dt><dd id="calc-base">¥90,000</dd></div>
-                        <div><dt id="calc-len-dt">尺 30秒 × ¥3,500（梅）</dt><dd id="calc-lenfee">¥105,000</dd></div>
-                        <div><dt id="calc-cnt-dt">本数 1本</dt><dd id="calc-cntfee">¥0</dd></div>
-                        <div><dt id="calc-nar-dt">ナレーション なし</dt><dd id="calc-narfee">¥0</dd></div>
+                        <div><dt>基本料金</dt><dd id="calc-base" data-c="base">¥90,000</dd></div>
+                        <div><dt id="calc-len-dt" data-c="len-dt">尺 30秒 × ¥3,500（梅）</dt><dd id="calc-lenfee" data-c="lenfee">¥105,000</dd></div>
+                        <div><dt id="calc-cnt-dt" data-c="cnt-dt">本数 1本</dt><dd id="calc-cntfee" data-c="cntfee">¥0</dd></div>
+                        <div><dt id="calc-nar-dt" data-c="nar-dt">ナレーション なし</dt><dd id="calc-narfee" data-c="narfee">¥0</dd></div>
                     </dl>
-                    <p class="calc-lead">納品目安 <strong id="calc-lead-v">約2週間</strong></p>
+                    <p class="calc-lead">納品目安 <strong id="calc-lead-v" data-c="lead-v">約2週間</strong></p>
                     <div class="calc-actions">
-                        <a href="mailto:bonvoyage.ti@icloud.com" class="pill pill-solid calc-cta" id="calc-mail">この内容で相談する</a>
-                        <button type="button" class="calc-copy" id="calc-copy">内容をコピー</button>
+                        <a href="mailto:bonvoyage.ti@icloud.com" class="pill pill-solid calc-cta" id="calc-mail" data-c="mail">この内容で相談する</a>
+                        <button type="button" class="calc-copy" id="calc-copy" data-c="copy">内容をコピー</button>
                     </div>
-                    <p class="calc-note" id="calc-copy-msg">メールソフトが開き、選んだ内容が本文に入ります。</p>
+                    <p class="calc-note" id="calc-copy-msg" data-c="copy-msg">メールソフトが開き、選んだ内容が本文に入ります。</p>
                 </div>
             </div>
 

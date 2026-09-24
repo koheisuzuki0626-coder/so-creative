@@ -38,7 +38,9 @@ check('実物のラジオで組んである',
 check('尺の行に名前がついている（読み上げ用）',
     (await page.locator('#calc-len select[data-kind="len"][data-row="0"]').getAttribute('aria-label')) === '1本目の尺'
     && (await page.locator('#calc-len select[data-kind="nar"][data-row="0"]').getAttribute('aria-label')) === '1本目のナレーション'
-    && (await page.locator('#calc-len-name-0').innerText()) === '1本目');
+    /* 9/24：計算機を何台でも置けるようにしたので、行の id に台ごとの印が入った
+       （#calc-len-name-0 → #calc-len-name-c0-0）。id ではなく並びで引く */
+    && (await page.locator('#calc-len .calc-len-row[data-row="0"] > span').first().innerText()) === '1本目');
 
 /* ---- 段の説明は客先向けの言葉か ---- */
 for (const [t, must, use, rev] of [['ume', '登場人物なし', 'SNS', 2], ['take', '2人まで', '採用', 3], ['matsu', '人物ナレーション込み（1名', '展示会', 3]]) {
@@ -459,13 +461,24 @@ check('長い尺でも梅が選べる', (await pick(page, 'ume', 300, 1)) === pr
 /* ---- プリセット ---- */
 check('プリセットは用途名',
     (await page.locator('.calc-preset b').allInnerTexts()).join('|') === 'SNS広告|会社紹介|ブランド映像');
+/* 9/24：プリセットは段を変えるのにナレーションを既定へ戻していなかった。
+   ラジオで松を選ぶと ¥1,287,000、同じ条件をプリセットで選ぶと ¥1,262,000
+   （松＋AIで −25,000）になり、公開している料金表とも食い違っていた。
+   いまは段の既定（松は人物、梅・竹はAI）に揃う */
 for (const [t, sec] of [['ume', 30], ['take', 90], ['matsu', 180]]) {
     await page.locator(`.calc-preset[data-tier="${t}"]`).click();
     await page.waitForTimeout(80);
+    const tier = TIERS.find((x) => x.id === t);
     const on = await page.locator('#calc-tier input:checked').getAttribute('data-tier');
+    const nar = await narOf(page, 0);
     const shown = Number((await page.locator('#calc-total').innerText()).replace(/[^\d]/g, ''));
     check(`プリセット(${t})が段ごと切り替わる`,
-        on === t && shown === price(TIERS.find(x => x.id === t), sec, 1), `${on} ¥${shown}`);
+        on === t && nar === (tier.narration ? 'human' : 'ai')
+        && shown === price(tier, sec, 1, tier.narration ? 'human' : 'ai'),
+        `${on} ${nar} ¥${shown}`);
+    /* 公開している表の額（基本料金＋秒単価×尺）と一致すること */
+    check(`プリセット(${t})が料金表と同じ額`,
+        shown === PRICE.base + tier.perSec * sec, `¥${shown}`);
 }
 
 /* ---- メール本文 ----
