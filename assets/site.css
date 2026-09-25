@@ -107,6 +107,19 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
 }
 .body-text + .body-text { margin-top: 18px; }
 .measure { max-width: 660px; }
+/* 文章の中のリンク。a { color: inherit; text-decoration: none } を全体に掛けているので、
+   指定しないと本文に埋もれてただの文字に見える（2026-09-25 に copyright.html を
+   足したとき気づいた。それまで本文リンク37か所が全部この状態だった）。
+   色だけで区別すると色覚によっては分からないので、下線も一緒に引く。
+   .clink（シェブロン付き）と .pill（ボタン）は自前の見た目を持つので外す */
+.body-text a:not(.clink):not(.pill), .faq-a a, .calc-why a {
+    color: var(--accent-ink);
+    border-bottom: 1px solid rgba(121, 194, 161, 0.45);
+    transition: border-color 0.25s ease;
+}
+.body-text a:not(.clink):not(.pill):hover, .faq-a a:hover, .calc-why a:hover {
+    border-bottom-color: var(--accent-ink);
+}
 
 /* Apple 風のシェブロン付きリンク */
 .clink {

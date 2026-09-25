@@ -6,8 +6,8 @@
   公開に切り替えるときは、次を一度にやる（片方だけだと、
   sitemap では出しておいて中身は拒否する、という食い違った状態になる）。
 
-    1. 公開14ページの <meta name="robots"> から noindex, nofollow を外す
-       土台（5）  index / pricing / works / about / privacy
+    1. 公開15ページの <meta name="robots"> から noindex, nofollow を外す
+       土台（6）  index / pricing / works / about / copyright / privacy
        用途別（9） company-video / recruit-video / service-video / ad-video /
                   sns-video / exhibition-video / internal-video /
                   animation-video / music-video
@@ -22,6 +22,7 @@
   <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/about.html</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/works.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/pricing.html</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/copyright.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/company-video.html</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
   <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/recruit-video.html</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
   <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/service-video.html</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>

@@ -46,11 +46,26 @@ node scripts/set-site-url.mjs https://xxx.github.io/    # github.io へ(CNAME �
 
 ## ページ構成
 
+公開は15ページ。`assets/site.css` が全ページに効くので、色や余白を触ったら
+どれか1枚ではなく全体を見ること。
+
 | ファイル | 内容 |
 |----------|------|
-| `index.html` | トップ。サービス〜料金〜実績〜お問い合わせ |
-| `about.html` | 会社紹介(so-creative について)。トップのフッター「About — so-creative について」から辿れる |
-| `assets/site.css` | 2ページ共通のスタイル。**両方に効く**ので変更時は両ページを確認すること |
+| `index.html` | トップ。事業内容〜撮影しない理由〜ジャンル〜写真1枚から〜制作の流れ〜料金〜FAQ |
+| `works.html` | 作例。9ジャンルのサンプルと、8ジャンルぶんの料金表＋計算機 |
+| `pricing.html` | 料金。表と計算機、お支払いとキャンセル、インボイスの注記 |
+| `about.html` | 運営者情報（so-creative について） |
+| `copyright.html` | **AI動画の権利**（2026-09-25 追加）。著作権の帰属と、言い切れない2点 |
+| `privacy.html` | プライバシーポリシー |
+| 用途別9枚 | `company-video` / `recruit-video` / `service-video` / `ad-video` / `sns-video` / `exhibition-video` / `internal-video` / `animation-video` / `music-video`。`scripts/make-genre-pages.py` が `company-video.html` を骨組みに生成する（MV だけ料金表の対象外） |
+
+ページを1枚足すときに一緒に直すもの（どれか1つ忘れると検査が落ちる）:
+
+1. フッターのサイトマップ——**全ページぶん**。1ページだけ足すと導線が欠ける
+2. `sitemap.xml` の `<loc>`（`tests/content.mjs` が公開ページと突き合わせている）
+3. `tests/content.mjs` の `PUBLIC` / `PUB`、`tests/a11y.mjs` のページ一覧
+4. `<meta name="robots">` は既存に合わせる（いまは全ページ noindex）
+5. `README.md` のこの表
 
 ## 社内用ページ
 
