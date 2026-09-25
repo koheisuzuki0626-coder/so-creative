@@ -1618,6 +1618,21 @@ def run():
     check("関連の測り方はお題を見るほう（企業VPらしさ単体を使わない）",
           "_relevance_score" in _srcS and "sorted(_corp," not in _srcS, True)
 
+    print("■ 連投の確認が【送る直前】で呼ばれていること")
+    # 2026-09-26：先に3.5秒待つ方式をやめ、送る直前に状態を見る形にした。
+    # 判定そのもの（_burst_superseded）の検査は simulate.py 側。ここは
+    # 「実際に呼ばれているか」だけを見る。呼ばれていなければ、判定が正しくても
+    # 2回続けて発言する事故（2026-08-21）がそのまま戻る。
+    _srcH = _insp.getsource(bot._handle_orchestrator)
+    check("雑談の短絡パスと通常会話の両方で確かめている",
+          _srcH.count("_burst_superseded(cid, message)"), 2)
+    for _frag in ("send_as(orch, cid, _with_speaker(reply",
+                  "send_as(orch, cid, _with_speaker(answer"):
+        check(f"確認が送信より前にある（{_frag[-12:]}）",
+              "_burst_superseded" in _srcH.split(_frag)[0], True)
+    check("既定では待たない（3.5秒の固定費を払わない）",
+          bot.BURST_WAIT_SEC, 0)
+
     print("■ 「今日の型」にも既出を渡す（毎回テロップの話に戻らない）")
     # 事故（2026-09-25）：既出を渡していたのは「次に試すこと」「AIで作れないもの」
     # だけで、「今日の型」には渡していなかった。テロップの同期は日本の企業映像なら

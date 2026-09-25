@@ -2829,6 +2829,56 @@ async def run():
         bot.BURST_WAIT_SEC = _keepB
         bot._burst_last.clear()
 
+    print("■ 連投の保証は【送る直前】に効く（待たずに速く返す）")
+    # 2026-09-26：先に3.5秒待つ方式は、実データで一度も効いていなかった
+    # （34.8日・1,041件で連続発言の最短は5.99秒、bot.log の退避ログは0件、
+    # 元の事故の2通も29秒差）。待つのをやめ、送る直前に状態を見る形にした。
+    # ここが空回りすると「2回続けて発言する」事故がそのまま戻る。
+    _keepB2 = bot.BURST_WAIT_SEC
+    try:
+        bot.BURST_WAIT_SEC = 0            # 既定。待たない
+        bot._burst_last.clear()
+        _n1 = _FakeMessage("6秒にしないときつくない？"); _n1.id = 2001
+        _n2 = _FakeMessage("静止画3枚でしょ？"); _n2.id = 2002
+        _cidN = _n1.channel.id
+        check("待たないので1通目もすぐ通る（ここでは退かない）",
+              await bot._wait_for_burst(_cidN, _n1) is True, "待ちが残っている")
+        check("その時点ではまだ最新なので出してよい",
+              bot._burst_superseded(_cidN, _n1) is False, "早すぎる退避")
+        # 2通目が届く（何秒後でもよい。ここが旧方式との決定的な差）
+        check("2通目も通る", await bot._wait_for_burst(_cidN, _n2) is True, "落ちた")
+        check("1通目は【送る直前に】退く（2回続けて発言しない）",
+              bot._burst_superseded(_cidN, _n1) is True, "2回発言する")
+        check("最後の1通だけが出す",
+              bot._burst_superseded(_cidN, _n2) is False, "最後も黙った")
+        # 29秒差でも効く（旧方式は3.5秒しか見ていないので防げなかった）
+        bot._burst_last.clear()
+        _n3 = _FakeMessage("先の発言"); _n3.id = 2003
+        await bot._wait_for_burst(_n3.channel.id, _n3)
+        _n4 = _FakeMessage("29秒後の発言"); _n4.id = 2004
+        _n4.channel = _n3.channel
+        await bot._wait_for_burst(_n3.channel.id, _n4)
+        check("間隔が何秒空いていても効く（29秒差の事故の形）",
+              bot._burst_superseded(_n3.channel.id, _n3) is True, "29秒差を拾えない")
+        # 別チャンネルは巻き込まない
+        bot._burst_last.clear()
+        _n5 = _FakeMessage("こっち"); _n5.id = 2005
+        _n6 = _FakeMessage("別の部屋"); _n6.id = 2006
+        await bot._wait_for_burst(5001, _n5)
+        await bot._wait_for_burst(5002, _n6)
+        check("別チャンネルは互いに退かせない",
+              (bot._burst_superseded(5001, _n5),
+               bot._burst_superseded(5002, _n6)) == (False, False), "巻き込まれた")
+        # 未登録のチャンネルで黙らせない（0本で終わらせない側の守り）
+        bot._burst_last.clear()
+        check("登録が無ければ出す",
+              bot._burst_superseded(9999, _n5) is False, "黙ってしまう")
+    finally:
+        bot.BURST_WAIT_SEC = _keepB2
+        bot._burst_last.clear()
+    # ※呼ばれている場所の検査は test_routing.py 側（ここでは
+    # _handle_orchestrator をスタブ化しているのでソースを見られない）。
+
     # 事故（2026-08-21）：テストが本物の history/ へ書き込み、デバッグログの
     # 「直近のエラー」が偽物で埋まっていた。書き込み先を増やしたときに
     # 隔離し忘れても、ここで気づけるようにする。

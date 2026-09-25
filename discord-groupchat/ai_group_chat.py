@@ -11653,23 +11653,34 @@ async def _start_agent(message, cid, content):
 
 
 # 連投をまとめる待ち時間。人が続けて打つ間隔より少し長く取る。
-BURST_WAIT_SEC = float(os.getenv("BURST_WAIT_SEC", "3.5"))
+# 待ち時間。既定は0＝待たない。理由は _burst_superseded を読むこと。
+BURST_WAIT_SEC = float(os.getenv("BURST_WAIT_SEC", "0"))
 _burst_last = {}          # cid -> 最後に届いた発言のID
 
 
 async def _wait_for_burst(cid, message):
-    """連投の途中なら False（この発言は答えない）、最後の1通なら True。
+    """この発言を【そのチャンネルの最新】として登録する。
 
-    人は考えながら何通かに分けて送る。1通ずつ答えると、ボットが2回3回と
-    続けて発言して会話が噛み合わなくなる（実際に起きた）。
-    少し待って、その間に新しい発言が来たら【後から来たほうに任せて退く】。
-    発言はどれも履歴に入っているので、最後の1通が全部を踏まえて答えられる。
+    以前はここで3.5秒待ち、その間に新しい発言が来たら退いていた。
+    実データで測り直したら（2026-09-26）、その待ちは一度も効いていなかった：
 
+      ・34.8日・1,041件のログで、連続発言の最短間隔は 5.99秒。
+        3.5秒未満は【1件も無い】
+      ・bot.log に「[burst] 連投の途中なので退く」が【0件】
+      ・元の事故（2026-08-21）の2通も【29秒差】。待っても防げていない
+
+    つまり全発言に3.5秒を課しているだけだった。待つのはやめ、
+    判断は _burst_superseded が【返事を送る直前に】行う。そちらは
+    29秒差でも効くので、保証としてはむしろ強くなる。
+
+    BURST_WAIT_SEC を 0 より大きくすれば、従来どおり先に待つこともできる。
     !コマンド・承認の返事はここに来る前に処理済みなので、影響しない。"""
     mid = getattr(message, "id", None)
-    if mid is None or BURST_WAIT_SEC <= 0:
+    if mid is None:
         return True
     _burst_last[cid] = mid
+    if BURST_WAIT_SEC <= 0:
+        return True
     try:
         await asyncio.sleep(BURST_WAIT_SEC)
     except asyncio.CancelledError:
@@ -11678,6 +11689,21 @@ async def _wait_for_burst(cid, message):
         print(f"[burst] 連投の途中なので退く: channel={cid}")
         return False
     return True
+
+
+def _burst_superseded(cid, message):
+    """この発言より新しいものが、同じチャンネルに届いているか。
+
+    届いていたら、この返事は出さない（後から来たほうが全部を踏まえて答える。
+    発言はどれも履歴に入っているので情報は落ちない）。
+    「連投に1通ずつ返事をしない」の実体はここ。先に待つのではなく、
+    出す直前に【状態】を見るので、間隔が何秒空いていても効く。
+    """
+    mid = getattr(message, "id", None)
+    if mid is None:
+        return False
+    last = _burst_last.get(cid)
+    return last is not None and last != mid
 
 
 async def _handle_orchestrator(message, cid):
@@ -11822,6 +11848,9 @@ async def _handle_orchestrator(message, cid):
         reply = _drop_false_progress(reply, cid)
         reply = _drop_false_denial(reply, cid)
         reply = _drop_false_file_claim(reply, cid)
+        if _burst_superseded(cid, message):
+            print(f"[burst] 新しい発言が来たので退く: channel={cid}")
+            return
         add_history(cid, "Orchestrator", reply)
         await send_as(orch, cid, _with_speaker(reply, plan_engine))
         return
@@ -11921,24 +11950,32 @@ async def _handle_orchestrator(message, cid):
                 if "gemini" in str(e).lower():
                     _gemini_watch["outage_cid"] = cid
                 answer = f"⚠️ 応答に失敗: {str(e)[:300]}"
-    answer = _clean_reply(answer, latest)
-    # クロードの下書きをGeminiが精査して締める（＝二人で1つの返事にする）。
-    # 出す声はオーケストレーターひとつなので、誰が書いたかで混乱しない。
-    answer, reviewed = await _review_reply(answer, history)
-    # 文章の直しは、この返事そのものが成果物。裏で何も動いていないのが正常なので、
-    # 「動いていないのに作業を宣言した」の守り手を通さない（2026-09-13）。
-    if not _is_text_edit_ask(latest):
-        answer = _drop_false_progress(answer, cid)
-    answer = _drop_false_denial(answer, cid)
-    answer = _drop_false_file_claim(answer, cid)
-    # 言い方を見ずに、状態だけで「動いていない」を明記する（最後の砦）
-    if not _is_text_edit_ask(latest):
-        answer += _reality_note(cid, latest)
-    # 実際に書いたのが誰かで名乗る。クロードが枠切れでGeminiが代打に入ると
-    # 文体が変わるので、「クロード2」と名乗ったままだと別人が混ざって見える。
-    _who = _wrote.get("name") or CLAUDE2_NAME
-    if _who == GEMINI_STANDIN:
-        answer += ("\n\n" + _limit_note(_wrote.get("why", "")))
+    # ここから下も入力中の表示を保つ（2026-09-26）。以前は上の with を
+    # 抜けた直後に校閲（_review_reply）が走っていたので、その数秒は
+    # 「入力中」が消えたまま何も出ず、止まったように見えていた。
+    async with message.channel.typing():
+        answer = _clean_reply(answer, latest)
+        # クロードの下書きをGeminiが精査して締める（＝二人で1つの返事にする）。
+        # 出す声はオーケストレーターひとつなので、誰が書いたかで混乱しない。
+        answer, reviewed = await _review_reply(answer, history)
+        # 文章の直しは、この返事そのものが成果物。裏で何も動いていないのが
+        # 正常なので、「動いていないのに作業を宣言した」の守り手を通さない
+        # （2026-09-13）。
+        if not _is_text_edit_ask(latest):
+            answer = _drop_false_progress(answer, cid)
+        answer = _drop_false_denial(answer, cid)
+        answer = _drop_false_file_claim(answer, cid)
+        # 言い方を見ずに、状態だけで「動いていない」を明記する（最後の砦）
+        if not _is_text_edit_ask(latest):
+            answer += _reality_note(cid, latest)
+        # 実際に書いたのが誰かで名乗る。クロードが枠切れでGeminiが代打に入ると
+        # 文体が変わるので、「クロード2」と名乗ったままだと別人が混ざって見える。
+        _who = _wrote.get("name") or CLAUDE2_NAME
+        if _who == GEMINI_STANDIN:
+            answer += ("\n\n" + _limit_note(_wrote.get("why", "")))
+    if _burst_superseded(cid, message):
+        print(f"[burst] 新しい発言が来たので退く: channel={cid}")
+        return
     add_history(cid, "Orchestrator", answer)
     _remember_bot_say(cid, answer)   # 「それやって」の“それ”を解決するため
     await send_as(orch, cid, _with_speaker(answer, _who))
