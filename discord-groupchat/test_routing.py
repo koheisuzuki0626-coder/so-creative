@@ -13,6 +13,7 @@ import types
 os_env = {"GEMINI_API_KEY": "x", "DISCORD_ORCH_TOKEN": "x",
           "DISCORD_CLAUDE_TOKEN": "x", "DISCORD_GEMINI_TOKEN": "x"}
 import os
+import json
 os.environ.update(os_env)
 
 
@@ -2953,8 +2954,125 @@ def run():
     check("成果物直下のファイルは仕切らない",
           bot._project_of_path(_root + "/README.md"), "")
     check("成果物の外は仕切らない", bot._project_of_path("/tmp/x.mp4"), "")
-    check("案件名が空ならその階層に置く（空のフォルダを作らない）",
-          bot._drive_subfolder(""), bot.DRIVE_UPLOAD_FOLDER)
+    # 置き場はアプリ自身に作らせる（drive.file では手で作ったフォルダに
+    # 書けない）。既定の親は _drive_root()。2026-09-25。
+    _gsD = bot.gen_settings.get("drive_root")
+    _saveD = bot._save_gen_settings
+    _upD = bot.DRIVE_UPLOAD_FOLDER
+    try:
+        bot._save_gen_settings = lambda: None
+        bot.DRIVE_UPLOAD_FOLDER = ""
+        bot.gen_settings["drive_root"] = "ROOT1"
+        check("案件名が空ならその階層に置く（空のフォルダを作らない）",
+              bot._drive_subfolder(""), "ROOT1")
+        check("既定の親はアプリが作った置き場", bot._drive_root(), "ROOT1")
+        bot.DRIVE_UPLOAD_FOLDER = "SPECIFIED"
+        check("置き場を明示したらそれを使う", bot._drive_root(), "SPECIFIED")
+        bot.DRIVE_UPLOAD_FOLDER = bot.DRIVE_LEGACY_FOLDER
+        check("手で作った旧置き場は使わない（drive.fileでは書けない）",
+              bot._drive_root(), "ROOT1")
+        bot.DRIVE_UPLOAD_FOLDER = ""
+        bot.gen_settings.pop("drive_root", None)
+        check("繋がっていない時は親なし（間違った場所に作らない）",
+              bot._drive_root(), "")
+        check("置き場が分からない時も落ちない", bot._drive_subfolder("動画"), "")
+    finally:
+        bot.DRIVE_UPLOAD_FOLDER = _upD
+        bot._save_gen_settings = _saveD
+        if _gsD is None:
+            bot.gen_settings.pop("drive_root", None)
+        else:
+            bot.gen_settings["drive_root"] = _gsD
+    # 覚えた置き場が消えていたら作り直す。本人がフォルダを消す／ゴミ箱に
+    # 入れると、覚えたIDは永久に404を返し、その例外は _drive_upload_video に
+    # 飲まれるので【納品物が黙って上がらなくなる】。
+    class _FakeResp:
+        def __init__(self, status):
+            self.status = status
+
+    class _FakeHttpErr(Exception):
+        def __init__(self, status):
+            super().__init__(f"HTTP {status}")
+            self.resp = _FakeResp(status)
+
+    class _Exec:
+        def __init__(self, fn):
+            self._fn = fn
+
+        def execute(self):
+            return self._fn()
+
+    class _FakeRootFiles:
+        def __init__(self, mode, sink):
+            self.mode, self.sink = mode, sink
+
+        def get(self, fileId=None, fields=None):
+            def _go():
+                if self.mode == "gone":
+                    raise _FakeHttpErr(404)
+                if self.mode == "flaky":
+                    raise _FakeHttpErr(500)
+                return {"id": fileId, "trashed": self.mode == "trashed"}
+            return _Exec(_go)
+
+        def list(self, **kw):
+            return _Exec(lambda: {"files": []})
+
+        def create(self, body=None, fields=None):
+            self.sink.append(body)
+            return _Exec(lambda: {"id": "NEWROOT"})
+
+    class _FakeRootSvc:
+        def __init__(self, mode, sink):
+            self._f = _FakeRootFiles(mode, sink)
+
+        def files(self):
+            return self._f
+
+    _gsR = bot.gen_settings.get("drive_root")
+    _saveR = bot._save_gen_settings
+    _upR = bot.DRIVE_UPLOAD_FOLDER
+    _svcR = bot._drive_service
+    _made = []
+    try:
+        bot._save_gen_settings = lambda: None
+        bot.DRIVE_UPLOAD_FOLDER = ""
+        bot.gen_settings["drive_root"] = "ROOT9"
+        bot._drive_root_ok.clear()
+        bot._drive_service = lambda: _FakeRootSvc("alive", _made)
+        check("覚えた置き場が実在すればそれを使う", bot._drive_root(), "ROOT9")
+        check("確認は1回で済ませる（毎回問い合わせない）",
+              "ROOT9" in bot._drive_root_ok, True)
+
+        bot.gen_settings["drive_root"] = "GONE1"
+        bot._drive_root_ok.clear()
+        bot._drive_service = lambda: _FakeRootSvc("gone", _made)
+        check("消えた置き場は作り直す（黙って上がらなくならない）",
+              bot._drive_root(), "NEWROOT")
+        check("作り直した置き場を覚える",
+              bot.gen_settings.get("drive_root"), "NEWROOT")
+
+        bot.gen_settings["drive_root"] = "TRASH1"
+        bot._drive_root_ok.clear()
+        bot._drive_service = lambda: _FakeRootSvc("trashed", _made)
+        check("ゴミ箱に入った置き場も作り直す", bot._drive_root(), "NEWROOT")
+
+        bot.gen_settings["drive_root"] = "KEEP1"
+        bot._drive_root_ok.clear()
+        bot._drive_service = lambda: _FakeRootSvc("flaky", _made)
+        check("一時的な失敗では覚えを捨てない", bot._drive_root(), "KEEP1")
+        check("一時的な失敗で同名フォルダを増やさない",
+              bot.gen_settings.get("drive_root"), "KEEP1")
+    finally:
+        bot.DRIVE_UPLOAD_FOLDER = _upR
+        bot._drive_service = _svcR
+        bot._save_gen_settings = _saveR
+        bot._drive_root_ok.clear()
+        if _gsR is None:
+            bot.gen_settings.pop("drive_root", None)
+        else:
+            bot.gen_settings["drive_root"] = _gsR
+
     check("親を指定できる（入れ子）", bot._drive_subfolder("", "abc"), "abc")
     check("動画は「動画」へ", bot._drive_kind_of("a.MP4"), "動画")
     check("画像は「画像」へ", bot._drive_kind_of("a.png"), "画像")
@@ -3163,9 +3281,191 @@ def run():
     check("毎日のリサーチは5年ぶん見る", bot.TREND_DAILY_DAYS, 1825)
     check("手で頼んだ時も同じ期間", bot.TREND_SEARCH_DAYS, 1825)
 
+    print("■ Driveのスコープは drive.file（審査なしで公開できる側）")
+    # drive（全ファイル）は Google の制限付きスコープで、同意画面を本番公開する
+    # には審査＋年1回のセキュリティ評価（CASA）が要る。公開しないと更新用
+    # トークンが7日で切れる。drive.file は機微スコープではないので無条件に
+    # 公開でき、7日の期限が消える。2026-09-25 にこちらへ戻した。
+    with open(bot.__file__, encoding="utf-8") as _f:
+        _srcD = _f.read()
+    check("スコープは drive.file だけ",
+          bot.DRIVE_SCOPES, ["https://www.googleapis.com/auth/drive.file"])
+    check("全ファイルのスコープを要求しない",
+          any(x.rstrip("/").endswith("/auth/drive") for x in bot.DRIVE_SCOPES),
+          False)
+    check("置き場をアプリ自身が作れる", callable(getattr(bot, "_drive_root", None)),
+          True)
+    check("自動アップロードの門が置き場の設定に依存しない",
+          "DRIVE_AUTO_UPLOAD and DRIVE_UPLOAD_FOLDER" in _srcD, False)
+    check("手で作った旧置き場を既定にしない",
+          bot.DRIVE_UPLOAD_FOLDER != bot.DRIVE_LEGACY_FOLDER, True)
+    # 見えないものを「見える」ことにしない（drive.file では手で置いた
+    # ファイルは探せない）。
+    check("一覧が「ボットが上げたもの」だと分かる",
+          "このボットが上げたもの" in _srcD, True)
+    check("見つからない時に理由を書く",
+          "手で置いたファイルは見えません" in _srcD, True)
+
+    print("■ Driveの鍵の名前（前職の社名を使わない・入れ直させない）")
+    # 2026-08-28 に本人が somethingfun_CLIENT_ID を指定した。前職の社名なので
+    # 2026-09-25 に改名。同意画面を公開するときブランド審査に当たるため。
+    check("案内は新しい鍵名で出す",
+          "GOOGLE_DRIVE_CLIENT_ID" in bot.KEY_REG_USAGE
+          and "somethingfun" not in bot.KEY_REG_USAGE, True)
+    _keepE = {k: os.environ.get(k) for k in (
+        "GOOGLE_DRIVE_CLIENT_ID", "GOOGLE_DRIVE_CLIENT_SECRET",
+        "somethingfun_CLIENT_ID", "somethingfun_CLIENT_SECRET")}
+    try:
+        for _k in _keepE:
+            os.environ.pop(_k, None)
+        check("どちらも無ければ (None, None)", bot._drive_client_pair(),
+              (None, None))
+        os.environ["somethingfun_CLIENT_ID"] = "old-id"
+        os.environ["somethingfun_CLIENT_SECRET"] = "old-sec"
+        check("旧名だけでも繋がる（鍵を入れ直させない）",
+              bot._drive_client_pair(), ("old-id", "old-sec"))
+        os.environ["GOOGLE_DRIVE_CLIENT_ID"] = "new-id"
+        os.environ["GOOGLE_DRIVE_CLIENT_SECRET"] = "new-sec"
+        check("新しい名前が優先", bot._drive_client_pair(),
+              ("new-id", "new-sec"))
+    finally:
+        for _k, _v in _keepE.items():
+            if _v is None:
+                os.environ.pop(_k, None)
+            else:
+                os.environ[_k] = _v
+
+    print("■ スコープを狭めたら、古いトークンを黙って使い続けない")
+    # 事故（2026-09-25に実測）：google-auth は scopes を明示して読むと
+    # ファイル側の記録を捨てるので、drive → drive.file に狭めても食い違いが
+    # 例外にならず、更新後は「drive.file を許可済み」という嘘の記録で
+    # 上書きされる（許可の実体は drive のまま）。狭めた意味が消えるうえ、
+    # 繋ぎ直しが必要だと誰も気づけない。だから読む前に突き合わせる。
+    _tokD = bot.DRIVE_TOKEN_FILE
+    try:
+        bot.DRIVE_TOKEN_FILE = _TMP_STATE / "drive_token_test.json"
+        bot.DRIVE_TOKEN_FILE.write_text(json.dumps(
+            {"token": "x", "refresh_token": "y",
+             "scopes": ["https://www.googleapis.com/auth/drive"]}),
+            encoding="utf-8")
+        check("古い drive のトークンは足りないと判定する",
+              bot._drive_token_ok(), False)
+        check("足りないトークンでは繋がらない（繋ぎ直しを促す）",
+              bot._drive_creds(), None)
+        # 上の1行だけでは守りにならない。テストの中では google の
+        # ライブラリがスタブなので、確認を外しても None が返ってしまう
+        # （実際に改変して確かめた）。呼ばれていること自体を見る。
+        _okD, _seen = bot._drive_token_ok, []
+
+        def _no():
+            _seen.append(1)
+            return False
+
+        try:
+            bot._drive_token_ok = _no
+            check("繋ぐ前に必ずスコープを確かめている", bot._drive_creds(), None)
+            check("確かめる関数が実際に呼ばれている", len(_seen), 1)
+        finally:
+            bot._drive_token_ok = _okD
+        bot.DRIVE_TOKEN_FILE.write_text(json.dumps(
+            {"token": "x", "refresh_token": "y",
+             "scopes": ["https://www.googleapis.com/auth/drive.file"]}),
+            encoding="utf-8")
+        check("drive.file のトークンなら足りている", bot._drive_token_ok(), True)
+        bot.DRIVE_TOKEN_FILE.write_text("{}", encoding="utf-8")
+        check("スコープの記録が無いトークンも足りないとみなす",
+              bot._drive_token_ok(), False)
+        bot.DRIVE_TOKEN_FILE.write_text("こわれている", encoding="utf-8")
+        check("壊れたトークンでも落ちない", bot._drive_token_ok(), False)
+    finally:
+        bot.DRIVE_TOKEN_FILE = _tokD
+
+    print("■ Driveの一覧・アップロードが、実際の中身で正しいこと")
+    # 文字列がソースに在るかではなく、【返る文】と【APIに渡す引数】を見る。
+    _sink = []
+
+    class _FakeListFiles:
+        def list(self, **kw):
+            _sink.append(kw)
+
+            class _R:
+                @staticmethod
+                def execute():
+                    return {"files": [{"id": "1", "name": "完成.mp4",
+                                       "size": "1048576"}]}
+            return _R()
+
+    class _FakeListSvc:
+        def __init__(self):
+            self._f = _FakeListFiles()
+
+        def files(self):
+            return self._f
+
+    _svcD = bot._drive_service
+    try:
+        bot._drive_service = lambda: _FakeListSvc()
+        _out = bot._drive_list()
+        check("一覧の見出しに「このボットが上げたもの」と書く（嘘をつかない）",
+              "このボットが上げたもの" in _out, True)
+        _q = (_sink[0].get("q") or "") if _sink else ""
+        check("一覧にアプリが作ったフォルダを混ぜない",
+              "mimeType!='application/vnd.google-apps.folder'" in _q, True)
+        check("一覧にゴミ箱を混ぜない", "trashed=false" in _q, True)
+    finally:
+        bot._drive_service = _svcD
+
+    # 置き場が決まらない時に parents=[None] を渡すとAPIが400を返す。
+    # 「上げられなかったのに上げたと言わない」まで含めて見る。
+    _bodies = []
+
+    class _FakeUpFiles:
+        def create(self, body=None, media_body=None, fields=None):
+            _bodies.append(body)
+
+            class _R:
+                @staticmethod
+                def execute():
+                    return {"id": "1", "name": (body or {}).get("name"),
+                            "webViewLink": "https://example.test/x"}
+            return _R()
+
+    class _FakeUpSvc:
+        def files(self):
+            return _FakeUpFiles()
+
+    _tmpf = _TMP_STATE / "完成.mp4"
+    _tmpf.write_bytes(b"0" * 16)
+    _destD = bot._drive_dest_for
+    try:
+        bot._drive_service = lambda: _FakeUpSvc()
+        bot._drive_dest_for = lambda *a, **k: "FOLDER1"
+        bot._drive_upload_video(str(_tmpf))
+        check("置き場が分かっていれば、そこへ入れる",
+              (_bodies[-1] or {}).get("parents"), ["FOLDER1"])
+        bot._drive_dest_for = lambda *a, **k: ""
+        bot._drive_upload_video(str(_tmpf))
+        check("置き場が無い時は parents を付けない（[None]は400になる）",
+              "parents" in (_bodies[-1] or {}), False)
+
+        def _boom(*a, **k):
+            raise RuntimeError("Driveの応答がおかしい")
+
+        bot._drive_dest_for = _boom
+        _n = len(_bodies)
+        check("置き場を決められない時は、上げたと言わない",
+              bot._drive_upload_video(str(_tmpf)), "")
+        check("置き場を決められない時は、そもそも上げない",
+              len(_bodies), _n)
+    finally:
+        bot._drive_dest_for = _destD
+        bot._drive_service = _svcD
+
     print("■ Driveの認証切れは、日付ではなく状態で気づく")
-    # 同意画面が「テスト中」のままなので更新用トークンは7日で切れる。
-    # 黙って上がらなくなるのが一番困るので、切れていたらDiscordで言う。
+    # 以前は同意画面が「テスト中」で更新用トークンが7日で切れていた。
+    # drive.file に戻して公開できるようにしたのでそれは無くなる想定だが、
+    # 鍵の入れ替え・権限の取り消しでも切れる。黙って上がらなくなるのが
+    # 一番困るので、切れていたらDiscordで言う。
     check("見張りがある", callable(getattr(bot, "_drive_watch_loop", None)), True)
     with open(bot.__file__, encoding="utf-8") as _f:
         _src = _f.read()

@@ -472,8 +472,8 @@ Python 3.9 でもOK、追加SDK不要です。
 APIキーやシークレットをMacの `.env` へ入れるのに、ターミナルを開かなくて済みます。
 
 ```
-鍵登録 somethingfun_CLIENT_ID ここにID
-鍵登録 somethingfun_CLIENT_SECRET ここにシークレット
+鍵登録 GOOGLE_DRIVE_CLIENT_ID ここにID
+鍵登録 GOOGLE_DRIVE_CLIENT_SECRET ここにシークレット
 ```
 
 `鍵登録` のあとに **環境変数名**、そのあとに **値**。2行まとめて送っても、

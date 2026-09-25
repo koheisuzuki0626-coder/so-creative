@@ -2734,8 +2734,8 @@ def _env_set(pairs):
 
 KEY_REG_USAGE = (
     "🔐 鍵の受け取り口の使い方（値はログにもDiscordにも残しません）\n"
-    "```\n鍵登録 somethingfun_CLIENT_ID ここにID\n"
-    "鍵登録 somethingfun_CLIENT_SECRET ここにシークレット\n```\n"
+    "```\n鍵登録 GOOGLE_DRIVE_CLIENT_ID ここにID\n"
+    "鍵登録 GOOGLE_DRIVE_CLIENT_SECRET ここにシークレット\n```\n"
     "・名前は英数字と `_` だけ（先頭は英字か `_`）\n"
     "・値に空白は入れられません\n"
     "・2行まとめて送っても、1行ずつ送っても大丈夫です"
@@ -2743,15 +2743,26 @@ KEY_REG_USAGE = (
 
 
 # ---------- Google Drive（ファイルの受け渡し） ----------
-# 鍵（somethingfun_CLIENT_ID / _SECRET）は「鍵登録」で .env に入っている前提。
+# 鍵（GOOGLE_DRIVE_CLIENT_ID / _SECRET）は「鍵登録」で .env に入っている前提。
+# 旧名 somethingfun_CLIENT_ID も読む。2026-08-28 に本人が付けた名前だが、
+# 前職の社名なので 2026-09-25 に改名した（Google側には影響しないラベル）。
 #
 # 認証を【Discordだけで終わらせる】ため、ブラウザの戻り先を localhost にして
 # おき、繋がらなかった画面のURLを丸ごと貼ってもらう方式にした。localhost は
 # スマホからは開けないが、認可コードはURLに載っているのでそれで交換できる。
 # （Macの前でしか認証できない作りにすると、外出先・入院中に詰む）
-# drive.file は「このアプリが作ったファイルだけ」。本人が手で作った
-# DRIVE_UPLOAD_FOLDER に書き込めないので drive にしてある（2026-09-22）。
-DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive"]
+# スコープは drive.file（このアプリが作ったファイルだけ）。
+# 2026-09-22 に「手で作った置き場に書けない」ので drive（全ファイル）へ広げたが、
+# drive は Google の【制限付きスコープ】で、同意画面を本番公開するには審査＋
+# 年1回のセキュリティ評価（CASA）が要る。公開しないと更新用トークンが7日で
+# 切れる（テスト中の仕様）ので、切れ続けるか審査を通すかの二択になっていた。
+# drive.file は機微スコープではないため【無条件で本番公開でき、7日の期限が
+# 消える】。そちらを取った（2026-09-25）。
+# 代わりに置き場もアプリ自身に作らせる（_drive_root）。手で置いたファイルは
+# 見えなくなるので、受け取り側は Claude Code の Drive コネクタが担当する。
+# ※コード側を変えても同意画面の登録スコープは変わらない。Google Cloud の
+#   「データアクセス」で drive を外し drive.file を足すこと。
+DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 DRIVE_REDIRECT = "http://localhost:8765/"
 DRIVE_TOKEN_FILE = Path(HISTORY_DIR) / "drive_token.json"   # history/ は .gitignore 済み
 DRIVE_DL_DIR = Path(BASE_DIR) / "drive_in"
@@ -2771,9 +2782,15 @@ def _human_size(n):
 
 
 def _drive_client_pair():
-    """.env の鍵を返す。未登録なら (None, None)。値はログに出さない。"""
-    return (os.getenv("somethingfun_CLIENT_ID"),
-            os.getenv("somethingfun_CLIENT_SECRET"))
+    """.env の鍵を返す。未登録なら (None, None)。値はログに出さない。
+
+    新しい名前を先に見て、無ければ旧名（somethingfun_）を読む。改名しても
+    鍵を入れ直さなくて済むようにしてある。経緯はこの節の冒頭のコメント。
+    """
+    return (os.getenv("GOOGLE_DRIVE_CLIENT_ID")
+            or os.getenv("somethingfun_CLIENT_ID"),
+            os.getenv("GOOGLE_DRIVE_CLIENT_SECRET")
+            or os.getenv("somethingfun_CLIENT_SECRET"))
 
 
 def _drive_client_config():
@@ -2844,10 +2861,42 @@ def _drive_exchange(text):
     return "✅ Google Drive に繋がりました。『ドライブ一覧』で確認できます。"
 
 
+def _drive_token_scopes():
+    """保存済みトークンに【実際に許可された】スコープ。読めなければ空。"""
+    try:
+        rec = json.loads(DRIVE_TOKEN_FILE.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return set()
+    return set(rec.get("scopes") or [])
+
+
+def _drive_token_ok():
+    """保存済みトークンが、いま要求しているスコープを満たしているか。
+
+    事故（2026-09-25に実測）：スコープを drive → drive.file に狭めたとき、
+    古いトークンがそのまま使われ続けた。google-auth は scopes を明示して
+    読み込むと【ファイル側の記録を捨てる】ので食い違いが例外にならず、
+    しかも更新に成功したあと「drive.file を許可済み」という嘘の記録で
+    上書きしてしまう（許可の実体は drive のまま）。
+    こうなると狭めた意味が無いうえ、繋ぎ直しが必要だと誰も気づけない。
+
+    だから【読む前に】ファイルの記録と突き合わせて、足りなければ
+    「無い」ものとして扱う。_drive_watch_loop がその日のうちに
+    「認証が切れています」とDiscordで言う。
+    """
+    got = _drive_token_scopes()
+    return bool(got) and set(DRIVE_SCOPES) <= got
+
+
 def _drive_creds():
-    """保存済みトークンを返す（期限切れは自動更新）。無ければ None。"""
+    """保存済みトークンを返す（期限切れは自動更新）。無ければ None。
+
+    許可されたスコープが足りない時も None を返す（_drive_token_ok）。
+    """
     if not DRIVE_TOKEN_FILE.exists():
         return None
+    if not _drive_token_ok():
+        return None                       # 繋ぎ直しが要る。黙って使わない
     try:
         from google.oauth2.credentials import Credentials
         from google.auth.transport.requests import Request
@@ -2880,28 +2929,129 @@ DRIVE_NEED_AUTH = ("まだGoogle Driveに繋がっていません。"
 
 
 def _drive_list(limit=20):
-    """このボットが扱えるファイルの一覧（新しい順）。"""
+    """このボットが上げたファイルの一覧（新しい順）。
+
+    drive.file なので、本人やお客様が手で置いたファイルは出てこない。
+    そちらを見るのは Claude Code のセッション（Driveコネクタ）の担当。
+    「無い機能をあることにしない」ため、見出しにもそう書く。
+    """
     svc = _drive_service()
     if svc is None:
         return DRIVE_NEED_AUTH
+    # drive.file になって、アプリが作った【フォルダ】（so-creative・動画・
+    # 画像・案件ごと）まで一覧に並ぶようになった。「上げたもの」と書いて
+    # フォルダを見せるのは嘘なので、フォルダとゴミ箱を除く（2026-09-25）。
     res = svc.files().list(
+        q=("trashed=false and "
+           "mimeType!='application/vnd.google-apps.folder'"),
         pageSize=limit, orderBy="modifiedTime desc",
         fields="files(id,name,size,modifiedTime)").execute()
     files = res.get("files", [])
     if not files:
         return "📂 まだ1件もありません（『ドライブに送って <パス>』で上げられます）。"
     rows = [f"・{f['name']}　{_human_size(int(f.get('size') or 0))}" for f in files]
-    return "📂 Google Drive（新しい順）\n" + "\n".join(rows)
+    return ("📂 Google Drive（このボットが上げたもの・新しい順）\n"
+            + "\n".join(rows))
 
 
-# AIで作ったものを入れる Drive のフォルダ（本人指定・2026-09-22）。
-# https://drive.google.com/drive/folders/1TsoIAqa2T34N1tP6bvzq5bLHy0B-CxxG
-# この下に「動画」「画像」が既にあり、さらにその下を案件ごとに仕切る。
-DRIVE_UPLOAD_FOLDER = os.getenv("DRIVE_UPLOAD_FOLDER",
-                                "1TsoIAqa2T34N1tP6bvzq5bLHy0B-CxxG")
+# AIで作ったものを入れる Drive の置き場。
+# 2026-09-22 は本人が手で作ったフォルダ（1Tso…）を指していたが、drive.file では
+# 手で作ったフォルダに書けないので【アプリ自身に作らせる】ことにした
+# （2026-09-25）。この下に「動画」「画像」、さらにその下を案件ごとに仕切る。
+DRIVE_ROOT_NAME = os.getenv("DRIVE_ROOT_NAME", "so-creative")
+# 手で作った旧置き場。指定が残っていても使わない（drive.file では書けないので、
+# 使うと毎回404で落ちる。黙って古い設定に引っぱられないよう名前で持つ）。
+DRIVE_LEGACY_FOLDER = "1TsoIAqa2T34N1tP6bvzq5bLHy0B-CxxG"
+# 置き場を明示したい時だけ指定する。既定は空＝アプリが作ったものを使う。
+DRIVE_UPLOAD_FOLDER = os.getenv("DRIVE_UPLOAD_FOLDER", "")
 # 自動で上げるか。止めたいときは DRIVE_AUTO_UPLOAD=0。
 DRIVE_AUTO_UPLOAD = os.getenv("DRIVE_AUTO_UPLOAD", "1").lower() not in (
     "0", "false", "no")
+
+
+def _drive_q_esc(name):
+    """Driveの検索式に名前を埋めるための最小のエスケープ。"""
+    return (name or "").replace("\\", "\\\\").replace("'", "\\'")
+
+
+def _drive_http_status(e):
+    """googleapiclient の例外からHTTPの状態番号を取る。分からなければ 0。"""
+    try:
+        return int(getattr(getattr(e, "resp", None), "status", 0) or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+_drive_root_ok = set()      # 実在を確かめ終えたID。プロセス内だけに置く
+
+
+def _drive_root():
+    """上げ先のいちばん上のフォルダID。無ければ作る。繋がっていなければ空。
+
+    drive.file は「このアプリが作ったファイルだけ」なので、置き場もアプリが
+    作る必要がある。IDは gen_settings に覚えて作り直さない（毎回名前で探すと、
+    同名フォルダが増えたときに散らばる）。
+
+    覚えたIDは【1度だけ実在を確かめる】。本人がフォルダを消す・ゴミ箱へ
+    入れると、覚えたIDは永久に404を返し、しかも上の階層が
+    _drive_upload_video の except に飲まれるので【納品物が黙って
+    上がらなくなる】。消えていたら覚えを捨てて作り直す。
+    一時的な通信の失敗で作り直すと同名フォルダが増えるので、
+    捨てるのは 403/404（無い・見えない）の時だけにする。
+    """
+    v = (DRIVE_UPLOAD_FOLDER or "").strip()
+    if v and v != DRIVE_LEGACY_FOLDER:
+        return v                          # 明示指定が最優先
+    fid = (gen_settings.get("drive_root") or "").strip()
+    if fid and fid in _drive_root_ok:
+        return fid
+    if fid:
+        svc = _drive_service()
+        if svc is None:
+            return fid                    # 確かめられない。前と同じ答えを返す
+        gone = False
+        try:
+            meta = svc.files().get(fileId=fid, fields="id,trashed").execute()
+            if not meta.get("trashed"):
+                _drive_root_ok.add(fid)
+                return fid
+            gone = True                   # ゴミ箱にある＝置き場として使えない
+        except Exception as e:  # noqa: BLE001
+            if _drive_http_status(e) not in (403, 404):
+                _log_error("Driveの置き場の確認", e)
+                return fid                # 一時的な失敗。覚えは捨てない
+            gone = True
+        if gone:
+            print(f"[drive] 覚えていた置き場が使えないので作り直す: {fid}")
+            _drive_root_ok.discard(fid)
+            gen_settings.pop("drive_root", None)
+            _save_gen_settings()
+            _drive_folders.clear()        # 下の仕切りの覚えも一緒に捨てる
+    svc = _drive_service()
+    if svc is None:
+        return ""                         # 未認証。親なし＝マイドライブ直下
+    try:
+        r = svc.files().list(
+            q=("mimeType='application/vnd.google-apps.folder' "
+               "and trashed=false and 'root' in parents "
+               f"and name='{_drive_q_esc(DRIVE_ROOT_NAME)}'"),
+            fields="files(id)", pageSize=1).execute()
+        got = r.get("files") or []
+        fid = got[0]["id"] if got else svc.files().create(
+            body={"name": DRIVE_ROOT_NAME,
+                  "mimeType": "application/vnd.google-apps.folder"},
+            fields="id").execute()["id"]
+    except Exception as e:  # noqa: BLE001
+        # ここで "" を返すとマイドライブ直下へ上げて「成功」と報告してしまう
+        # （置き場を作れなかっただけなのに、納品物が散る）。上の階層が
+        # 分からない時に安全な逃げ場は無いので、投げて呼び出し側に止めさせる。
+        # _drive_upload_video は例外を飲んで何も報告しない＝嘘をつかない。
+        _log_error("Driveの置き場づくり", e)
+        raise
+    gen_settings["drive_root"] = fid
+    _save_gen_settings()
+    _drive_root_ok.add(fid)
+    return fid
 
 
 def _drive_upload(path, folder_id=None):
@@ -2953,10 +3103,10 @@ def _drive_subfolder(name, parent=None):
     見つからない・作れない時は親フォルダのIDを返す。仕切りを作れなかった
     だけで、上げること自体は失敗させない。
     """
-    parent = parent or DRIVE_UPLOAD_FOLDER
     name = (name or "").strip()
-    if not name:
-        return parent
+    parent = parent or _drive_root()
+    if not (name and parent):
+        return parent                     # 置き場が分からない＝マイドライブ直下
     key = (parent, name)
     if key in _drive_folders:
         return _drive_folders[key]
@@ -2964,7 +3114,7 @@ def _drive_subfolder(name, parent=None):
     if svc is None:
         return parent
     try:
-        esc = name.replace("\\", "\\\\").replace("'", "\\'")
+        esc = _drive_q_esc(name)
         r = svc.files().list(
             q=("mimeType='application/vnd.google-apps.folder' "
                "and trashed=false "
@@ -2998,9 +3148,11 @@ def _drive_dest_for(path, project=""):
 
     置き場の規則をここ1か所にする（自動アップロードとDiscordの
     「ドライブに上げて」で行き先が食い違っていたため。2026-09-22）。
-    「動画」「画像」は本人が先に作ってあるので、探せば見つかる。
+    「動画」「画像」も案件のフォルダも、無ければアプリが作る
+    （drive.file にした 2026-09-25 以降、手で作ったフォルダには書けない）。
     種類が分からないもの・案件名が分からないものは、そこで仕切るのを
     やめて上の階層に置く（間違った場所に作らない）。
+    Driveの応答がおかしい時は _drive_root が投げる。呼び出し側で止める。
     """
     base = _drive_subfolder(_drive_kind_of(path))
     return _drive_subfolder(project or _project_of_path(path), base)
@@ -3010,7 +3162,7 @@ def _drive_upload_video(path, project=""):
     """完成した動画を、決めたフォルダへ自動で上げる。
     失敗しても制作そのものは無駄にしない（例外は投げず、文を返すだけ）。
     戻り値: Discord に足す1行（上げなかった・失敗した時は空）。"""
-    if not (DRIVE_AUTO_UPLOAD and DRIVE_UPLOAD_FOLDER):
+    if not DRIVE_AUTO_UPLOAD:
         return ""
     try:
         svc = _drive_service()
@@ -3020,10 +3172,13 @@ def _drive_upload_video(path, project=""):
         from googleapiclient.http import MediaFileUpload
         size = p.stat().st_size
         media = MediaFileUpload(str(p), resumable=size > 5 * 1024 * 1024)
+        body = {"name": p.name}
+        dest = _drive_dest_for(p, project)
+        if dest:                          # 置き場が無い時は付けない
+            body["parents"] = [dest]      # （[None] を渡すとAPIが400を返す）
         f = svc.files().create(
-            body={"name": p.name,
-                  "parents": [_drive_dest_for(p, project)]},
-            media_body=media, fields="id,name,webViewLink").execute()
+            body=body, media_body=media,
+            fields="id,name,webViewLink").execute()
         link = f.get("webViewLink") or ""
         print(f"[drive] 自動アップロード: {f.get('name')} → {link}")
         return f"\nGoogle Drive: {link}" if link else "\nGoogle Drive に保存しました"
@@ -3033,17 +3188,23 @@ def _drive_upload_video(path, project=""):
 
 
 def _drive_download(name):
-    """名前でDriveを探して1つ落とす。戻り値は見せる文。"""
+    """名前でDriveを探して1つ落とす。戻り値は見せる文。
+
+    drive.file なので、探せるのはこのボットが上げたものだけ。本人やお客様が
+    手で置いたファイルは見えない（そちらは Claude Code のDriveコネクタ）。
+    """
     svc = _drive_service()
     if svc is None:
         return DRIVE_NEED_AUTH
-    safe = (name or "").replace("\\", "\\\\").replace("'", "\\'")
+    safe = _drive_q_esc(name)
     res = svc.files().list(
         q=f"name contains '{safe}' and trashed=false", pageSize=5,
         orderBy="modifiedTime desc", fields="files(id,name,size)").execute()
     files = res.get("files", [])
     if not files:
-        return f"⚠️ `{name}` に合うファイルがDriveにありません。"
+        return (f"⚠️ `{name}` に合うファイルがDriveにありません。\n"
+                "※探せるのは**このボットが上げたもの**だけです"
+                "（手で置いたファイルは見えません）。")
     if len(files) > 1:
         rows = "\n".join(f"・{f['name']}" for f in files)
         return f"複数見つかりました。名前をもう少し絞ってください。\n{rows}"
@@ -6833,9 +6994,11 @@ DRIVE_EXPIRED_NOTE = (
 async def _drive_watch_loop():
     """Driveの認証が切れたらDiscordで知らせる（1日1回・切れている時だけ）。
 
-    Googleの同意画面が「テスト中」のままなので、更新用トークンは7日で切れる
-    （実際、8/28に取ったものが9/22には失効していた）。黙って上がらなくなるのが
-    一番困るので、日付で決め打ちせず【状態】を見て本人に言う。
+    以前は「テスト中」の同意画面で更新用トークンが7日で切れていた（8/28に
+    取ったものが9/22には失効）。2026-09-25 に drive.file へ戻して本番公開できる
+    ようにしたので、7日で切れること自体は無くなる想定。ただし鍵の入れ替え・
+    権限の取り消し・スコープ変更でも切れるので、この見張りは残す。
+    黙って上がらなくなるのが一番困るので、日付で決め打ちせず【状態】を見る。
     """
     last_said = None
     while True:
@@ -14173,8 +14336,20 @@ async def _handle_drive_cmd(message, cid, content):
         _fired(cid, "ドライブへ送る", t)
         await send_as(orch, cid, "⬆️ 上げています…")
         _p = m.group(1)
-        await send_as(orch, cid, await asyncio.to_thread(
-            _drive_upload, _p, _drive_dest_for(_p)))
+
+        def _up():
+            # 宛先の解決もDriveへのHTTPなので、別スレッドで回す。
+            # 以前は引数の位置にあったためイベントループ上で走り、
+            # 解決中はボット全体が止まっていた（2026-09-25）。
+            try:
+                return _drive_upload(_p, _drive_dest_for(_p))
+            except Exception as e:  # noqa: BLE001
+                _log_error("Driveの置き場の解決", e)
+                return ("⚠️ 置き場を決められませんでした（Driveの応答が"
+                        "おかしいようです）。もう一度試してください。\n"
+                        "※間違った場所に置かないよう、上げずに止めました。")
+
+        await send_as(orch, cid, await asyncio.to_thread(_up))
         return
     m = _DRIVE_DOWN_RE.match(t)
     if m:
