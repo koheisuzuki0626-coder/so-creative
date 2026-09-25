@@ -748,6 +748,55 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     }
 }
 
+/* ---- 「サンプル」と書いてあるリンクは、サンプルのページへ行く（2026-09-25） ----
+   ヘッダーの「サンプル」が index.html#works（＝トップの Before/After の節）を
+   指していた。本文では「制作サンプルのページ」として works.html へ案内しているので、
+   同じ言葉で別の場所へ飛んでいた。言葉と行き先を結び直したので、戻ったら落とす。
+   #works は「写真1枚から」という別の節。呼び分けること */
+{
+    const PUB = ['index.html', 'pricing.html', 'works.html', 'about.html', 'privacy.html',
+        'company-video.html', 'recruit-video.html', 'service-video.html', 'ad-video.html',
+        'sns-video.html', 'exhibition-video.html', 'internal-video.html',
+        'animation-video.html', 'music-video.html'];
+    for (const f of PUB) {
+        const h = readFileSync(`${ROOT}/${f}`, 'utf8');
+        const bad = [...h.matchAll(/<a[^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/g)]
+            .filter(([, , text]) => text.includes('サンプル'))
+            /* works.html 本体か、その中の錨。works.html 自身では #genres */
+            .filter(([, href]) => !/^works\.html(#|$)/.test(href)
+                                  && !(f === 'works.html' && href === '#genres'))
+            .map(([, href, text]) => `${text} → ${href}`);
+        check(`${f}「サンプル」と書いたリンクは works.html へ行く`, bad.length === 0,
+            bad.join(' / '));
+    }
+
+    /* ヘッダーの「料金」も同じ。料金の本拠地は pricing.html で、
+       トップの #plans は要約の節。下層から押して要約へ戻されると、
+       押したのに何も進んでいないように見える */
+    for (const f of PUB.filter((x) => x !== 'index.html')) {
+        const h = readFileSync(`${ROOT}/${f}`, 'utf8');
+        const nav = (h.match(/<div class="nav-main">([\s\S]*?)<\/div>/) || [])[1] || '';
+        const want = f === 'pricing.html' ? '#plans' : 'pricing.html';
+        const got = (nav.match(/<a[^>]*href="([^"]*)"[^>]*>料金<\/a>/) || [])[1];
+        check(`${f} のヘッダーの「料金」が ${want} を指す`, got === want, String(got));
+        const wantS = f === 'works.html' ? '#genres' : 'works.html';
+        const gotS = (nav.match(/<a[^>]*href="([^"]*)"[^>]*>サンプル<\/a>/) || [])[1];
+        check(`${f} のヘッダーの「サンプル」が ${wantS} を指す`, gotS === wantS, String(gotS));
+    }
+
+    /* フッターのサイトマップが同じ URL を2つの名前で並べていた
+       （works.html が「Genres」と「Works — 制作サンプル」の2行）。
+       そのぶん「写真1枚から」への道が、どのページからも消えていた */
+    for (const f of PUB) {
+        const h = readFileSync(`${ROOT}/${f}`, 'utf8');
+        const map = h.slice(h.indexOf('f-site-h'));
+        const hrefs = [...map.slice(0, map.indexOf('</nav>')).matchAll(/<a href="([^"]*)"/g)]
+            .map((m) => m[1]);
+        const dup = hrefs.filter((x, i) => hrefs.indexOf(x) !== i);
+        check(`${f} のサイトマップに同じ行き先が2回出てこない`, dup.length === 0, dup.join(' / '));
+    }
+}
+
 /* ---- 検索に出す／出さないの足並み（2026-09-24） ----
    sitemap.xml は公開5ページを載せているのに、全ページが noindex だった。
    いまは公開前なので意図どおりだが、切り替えのときに片方だけ直すと

@@ -231,6 +231,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
 #nav.on-dark .logo-dash { background: #79c2a1; }
 #nav.on-dark .nav-item { color: rgba(245,245,247,0.66); }
 #nav.on-dark .nav-item:hover, #nav.on-dark .nav-item.active,
+#nav.on-dark .nav-item[aria-current="page"],
 #nav.on-dark .nav-trigger[aria-expanded="true"] { color: #fff; }
 #nav.on-dark .nav-cta { background: #fff; color: #000; }
 #nav.on-dark .nav-cta:hover { background: var(--accent); color: var(--on-ink); }
@@ -305,8 +306,11 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     transform-origin: left;
     transition: transform 0.35s var(--ease);
 }
-.nav-item:hover, .nav-item.active { color: var(--ink); }
-.nav-item.active::after { transform: scaleX(1); }
+/* いま見ているページ（aria-current）も、スクロールで今いる節（.active）も
+   同じ見え方にする。下層ページはヘッダーが3項目しかなく、どれが「いまここ」か
+   分からないと、同じページへのリンクを押して何も起きないように見える */
+.nav-item:hover, .nav-item.active, .nav-item[aria-current="page"] { color: var(--ink); }
+.nav-item.active::after, .nav-item[aria-current="page"]::after { transform: scaleX(1); }
 .nav-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 3px; }
 /* ドロップダウンを持つ項目には小さな三角を添える */
 .nav-trigger { display: inline-flex; align-items: center; gap: 5px; }
