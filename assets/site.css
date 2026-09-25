@@ -1,8 +1,15 @@
 :root {
-    --bg: #ffffff;
-    --bg-alt: #f5f5f7;
+    /* 背景。2026-09-25 に白＋薄グレーから、ごく薄い緑へ。
+       ブランドの深緑と同じ系統にわずかに寄せてある。
+       カード・パネル（background: #fff）は白のままにして浮かせる——
+       形は変えず、地の色だけを変える意図。 */
+    --bg: #f7faf8;
+    --bg-alt: #ecf2ee;
     --ink: #1d1d1f;
-    --ink-dim: #6e6e73;
+    /* 2026-09-25：地を薄い緑にしたとき、帯（--bg-alt）の上で 4.47 になり
+       AA（4.5）を 0.03 割った。わずかに濃くして 4.88 に戻した。
+       見た目はほぼ変わらないが、この1段を戻さないと検査が落ちる */
+    --ink-dim: #68686d;
     --ink-2: #3d3d41;               /* 読ませる本文。--ink よりわずかに軽い */
     --line: rgba(0, 0, 0, 0.10);
     /* ブランドの色。2026-09-24 に金（#b08733 系）から深緑へ変えた。
@@ -398,7 +405,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     text-align: center;
     overflow: hidden;
     padding: calc(var(--nav-h) + 60px) 0 90px;
-    background: radial-gradient(70% 60% at 50% 38%, #ffffff 0%, #f3f2f0 100%);
+    background: radial-gradient(70% 60% at 50% 38%, #ffffff 0%, #ecf2ee 100%);
 }
 /* 文字の背後にだけ白を敷き、流れるサムネイルと同化させない */
 .hero::before {

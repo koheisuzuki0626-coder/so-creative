@@ -674,6 +674,30 @@ for (const [f, html] of [['index.html', idx], ['about.html', about], ['privacy.h
 const rb = await (await page.request.get(`${BASE}/robots.txt`)).text();
 check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) && !/Disallow: \//.test(rb));
 
+/* ---- 色のトークンが4か所でズレていないか（2026-09-25） ----
+   assets/site.css と、社内用3ページの中に書いた :root が別々に存在する。
+   地の色を薄い緑に変えたとき、片方だけ直すと同じ「社内用」の紙なのに
+   色が違って見える。まとめて動かすために突き合わせる */
+{
+    const css = readFileSync(`${ROOT}/assets/site.css`, 'utf8');
+    const tok = (src, name) => (src.match(new RegExp(`--${name}:\\s*([^;]+);`)) || [])[1]?.trim();
+    const WANT = ['bg', 'bg-alt', 'ink', 'ink-dim', 'ink-2', 'accent', 'accent-ink'];
+    const base = Object.fromEntries(WANT.map((k) => [k, tok(css, k)]));
+    check('site.css に色のトークンが揃っている',
+        WANT.every((k) => base[k]), JSON.stringify(base));
+    for (const f of ['roadmap.html', 'record.html', 'funnel.html']) {
+        const h = readFileSync(`${ROOT}/${f}`, 'utf8');
+        const root = (h.match(/:root\s*\{([\s\S]*?)\}/) || [])[1] || '';
+        const diff = WANT.filter((k) => {
+            const v = tok(root, k);
+            /* そのページが持っていないトークンは見ない（--accent-soft など） */
+            return v !== undefined && v.replace(/#fff$/, '#ffffff') !== base[k];
+        });
+        check(`${f} の色が site.css と揃っている`, diff.length === 0,
+            diff.map((k) => `${k}: ${tok(root, k)} ≠ ${base[k]}`).join(' / '));
+    }
+}
+
 /* ---- 検索に出す／出さないの足並み（2026-09-24） ----
    sitemap.xml は公開5ページを載せているのに、全ページが noindex だった。
    いまは公開前なので意図どおりだが、切り替えのときに片方だけ直すと
