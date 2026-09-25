@@ -189,7 +189,7 @@ Mac で動いているボットは読まない。「ここで決めたのに Dis
 | 無い機能を「ある」ことにしない | `_SLASH_CMD_RE` / `_no_slash_note` |
 | 頼まれていないのにコードを書き換えない | `_is_selffix_order`（希望は通さない） |
 | テストが本物の記録を汚さない | `_testenv.isolate` / `assert_clean` |
-| 連投に1通ずつ返事をしない | `_wait_for_burst`（最後の1通だけ答える） |
+| 連投に1通ずつ返事をしない | `_burst_superseded`（送る直前に確認。先に待たない） |
 | 提案に「ok」で合意した作業が始まる | `_BARE_GO_RE` / `_r_do_proposal` |
 | 案内した機能が実際に在る（動画化） | `_r_slideshow` / `_run_slideshow` |
 | 聞かれた媒体と違うものを出さない | `_report_gen_status` の `_said_media` 照合 |
