@@ -2927,6 +2927,29 @@ def _drive_service():
 DRIVE_NEED_AUTH = ("まだGoogle Driveに繋がっていません。"
                    "**『ドライブ認証』**と送ると手順が出ます。")
 
+# スコープを変えた直後は、繋ぎ直しても【同意画面に新しいスコープが登録される
+# まで通らない】。それを言わずに「つなぎ直してください」と案内すると、本人は
+# 何度やっても失敗する。理由を状態で見分けて、先にやることを言う（2026-09-25）。
+DRIVE_SCOPE_NOTE = (
+    "🔑 **Google Drive の権限を変えたので、繋ぎ直しが必要です**\n"
+    "いまのトークンは古い権限（全ファイル）のままなので、使いません。\n"
+    "このままだと、出来上がった動画がDriveに入りません。\n\n"
+    "⚠️ **先に Google Cloud の同意画面で `drive.file` を登録してください**"
+    "（`auth/drive` は外す）。**そこが済むまで繋ぎ直しは失敗します。**\n"
+    "→ 手順は `成果物/開業準備/Google Driveの設定.md`（GitHubのCodeタブの中）\n\n"
+    "登録が済んだら **『ドライブ認証』** と送ってください。")
+
+
+def _drive_need_auth():
+    """繋がっていない【理由】に合った案内を返す。
+
+    「切れた」のか「権限を変えたから使えない」のかで、次にやることが違う。
+    言い方を数えずに、トークンの記録という【状態】で見分ける。
+    """
+    if DRIVE_TOKEN_FILE.exists() and not _drive_token_ok():
+        return DRIVE_SCOPE_NOTE
+    return DRIVE_NEED_AUTH
+
 
 def _drive_list(limit=20):
     """このボットが上げたファイルの一覧（新しい順）。
@@ -2937,7 +2960,7 @@ def _drive_list(limit=20):
     """
     svc = _drive_service()
     if svc is None:
-        return DRIVE_NEED_AUTH
+        return _drive_need_auth()
     # drive.file になって、アプリが作った【フォルダ】（so-creative・動画・
     # 画像・案件ごと）まで一覧に並ぶようになった。「上げたもの」と書いて
     # フォルダを見せるのは嘘なので、フォルダとゴミ箱を除く（2026-09-25）。
@@ -3059,7 +3082,7 @@ def _drive_upload(path, folder_id=None):
     folder_id を渡すと、そのフォルダの中に入れる（既定はマイドライブ直下）。"""
     svc = _drive_service()
     if svc is None:
-        return DRIVE_NEED_AUTH
+        return _drive_need_auth()
     p = Path(path).expanduser()
     if not p.is_file():
         return f"⚠️ ファイルが見つかりません: `{p}`"
@@ -3195,7 +3218,7 @@ def _drive_download(name):
     """
     svc = _drive_service()
     if svc is None:
-        return DRIVE_NEED_AUTH
+        return _drive_need_auth()
     safe = _drive_q_esc(name)
     res = svc.files().list(
         q=f"name contains '{safe}' and trashed=false", pageSize=5,
@@ -7015,7 +7038,10 @@ async def _drive_watch_loop():
             if await asyncio.to_thread(_drive_creds) is not None:
                 continue                 # つながっている。黙っている
             last_said = now.date()
-            await send_as(orch, cid, DRIVE_EXPIRED_NOTE)
+            await send_as(orch, cid, (
+                DRIVE_SCOPE_NOTE if (DRIVE_TOKEN_FILE.exists()
+                                     and not _drive_token_ok())
+                else DRIVE_EXPIRED_NOTE))
         except Exception as e:  # noqa: BLE001
             print(f"[drive] 見張りに失敗: {str(e)[:200]}")
 
@@ -14315,6 +14341,11 @@ async def _handle_drive_cmd(message, cid, content):
         if err:
             await send_as(orch, cid, err)
             return
+        if DRIVE_TOKEN_FILE.exists() and not await asyncio.to_thread(
+                _drive_token_ok):
+            # 権限を変えた直後。同意画面の登録が先でないと、下のURLは
+            # 「アクセスをブロック」で止まる。無駄に踏ませない。
+            await send_as(orch, cid, DRIVE_SCOPE_NOTE)
         await send_as(
             orch, cid,
             "🔑 **Google Drive につなぎます**（1回だけの作業です）\n\n"

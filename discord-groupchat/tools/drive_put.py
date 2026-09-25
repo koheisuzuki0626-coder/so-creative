@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
-"""出来上がったファイルを Google Drive の「動画」フォルダへ入れる。
+"""出来上がったファイルを Google Drive へ入れる。
 
     python3 tools/drive_put.py 動画.mp4 [もう1本.mp4 ...]
     python3 tools/drive_put.py --project 〇〇工業_会社紹介動画 完成.mp4
     python3 tools/drive_put.py --folder <フォルダID> 資料.pdf
 
-置き場は ai_group_chat.DRIVE_UPLOAD_FOLDER（＝Driveの「動画」フォルダ）。
-その中を案件ごとに仕切る。案件名は 成果物/<案件>/ のパスから拾うので、
-成果物の中のファイルなら --project は要らない。
+置き場は **アプリが作った `so-creative`**（マイドライブ直下）。その下を
+`動画` / `画像` → 案件ごとに仕切る。案件名は 成果物/<案件>/ のパスから
+拾うので、成果物の中のファイルなら --project は要らない。
+手で作ったフォルダに入れたい時だけ --folder で指定する（ただし
+drive.file では書き込めないので、アプリが作ったフォルダに限る）。
+
 認証とアップロードの実体はボットと同じものを使う（鍵の持ち方を二重に
-しないため）。トークンが切れていたら、その場で言う。
+しないため）。繋がっていなければ、その理由に合った案内が出る。
+
+権限は drive.file。スコープを変えた直後は `tools/drive_auth.py` を
+1回流すまで上がらない。手順は 成果物/開業準備/Google Driveの設定.md。
 """
 import os
 import pathlib
@@ -57,16 +63,27 @@ def main(argv):
         paths.append(p)
 
     if bot._drive_service() is None:
-        print("⚠️ Driveにつながっていません（トークン切れ or 鍵なし）。\n"
-              "   認証し直す: python3 tools/drive_auth.py")
+        # 理由は3つある（繋いでいない／切れた／権限を変えた）。ボット側の
+        # 案内文がその見分けを持っているので、それをそのまま出す。
+        print("⚠️ Driveにつながっていません。")
+        print("   " + bot._drive_need_auth().replace("\n", "\n   "))
+        print("   認証し直す: python3 tools/drive_auth.py")
         return 1
 
-    # 置き場の規則はボット側と同じものを使う（動画は「動画」フォルダ、
-    # それ以外はマイドライブ直下）。--folder を渡せばそれが優先。
+    # 置き場の規則はボット側と同じものを使う（so-creative/動画|画像/案件）。
+    # --folder を渡せばそれが優先。
     ok = 0
     for p in paths:
         # _drive_upload はDiscord向けの文を返すので、URLだけ取り出す
-        dest = folder or bot._drive_dest_for(p, project or "")
+        try:
+            dest = folder or bot._drive_dest_for(p, project or "")
+        except Exception as e:  # noqa: BLE001
+            # 置き場を決められない時、_drive_root は投げる（黙ってマイドライブ
+            # 直下へ散らさないため）。ここで受けて、上げずに止める。
+            print(f"❌ {p.name} … 置き場を決められませんでした"
+                  f"（{type(e).__name__}）。間違った場所に置かないよう"
+                  "上げていません。")
+            continue
         res = bot._drive_upload(str(p), folder_id=dest) or ""
         link = next((w for w in res.split() if w.startswith("http")), "")
         if link:

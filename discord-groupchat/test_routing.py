@@ -3461,6 +3461,51 @@ def run():
         bot._drive_dest_for = _destD
         bot._drive_service = _svcD
 
+    print("■ 繋がっていない理由に合った案内を出す（失敗する手順を踏ませない）")
+    # 権限を変えた直後に「認証が切れました」と言うと、本人は繋ぎ直しを試して
+    # 失敗する（同意画面に drive.file が登録されるまで通らない）。
+    # 言い方を数えず、トークンの記録という【状態】で見分ける。
+    _tokN = bot.DRIVE_TOKEN_FILE
+    _svcN = bot._drive_service
+    try:
+        bot.DRIVE_TOKEN_FILE = _TMP_STATE / "drive_token_note.json"
+        check("繋いだことが無ければ、普通の案内",
+              bot._drive_need_auth(), bot.DRIVE_NEED_AUTH)
+        bot.DRIVE_TOKEN_FILE.write_text(json.dumps(
+            {"scopes": ["https://www.googleapis.com/auth/drive"]}),
+            encoding="utf-8")
+        check("権限が古い時は、先に同意画面を直せと言う",
+              bot._drive_need_auth(), bot.DRIVE_SCOPE_NOTE)
+        check("先にやることが書いてある",
+              "drive.file" in bot.DRIVE_SCOPE_NOTE
+              and "同意画面" in bot.DRIVE_SCOPE_NOTE, True)
+        check("繋ぎ直しても失敗すると先に伝える",
+              "済むまで繋ぎ直しは失敗します" in bot.DRIVE_SCOPE_NOTE, True)
+        check("手順書の場所を書く（探させない）",
+              "成果物/開業準備" in bot.DRIVE_SCOPE_NOTE
+              and "Codeタブ" in bot.DRIVE_SCOPE_NOTE, True)
+        check("案内はDiscord内で完結する（端末コマンドを書かない）",
+              "python" not in bot.DRIVE_SCOPE_NOTE.lower(), True)
+        try:
+            bot._drive_service = lambda: None
+            check("一覧も理由に合った案内を出す",
+                  bot._drive_list(), bot.DRIVE_SCOPE_NOTE)
+            check("取り出しも理由に合った案内を出す",
+                  bot._drive_download("なにか"), bot.DRIVE_SCOPE_NOTE)
+            check("送るのも理由に合った案内を出す",
+                  bot._drive_upload("/tmp/ありもしない.mp4"),
+                  bot.DRIVE_SCOPE_NOTE)
+        finally:
+            bot._drive_service = _svcN
+        bot.DRIVE_TOKEN_FILE.write_text(json.dumps(
+            {"scopes": ["https://www.googleapis.com/auth/drive.file"]}),
+            encoding="utf-8")
+        check("権限が足りていれば普通の案内",
+              bot._drive_need_auth(), bot.DRIVE_NEED_AUTH)
+    finally:
+        bot._drive_service = _svcN
+        bot.DRIVE_TOKEN_FILE = _tokN
+
     print("■ Driveの認証切れは、日付ではなく状態で気づく")
     # 以前は同意画面が「テスト中」で更新用トークンが7日で切れていた。
     # drive.file に戻して公開できるようにしたのでそれは無くなる想定だが、
