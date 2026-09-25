@@ -790,6 +790,11 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
            自社でつくったもので、受注した仕事ではないため */
         check(`${f} のヘッダーが「実績」「事例」を名乗っていない`,
             !/>(実績|事例)</.test(nav), nav.replace(/\s+/g, ' ').trim());
+        /* How to はトップの Before/After の節（まもりば）。つくれる動画とは別物なので、
+           同じ語が2つの行き先を指さないように固定する */
+        const gotH = (nav.match(/<a[^>]*href="([^"]*)"[^>]*>How to<\/a>/) || [])[1];
+        check(`${f} のヘッダーの「How to」が index.html#works を指す`,
+            gotH === 'index.html#works', String(gotH));
     }
 
     /* フッターのサイトマップが同じ URL を2つの名前で並べていた
