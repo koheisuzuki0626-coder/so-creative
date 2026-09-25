@@ -230,11 +230,17 @@ def build(g):
     nav = nav.replace(' aria-current="page"', '')
     nav = nav.replace(f'<a href="{g["file"]}">', f'<a href="{g["file"]}" aria-current="page">')
     page = head_top + meta + head_mid + ld + nav + main + tail
-    # 計算機を置くページは pricing.js も読む
-    if not g.get('no_price'):
+    # 計算機を置くページは pricing.js も読む。
+    # 骨組み（company-video.html）が既に読んでいるなら足さない。
+    # 2026-09-25：ここで二重に足していて、6ページで計算機が2回初期化され、
+    # 段と本数の選択肢が二重に生えていた。
+    if not g.get('no_price') and 'assets/pricing.js' not in page:
         page = page.replace('    <script src="assets/funnel.js" defer></script>',
                             '    <script src="assets/funnel.js" defer></script>\n'
                             '    <script src="assets/pricing.js" defer></script>')
+    # ミュージックビデオは計算機を置かないので、骨組みから来た pricing.js を外す
+    if g.get('no_price'):
+        page = page.replace('\n    <script src="assets/pricing.js" defer></script>', '')
     return page
 
 

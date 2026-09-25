@@ -17,6 +17,18 @@ await page.waitForTimeout(700);
 
 /* ---- 選択肢の構成 ---- */
 check('仕上げの段が3つ', (await page.locator('#calc-tier .calc-opt').count()) === 3);
+/* 2026-09-25：pricing.js を2回読んでいるページがあり、同じ器が2回組み立てられて
+   選択肢が二重に生えた。器に印を付けて二度目は何もしないようにしてある。
+   ここでは「2回呼んでも増えない」ことそのものを見る */
+check('二度組み立てても選択肢が増えない', await (async () => {
+    const before = await page.locator('#calc-tier .calc-opt').count()
+        + await page.locator('#calc-cnt .calc-opt').count();
+    await page.addScriptTag({ url: '/assets/pricing.js' });
+    await page.waitForTimeout(300);
+    const after = await page.locator('#calc-tier .calc-opt').count()
+        + await page.locator('#calc-cnt .calc-opt').count();
+    return before === after;
+})());
 check('段の名前が梅竹松',
     (await page.locator('#calc-tier .calc-opt').allInnerTexts()).join('|') === '梅 標準|竹 上|松 特上');
 /* 9/22 から尺は本ごとに選ぶ（select）。1本のときは行が1つだけ出る */

@@ -184,6 +184,11 @@ const track = window.soTrack || (() => {});
         document.querySelectorAll('.calc').forEach((el, i) => setupCalc(el, i));
 
         function setupCalc(calc, ci) {
+            /* 2026-09-25：pricing.js を2回読んでいるページがあり、同じ器を2回組み立てて
+               段と本数の選択肢が二重に生えていた。読み込み側は直したが、
+               ここでも一度組んだ器には印を付けて、二度目は何もしない */
+            if (calc.dataset.calcReady === '1') { return; }
+            calc.dataset.calcReady = '1';
             const uid = calc.dataset.calcId || `c${ci}`;
             if (!calc.querySelector('[data-c="tier"]')) calc.innerHTML = shellHtml(uid);
             const q = (k) => calc.querySelector(`[data-c="${k}"]`);

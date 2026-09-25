@@ -734,6 +734,12 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
                 /<tr><th scope="row">(15秒|30秒)<\/th>/.test(h));
             check(`${f} に計算機がある`,
                 /class="calc[ "]/.test(h) && /<script[^>]+src="assets\/pricing\.js"/.test(h));
+            /* 2026-09-25：生成側が骨組みと二重に足していて、6ページで pricing.js を
+               2回読んでいた。計算機が2回組み立てられ、段と本数の選択肢が二重に生えた */
+            check(`${f} が pricing.js を二重に読んでいない`,
+                (h.match(/<script[^>]+src="assets\/pricing\.js"/g) || []).length === 1);
+            check(`${f} が funnel.js を二重に読んでいない`,
+                (h.match(/<script[^>]+src="assets\/funnel\.js"/g) || []).length === 1);
         }
         /* ミュージックビデオは料金表の対象外。どちらも置かない */
         const mv = readFileSync(`${ROOT}/music-video.html`, 'utf8');
