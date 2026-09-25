@@ -761,12 +761,14 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     for (const f of PUB) {
         const h = readFileSync(`${ROOT}/${f}`, 'utf8');
         const bad = [...h.matchAll(/<a[^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/g)]
-            .filter(([, , text]) => text.includes('サンプル') || text.includes('作例'))
+            .filter(([, , text]) => text.includes('サンプル') || text.includes('つくれる動画'))
             /* works.html 本体か、その中の錨。works.html 自身では #genres */
+            /* index と works は自分の中に #genres を持っているので、そこへの錨は正しい */
             .filter(([, href]) => !/^works\.html(#|$)/.test(href)
-                                  && !(f === 'works.html' && href === '#genres'))
+                                  && !(href === '#genres'
+                                       && /id="genres"/.test(readFileSync(`${ROOT}/${f}`, 'utf8'))))
             .map(([, href, text]) => `${text} → ${href}`);
-        check(`${f}「サンプル」「作例」と書いたリンクは works.html へ行く`, bad.length === 0,
+        check(`${f}「サンプル」「つくれる動画」と書いたリンクは works.html へ行く`, bad.length === 0,
             bad.join(' / '));
     }
 
@@ -780,9 +782,10 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         const got = (nav.match(/<a[^>]*href="([^"]*)"[^>]*>料金<\/a>/) || [])[1];
         check(`${f} のヘッダーの「料金」が ${want} を指す`, got === want, String(got));
         const wantS = f === 'works.html' ? '#genres' : 'works.html';
-        const gotS = (nav.match(/<a[^>]*href="([^"]*)"[^>]*>作例<\/a>/) || [])[1];
-        check(`${f} のヘッダーの「作例」が ${wantS} を指す`, gotS === wantS, String(gotS));
-        /* 呼び名は 2026-09-25 に「サンプル」から「作例」へ。
+        const gotS = (nav.match(/<a[^>]*href="([^"]*)"[^>]*>つくれる動画<\/a>/) || [])[1];
+        check(`${f} のヘッダーの「つくれる動画」が ${wantS} を指す`, gotS === wantS, String(gotS));
+        /* 呼び名は 2026-09-25 に「サンプル」→「作例」→「つくれる動画」。
+           works.html の見出し「つくれる動画と、そのサンプル。」と揃えた。
            「実績」「事例」は使わない——works.html の9本は全部 so-creative が
            自社でつくったもので、受注した仕事ではないため */
         check(`${f} のヘッダーが「実績」「事例」を名乗っていない`,
