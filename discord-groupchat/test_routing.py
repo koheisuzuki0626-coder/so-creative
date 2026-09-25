@@ -1529,6 +1529,104 @@ def run():
     check("9日で全9ジャンルが一巡する", sorted(_seen), list("ABCDEFGHI"))
     check("空の設定でも落ちない", bot._todays_genres("", n=2), [])
 
+    print("■ ジャンルは【巡ごと】に進める（1日で全ジャンルをなぞる）")
+    # 事故（2026-09-25）：1日ぶん固定だったので、9ジャンルのうち2つを1日4巡
+    # 見直し、残り7ジャンルは丸一日ゼロだった。しかも同じジャンルを繰り返すと
+    # 分析済みでない候補が尽きて、関連の薄い裾に手が伸びる（実害が出た）。
+    _seenR = set()
+    for _r in range(8):
+        _seenR |= set(bot._todays_genres(_9, day=_d1, n=2, round_no=_r))
+    check("8巡で全9ジャンルに触れる", sorted(_seenR), list("ABCDEFGHI"))
+    check("同じ巡なら何度呼んでも同じ（調査できる）",
+          bot._todays_genres(_9, day=_d1, n=2, round_no=3),
+          bot._todays_genres(_9, day=_d1, n=2, round_no=3))
+    check("巡が進めば別のジャンルになる",
+          bot._todays_genres(_9, day=_d1, n=2, round_no=0)
+          != bot._todays_genres(_9, day=_d1, n=2, round_no=1), True)
+    check("巡を渡さなければ従来どおり（その日の先頭）",
+          bot._todays_genres(_9, day=_d1, n=2),
+          bot._todays_genres(_9, day=_d1, n=2, round_no=0))
+    import inspect as _insp
+    for _fn in ("_daily_trend_loop", "_trend_drive_loop"):
+        _srcR = _insp.getsource(getattr(bot, _fn))
+        check(f"{_fn} が巡の番号を渡している", "round_no=" in _srcR, True)
+
+    print("■ 検索語を広げる時、題材そのものを捨てない")
+    # 事故（2026-09-25）：広げ方が「語をORでつなぐ」「最長の語だけにする」
+    # だったため、「社内報 動画」→「社内報|動画」となり【動画を含むだけ】の
+    # 解説動画（いきなりステーキ・MBS暴露・有料級）が分析された。
+    # 「アニメーション 説明動画 制作事例」→「アニメーション」でアニメ全般にも化けた。
+    check("ORでつながない（『動画』だけで何でも当たる）",
+          any("|" in v for v in bot._query_variants("社内報 動画")), False)
+    check("修飾語だけを落とす", bot._query_variants("社内報 動画"),
+          ["社内報 動画", "社内報"])
+    check("題材の語は残す（アニメ全般にしない）",
+          bot._query_variants("アニメーション 説明動画 制作事例"),
+          ["アニメーション 説明動画 制作事例", "アニメーション 説明動画"])
+    check("1語のお題は広げない", bot._query_variants("webcm"), ["webcm"])
+    check("空でも落ちない", bot._query_variants(""), [])
+    check("一般語だけは題材にしない", bot._query_terms("動画 事例"), [])
+
+    print("■ 関連性は【お題】で測る（企業VPらしさに順位を渡さない）")
+    # _corporate_score はお題を見ないので、単体で順位を決めさせると
+    # 「社内報」のお題で採用動画が最上位に来る。知見ファイルに嘘の学びが入る。
+    _honmono = {"title": "社内報動画『みんなの一日』", "channel": "〇〇工業の広報",
+                "desc": "", "tags": []}
+    _saiyo = {"title": "採用動画｜働く人に密着",
+              "channel": "株式会社リクルートパートナー", "desc": "", "tags": []}
+    _kankei = {"title": "いきなりステーキ 衝撃の実態", "channel": "ほぼテク",
+               "desc": "解説動画です", "tags": []}
+    _Q = "社内報 動画"
+    check("企業VPらしさだけだと本物が負ける（前提の確認）",
+          bot._corporate_score(_honmono) < bot._corporate_score(_saiyo), True)
+    check("お題で測れば本物が勝つ",
+          bot._relevance_score(_honmono, _Q) > bot._relevance_score(_saiyo, _Q), True)
+    check("お題と無関係なものは0",
+          bot._relevance_score(_kankei, _Q), 0)
+    check("説明文に書いてある本物も拾う（題名だけで判定しない）",
+          bot._query_match_score(
+              {"title": "社員インタビュー", "channel": "株式会社サンプル",
+               "desc": "弊社の社内報としてお届けします", "tags": []}, _Q) > 0, True)
+
+    print("■ 日替わりの並びが、関連性の順位を捨てないこと")
+    # 事故（2026-09-25）：関連性で並べ替えた【直後】に全体をシャッフルしており、
+    # 並べ替えが毎回そのまま捨てられていた。ログの「企業動画らしいもの N本を優先」
+    # は実態を伴っていなかった。層を保ったまま混ぜれば両立する。
+    _pool = [dict(_kankei, title=f"無関係{i}") for i in range(10)] + \
+            [dict(_honmono, title=f"社内報動画{i}") for i in range(4)]
+    _ordered = bot._daily_order(_pool, lambda v: bot._relevance_score(v, _Q), "20260925")
+    check("関連のあるものが先に来る",
+          all(bot._relevance_score(v, _Q) > 0 for v in _ordered[:4]), True)
+    check("1本も落とさない（0本で終わらせない）", len(_ordered), len(_pool))
+    check("同じ日なら同じ並び（再現できる）", [v["title"] for v in _ordered],
+          [v["title"] for v in bot._daily_order(
+              _pool, lambda v: bot._relevance_score(v, _Q), "20260925")])
+    check("日が変われば並びが変わる（いつも同じ動画にしない）",
+          [v["title"] for v in _ordered] != [v["title"] for v in bot._daily_order(
+              _pool, lambda v: bot._relevance_score(v, _Q), "20260926")], True)
+    # 信号が薄いジャンル（MV・webcm）は並べ替えを見送る＝従来どおり
+    _thin = [dict(_kankei, title=f"無関係{i}") for i in range(10)] + [_honmono]
+    _to = bot._daily_order(_thin, lambda v: bot._relevance_score(v, _Q), "20260925")
+    check("当たりが少なすぎる時は並べ替えない（弱い信号に上位を渡さない）",
+          _to[0] is not _honmono or len(_to) != len(_thin), True)
+    check("見送っても1本も落とさない", len(_to), len(_thin))
+    _srcS = _insp.getsource(bot._run_trend_study)
+    check("並べ替えの直後に全体をシャッフルし直していない",
+          ".shuffle(" in _srcS, False)
+    check("裾で埋めない（関連が足りない日は少なく見る）",
+          "_hits" in _srcS and "min(TREND_DEEP_COUNT, len(_hits))" in _srcS, True)
+    check("関連の測り方はお題を見るほう（企業VPらしさ単体を使わない）",
+          "_relevance_score" in _srcS and "sorted(_corp," not in _srcS, True)
+
+    print("■ 「今日の型」にも既出を渡す（毎回テロップの話に戻らない）")
+    # 事故（2026-09-25）：既出を渡していたのは「次に試すこと」「AIで作れないもの」
+    # だけで、「今日の型」には渡していなかった。テロップの同期は日本の企業映像なら
+    # ほぼ必ず成り立つので、4回中4回そこに戻っていた。
+    check("今日の型の既出を集めている", '_past_items("今日の型")' in _srcS, True)
+    check("既出としてプロンプトに渡している", "【既出：今日の型" in _srcS, True)
+    check("別の層を見るよう促している",
+          "カット割り" in _srcS and "構成" in _srcS, True)
+
     print("■ 毎日のリサーチのジャンルを変えられること")
     for _t, _want in (
         ("リサーチはアート系にして", ("set", "アート系")),
@@ -1711,12 +1809,15 @@ def run():
           "# 静かモードでは復活の通知も出さない" in _srcK, True)
     check("レポートに何巡目かを出す（回っていることが分かる）",
           "巡目>" in _srcK, True)
-    # 2026-09-25：9ジャンルに増やしたので「全部を毎回」から「その日のぶん」へ。
+    # 2026-09-25：9ジャンルに増やしたので「全部を毎回」から「その巡のぶん」へ。
     # ここだけ全ジャンルのままにすると、枠が戻るたびに9ジャンルが走って
-    # 枠を食い直し、朝のぶんが落ちる
-    check("枠が戻るたびに、その日のぶんのジャンルを回す",
-          "_genres_now = _todays_genres(gen_settings.get(\"trend_query\")) or [None]"
-          in _srcK and "_run_trend_all(cid, _genres_now)" in _srcK, True)
+    # 枠を食い直し、朝のぶんが落ちる。
+    # 同日中の巡ごとにジャンルを進めるので、巡の番号も渡す（同じジャンルを
+    # 1日に何度も引くと、分析済みでない候補が尽きて裾に手が伸びるため）。
+    check("枠が戻るたびに、その巡のぶんのジャンルを回す",
+          "_genres_now = _todays_genres(" in _srcK
+          and "round_no=_trend_runs_today()" in _srcK
+          and "_run_trend_all(cid, _genres_now)" in _srcK, True)
     check("リサーチが止めてある時・上限超過では回さない",
           "if _trend_conf()[0] and _trend_can_run() and not _already:" in _srcK,
           True)
@@ -4163,10 +4264,13 @@ def run():
 
     print("■ 検索語が絞りすぎの時に広げる _query_variants")
     # 事故（2026-09-09 08:00）：「会社紹介動画 制作事例」で3本しか取れず、
-    # しかも「3Dプリント制作事例」のような別業種が混ざった。
-    check("複数語はORと主要語に広げる",
+    # しかも「3Dプリント制作事例」のような別業種が混ざった。広げること自体は要る。
+    # ただし 2026-09-25 に、その広げ方が【題材を捨てていた】と分かったので変えた。
+    # 旧：語をORでつなぐ＋最長の語だけにする → 「社内報|動画」「アニメーション」
+    # 新：後ろの修飾語だけを落とす（題材の語は必ず残す）
+    check("後ろの修飾語だけを落とす",
           bot._query_variants("会社紹介動画 制作事例"),
-          ["会社紹介動画 制作事例", "会社紹介動画|制作事例", "会社紹介動画"])
+          ["会社紹介動画 制作事例", "会社紹介動画"])
     check("1語なら広げない", bot._query_variants("企業VP"), ["企業VP"])
     check("空なら何もしない", bot._query_variants(""), [])
 

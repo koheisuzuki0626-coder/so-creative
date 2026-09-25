@@ -2317,7 +2317,8 @@ async def _gemini_recovery_loop():
             _trend_redo.pop(cid, None)
             # 日替わりの切り出しは復活側でも同じものを使う。ここだけ全部にすると、
             # 枠が戻るたびに設定した全ジャンルが走って枠を食い直す
-            _genres_now = _todays_genres(gen_settings.get("trend_query")) or [None]
+            _genres_now = _todays_genres(gen_settings.get("trend_query"),
+                                         round_no=_trend_runs_today()) or [None]
             # すでに走っている時は起動しない。2本目の枠待ちの最中に
             # ここがもう1本立ち上げると、同じお題が二重に回る。
             _already = any("YouTubeリサーチ" in n for n, _ in _busy_tasks(cid))
@@ -4664,19 +4665,33 @@ def _query_variants(query):
     しかも「3Dプリント制作事例」のような別業種が混ざった。YouTubeの検索は
     複数語をAND寄りに扱うので、語を足すほど当たらなくなる。
 
-    広げ方は2段階：
-      1. 語をORでつなぐ（「会社紹介動画|制作事例」）
-      2. 一番効く語だけにする（最長の語＝具体性が高いと見なす）
+    事故（2026-09-25）：広げ方が壊れていた。ORでつなぐと
+    「社内報 動画」→「社内報|動画」となり、**「動画」を含むだけ**の
+    解説動画（いきなりステーキ・MBS暴露・有料級）が分析対象になった。
+    最長の語を選ぶ方も「アニメーション 説明動画 制作事例」→「アニメーション」
+    でアニメ全般に化けていた。どちらも題材そのものを捨てている。
+
+    広げ方は1つだけ：**後ろの修飾語から順に落とす**。
+    ただし【ジャンルを特定する語（_query_terms）は絶対に落とさない】。
+    落とすのは「動画」「制作事例」のような、単体では何も絞れない語だけ。
+      「社内報 動画」            → 「社内報 動画」「社内報」
+      「アニメーション 説明動画 制作事例」
+            → 「… 制作事例」「アニメーション 説明動画」（「アニメーション」単体は出さない）
     元の語で足りていれば、ここは使わない。
     """
     q = (query or "").strip()
     if not q:
         return []
     parts = [p for p in re.split(r"[\s　]+", q) if p]
+    keep = set(_query_terms(q))
     out = [q]
-    if len(parts) > 1:
-        out.append("|".join(parts))
-        out.append(max(parts, key=len))
+    for n in range(len(parts) - 1, 0, -1):
+        cand = parts[:n]
+        if keep and not keep <= set(cand):
+            break                    # 題材の語を落とすところまで来た。広げない
+        v = " ".join(cand)
+        if v != q:
+            out.append(v)
     return out
 
 
@@ -4723,13 +4738,86 @@ def _corp_gate(videos, query):
 
 
 def _corporate_score(v):
-    """企業のプロモーション映像らしさ（0〜2）。高いものから見る。"""
+    """企業のプロモーション映像らしさ（0〜2）。高いものから見る。
+
+    ⚠️ この点数は【お題を見ていない】。単体で順位を決めさせてはいけない
+    （「社内報」のお題で採用動画が最上位に来る）。_relevance_score を使うこと。
+    """
     s = 0
     if _CORP_CHANNEL_RE.search(str(v.get("channel") or "")):
         s += 1
     if _CORP_TITLE_RE.search(str(v.get("title") or "")):
         s += 1
     return s
+
+
+# 単体ではジャンルを絞れない語。検索語を広げる時も、関連性を測る時も無視する。
+# 事故（2026-09-25）：「社内報 動画」の「動画」、「SNS広告 縦型 事例」の「事例」が
+# そのまま検索語になり、ジャンル違いの動画が分析された。
+_GENERIC_QUERY_TERMS = {"動画", "映像", "制作", "制作事例", "事例", "実績",
+                        "紹介", "ムービー", "作品"}
+
+
+def _query_terms(query):
+    """検索語のうち、ジャンルを特定する語だけを返す（一般語は落とす）。"""
+    return [p for p in re.split(r"[\s　|]+", (query or "").strip())
+            if p and p not in _GENERIC_QUERY_TERMS]
+
+
+def _query_match_score(v, query):
+    """その動画自身のメタ情報に、ジャンルを特定する語がいくつ出てくるか。
+
+    言い回しを数え上げるガードではなく、【YouTubeが返した事実】で見ている。
+    題名・チャンネル名・説明文・タグを対象にする（題名だけだと、
+    説明文にしかジャンル名を書かない本物を落としてしまう）。
+    """
+    terms = _query_terms(query)
+    if not terms:
+        return 0
+    text = " ".join([
+        str(v.get("title") or ""), str(v.get("channel") or ""),
+        str(v.get("desc") or ""), " ".join(str(t) for t in (v.get("tags") or [])),
+    ]).lower()
+    return sum(1 for t in terms if t.lower() in text)
+
+
+def _relevance_score(v, query):
+    """そのお題の実物らしさ。ジャンル語の一致が企業VPらしさに常に勝つ。
+
+    逆にすると「社内報 動画」のお題で、_corporate_score が 2 を付ける
+    採用動画が最上位に来て、社内報のレポートが採用動画で埋まる。
+    知見ファイルに嘘の学びが入るので、主従は入れ替えないこと。
+    """
+    return _query_match_score(v, query) * 10 + _corporate_score(v)
+
+
+def _daily_order(candidates, score_fn, seed, need=None):
+    """日替わりの並び。点数の高い層から順に、層の【中だけ】を混ぜる。
+
+    事故（2026-09-25）：関連性で並べ替えた直後に全体をシャッフルしていたので、
+    並べ替えが毎回そのまま捨てられていた（ログの「企業動画らしいもの N本を優先」
+    は実態を伴っていなかった）。層を保ったまま混ぜれば、日替わりでありながら
+    関連の高いものから見られる（2026-08-22「いつも同じ動画」の修正も保てる）。
+
+    点数が付くものが need 本（最低3本）に届かない時は【並べ替えない】。
+    弱い信号に上位を明け渡すと、ジャンルと関係の薄いものが上位を占める
+    （2026-09-23「ミュージックビデオ」で無関係な有名動画が選ばれた事故と同じ形）。
+    1本も落とさないので、0本になることはない。
+    """
+    import random as _rnd
+    need = TREND_DEEP_COUNT if need is None else need
+    rng = _rnd.Random(seed)
+    scored = [(score_fn(v), v) for v in candidates]
+    if sum(1 for sc, _ in scored if sc > 0) < min(need, 3):
+        out = list(candidates)
+        rng.shuffle(out)                      # 従来どおり（関連順を日替わりで混ぜる）
+        return out
+    out = []
+    for sc in sorted({x for x, _ in scored}, reverse=True):
+        bucket = [v for x, v in scored if x == sc]
+        rng.shuffle(bucket)                   # 同じ層の中だけ混ぜる
+        out.extend(bucket)
+    return out
 
 
 # 検索の並び順。検索語を出したのに再生数順で引くと、その語と関係の薄い
@@ -6427,21 +6515,15 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
     # 題名（会社紹介・採用・ブランドムービー等）で見分ける。
     # 落とすのではなく並べ替えにするのは、0本になるのを避けるため。
     # 該当が1本も無い時は、元の並び（再生数順）のまま。
-    _corp = [v for v in candidates if _corporate_score(v) > 0]
-    if _corp and len(_corp) >= min(TREND_DEEP_COUNT, 3):
-        _rest = [v for v in candidates if _corporate_score(v) == 0]
-        candidates = sorted(_corp, key=_corporate_score, reverse=True) + _rest
-        print(f"[trend] 企業動画らしいもの {len(_corp)}本を優先", flush=True)
-    # 上位から順に取ると、ランキングが動かない限り毎日ほぼ同じ顔ぶれになる。
-    # 候補を日替わりの並びにしてから選ぶ（同じ日は何度回しても同じ結果）。
+    # 上位から順に取ると毎日ほぼ同じ顔ぶれになるので、日替わりの並びにしてから
+    # 選ぶ（同じ日は何度回しても同じ結果＝調査できる）。
     # 事故（2026-08-22）：本人から「いつも同じ動画」と指摘された。
+    # 事故（2026-09-25）：その修正が【関連性の並べ替えを毎回捨てていた】。
+    # _daily_order は層を保ったまま混ぜるので、両方を同時に満たす。
     if skip_analyzed and len(candidates) > TREND_DEEP_COUNT:
-        # 上位20本だけを混ぜていたので、結局いつも同じ顔ぶれから選んでいた。
-        # 取得した全部（既定50本）を母数にする（2026-08-23）。
-        import random as _rnd
-        _pool = list(candidates)
-        _rnd.Random(datetime.now(JST).strftime("%Y%m%d")).shuffle(_pool)
-        candidates = _pool
+        candidates = _daily_order(
+            candidates, lambda v: _relevance_score(v, query),
+            datetime.now(JST).strftime("%Y%m%d"))
     if _all_excluded:
         await channel.send(
             f"🔎 {label}で{len(videos)}本取れましたが、**全部が営業素材**でした"
@@ -6452,7 +6534,18 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
             "・企業名を足す（例：「〇〇株式会社 会社紹介」）\n"
             "「**リサーチのジャンルを〇〇にして**」で毎朝のお題を変えられます。")
         return
-    targets = candidates[:TREND_DEEP_COUNT]
+    # 足りない分を裾から埋めない。埋めた分はジャンル違いで、しかも Gemini は
+    # 何を見せても必ず「型」を書くので、知見ファイルに嘘の学びが入る
+    # （2026-09-25：「社内報 動画」の回で、いきなりステーキ・MBS暴露を
+    # 社内報の型として記録していた）。少なく見て、少なく書くほうが正しい。
+    # 信号そのものが薄いジャンル（MV・webcm）は _daily_order が並べ替えを
+    # 見送るので、ここも従来どおり本数を減らさない。
+    _hits = [v for v in candidates if _relevance_score(v, query) > 0] if query else []
+    targets = candidates[:(TREND_DEEP_COUNT if len(_hits) < min(TREND_DEEP_COUNT, 3)
+                           else min(TREND_DEEP_COUNT, len(_hits)))]
+    if query:
+        print(f"[trend] 関連あり {len(_hits)}本 / 候補 {len(candidates)}本"
+              f"（{len(targets)}本を見る）", flush=True)
     await _trend_say(
         channel,
         f"🎬 {label}の動画{len(videos)}本を取得しました。"
@@ -6573,6 +6666,10 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
         # 「【】で煽る」「数字を入れる」が何度も出ていた（2026-09-21）。
         _tries = _past_items("次に試すこと")
         _cannot = _past_items("AIで作れないもの")
+        # 事故（2026-09-25）：既出を渡していたのは上の2つだけで、
+        # 「今日の型」には渡していなかった。テロップの同期は日本の企業映像なら
+        # ほぼ必ず成り立つので、放っておくと毎回そこに戻る（4回中4回）。
+        _kata = _past_items("今日の型")
         digest_prompt = (
             "以下はYouTube動画の映像分析。AI映像制作の受注につなげるための"
             "知見としてまとめて。一般論（【】で煽る・数字を入れる等）は書かない。\n\n"
@@ -6598,6 +6695,9 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
                + "\n".join(f"・{x}" for x in _tries) + "\n\n" if _tries else "")
             + ("【既出：AIで作れないもの（同じ結論は禁止）】\n"
                + "\n".join(f"・{x}" for x in _cannot) + "\n\n" if _cannot else "")
+            + ("【既出：今日の型（同じ型は禁止。テロップの字数・同期の話が"
+               "続いているなら、別の層——カット割り・カメラ・音・構成の順番——を見る）】\n"
+               + "\n".join(f"・{x}" for x in _kata) + "\n\n" if _kata else "")
             + "【トレンド概観】\n" + (overview or "")
             + "\n\n【個別分析】\n" + digest_src
         )
@@ -6796,16 +6896,23 @@ def _genres_of(query):
 TREND_GENRES_PER_DAY = int(os.getenv("TREND_GENRES_PER_DAY", "2"))
 
 
-def _todays_genres(query, day=None, n=None):
-    """今日見るジャンル。設定が n 個より多いときだけ日替わりで切り出す。
+def _todays_genres(query, day=None, n=None, round_no=None):
+    """この巡で見るジャンル。設定が n 個より多いときだけ切り出す。
 
-    同じ日は何度呼んでも同じものを返す（結果を再現できないと調査ができない）。
-    n 個以下しか設定していなければ、従来どおり全部を返す。"""
+    事故（2026-09-25）：1日ぶん固定だったので、9ジャンルのうち2つを1日4巡
+    見直し、残り7ジャンルは丸一日ゼロだった。しかも同じジャンルを繰り返すと
+    分析済みでない候補が尽きて、関連の薄い裾に手が伸びる（当日の実害）。
+    巡ごとに窓をずらせば、1日で全ジャンルをなぞれて、裾に落ちる前に次へ行く。
+
+    同じ日の同じ巡なら何度呼んでも同じものを返す（再現できないと調査できない）。
+    round_no を渡さなければ従来どおり（その日の先頭）。
+    n 個以下しか設定していなければ、全部を返す。"""
     gs = _genres_of(query)
     n = TREND_GENRES_PER_DAY if n is None else n
     if not gs or n <= 0 or len(gs) <= n:
         return gs
-    start = ((day or datetime.now(JST)).toordinal() * n) % len(gs)
+    base = (day or datetime.now(JST)).toordinal() * n
+    start = (base + (round_no or 0) * n) % len(gs)
     return [gs[(start + i) % len(gs)] for i in range(n)]
 
 
@@ -6989,7 +7096,8 @@ async def _daily_trend_loop():
             # ジャンルを複数設定してあるときは、日替わりで1つではなく
             # 【毎日その全部】を順に見る（2026-09-18 の要望）。
             # 同時に走らせると Gemini の枠をすぐ使い切るので、1つずつ順番に。
-            _genres = _todays_genres(gen_settings.get("trend_query"))
+            _genres = _todays_genres(gen_settings.get("trend_query"),
+                                     round_no=_trend_runs_today())
             _all_genres = _genres_of(gen_settings.get("trend_query"))
             await send_as(
                 orch, cid,
@@ -7070,7 +7178,8 @@ async def _trend_drive_loop():
                 continue
             if any("YouTubeリサーチ" in n for n, _ in _busy_tasks(cid)):
                 continue                  # 走っている最中に二重に立てない
-            _spawn(_run_trend_all(cid, _todays_genres(gen_settings.get("trend_query"))),
+            _spawn(_run_trend_all(cid, _todays_genres(
+                gen_settings.get("trend_query"), round_no=_trend_runs_today())),
                    cid, "YouTubeリサーチ")
         except Exception as e:  # noqa: BLE001
             print(f"[trend] 連続実行に失敗: {str(e)[:200]}")
