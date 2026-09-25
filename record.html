@@ -13,9 +13,11 @@
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Zen+Kaku+Gothic+New:wght@300;400;500&display=swap">
     <style>
         :root {
-            --ink: #1d1d1f; --ink-dim: #646469; --ink-2: #3d3d41;
-            --line: rgba(0,0,0,.10); --bg: #f1f6f3; --bg-alt: #e2ebe5;
-            --accent: #1c5c45; --accent-ink: #14503c; --warn: #a8323a; --ok: #2f6b4f;
+            --ink: #f2f4f3; --ink-dim: #9ba29e; --ink-2: #d4d8d6;
+            --line: rgba(255,255,255,.12); --bg: #1d201f; --bg-alt: #262b29;
+            --card: #2c3230; --on-ink: #1d201f;
+            --accent: #79c2a1; --accent-ink: #8fd0b1;
+            color-scheme: dark; --warn: #e0868c; --ok: #79c2a1;
         }
         * { box-sizing: border-box; margin: 0; }
         body {
@@ -87,11 +89,11 @@
         .gate b { color: var(--ink); font-weight: 500; }
 
         .flag { margin-top: 18px; padding: 16px 20px; border-radius: 11px;
-                border: 1px solid rgba(168,50,58,.28); background: rgba(168,50,58,.05); }
+                border: 1px solid rgba(224,134,140,.28); background: rgba(224,134,140,.05); }
         .flag b { color: var(--warn); font-weight: 500; }
         /* 決まったことを書く箱。警告（赤）と同じ見た目にすると、
            決定が未解決の問題に見える（9/24 に受注経路を決めたときに追加） */
-        .flag.ok { border-color: rgba(47,107,79,.30); background: rgba(47,107,79,.05); }
+        .flag.ok { border-color: rgba(121,194,161,.30); background: rgba(121,194,161,.05); }
         .flag.ok b { color: var(--ok); }
         .flag p { font-size: .9rem; color: var(--ink-2); margin-top: 5px; }
 
@@ -630,7 +632,7 @@
             </p>
         </div>
 
-        <div class="flag" style="border-color:rgba(47,107,79,.3);background:rgba(47,107,79,.05)">
+        <div class="flag" style="border-color:rgba(121,194,161,.3);background:rgba(121,194,161,.05)">
             <b style="color:var(--ok)">いちばん強い発見：同じ世界観の追加尺は、ほぼ純利益。</b>
             <p>
                 15秒版は本編の短縮ではなく別設計（観客・文言・テロップサイズがすべて違う）なのに<b>1時間で済んでいる</b>。
@@ -660,7 +662,7 @@
             <tfoot><tr><td>4工程 合計</td><td>—</td><td class="num">277.6</td><td class="num"><b>約1,092</b></td></tr></tfoot>
         </table></div>
 
-        <div class="flag" style="border-color:rgba(47,107,79,.3);background:rgba(47,107,79,.05)">
+        <div class="flag" style="border-color:rgba(121,194,161,.3);background:rgba(121,194,161,.05)">
             <b style="color:var(--ok)">予想は外れた。4Kはタダ同然で、金を食うのは縦横の書き出し。</b>
             <p>
                 <b>4K化は1.2クレジット、ナレーションは0.4。</b>合わせても全体の0.6%しかない。
@@ -788,7 +790,7 @@
             確かめられない違いを売り文句にするのは、価格差をつけるのと同じ誤り。
             <b>出せない品質は書かない</b>ことにして、FAQ からも消した（9/16）。
         </p>
-        <div class="flag" style="border-color:rgba(47,107,79,.3);background:rgba(47,107,79,.05)">
+        <div class="flag" style="border-color:rgba(121,194,161,.3);background:rgba(121,194,161,.05)">
             <b style="color:var(--ok)">縦型は「仕上げの段」ではなく「追加の1本」。これも料金表に既にある。</b>
             <p>
                 15秒版がまさにそれだった。別の観客に向けて設計からつくり直し、<b>2時間・¥65,000相当</b>。

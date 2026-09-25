@@ -13,9 +13,11 @@
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Zen+Kaku+Gothic+New:wght@300;400;500&display=swap">
     <style>
         :root {
-            --ink: #1d1d1f; --ink-dim: #646469; --ink-2: #3d3d41;
-            --line: rgba(0,0,0,.10); --bg: #f1f6f3; --bg-alt: #e2ebe5;
-            --accent: #1c5c45; --accent-ink: #14503c; --warn: #a8323a;
+            --ink: #f2f4f3; --ink-dim: #9ba29e; --ink-2: #d4d8d6;
+            --line: rgba(255,255,255,.12); --bg: #1d201f; --bg-alt: #262b29;
+            --card: #2c3230; --on-ink: #1d201f;
+            --accent: #79c2a1; --accent-ink: #8fd0b1;
+            color-scheme: dark; --warn: #e0868c;
         }
         * { box-sizing: border-box; margin: 0; }
         body {
@@ -71,7 +73,7 @@
         button {
             font: inherit; font-size: .86rem; cursor: pointer; margin-top: 18px;
             padding: 9px 18px; border-radius: 99px; border: 1px solid var(--line);
-            background: #fff; color: var(--ink-2);
+            background: var(--card); color: var(--ink-2);
         }
         button:hover { border-color: var(--ink-dim); }
         a { color: var(--accent-ink); }

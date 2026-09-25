@@ -13,9 +13,11 @@
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Zen+Kaku+Gothic+New:wght@300;400;500&display=swap">
     <style>
         :root {
-            --ink: #1d1d1f; --ink-dim: #646469; --ink-2: #3d3d41;
-            --line: rgba(0,0,0,.10); --bg: #f1f6f3; --bg-alt: #e2ebe5;
-            --accent: #1c5c45; --accent-ink: #14503c; --warn: #a8323a; --ok: #2f6b4f;
+            --ink: #f2f4f3; --ink-dim: #9ba29e; --ink-2: #d4d8d6;
+            --line: rgba(255,255,255,.12); --bg: #1d201f; --bg-alt: #262b29;
+            --card: #2c3230; --on-ink: #1d201f;
+            --accent: #79c2a1; --accent-ink: #8fd0b1;
+            color-scheme: dark; --warn: #e0868c; --ok: #79c2a1;
         }
         * { box-sizing: border-box; margin: 0; }
         body {
@@ -85,7 +87,7 @@
         .stage ul:not(.ck) li { font-size: .93rem; color: var(--ink-2); margin-bottom: 6px; }
 
         .flag { margin-top: 18px; padding: 16px 20px; border-radius: 11px;
-                border: 1px solid rgba(168,50,58,.28); background: rgba(168,50,58,.05); }
+                border: 1px solid rgba(224,134,140,.28); background: rgba(224,134,140,.05); }
         .flag b { color: var(--warn); font-weight: 500; }
         .flag p { font-size: .9rem; color: var(--ink-2); margin-top: 5px; }
 
@@ -123,8 +125,8 @@
         .ck .box:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 3px; }
         .ck li.done .box { background: var(--ok); border-color: var(--ok); }
         .ck li.done .box::after { content: ""; position: absolute; left: 5px; top: 1px;
-                                  width: 4px; height: 9px; border-right: 2px solid #fff;
-                                  border-bottom: 2px solid #fff; transform: rotate(42deg); }
+                                  width: 4px; height: 9px; border-right: 2px solid var(--on-ink);
+                                  border-bottom: 2px solid var(--on-ink); transform: rotate(42deg); }
         .ck li.done > div { color: var(--ink-dim); }
         .ck-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 26px; }
         .ck-head .eyebrow { margin: 0; }
@@ -138,38 +140,39 @@
                     font-size: .85rem; color: var(--ink-2); }
         .ck-local b { color: var(--ink); font-weight: 500; }
 
-        /* お金の推移の折れ線。2026-09-25 追加、2026-09-24 に色を入れ替えた。
-           ブランドの色を金から深緑に変えたので、オレンジをやめて
-           ブランドと同じ緑の系統に寄せた。dataviz の validate_palette.js で検証
-           （#2b8560 × #7c4dbf：CVD ΔE 17.9 / 通常視 25.9 / 明度・彩度・コントラスト全てPASS）。
+        /* お金の推移の折れ線。2026-09-25 追加、同日に地を濃色にしたのに合わせて測り直した。
+           dataviz の validate_palette.js を濃地（--mode dark --surface #1d201f）で実行し、
+           #2b8560 × #9370da × #2f7d32 が 明度・彩度・CVD・通常視・コントラスト 全てPASS
+           （CVD ΔE 17.5 / 通常視 25.9 / 全色 3:1 以上）。
+           紫は元の #7c4dbf だと濃地でコントラスト 2.87 と 3:1 を割ったので #9370da に上げた。
+           緑の2本は白地のときの値のまま通ったので動かしていない。
 
-           **ブランドの深緑（--accent #1c5c45）をそのまま線に使うことはできない。**
-           ブランド色と元の青で測ると 通常視 ΔE 14.0 で下限（15）を割り、
-           明度も彩度も基準の外に出る（暗すぎ・くすみすぎ）。線に要るのは中間の明るさと
-           彩度なので、同じ緑でも一段明るい #2b8560 を使う。
-           もう一方は元の青だと緑と近すぎたので紫（#7c4dbf）に替えた。
+           **ブランドの緑をそのまま線に使うことはできない。**
+           白地だった頃の深緑 #1c5c45 と元の青で測ると 通常視 ΔE 14.0 で下限（15）を割り、
+           明度も彩度も基準の外に出ていた。線に要るのは中間の明るさと彩度なので、
+           同じ緑でも一段明るい #2b8560 を使う。
            （金だった頃も、金と --ok の緑で組もうとして 通常視 ΔE 11.9 で弾かれている。）
            見込みの線は破線にしてある＝色だけに頼らせない（色覚・白黒印刷でも分かる）。
            数字そのものは下の表が持つ。グラフは形を見るためのもの */
         .c-fig { margin: 24px 0 0; }
         .c-svg { width: 100%; max-width: 640px; height: auto; display: block; touch-action: pan-y; }
-        .c-svg .g { stroke: rgba(0,0,0,.08); }
-        .c-svg .c-g0 { stroke: rgba(0,0,0,.3); stroke-width: 1.5; }
-        .c-svg .c-ax { stroke: rgba(0,0,0,.18); }
+        .c-svg .g { stroke: rgba(255,255,255,.08); }
+        .c-svg .c-g0 { stroke: rgba(255,255,255,.34); stroke-width: 1.5; }
+        .c-svg .c-ax { stroke: rgba(255,255,255,.22); }
         .c-svg .c-ylab { fill: var(--ink-dim); font-size: 13px; text-anchor: end; font-variant-numeric: tabular-nums; }
         .c-svg .c-xlab { fill: var(--ink-dim); font-size: 13px; text-anchor: middle; }
         .c-svg .c-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
         .c-svg .c-la { stroke: #2b8560; }
-        .c-svg .c-lb { stroke: #7c4dbf; stroke-dasharray: 6 4; }
+        .c-svg .c-lb { stroke: #9370da; stroke-dasharray: 6 4; }
         .c-svg .c-lc { stroke: #2f7d32; stroke-dasharray: 2 4; }
-        .c-svg .c-dot { stroke: #fff; stroke-width: 2; }
+        .c-svg .c-dot { stroke: var(--bg); stroke-width: 2; }
         .c-svg .c-dot.c-sa { fill: #2b8560; }
-        .c-svg .c-dot.c-sb { fill: #7c4dbf; }
+        .c-svg .c-dot.c-sb { fill: #9370da; }
         .c-svg .c-dot.c-sc { fill: #2f7d32; }
         .c-svg .c-lab { font-size: 16px; text-anchor: middle; fill: var(--ink); font-weight: 500; }
         .c-svg .c-lab.c-l { text-anchor: start; }
         .c-svg .c-end { font-size: 16px; font-weight: 500; fill: var(--ink); }
-        .c-svg .c-cross { stroke: rgba(0,0,0,.35); }
+        .c-svg .c-cross { stroke: rgba(255,255,255,.38); }
         /* 狭い画面では目盛りを1つ飛ばしに間引く。全部出すと文字が重なる */
         @media (max-width: 620px) { .c-svg .c-x2 { display: none; } }
         .c-fig figcaption { margin-top: 12px; display: flex; flex-wrap: wrap;
@@ -177,7 +180,7 @@
         .c-fig .c-lg { display: inline-flex; align-items: center; gap: 7px; }
         .c-fig .c-sw { width: 22px; height: 0; border-top: 2px solid; display: inline-block; }
         .c-fig .c-sw.c-sa { border-color: #2b8560; }
-        .c-fig .c-sw.c-sb { border-color: #7c4dbf; border-top-style: dashed; }
+        .c-fig .c-sw.c-sb { border-color: #9370da; border-top-style: dashed; }
         .c-fig .c-sw.c-sc { border-color: #2f7d32; border-top-style: dotted; border-top-width: 3px; }
         .c-fig .c-cap { flex-basis: 100%; color: var(--ink-dim); font-size: .84rem; }
         .c-fig .c-tip { margin-top: 10px; font-size: .88rem; color: var(--ink-2);
@@ -285,7 +288,7 @@
     <div class="act"><p class="act-label"><b>2</b><span>資金がいつ尽きるか</span></p></div>
 
     <section>
-        <div class="flag" style="border-color:rgba(168,50,58,.3);background:rgba(168,50,58,.05)">
+        <div class="flag" style="border-color:rgba(224,134,140,.3);background:rgba(224,134,140,.05)">
             <b style="color:var(--warn)">営業ができない（2026-09-20・保険者に確認）。</b>
             傷病手当金は <b>月17万・2027年12月まで</b>（残り15ヶ月・総額255万）。
             保険者の回答は「<b>開業届を出すと支給は止まる</b>」「<b>営業活動も労務にあたる</b>」。

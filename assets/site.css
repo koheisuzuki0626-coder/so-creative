@@ -1,30 +1,35 @@
 :root {
-    /* 背景。2026-09-25 に白＋薄グレーから、ごく薄い緑へ。
-       ブランドの深緑と同じ系統にわずかに寄せてある。
-       カード・パネル（background: #fff）は白のままにして浮かせる——
-       形は変えず、地の色だけを変える意図。 */
-    --bg: #f1f6f3;
-    --bg-alt: #e2ebe5;
-    --ink: #1d1d1f;
-    /* 2026-09-25：地を緑にしたぶん、補助テキストは白地の頃より濃くしてある。
-       #6e6e73（元）だと帯の上で 4.47、#68686d でも 4.55 と余白が無い。
-       いまの #646469 で 地 5.38 ／ 帯 4.83（AA は 4.5）。
-       地をさらに濃くするなら、ここも一緒に見直すこと */
-    --ink-dim: #646469;
-    --ink-2: #3d3d41;               /* 読ませる本文。--ink よりわずかに軽い */
-    --line: rgba(0, 0, 0, 0.10);
+    /* 地の色。2026-09-25 に白 → ごく薄い緑 → 濃色（チャコール／緑みのグレー）へ。
+       4案（墨・深緑寄りの黒・濃い緑そのもの・チャコール）を実ページに当てて見比べ、
+       これを選んだ。黒ほど重くならず、深緑のアクセントが沈まない明度。
+       カード（--card）は地より一段明るくして浮かせる——形は変えず色だけを反転させる意図。 */
+    --bg: #1d201f;
+    --bg-alt: #262b29;                  /* 交互の帯 */
+    --card: #2c3230;                    /* カード・パネル。地より一段明るい */
+    --bg-deep: #0d0f0e;                 /* 全幅の黒い帯（ステージ・CTA）。地より暗い */
+    --ink: #f2f4f3;
+    --ink-2: #d4d8d6;                   /* 読ませる本文。--ink よりわずかに落とす */
+    /* 補助テキスト。濃地の上での実測は 地 6.30 ／ 帯 5.52 ／ カード 5.02（AA は 4.5）。
+       地をさらに動かすなら、ここも一緒に見直すこと */
+    --ink-dim: #9ba29e;
+    --on-ink: #1d201f;                  /* --ink を背景に敷いたときの文字色 */
+    --line: rgba(255, 255, 255, 0.12);
+    --line-strong: rgba(255, 255, 255, 0.28);
     /* ブランドの色。2026-09-24 に金（#b08733 系）から深緑へ変えた。
-       濃い地の上では明るいほう（#79c2a1）を使う。site.css 内を検索すれば全部出る。
+       濃地では明るいほうを使う（濃い #1c5c45 は濃地の上では読めない）。
        ロゴの SVG と PNG（lockup / full / ogp）にも同じ色が入っている */
-    --accent: #1c5c45;              /* 装飾用(罫線・グラデーション・ロゴの区切り) */
-    --accent-ink: #14503c;          /* 文字用。白/薄灰の上で AA を満たす濃さ（9.4:1） */
-    --accent-soft: rgba(28, 92, 69, 0.14);
+    --accent: #79c2a1;                  /* 装飾用(罫線・グラデーション・ロゴの区切り) */
+    --accent-ink: #8fd0b1;              /* 文字用。地の上で 9.25:1 */
+    --accent-soft: rgba(121, 194, 161, 0.16);
     --max: 1120px;
     --ease: cubic-bezier(0.28, 0.11, 0.32, 1);
     --nav-h: 52px;
     /* 欧文は Inter、和文は Zen Kaku Gothic New。どちらも細めのウェイトを使う */
     --font-sans: "Inter", "Zen Kaku Gothic New", -apple-system, BlinkMacSystemFont,
                  "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    /* select・スクロールバー・動画の操作部など、ブラウザが自前で描くものを
+       濃色側で描かせる。これが無いと計算機の select だけ白く浮く */
+    color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -129,13 +134,13 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     border: 1px solid transparent;
     transition: background 0.28s ease, color 0.28s ease, border-color 0.28s ease, transform 0.28s var(--ease);
 }
-.pill-solid { background: var(--ink); color: #fff; }
-.pill-solid:hover { background: var(--accent); transform: translateY(-1px); }
-.pill-ghost { border-color: rgba(0,0,0,0.2); color: var(--ink); }
+.pill-solid { background: var(--ink); color: var(--on-ink); }
+.pill-solid:hover { background: var(--accent); color: var(--on-ink); transform: translateY(-1px); }
+.pill-ghost { border-color: var(--line-strong); color: var(--ink); }
 .pill-ghost:hover { border-color: var(--ink); transform: translateY(-1px); }
 /* 黒い帯（Contact）の上に置く主ボタン。背景が黒なので白抜きにする */
-.pill-invert { background: #fff; color: var(--ink); }
-.pill-invert:hover { background: #79c2a1; color: #1d1d1f; transform: translateY(-1px); }
+.pill-invert { background: #fff; color: #1d1d1f; }
+.pill-invert:hover { background: var(--accent); color: var(--on-ink); transform: translateY(-1px); }
 
 /* ---------- Logo ---------- */
 /* シンボルマーク(花)＋社名の組み。
@@ -205,7 +210,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     justify-content: space-between;
     gap: 16px;
     padding: 11px 22px;
-    background: rgba(255, 255, 255, 0.72);
+    background: rgba(29, 32, 31, 0.72);
     backdrop-filter: saturate(180%) blur(20px);
     -webkit-backdrop-filter: saturate(180%) blur(20px);
     border-bottom: 1px solid transparent;
@@ -216,11 +221,11 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     transition: border-color 0.4s ease;
 }
 #nav.scrolled {
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(29, 32, 31, 0.92);
     border-bottom-color: var(--line);
 }
 /* 黒いセクションに重なったときはヘッダーを反転させる */
-#nav.on-dark { background: rgba(0, 0, 0, 0.6); border-bottom-color: rgba(255,255,255,0.12); }
+#nav.on-dark { background: rgba(13, 15, 14, 0.78); border-bottom-color: rgba(255,255,255,0.12); }
 #nav.on-dark .logo { color: #f5f5f7; }
 #nav.on-dark .logo-dot,
 #nav.on-dark .logo-dash { background: #79c2a1; }
@@ -228,7 +233,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
 #nav.on-dark .nav-item:hover, #nav.on-dark .nav-item.active,
 #nav.on-dark .nav-trigger[aria-expanded="true"] { color: #fff; }
 #nav.on-dark .nav-cta { background: #fff; color: #000; }
-#nav.on-dark .nav-cta:hover { background: var(--accent); color: #fff; }
+#nav.on-dark .nav-cta:hover { background: var(--accent); color: var(--on-ink); }
 #nav .logo { flex: none; font-size: 1.24rem; font-weight: 500; letter-spacing: 0.01em; }
 /* ロゴの右に置いて左から読ませる。中央に寄せると広い画面で左右に
    350px 以上の空きができ、バーではなく「浮いた島」に見えてしまう。
@@ -325,7 +330,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     border-radius: 980px;
     padding: 7px 16px;
     background: var(--ink);
-    color: #fff;
+    color: var(--on-ink);
     white-space: nowrap;
     letter-spacing: 0.04em;
     transition: background 0.28s ease;
@@ -347,7 +352,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     position: fixed;
     top: var(--nav-h); left: 0; right: 0;
     z-index: 140;
-    background: rgba(255,255,255,0.97);
+    background: rgba(29,32,31,0.97);
     backdrop-filter: saturate(180%) blur(20px);
     -webkit-backdrop-filter: saturate(180%) blur(20px);
     border-bottom: 1px solid var(--line);
@@ -406,9 +411,9 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     text-align: center;
     overflow: hidden;
     padding: calc(var(--nav-h) + 60px) 0 90px;
-    background: radial-gradient(70% 60% at 50% 38%, #ffffff 0%, #e2ebe5 100%);
+    background: radial-gradient(70% 60% at 50% 38%, #262b29 0%, #141716 100%);
 }
-/* 文字の背後にだけ白を敷き、流れるサムネイルと同化させない */
+/* 文字の背後にだけ地の色を敷き、流れるサムネイルと同化させない */
 .hero::before {
     content: "";
     position: absolute;
@@ -416,18 +421,21 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     z-index: 1;
     pointer-events: none;
     background: radial-gradient(ellipse 48% 46% at 50% 48%,
-                rgba(255,255,255,0.94) 0%, rgba(255,255,255,0.82) 46%, rgba(255,255,255,0) 74%);
+                rgba(29,32,31,0.94) 0%, rgba(29,32,31,0.82) 46%, rgba(29,32,31,0) 74%);
 }
-/* 背景は実際に納品した映像そのもの。中央は .hero::before の白で抜き、
+/* 背景は実際に納品した映像そのもの。中央は .hero::before の地の色で抜き、
    まわりはマスクで端に向かって消す。文字に干渉しない濃さに抑える */
 .hero-media {
     position: absolute;
     inset: -6%;
-    opacity: 0.22;
+    /* 2026-09-25：地を濃色にしたので 0.22 → 0.16 へ落とした。
+       重ね方（0.22）は同じでも、まわりが暗いと映像だけが浮いて主役に見える。
+       文字の背後の地は .hero::before が抜くので、ここは質感として残す濃さにする */
+    opacity: 0.16;
     filter: saturate(0.72);
     pointer-events: none;
     transform: scale(calc(1 + var(--hero-p, 0) * 0.16));
-    /* 中央は .hero::before の白で抜けるので、ここでは端に向かって薄く消すだけにする。
+    /* 中央は .hero::before の地の色で抜けるので、ここでは端に向かって薄く消すだけにする。
        以前のように中央を大きく抜くと、映像は外周しか見えず何が映っているか分からない */
     -webkit-mask-image: radial-gradient(ellipse 78% 74% at 50% 50%, #000 34%, rgba(0,0,0,0.35) 100%);
     mask-image: radial-gradient(ellipse 78% 74% at 50% 50%, #000 34%, rgba(0,0,0,0.35) 100%);
@@ -454,8 +462,8 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     font-weight: 400;
     letter-spacing: 0.12em;
     color: var(--accent-ink);
-    border: 1px solid rgba(28,92,69,0.38);
-    background: rgba(255,255,255,0.66);
+    border: 1px solid rgba(121,194,161,0.38);
+    background: rgba(255,255,255,0.08);
     border-radius: 980px;
     padding: 6px 16px;
     margin: 0 0 26px;
@@ -473,7 +481,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
 }
 .hero-chips li {
     font-size: 0.94rem;
-    background: rgba(255,255,255,0.8);
+    background: rgba(255,255,255,0.07);
     border: 1px solid var(--line);
     border-radius: 980px;
     padding: 8px 17px;
@@ -538,7 +546,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     border-radius: 18px;
     overflow: hidden;
 }
-.values li { background: #fff; padding: 34px 32px 36px; }
+.values li { background: var(--card); padding: 34px 32px 36px; }
 .values h3 {
     position: relative;
     margin: 0 0 12px;
@@ -568,8 +576,8 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     align-items: center;
     overflow: hidden;
 }
-.stage-dark { background: #000; color: #f5f5f7; }
-.stage-dark .body-text { color: #a1a1a6; }
+.stage-dark { background: var(--bg-deep); color: var(--ink); }
+.stage-dark .body-text { color: var(--ink-dim); }
 .stage-dark .eyebrow, .cta-band .eyebrow { color: #79c2a1; }
 .stage-light { background: var(--bg-alt); }
 
@@ -608,7 +616,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     font-size: 0.98rem;
     color: var(--ink-dim);
 }
-.stage-dark .stage-list li { color: #a1a1a6; }
+.stage-dark .stage-list li { color: var(--ink-dim); }
 .stage-list li::before {
     content: "";
     position: absolute;
@@ -631,7 +639,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     border-radius: 16px;
     overflow: hidden;
     box-shadow: 0 30px 70px -34px rgba(0,0,0,0.55);
-    background: #ddd;
+    background: var(--line-strong);
 }
 .stack img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .stack .s1 { left: 0;   top: 4%;  width: 62%; aspect-ratio: 16/9; transform: rotate(calc(-4deg + var(--p,0) * 2deg)); z-index: 3; }
@@ -655,7 +663,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     box-shadow: 0 20px 48px -18px rgba(0,0,0,0.6);
     transform: translate(-50%, -50%) scale(calc(0.82 + var(--p, 0) * 0.18));
     opacity: clamp(0, calc((var(--p, 0) - 0.12) * 3), 1);
-    color: var(--ink);
+    color: var(--on-ink);
     text-align: center;
     white-space: nowrap;
 }
@@ -664,7 +672,8 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     font-size: 0.7rem;
     font-weight: 500;
     letter-spacing: 0.16em;
-    color: var(--accent-ink);
+    /* 札だけは白地のままなので、ここは濃いほうの深緑を直に置く */
+    color: #14503c;
 }
 .stage-mark b {
     display: block;
@@ -717,7 +726,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
    1行が画面より広くなって、ページ全体が横に伸びていた（2026-09-24）。
    長い語はどこでも折り返してよいことにする */
 .about-facts dd { margin: 0; font-size: 0.94rem; overflow-wrap: anywhere; }
-.about-facts a { color: var(--accent-ink); text-decoration: none; border-bottom: 1px solid rgba(133,100,32,0.35); }
+.about-facts a { color: var(--accent-ink); text-decoration: none; border-bottom: 1px solid rgba(121,194,161,0.45); }
 .about-facts a:hover { border-bottom-color: var(--accent-ink); }
 
 /* 会社概要。項目が増えたので独立した節にしてある。
@@ -761,7 +770,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
 .policy p:last-child { margin-bottom: 0; }
 .policy ul { margin: 0 0 10px; padding-left: 1.25em; }
 .policy li li { font-size: 0.97rem; color: var(--ink-2); margin-bottom: 4px; }
-.policy a { color: var(--accent-ink); text-decoration: none; border-bottom: 1px solid rgba(133,100,32,0.35); }
+.policy a { color: var(--accent-ink); text-decoration: none; border-bottom: 1px solid rgba(121,194,161,0.45); }
 .policy a:hover { border-bottom-color: var(--accent-ink); }
 .policy b { font-weight: 500; color: var(--ink); }
 .policy-date { margin: 30px 0 0; font-size: 0.88rem; color: var(--ink-dim); }
@@ -798,13 +807,13 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     position: relative;
     padding: 34px 30px 36px;
     border-radius: 20px;
-    background: #fff;
+    background: var(--card);
     border: 1px solid var(--line);
     overflow: hidden;
     transition: transform 0.55s var(--ease), box-shadow 0.55s ease, border-color 0.4s ease;
     scroll-margin-top: calc(var(--nav-h) + 26px);
 }
-.section-alt .genre { background: #fff; }
+.section-alt .genre { background: var(--card); }
 .genre:nth-child(1), .genre:nth-child(2), .genre:nth-child(3), .genre:nth-child(4),
 .genre:nth-child(8), .genre:nth-child(9) { grid-column: span 3; }
 .genre::after {
@@ -817,7 +826,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     transition: opacity 0.5s ease;
     pointer-events: none;
 }
-.genre:hover { transform: translateY(-6px); box-shadow: 0 28px 56px -34px rgba(0,0,0,0.35); border-color: rgba(28,92,69,0.4); }
+.genre:hover { transform: translateY(-6px); box-shadow: 0 28px 56px -34px rgba(0,0,0,0.35); border-color: rgba(121,194,161,0.4); }
 .genre:hover::after { opacity: 1; }
 .genre:target { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
 .genre-no { font-size: 0.72rem; font-weight: 500; letter-spacing: 0.2em; color: var(--accent-ink); }
@@ -844,8 +853,8 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     background:
         linear-gradient(to right, var(--bg) 40%, rgba(255, 255, 255, 0)) 0 0 / 34px 100% no-repeat local,
         linear-gradient(to left, var(--bg) 40%, rgba(255, 255, 255, 0)) 100% 0 / 34px 100% no-repeat local,
-        radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0)) 0 0 / 16px 100% no-repeat scroll,
-        radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0)) 100% 0 / 16px 100% no-repeat scroll,
+        radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0)) 0 0 / 16px 100% no-repeat scroll,
+        radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0)) 100% 0 / 16px 100% no-repeat scroll,
         var(--bg);
 }
 /* キーボードだけで操作する人も横へ送れるように、入れ物自体を focus できるようにする */
@@ -877,7 +886,7 @@ table.compare thead th {
 table.compare thead th:last-child { color: var(--accent-ink); }
 table.compare tbody th { width: 24%; font-weight: 400; }
 table.compare td.old { color: var(--ink-dim); }
-table.compare td.new { font-weight: 400; color: var(--ink); background: rgba(28,92,69,0.05); }
+table.compare td.new { font-weight: 400; color: var(--ink); background: rgba(121,194,161,0.05); }
 table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 0; }
 
 /* ---------- Process ---------- */
@@ -888,7 +897,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     left: 29px; top: 14px; bottom: 14px;
     width: 2px;
     border-radius: 2px;
-    background: linear-gradient(180deg, var(--accent), rgba(0,0,0,0.08));
+    background: linear-gradient(180deg, var(--accent), rgba(255,255,255,0.08));
 }
 .flow-step {
     position: relative;
@@ -903,7 +912,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     z-index: 1;
     width: 60px; height: 60px;
     border-radius: 50%;
-    background: #fff;
+    background: var(--card);
     border: 1px solid var(--line);
     display: flex; align-items: center; justify-content: center;
     font-size: 0.86rem; font-weight: 500;
@@ -930,12 +939,12 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     border: 1px solid var(--line);
     color: var(--ink-dim);
 }
-.who.human { color: var(--accent-ink); border-color: rgba(28,92,69,0.4); }
+.who.human { color: var(--accent-ink); border-color: rgba(121,194,161,0.4); }
 .flow-note {
     margin-top: 46px;
     padding: 26px 28px;
     border-radius: 16px;
-    background: #fff;
+    background: var(--card);
     border: 1px solid var(--line);
     border-left: 3px solid var(--accent);
     color: var(--ink-dim);
@@ -954,12 +963,12 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     padding: 40px 32px 38px;
     border: 1px solid var(--line);
     border-radius: 20px;
-    background: #fff;
+    background: var(--card);
     transition: transform 0.5s var(--ease), box-shadow 0.5s ease;
 }
 .plan:hover { transform: translateY(-5px); box-shadow: 0 26px 54px -34px rgba(0,0,0,0.3); }
 .plan-featured {
-    border-color: rgba(28,92,69,0.5);
+    border-color: rgba(121,194,161,0.5);
     box-shadow: 0 20px 50px -32px rgba(0,0,0,0.35);
 }
 .plan-badge {
@@ -970,7 +979,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     white-space: nowrap;
     font-size: 0.79rem;
     letter-spacing: 0.04em;
-    color: #fff;
+    color: var(--on-ink);
     background: var(--accent-ink);
     border-radius: 980px;
     padding: 5px 16px;
@@ -1051,7 +1060,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     margin-top: 26px;
     padding: 26px 30px 28px;
     border-radius: 18px;
-    background: #fff;
+    background: var(--card);
     border: 1px solid var(--line);
     border-left: 3px solid var(--accent);
 }
@@ -1115,7 +1124,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     margin-top: 20px;
     padding: 28px 32px 30px;
     border-radius: 18px;
-    background: #fff;
+    background: var(--card);
     border: 1px solid var(--line);
 }
 .plan-common-head {
@@ -1152,7 +1161,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     margin-top: 20px;
     padding: 26px 30px 28px;
     border-radius: 18px;
-    background: #fff;
+    background: var(--card);
     border: 1px solid var(--line);
 }
 .plan-pay-head {
@@ -1175,7 +1184,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     margin-top: 20px;
     padding: 20px 26px 22px;
     border-radius: 18px;
-    background: #fff;
+    background: var(--card);
     border: 1px solid var(--line);
     border-left: 3px solid var(--ink-dim);
 }
@@ -1192,7 +1201,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     border-radius: 16px;
     overflow: hidden;
 }
-.calc-picks { background: #fff; padding: clamp(26px, 3.4vw, 40px); }
+.calc-picks { background: var(--card); padding: clamp(26px, 3.4vw, 40px); }
 
 /* ジャンルの中に置く料金表（2026-09-24）。計算機とセットで出す。
    表で相場をつかんでから、計算機で自分の条件に寄せる、という順番 */
@@ -1244,7 +1253,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     width: 22px; height: 22px;
     display: grid; place-items: center;
     border-radius: 50%;
-    background: var(--ink); color: #fff;
+    background: var(--ink); color: var(--on-ink);
     font-size: 0.72rem; font-weight: 500;
 }
 .calc-opts { display: flex; flex-wrap: wrap; gap: 9px; }
@@ -1257,7 +1266,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     padding: 9px 18px 9px 14px;
     border-radius: 980px;
     border: 1px solid var(--line);
-    background: #fff;
+    background: var(--card);
     color: var(--ink);
     cursor: pointer;
     white-space: nowrap;
@@ -1268,9 +1277,9 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
 .calc-dot {
     flex: none;
     width: 16px; height: 16px;
-    border: 1px solid rgba(0,0,0,0.28);
+    border: 1px solid var(--line-strong);
     border-radius: 50%;
-    background: #fff;
+    background: var(--card);
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .calc-opt input:checked ~ .calc-dot {
@@ -1288,7 +1297,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
 .calc-len-row {
     display: inline-flex; align-items: center; gap: 9px;
     padding: 7px 10px 7px 14px;
-    border-radius: 980px; border: 1px solid var(--line); background: #fff;
+    border-radius: 980px; border: 1px solid var(--line); background: var(--card);
 }
 .calc-len-row > span { font-size: 0.9rem; color: var(--ink-dim); white-space: nowrap; }
 .calc-len-row select {
@@ -1317,7 +1326,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     font: inherit; font-size: 0.9rem;
     display: inline-flex; align-items: baseline; gap: 8px;
     padding: 8px 16px; border-radius: 980px;
-    border: 1px dashed rgba(28,92,69,0.5);
+    border: 1px dashed rgba(121,194,161,0.5);
     background: transparent; color: var(--ink-2); cursor: pointer;
     transition: background 0.22s ease, border-color 0.22s ease;
 }
@@ -1355,7 +1364,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     border: 0;
     padding: 4px 2px;
     color: var(--accent-ink);
-    border-bottom: 1px solid rgba(133,100,32,0.35);
+    border-bottom: 1px solid rgba(121,194,161,0.45);
     cursor: pointer;
 }
 .calc-copy:hover { border-bottom-color: var(--accent-ink); }
@@ -1367,7 +1376,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
 .calc-why b { display: block; font-weight: 500; color: var(--ink); margin-bottom: 2px; }
 .calc-formula {
     margin: 26px 0 0; padding: 14px 18px;
-    background: #fff; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
     font-size: 0.94rem; color: var(--ink-2); text-align: center;
     overflow-x: auto; white-space: nowrap;
 }
@@ -1422,14 +1431,14 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     position: relative;
     border-radius: 18px;
     overflow: hidden;
-    background: #fff;
+    background: var(--card);
     border: 1px solid var(--line);
     transition: transform 0.55s var(--ease), box-shadow 0.55s ease;
 }
 .card:hover { transform: translateY(-7px); box-shadow: 0 30px 60px -34px rgba(0,0,0,0.4); }
 .card.enter { animation: cardIn 0.75s var(--ease) both; }
 @keyframes cardIn { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
-.thumb { position: relative; aspect-ratio: 16/9; overflow: hidden; background: #e8e8ea; }
+.thumb { position: relative; aspect-ratio: 16/9; overflow: hidden; background: #222725; }
 .thumb img {
     position: absolute; inset: 0;
     width: 100%; height: 100%;
@@ -1476,7 +1485,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
 }
 .skeleton .thumb, .skeleton .bar {
-    background: linear-gradient(100deg, #ececef 30%, #f7f7f9 50%, #ececef 70%);
+    background: linear-gradient(100deg, #262b29 30%, #323835 50%, #262b29 70%);
     background-size: 220% 100%;
     animation: shimmer 1.5s ease-in-out infinite;
 }
@@ -1490,7 +1499,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     font: inherit; font-size: 0.95rem; font-weight: 400; letter-spacing: 0.04em;
     border-radius: 980px; padding: 13px 34px;
     background: transparent; color: var(--ink);
-    border: 1px solid rgba(0,0,0,0.2);
+    border: 1px solid var(--line-strong);
     cursor: pointer;
     transition: border-color 0.3s ease, color 0.3s ease, transform 0.3s var(--ease);
 }
@@ -1536,12 +1545,12 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
 
 /* ---------- CTA band ---------- */
 .cta-band {
-    background: #000;
-    color: #f5f5f7;
+    background: var(--bg-deep);
+    color: var(--ink);
     text-align: center;
     padding: clamp(96px, 13vw, 170px) 0;
 }
-.cta-band .body-text { color: #a1a1a6; margin-left: auto; margin-right: auto; }
+.cta-band .body-text { color: var(--ink-dim); margin-left: auto; margin-right: auto; }
 .cta-mail {
     display: inline-block;
     margin-top: 30px;
@@ -1558,7 +1567,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
 /* メールアドレスだけだと、とくにスマホで押せるものに見えない。
    文字組みとしてのアドレスは残したまま、押す先をボタンで明示する */
 .cta-actions { margin-top: 26px; }
-.cta-hint { margin: 26px auto 0; max-width: 560px; font-size: 0.95rem; color: #9a9aa0; }
+.cta-hint { margin: 26px auto 0; max-width: 560px; font-size: 0.95rem; color: var(--ink-dim); }
 
 /* ---------- Footer ---------- */
 footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
@@ -1585,7 +1594,7 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
 .f-works-empty { font-size: 0.84rem; color: var(--ink-dim); }
 .f-work { display: flex; align-items: center; gap: 11px; transition: opacity 0.25s ease; }
 .f-work:hover { opacity: 0.66; }
-.f-work img { width: 64px; aspect-ratio: 16/9; object-fit: cover; border-radius: 6px; flex: none; background: #e2e2e5; }
+.f-work img { width: 64px; aspect-ratio: 16/9; object-fit: cover; border-radius: 6px; flex: none; background: #222725; }
 .f-work span {
     font-size: 0.88rem; color: var(--ink-dim); line-height: 1.5;
     display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
@@ -1596,7 +1605,7 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
     padding: 20px 28px;
     display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px;
 }
-.footer-bottom p { margin: 0; font-size: 0.83rem; color: #66666b; }
+.footer-bottom p { margin: 0; font-size: 0.83rem; color: var(--ink-dim); }
 
 /* ---------- Reveal ---------- */
 /* 出現アニメーション。隠すのは【JSが動くと分かってから】。
@@ -1716,13 +1725,13 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
     padding: 9px 16px;
     border-radius: 980px;
     border: 1px solid var(--line);
-    background: #fff;
+    background: var(--card);
     color: var(--ink-dim);
     cursor: pointer;
     transition: border-color .2s ease, color .2s ease, background .2s ease;
 }
 .sample-sw:hover { border-color: var(--ink-dim); color: var(--ink); }
-.sample-sw.is-on { border-color: var(--accent); color: var(--ink); background: rgba(176,141,87,.08); font-weight: 600; }
+.sample-sw.is-on { border-color: var(--accent); color: var(--ink); background: rgba(121,194,161,.12); font-weight: 600; }
 .sample-sw:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
 /* ジャンル01のカードに入れたサンプル映像。カードの余白に合わせる */
@@ -1841,10 +1850,10 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
     border: 1px solid var(--line); border-radius: 20px; overflow: hidden; }
 @media (min-width: 720px) { .genre-index { grid-template-columns: 1fr 1fr; } }
 .genre-index a { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px;
-    background: #fff; padding: 22px 24px; transition: background .25s ease; }
+    background: var(--card); padding: 22px 24px; transition: background .25s ease; }
 .genre-index a:hover { background: var(--bg-alt); }
 .genre-index .g-no { grid-row: 1 / 3; font-size: .78rem; letter-spacing: .08em;
-    /* 文字なので --accent ではなく --accent-ink。薄いほうは白地で AA を割る */
+    /* 文字なので --accent ではなく --accent-ink。文字用のほうが地との差が大きい */
     color: var(--accent-ink); padding-top: .35em; }
 .genre-index .g-name { font-size: 1.04rem; font-weight: 500; }
 .genre-index .g-lead { font-size: .9rem; line-height: 1.8; color: var(--ink-dim); }

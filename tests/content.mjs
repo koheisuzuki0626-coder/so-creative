@@ -681,7 +681,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
 {
     const css = readFileSync(`${ROOT}/assets/site.css`, 'utf8');
     const tok = (src, name) => (src.match(new RegExp(`--${name}:\\s*([^;]+);`)) || [])[1]?.trim();
-    const WANT = ['bg', 'bg-alt', 'ink', 'ink-dim', 'ink-2', 'accent', 'accent-ink'];
+    const WANT = ['bg', 'bg-alt', 'card', 'ink', 'ink-dim', 'ink-2', 'on-ink', 'accent', 'accent-ink'];
     const base = Object.fromEntries(WANT.map((k) => [k, tok(css, k)]));
     check('site.css に色のトークンが揃っている',
         WANT.every((k) => base[k]), JSON.stringify(base));
@@ -695,6 +695,56 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         });
         check(`${f} の色が site.css と揃っている`, diff.length === 0,
             diff.map((k) => `${k}: ${tok(root, k)} ≠ ${base[k]}`).join(' / '));
+    }
+
+    /* ---- 濃色であることの歯止め（2026-09-25） ----
+       白地に戻すような差し戻しを、数字で拾えるようにしておく。
+       ここが落ちたら「色を変えた」ではなく「片方だけ戻った」を疑う */
+    const lum = (hex) => {
+        const h = hex.replace('#', '');
+        const v = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255)
+            .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+        return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+    };
+    check('地が濃い', lum(base.bg) < 0.05, `${base.bg} → ${lum(base.bg).toFixed(3)}`);
+    check('文字が明るい', lum(base.ink) > 0.8, `${base.ink}`);
+    check('カードは地より明るい（沈ませない）', lum(base.card) > lum(base.bg),
+        `${base.card} / ${base.bg}`);
+    check('--on-ink は地と同じ濃さ（--ink を敷いた上の文字）',
+        lum(base['on-ink']) < 0.05, base['on-ink']);
+    /* 濃い深緑は濃地の上では読めない。明るいほうが入っていること */
+    check('ブランド色は明るいほうを使っている', lum(base.accent) > 0.3, base.accent);
+
+    /* select・スクロールバー・動画の操作部をブラウザ既定の白で描かせない。
+       これが無いと計算機の select だけが白く浮く（2026-09-25 に実際に出た） */
+    check('site.css が color-scheme: dark を宣言している', /color-scheme:\s*dark/.test(css));
+    for (const f of ['roadmap.html', 'record.html', 'funnel.html']) {
+        const h = readFileSync(`${ROOT}/${f}`, 'utf8');
+        check(`${f} が color-scheme: dark を宣言している`, /color-scheme:\s*dark/.test(h));
+    }
+
+    /* カードの地を直書きの白に戻さない。白のままでいいのは
+       「濃い帯の上の主ボタン」と「ヒーローに重なったナビの CTA」の2つだけ */
+    const whites = (css.replace(/\/\*[\s\S]*?\*\//g, '').match(/background:\s*#fff\b/g) || []).length;
+    check('直書きの白い地は2か所だけ', whites === 2, `${whites} か所`);
+
+    /* --ink を背景に敷いた上に白い文字を置くと、白地に白になる */
+    const onInkWhite = /background:\s*var\(--ink\);\s*color:\s*#fff/.test(css);
+    check('--ink の上に白い文字を置いていない', !onInkWhite);
+
+    /* スマホのブラウザが上下に敷く色。地と違うと、スクロールの上下端に
+       別の色の帯が出て「読み込みに失敗した」ように見える */
+    const PUB = ['index.html', 'pricing.html', 'works.html', 'about.html', 'privacy.html',
+        'company-video.html', 'recruit-video.html', 'service-video.html', 'ad-video.html',
+        'sns-video.html', 'exhibition-video.html', 'internal-video.html',
+        'animation-video.html', 'music-video.html'];
+    for (const f of PUB) {
+        const h = readFileSync(`${ROOT}/${f}`, 'utf8');
+        const tc = (h.match(/name="theme-color" content="([^"]*)"/) || [])[1];
+        check(`${f} の theme-color が地と揃っている`, tc === base.bg, `${tc} ≠ ${base.bg}`);
+        /* 黒いマークは濃地の上では消える。白いほうを読むこと */
+        check(`${f} が明るいロゴマークを読んでいる`,
+            /assets\/logo-mark-light\.svg/.test(h) && !/assets\/logo-mark\.svg/.test(h));
     }
 }
 
@@ -1452,7 +1502,7 @@ for (const f of ['assets/site.css', 'assets/logo-mark.png', 'assets/favicon.png'
    いまはどこからも使っていないので表示には出なかったが、
    あとで使うと旧社名が復活する。作り直したので、戻ったら落とす */
 for (const f of ['assets/logo-word.svg', 'assets/logo-word-dark.svg',
-                 'assets/logo-mark.svg']) {
+                 'assets/logo-mark.svg', 'assets/logo-mark-light.svg']) {
     const r = await page.request.get(`${BASE}/${f}`);
     const t = r.status() === 200 ? await r.text() : '';
     check(`${f} が配信できる`, r.status() === 200, `HTTP ${r.status()}`);
@@ -1466,7 +1516,8 @@ for (const f of ['assets/logo-word.svg', 'assets/logo-word-dark.svg']) {
     check(`${f} の文字がアウトライン化されている`, !/<text[\s>]/.test(t));
     check(`${f} に旧ブランド色（金）が残っていない`, !/b08733|856420|d9b45f/i.test(t));
     /* ブランド色の区切りが図形で入っていること（文字の「-」にすると色を変えられない）。
-       2026-09-24 に金から深緑へ変えた。CSS の --accent と同じ値であること */
+       2026-09-24 に金から深緑へ変えた。この2枚は明るい地に置く用なので、
+       site.css の --accent（濃地用の明るい緑）ではなく濃いほうの深緑のままでよい */
     check(`${f} にブランド色の区切りがある`, /<rect[^>]*#1c5c45/.test(t));
 }
 await browser.close();
