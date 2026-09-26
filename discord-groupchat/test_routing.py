@@ -1618,6 +1618,41 @@ def run():
     check("関連の測り方はお題を見るほう（企業VPらしさ単体を使わない）",
           "_relevance_score" in _srcS and "sorted(_corp," not in _srcS, True)
 
+    print("■ CLIの診断行を返事に混ぜない")
+    # 事故（2026-09-27）：雑談の返事の末尾に、claude CLI が本文へ混ぜた
+    # 「Client.listTools() called but server does not advertise tools
+    #  capability - returning empty list」がそのまま出た。
+    # 既存の _strip_cli_boilerplate はこの形を拾えるのに、雑談の返事の経路だけ
+    # 通っていなかった（呼び出し側ごとに書くと必ず漏れる）。CLIの出口で落とす。
+    _NOISE = ("Client.listTools() called but server does not advertise "
+              "tools capability - returning empty list")
+    check("実際に出た形を落とす",
+          bot._strip_cli_noise("なら気にしなくて大丈夫。ただの夢だと思う。\n" + _NOISE),
+          "なら気にしなくて大丈夫。ただの夢だと思う。")
+    check("先頭に出ても落とす",
+          bot._strip_cli_noise(_NOISE + "\nそれは大変だったね。"), "それは大変だったね。")
+    check("全部が診断行なら空にする（答えではないので）",
+          bot._strip_cli_noise(_NOISE), "")
+    # 落としすぎない側。英訳など本文が英語の用途を壊さないこと
+    # （2026-08-15：英語のナレーションごと落として原文が投入された事故）。
+    check("英語の本文は残す",
+          bot._strip_cli_noise("A cat sits on the warm roof."),
+          "A cat sits on the warm roof.")
+    check("英語の複数行も残す",
+          bot._strip_cli_noise("First line here.\nSecond line here."),
+          "First line here.\nSecond line here.")
+    check("URLを含む行は触らない",
+          bot._strip_cli_noise("https://example.com/does-not-advertise"),
+          "https://example.com/does-not-advertise")
+    check("日本語の行は触らない",
+          bot._strip_cli_noise("今日は寒いね。風邪ひかないでね。"),
+          "今日は寒いね。風邪ひかないでね。")
+    check("空でも落ちない", bot._strip_cli_noise(""), "")
+    # 呼び出し側ごとに書かず、CLIの出口で必ず通していること。
+    # ここが抜けると、また特定の経路だけ漏れる。
+    _srcC = _insp.getsource(bot._claude_cli_run)
+    check("CLIの出口で必ず通している", "_strip_cli_noise(" in _srcC, True)
+
     print("■ 連投の確認が【送る直前】で呼ばれていること")
     # 2026-09-26：先に3.5秒待つ方式をやめ、送る直前に状態を見る形にした。
     # 判定そのもの（_burst_superseded）の検査は simulate.py 側。ここは

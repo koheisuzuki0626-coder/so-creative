@@ -1691,6 +1691,36 @@ def _neutral_cwd():
         return BASE_DIR
 
 
+# claude CLI が【本文に混ぜてくる】診断行。MCPサーバーの状態で出たり出なかったり
+# する（断続的）。事故（2026-09-27）：雑談の返事の末尾に
+# 「Client.listTools() called but server does not advertise tools capability -
+# returning empty list」がそのまま出た。
+#
+# _strip_cli_boilerplate でも落とせるが、あれは英語のナレーションごと落とすので
+# 英訳のように本文が英語の用途には掛けられない（2026-08-15 の事故）。
+# こちらは【診断行の形をしたものだけ】に絞ってあるので、CLIの出口で
+# 全呼び出しに掛けて安全。
+_CLI_NOISE_RE = re.compile(
+    r"\b(?:does not advertise|returning empty list)\b"
+    r"|^\s*[A-Za-z_][\w.]*\.\w+\(\)\s+called\b")
+
+
+def _strip_cli_noise(text):
+    """CLIの診断行だけを落とす。日本語を含む行・URLを含む行は触らない。
+
+    全部が診断行だった時は空を返す（それは答えではないので、
+    呼び出し側の「応答が空」の扱いに乗せるのが正しい）。
+    """
+    if not text:
+        return text
+    kept = [ln for ln in text.splitlines()
+            if not (ln.strip()
+                    and not _JA_RE.search(ln)
+                    and "http" not in ln
+                    and _CLI_NOISE_RE.search(ln))]
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(kept)).strip()
+
+
 async def _claude_cli_run(prompt, neutral=False, deep=False):
     # cwd を固定 → discord-groupchat/.claude/settings.json（WebSearch許可）が読まれる。
     # ※ワークスペースを一度「信頼(trust)」しておかないと settings.json は無視される。
@@ -1718,7 +1748,9 @@ async def _claude_cli_run(prompt, neutral=False, deep=False):
             await _reap(proc)   # 待たないとゾンビが残り続ける（常駐プロセスのため）
             raise RuntimeError(f"claude CLI がタイムアウトしました（{CLAUDE_TIMEOUT}秒）")
     _last_engine["name"] = CLAUDE2_NAME
-    out_s = out.decode(errors="replace").strip()
+    # CLIが本文に混ぜる診断行は、ここで落とす。呼び出し側ごとに
+    # 除去を書くと必ず漏れる（実際、雑談の返事の経路だけ抜けていた）。
+    out_s = _strip_cli_noise(out.decode(errors="replace").strip())
     err_s = err.decode(errors="replace").strip()
     if proc.returncode != 0:
         # CLIはエラーを stdout に出すことがあるため両方見る。全文はターミナルへ。
