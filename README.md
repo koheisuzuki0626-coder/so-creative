@@ -46,7 +46,7 @@ node scripts/set-site-url.mjs https://xxx.github.io/    # github.io へ(CNAME �
 
 ## ページ構成
 
-公開は15ページ。`assets/site.css` が全ページに効くので、色や余白を触ったら
+公開は16ページ。`assets/site.css` が全ページに効くので、色や余白を触ったら
 どれか1枚ではなく全体を見ること。
 
 | ファイル | 内容 |
@@ -55,6 +55,7 @@ node scripts/set-site-url.mjs https://xxx.github.io/    # github.io へ(CNAME �
 | `works.html` | つくれる動画。9ジャンルのサンプルと、8ジャンルぶんの料金表＋計算機 |
 | `pricing.html` | 料金。表と計算機、お支払いとキャンセル、インボイスの注記 |
 | `about.html` | 運営者情報（so-creative について） |
+| `quality.html` | **AI動画の品質**（2026-09-26 追加）。AIっぽさが出る4か所と避け方、向かない題材、社内稟議に添える根拠 |
 | `copyright.html` | **AI動画の権利**（2026-09-25 追加）。著作権の帰属と、言い切れない2点 |
 | `privacy.html` | プライバシーポリシー |
 | 用途別9枚 | `company-video` / `recruit-video` / `service-video` / `ad-video` / `sns-video` / `exhibition-video` / `internal-video` / `animation-video` / `music-video`。`scripts/make-genre-pages.py` が `company-video.html` を骨組みに生成する（MV だけ料金表の対象外） |

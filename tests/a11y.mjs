@@ -5,7 +5,7 @@ import { check, report, open, PW } from './lib.mjs';
 const pwmod = (await import(PW)).default;
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
 const browser = await pwmod.chromium.launch();
-for (const file of ['index.html', 'works.html', 'pricing.html', 'company-video.html', 'recruit-video.html', 'about.html', 'privacy.html', 'copyright.html',
+for (const file of ['index.html', 'works.html', 'pricing.html', 'company-video.html', 'recruit-video.html', 'about.html', 'privacy.html', 'copyright.html', 'quality.html',
                     'funnel.html', 'roadmap.html', 'record.html']) {
     const page = await open(browser, { page: file });
     const bad = await page.evaluate(() => {
@@ -133,7 +133,7 @@ await browser.close();
           (css.match(/^[^\n]*\.reveal \{[^\n]*/m) || [''])[0]);
     check('無条件に隠していない', !/^\.reveal \{[^}]*opacity: 0/m.test(css));
     for (const file of ['index.html', 'works.html', 'pricing.html', 'company-video.html', 'recruit-video.html',
-                        'about.html', 'privacy.html', 'copyright.html']) {
+                        'about.html', 'privacy.html', 'copyright.html', 'quality.html']) {
         const html = readFileSync(`${ROOT}/${file}`, 'utf8');
         check(`${file} に .js を付ける1行がある`,
               /classList\.add\('js'\)/.test(html));
@@ -147,7 +147,7 @@ await browser.close();
    フッターのサイトマップは全ページを並べる場所なので対象外。 */
 {
     for (const file of ['index.html', 'works.html', 'pricing.html', 'company-video.html', 'recruit-video.html',
-                        'about.html', 'privacy.html', 'copyright.html']) {
+                        'about.html', 'privacy.html', 'copyright.html', 'quality.html']) {
         const html = readFileSync(`${ROOT}/${file}`, 'utf8');
         const main = html.slice(html.indexOf('<main>'), html.indexOf('</main>'));
         const self = [...main.matchAll(/<a[^>]*href="([^"#]+\.html)"/g)]
@@ -163,7 +163,7 @@ await browser.close();
    .reveal だけを見るテストでは気づけなかったので、ここで押さえる。 */
 {
     for (const file of ['index.html', 'works.html', 'pricing.html', 'company-video.html', 'recruit-video.html',
-                        'about.html', 'privacy.html', 'copyright.html']) {
+                        'about.html', 'privacy.html', 'copyright.html', 'quality.html']) {
         const html = readFileSync(`${ROOT}/${file}`, 'utf8');
         if (!html.includes('reveal-stagger')) { continue; }
         check(`${file} は reveal-stagger も監視している`,

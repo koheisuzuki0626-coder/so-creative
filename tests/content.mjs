@@ -734,7 +734,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
 
     /* スマホのブラウザが上下に敷く色。地と違うと、スクロールの上下端に
        別の色の帯が出て「読み込みに失敗した」ように見える */
-    const PUB = ['index.html', 'pricing.html', 'works.html', 'about.html', 'privacy.html', 'copyright.html',
+    const PUB = ['index.html', 'pricing.html', 'works.html', 'about.html', 'privacy.html', 'copyright.html', 'quality.html',
         'company-video.html', 'recruit-video.html', 'service-video.html', 'ad-video.html',
         'sns-video.html', 'exhibition-video.html', 'internal-video.html',
         'animation-video.html', 'music-video.html'];
@@ -754,7 +754,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
    同じ言葉で別の場所へ飛んでいた。言葉と行き先を結び直したので、戻ったら落とす。
    #works は「写真1枚から」という別の節。呼び分けること */
 {
-    const PUB = ['index.html', 'pricing.html', 'works.html', 'about.html', 'privacy.html', 'copyright.html',
+    const PUB = ['index.html', 'pricing.html', 'works.html', 'about.html', 'privacy.html', 'copyright.html', 'quality.html',
         'company-video.html', 'recruit-video.html', 'service-video.html', 'ad-video.html',
         'sns-video.html', 'exhibition-video.html', 'internal-video.html',
         'animation-video.html', 'music-video.html'];
@@ -818,7 +818,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
 {
     /* 2026-09-24：ジャンルごとのページを7つ足した（用途別で検索の受け皿にする）。
        ここに並べたページは、noindex の付け外しも計測も足並みをそろえる */
-    const PUBLIC = ['index.html', 'pricing.html', 'works.html', 'about.html', 'privacy.html', 'copyright.html',
+    const PUBLIC = ['index.html', 'pricing.html', 'works.html', 'about.html', 'privacy.html', 'copyright.html', 'quality.html',
         'company-video.html', 'recruit-video.html', 'service-video.html', 'ad-video.html',
         'sns-video.html', 'exhibition-video.html', 'internal-video.html',
         'animation-video.html', 'music-video.html'];
