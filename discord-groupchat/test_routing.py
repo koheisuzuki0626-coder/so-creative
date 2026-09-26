@@ -1641,6 +1641,32 @@ def run():
     check("関連の測り方はお題を見るほう（企業VPらしさ単体を使わない）",
           "_relevance_score" in _srcS and "sorted(_corp," not in _srcS, True)
 
+    print("■ レポートにボット自身の道具の事情を書かない")
+    # 事故（2026-09-27）：展示会の回のレポート先頭に
+    # 「文字数確認のBashコマンドが承認待ちで止まったので、手計算で提示します。」
+    # が出た。本人には関係がなく、壊れているように見える。
+    # 言い方を数え上げず【位置】で受ける（最初の見出しより前の前置きだけ対象）。
+    _BADP = ("文字数確認のBashコマンドが承認待ちで止まったので、手計算で提示します。"
+             "\n\n1. **今日の型**：サイネージ機器紹介5本は…")
+    check("道具の前置きは落とす",
+          bot._drop_tool_preamble(_BADP).startswith("1. **今日の型**"), True)
+    check("普通の前置きは残す（本文を削らない側に倒す）",
+          bot._drop_tool_preamble("以下、5本の分析からの知見です。\n\n1. 今日の型：…"),
+          "以下、5本の分析からの知見です。\n\n1. 今日の型：…")
+    check("見出しで始まる回は無傷",
+          bot._drop_tool_preamble("# YouTube知見\n\n**1. 今日の型**\n本文"),
+          "# YouTube知見\n\n**1. 今日の型**\n本文")
+    check("本文の中の『ツール』『取得できず』は触らない",
+          "ツール" in bot._drop_tool_preamble(
+              "1. 今日の型：メタ情報が取得できず\n2. AIで作れるもの：ツールの手順"), True)
+    check("見出しが無ければ何もしない",
+          bot._drop_tool_preamble("コマンドが通りませんでした"),
+          "コマンドが通りませんでした")
+    check("空でも落ちない", bot._drop_tool_preamble(""), "")
+    _srcT = _insp.getsource(bot._run_trend_study)
+    check("リサーチのレポートに適用している",
+          "_drop_tool_preamble(" in _srcT, True)
+
     print("■ CLIの診断行を返事に混ぜない")
     # 事故（2026-09-27）：雑談の返事の末尾に、claude CLI が本文へ混ぜた
     # 「Client.listTools() called but server does not advertise tools

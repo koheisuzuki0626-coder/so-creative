@@ -1705,6 +1705,38 @@ _CLI_NOISE_RE = re.compile(
     r"|^\s*[A-Za-z_][\w.]*\.\w+\(\)\s+called\b")
 
 
+# レポートの本文が始まる合図（「1.」「**1.」「## 」「# 」）。
+_REPORT_HEAD_RE = re.compile(r"^\s*(?:#{1,3}\s|\*{0,2}\s*1[.．、)]|１[.．、)])")
+# ボット自身の道具の事情。本文の【前置き】の位置にある時だけ落とす。
+_TOOL_TALK_RE = re.compile(
+    r"コマンド|ツール|承認待ち|権限|[Bb]ash|実行でき|使えませんでした|"
+    r"手計算|取得でき(ず|ません)")
+
+
+def _drop_tool_preamble(text):
+    """レポート本体の前に付いた「道具の事情」の前置きを落とす。
+
+    事故（2026-09-27）：展示会の回のレポート先頭に
+    「文字数確認のBashコマンドが承認待ちで止まったので、手計算で提示します。」
+    が出た。本人には関係がなく、壊れているように見える。
+
+    言い方を数え上げると必ず漏れるので、【位置】で受ける：最初の見出し
+    （1. / ## / # ）より前の行だけを対象にし、そこに道具の話があれば落とす。
+    本文の中は触らない（分析として「取得できなかった」と書くのは正しい）。
+    見出しが見つからない時は何もしない（本文を削らない側に倒す）。
+    """
+    if not text:
+        return text
+    lines = text.splitlines()
+    head = next((i for i, ln in enumerate(lines)
+                 if _REPORT_HEAD_RE.match(ln)), None)
+    if not head:                      # 先頭が本文 or 見出しが無い＝触らない
+        return text
+    kept = [ln for i, ln in enumerate(lines)
+            if i >= head or not (ln.strip() and _TOOL_TALK_RE.search(ln))]
+    return "\n".join(kept).strip()
+
+
 def _strip_cli_noise(text):
     """CLIの診断行だけを落とす。日本語を含む行・URLを含む行は触らない。
 
@@ -6748,7 +6780,8 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
             + "\n\n【個別分析】\n" + digest_src
         )
         try:
-            digest = _attach_quote(await _ai_text_bg(digest_prompt, "trend_digest"))
+            digest = _attach_quote(_drop_tool_preamble(
+                await _ai_text_bg(digest_prompt, "trend_digest")))
         except Exception as e:  # noqa: BLE001
             print(f"[trend] ダイジェスト生成失敗: {str(e)[:200]}")
     if not digest:
