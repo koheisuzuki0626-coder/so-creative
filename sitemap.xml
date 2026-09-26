@@ -14,23 +14,25 @@
     2. funnel.html・roadmap.html・record.html は社内用。noindex のまま残す
     3. robots.txt に Sitemap: の行を足す
     4. 下の <loc> が公開ページと合っているか確かめる（tests/content.mjs が見ている）
+    5. python3 scripts/update-dates.py で <lastmod> を git の最終コミット日に入れ直す
+       （実際の更新日と合っていない lastmod は無視される。手で書くと必ずずれる）
 
   privacy.html はここには入れない。検索から直接来る種類のページではないため。
 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
-  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/about.html</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/works.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/pricing.html</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/quality.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/copyright.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/company-video.html</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/recruit-video.html</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/service-video.html</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/ad-video.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/sns-video.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/exhibition-video.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/internal-video.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/animation-video.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/music-video.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/</loc><changefreq>weekly</changefreq><priority>1.0</priority><lastmod>2026-09-26</lastmod></url>
+  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/about.html</loc><changefreq>monthly</changefreq><priority>0.6</priority><lastmod>2026-09-26</lastmod></url>
+  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/works.html</loc><changefreq>monthly</changefreq><priority>0.8</priority><lastmod>2026-09-26</lastmod></url>
+  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/pricing.html</loc><changefreq>monthly</changefreq><priority>0.9</priority><lastmod>2026-09-26</lastmod></url>
+  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/quality.html</loc><changefreq>monthly</changefreq><priority>0.7</priority><lastmod>2026-09-26</lastmod></url>
+  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/copyright.html</loc><changefreq>monthly</changefreq><priority>0.7</priority><lastmod>2026-09-26</lastmod></url>
+  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/company-video.html</loc><changefreq>monthly</changefreq><priority>0.9</priority><lastmod>2026-09-26</lastmod></url>
+  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/recruit-video.html</loc><changefreq>monthly</changefreq><priority>0.9</priority><lastmod>2026-09-26</lastmod></url>
+  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/service-video.html</loc><changefreq>monthly</changefreq><priority>0.9</priority><lastmod>2026-09-26</lastmod></url>
+  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/ad-video.html</loc><changefreq>monthly</changefreq><priority>0.8</priority><lastmod>2026-09-26</lastmod></url>
+  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/sns-video.html</loc><changefreq>monthly</changefreq><priority>0.8</priority><lastmod>2026-09-26</lastmod></url>
+  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/exhibition-video.html</loc><changefreq>monthly</changefreq><priority>0.8</priority><lastmod>2026-09-26</lastmod></url>
+  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/internal-video.html</loc><changefreq>monthly</changefreq><priority>0.8</priority><lastmod>2026-09-26</lastmod></url>
+  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/animation-video.html</loc><changefreq>monthly</changefreq><priority>0.8</priority><lastmod>2026-09-26</lastmod></url>
+  <url><loc>https://koheisuzuki0626-coder.github.io/so-creative/music-video.html</loc><changefreq>monthly</changefreq><priority>0.7</priority><lastmod>2026-09-26</lastmod></url>
 </urlset>

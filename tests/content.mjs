@@ -570,7 +570,10 @@ check('ナレーションなしの差し引きが計算機と文言で同じ',
     /noNarration: 25000/.test(calcSrc) && /−¥25,000/.test(pricingHtml)
     && /¥25,000 を差し引き/.test(idx));
 
-const org = ld.find(d => d['@graph'])?.['@graph']?.find(x => x['@type'] === 'Organization') || {};
+/* 2026-09-26：@type を ["Organization", "ProfessionalService"] の配列にしたので、
+   文字列一致では拾えなくなった。名古屋の事業者として正しい型で出すため */
+const org = ld.find(d => d['@graph'])?.['@graph']
+    ?.find(x => [].concat(x['@type']).includes('Organization')) || {};
 check('構造化データに代表者', org.founder?.name === '鈴木 宏平');
 check('構造化データの所在地は市区町村まで',
     org.address?.addressRegion === '愛知県' && org.address?.addressLocality === '名古屋市' && !org.address?.streetAddress);
@@ -651,6 +654,70 @@ for (const [label, sec] of [['30秒', 30], ['90秒', 90], ['3分', 180], ['5分'
 }
 check('タイトルの「最短2週間」が実態と合う',
     /最短2週間/.test(idx) && Math.min(...TIERS.flatMap(t => LENGTHS.map(s => leadWeeks(t, s)))) === 2);
+
+/* ---- 検索まわり（2026-09-26） ----
+   開業日まで noindex は外さない（体調しだいで未定。record.html の判断）。
+   いま出来るのは、外した日にそのまま効く状態にしておくところまで。 */
+{
+    const B = 'https://koheisuzuki0626-coder.github.io/so-creative/';
+    const PUB = ['index.html', 'pricing.html', 'works.html', 'about.html', 'privacy.html',
+        'copyright.html', 'quality.html', 'company-video.html', 'recruit-video.html',
+        'service-video.html', 'ad-video.html', 'sns-video.html', 'exhibition-video.html',
+        'internal-video.html', 'animation-video.html', 'music-video.html'];
+    const titles = new Map(), descs = new Map();
+    for (const f of PUB) {
+        const h = readFileSync(`${ROOT}/${f}`, 'utf8');
+        const t = (h.match(/<title>([\s\S]*?)<\/title>/) || [])[1];
+        const d = (h.match(/<meta name="description" content="([\s\S]*?)"/) || [])[1];
+        check(`${f} に title がある`, !!t && t.length >= 15 && t.length <= 60, `${t ? t.length : 0}字`);
+        check(`${f} に description がある`, !!d && d.length >= 70 && d.length <= 160, `${d ? d.length : 0}字`);
+        check(`${f} に canonical がある`, /<link rel="canonical" href="https:/.test(h));
+        check(`${f} の h1 は1つ`, (h.match(/<h1[\s>]/g) || []).length === 1);
+        /* 構造化データが壊れていると、丸ごと読まれずに落ちる */
+        for (const m of h.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
+            let ok = true;
+            try { JSON.parse(m[1]); } catch { ok = false; }
+            check(`${f} の JSON-LD が構文として正しい`, ok);
+        }
+        check(`${f} に JSON-LD がある`, /application\/ld\+json/.test(h));
+        if (titles.has(t)) check(`title が他のページと重なっていない（${f}）`, false, `${titles.get(t)} と同じ`);
+        if (descs.has(d)) check(`description が他のページと重なっていない（${f}）`, false, `${descs.get(d)} と同じ`);
+        titles.set(t, f); descs.set(d, f);
+    }
+    check('title は16ページとも別の文', titles.size === PUB.length, `${titles.size} 種類`);
+    check('description は16ページとも別の文', descs.size === PUB.length, `${descs.size} 種類`);
+
+    /* 名古屋の事業者として正しい型で出す。Organization だけだと地域の扱いにならない。
+       ただしこれで地図枠に出るわけではない（それは Google ビジネスプロフィール側） */
+    const idx = readFileSync(`${ROOT}/index.html`, 'utf8');
+    const org = JSON.parse(idx.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1])
+        ['@graph'].find((n) => String(n['@id']).endsWith('#org'));
+    check('事業者を ProfessionalService として出している',
+        [].concat(org['@type']).includes('ProfessionalService'), String(org['@type']));
+    check('所在地が名古屋市になっている', org.address.addressLocality === '名古屋市');
+    check('営業時間を出している', !!org.openingHoursSpecification, JSON.stringify(org.openingHoursSpecification || null));
+    check('価格帯が料金表の下限・上限と合っている', (() => {
+        const all = TIERS.flatMap((t) => LENGTHS.filter((s) => s <= 180).map((s) => PRICE.base + t.perSec * s));
+        const lo = Math.min(...all), hi = Math.max(...all);
+        return org.priceRange === `¥${lo.toLocaleString('en-US')}〜¥${hi.toLocaleString('en-US')}`;
+    })(), org.priceRange);
+    /* 電話番号はサイトから外してある。構造化データにも入れない */
+    check('構造化データに電話番号を入れていない', !/"telephone"/.test(idx));
+
+    /* sitemap。lastmod は合っていないと無視されるので、git から入れ直す
+       （scripts/update-dates.py）。ここでは日付として成立しているかだけ見る */
+    const sm = readFileSync(`${ROOT}/sitemap.xml`, 'utf8');
+    const locs = [...sm.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+    const mods = [...sm.matchAll(/<lastmod>([^<]+)<\/lastmod>/g)].map((m) => m[1]);
+    check('sitemap の <loc> すべてに <lastmod> がある', locs.length === mods.length, `${locs.length} / ${mods.length}`);
+    const today = new Date().toISOString().slice(0, 10);
+    const future = mods.filter((d) => !/^\d{4}-\d{2}-\d{2}$/.test(d) || d > today);
+    check('lastmod が日付として成立していて、未来になっていない', future.length === 0, future.join(' '));
+
+    /* 背景の映像は 1MB ある。狭い画面では取りに行かせない */
+    check('狭い画面では背景の映像を読み込まない',
+        /max-width: 860px[\s\S]{0,200}saveData/.test(idx) && /removeAttribute\('src'\)/.test(idx));
+}
 
 /* ---- 2本目の値段を ¥65,000 と言い切らない（2026-09-26） ----
    式は base + 秒単価 × 【合計】秒数 + ¥65,000 × (本数 − 1) なので、

@@ -11,8 +11,11 @@
 
 いまは **URL を知っている人だけに見せる** 設定にしている。
 
-- `index.html` / `about.html` の `<meta name="robots" content="noindex, nofollow">`
+- **公開16ページすべて**の `<meta name="robots" content="noindex, nofollow">`
 - `robots.txt` から `Sitemap:` の行を外している
+
+外す時期は**開業日**。体調しだいで未定（`record.html` の判断）。
+先に外すと、問い合わせが来てから動けない期間ができる。
 
 検索結果には出ないが、**アクセス制限ではない**。URL を知っていれば誰でも見られるし、
 リポジトリが public なのでソースも読める。パスワードをかけたい場合は
@@ -23,11 +26,44 @@ GitHub Pages では対応できないため、別のホスティングが必要�
 
 ### 検索に載せたくなったら
 
-1. 両ページの `<meta name="robots">` の行（とその上のコメント）を削除
-2. `robots.txt` に `Sitemap: <公開URL>sitemap.xml` を戻す
-3. Google Search Console でサイトを登録し、`sitemap.xml` を送信
+**手順は `sitemap.xml` の先頭コメントに5段で書いてある。そちらが正。**
+ここに書き写すと片方だけ古くなるので、要点だけ：
 
-`sitemap.xml` はそのまま置いてあるので作り直しは不要。
+- 公開16ページ全部から `noindex, nofollow` を外す（`nofollow` も一緒に。
+  片方だけ残すと、リンクをたどってもらえない）
+- `funnel` / `roadmap` / `record` は社内用。noindex のまま
+- `robots.txt` の `Sitemap:` を戻す
+- `python3 scripts/update-dates.py` で `<lastmod>` を入れ直す
+- Google Search Console に登録して `sitemap.xml` を送信
+
+### 検索まわりで入っているもの（2026-09-26）
+
+| | 状態 |
+|---|---|
+| title / description / canonical / h1 1つ | 16ページとも。重複なし（検査あり） |
+| 構造化データ | `ProfessionalService`（＋`Organization`）／`WebSite`／`Service`＋`AggregateOffer`／`FAQPage`／`BreadcrumbList`／`VideoObject`／各ページの `WebPage` |
+| OGP / Twitter カード | 16ページとも。画像は共通の1枚 |
+| `sitemap.xml` | 16ページ。`<lastmod>` は `scripts/update-dates.py` が git から入れる |
+| `robots.txt` | クロールは許可（`Disallow` にすると noindex を読んでもらえない） |
+| 画像 | `alt` と `width`/`height` は全33枚に入っている（CLS 0） |
+| 用途別9ページ | 互いに9ジャンルぶんリンクしている |
+
+**構造化データだけでは地図枠（ローカルパック）には出ない。**
+そこは Google ビジネスプロフィールの登録が要る。所在地を番地まで公開しない方針なので、
+登録するかどうかは別の判断になる。
+
+`priceRange` は料金表の下限・上限（¥142,500〜¥1,287,000）から計算していて、
+料金を動かすと検査が落ちる。
+
+### 背景の映像を狭い画面で読まない（2026-09-26）
+
+`hero-reel.webm` は 1MB あって、`opacity: 0.16` の質感にしか使っていない。
+`max-width: 860px` と `navigator.connection.saveData` のときは `<source>` を外して
+`load()` し直す。`preload="metadata"` のままでも `play()` で全部落ちてしまうため。
+スマホ幅のトップは **1.55MB → 0.53MB** になった。
+
+サンプルのポスター画像（`assets/works/*.jpg`）は再エンコードしても縮まない
+（1,486K → 1,464K、むしろ増えるものもある）。既に詰まっているので触らないこと。
 
 ## 公開URLを変えるとき
 

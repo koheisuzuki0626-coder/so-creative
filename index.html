@@ -35,7 +35,7 @@
       "@context": "https://schema.org",
       "@graph": [
         {
-          "@type": "Organization",
+          "@type": ["Organization", "ProfessionalService"],
           "@id": "https://koheisuzuki0626-coder.github.io/so-creative/#org",
           "name": "so-creative",
           "url": "https://koheisuzuki0626-coder.github.io/so-creative/",
@@ -43,6 +43,12 @@
           "image": "https://koheisuzuki0626-coder.github.io/so-creative/assets/ogp.png",
           "description": "AI で映像をつくる制作会社。撮影も出演者もスタジオも使いません。",
           "email": "bonvoyage.ti@icloud.com",
+          "priceRange": "¥142,500〜¥1,287,000",
+          "openingHoursSpecification": [{
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+            "opens": "10:00", "closes": "18:00"
+          }],
           "founder": { "@type": "Person", "name": "鈴木 宏平" },
           "address": {
             "@type": "PostalAddress",
@@ -955,8 +961,19 @@
             const v = document.getElementById('hero-video');
             if (!v) return;
             const still = window.matchMedia('(prefers-reduced-motion: reduce)');
+            /* 背景の映像は 1MB ある。opacity 0.16 の質感でしかないので、
+               狭い画面と通信量を節約したい人には最初から取りに行かせない。
+               <source> を外してから load() を呼ばないと、指定済みの URL を
+               取りに行ってしまう（preload="metadata" でも play() で全部落ちる） */
+            const heavy = window.matchMedia('(max-width: 860px)').matches
+                || (navigator.connection && navigator.connection.saveData);
+            if (still.matches || heavy) {
+                v.querySelectorAll('source').forEach((el) => el.remove());
+                v.removeAttribute('src');
+                v.load();
+                return;
+            }
             const play = () => { if (!still.matches) v.play().catch(() => {}); };
-            if (still.matches) return;
             play();
             if ('IntersectionObserver' in window) {
                 new IntersectionObserver(([e]) => { e.isIntersecting ? play() : v.pause(); },
