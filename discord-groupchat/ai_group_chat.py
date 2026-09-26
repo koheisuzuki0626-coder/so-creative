@@ -1747,7 +1747,7 @@ async def _claude_cli_run(prompt, neutral=False, deep=False):
             proc.kill()
             await _reap(proc)   # 待たないとゾンビが残り続ける（常駐プロセスのため）
             raise RuntimeError(f"claude CLI がタイムアウトしました（{CLAUDE_TIMEOUT}秒）")
-    _last_engine["name"] = CLAUDE2_NAME
+    _last_engine["name"] = PM_NAME
     # CLIが本文に混ぜる診断行は、ここで落とす。呼び出し側ごとに
     # 除去を書くと必ず漏れる（実際、雑談の返事の経路だけ抜けていた）。
     out_s = _strip_cli_noise(out.decode(errors="replace").strip())
@@ -1918,8 +1918,8 @@ BOT_CAPABILITIES = (
     "・オーケストレーターが受け取り、内容で担当を決める\n"
     "・返事はクロードが書く。長い返事はGeminiが校閲し、指摘があれば"
     "クロードが直す（Geminiは本文を書き直さない＝文体を保つため）\n"
-    "・クロード1=リサーチャー / クロード2=PM（返事担当） / クロード3=アドバイザー。"
-    "『クロード1に聞いて』『多角的に見て』で複数の視点を出せる\n"
+    "・クロード1=PM（返事担当） / クロード2=アドバイザー（広告・企画の役）。"
+    "調べる役は Claude Code のセッションが持つ（ボットには居ない）\n"
     "・この仕組みは【すでに動いている】。『できない』『実装が必要』と答えないこと\n"
 )
 # 道具の名前の意味。機能一覧だけ渡しても、名前の意味を知らないと
@@ -1937,7 +1937,7 @@ BOT_GLOSSARY = (
     "・Nano Banana / Soul / Seedream＝画像モデル\n"
     "・Gemini＝Googleの無料枠のAI。判定・画像や動画の読み取り・要約・"
     "回答の精査など裏方を担当する\n"
-    "・クロード1/2/3＝リサーチャー / PM（返事担当）/ アドバイザー\n"
+    "・クロード1/2＝PM（返事担当）/ アドバイザー（広告・企画）\n"
     "・MCP＝外部の道具をAIから使うための接続方式\n"
     "これらはこの環境で日常的に使っている道具なので、"
     "ユーザーに「〜とは何ですか」と聞き返してはいけない。\n"
@@ -2051,25 +2051,39 @@ async def ask_claude(history):
 # Discordのアカウントは増やさず、同じClaudeを別の役割で呼び分ける。
 # アカウントを増やすとトークン発行など手作業が要るうえ、
 # 実体は同じClaudeなので、役割（プロンプト）を変えるだけで目的は達せられる。
-# 表に出る話者の名前。1=調べる人、2=進める人、3=別の見方を出す人。
-CLAUDE1_NAME = "クロード1（リサーチャー）"
-CLAUDE2_NAME = "クロード2（PM）"
-CLAUDE3_NAME = "クロード3（アドバイザー）"
+# 表に出る話者の名前。番号だけで持つと役を取り違えるので、コード側は
+# 【役の名前】で持つ（番号は表示のためだけ）。
+# 2026-09-27（本人の指示）：クロード1（リサーチャー）を廃止し、
+# PMを1番、アドバイザーを2番に繰り上げた。調べる役は Claude Code の
+# セッションに統合済み（CLAUDE.md「相談を受けるときの構え」）。
+PM_NAME = "クロード1（PM）"                  # 普段の返事を書く担当。表に出る顔
+ADVISOR_NAME = "クロード2（アドバイザー）"    # 別の見方・広告の企画
 
-# 役の人格。2026-09-20 に「クロード1/3を呼んで複数視点で検討する」機能
-# （multiview）は削除した。1年近く一度も使われず、相談は Claude Code の
-# セッションでやるほうが噛み合うため。人格の定義だけは残っている——
-# claude3 は広告代理店モード（縦型CMの企画）とショート量産ラインで、
-# プロンプトの下地として使っている。
+# リサーチの結果を誰の名前で出すか。保存済みの値は旧番号のことがある
+# （claude1=リサーチャー / claude2=PM / claude3=アドバイザー）。
+# 役を廃止・繰り上げたので、読むときに今の2役へ寄せる（2026-09-27）。
+_TREND_WHO_NAMES = {
+    "pm": PM_NAME, "advisor": ADVISOR_NAME,
+    "claude1": PM_NAME,       # 旧リサーチャー。役を廃止したのでPMが出す
+    "claude2": PM_NAME,       # 旧PM
+    "claude3": ADVISOR_NAME,  # 旧アドバイザー
+}
+
+
+def _trend_who_name():
+    """リサーチの結果を出す担当の表示名。旧番号の設定でも壊れない。"""
+    return _TREND_WHO_NAMES.get(
+        (gen_settings.get("trend_who") or "pm"), PM_NAME)
+
+# 役の人格。2026-09-20 に「複数視点で検討する」機能（multiview）は削除した。
+# 1年近く一度も使われず、相談は Claude Code のセッションでやるほうが噛み合う。
+# 2026-09-27：リサーチャーの人格も消した（どこからも使われていなかったうえ、
+# 調べる役はセッションに統合したため）。残すのはアドバイザーだけ——
+# 広告代理店モード（縦型CMの企画）とショート量産ラインが、
+# プロンプトの下地として実際に使っている。
 CLAUDE_PERSONAS = {
-    "claude1": (
-        CLAUDE1_NAME,
-        "あなたはリサーチャー。事実・数字・出典・前提条件を集めて整理することに徹する。"
-        "推測と事実を必ず区別し、分からないことは『不明』と書く。"
-        "意見や評価は述べず、判断材料だけを箇条書きで簡潔に並べる。",
-    ),
-    "claude3": (
-        CLAUDE3_NAME,
+    "advisor": (
+        ADVISOR_NAME,
         "あなたはアドバイザー。ひとつの結論に飛びつかず、"
         "賛成・反対・第三の見方を並べ、見落とされがちな観点やリスクを指摘する。"
         "『こう見ることもできる』という角度を最低3つ挙げ、最後に一番妥当だと思う見方を1行で示す。"
@@ -2421,7 +2435,7 @@ class Agent:
 class ClaudeAgent(Agent):
     """Claude CLI（サブスク定額・API課金なし）。推論・文章・コード向き。"""
 
-    name = CLAUDE2_NAME          # 表示名は1か所（既存の名乗りと揃える）
+    name = PM_NAME          # 表示名は1か所（既存の名乗りと揃える）
     provider = "claude"
     capabilities = frozenset({
         "reasoning", "coding", "planning", "synthesis", "writing", "design",
@@ -5834,7 +5848,7 @@ async def _run_clip_shorts(message, url, n=CLIP_DEFAULT_N, kind="youtube"):
     await send_as(
         orch, cid,
         f"🔎 字幕を{len(rows)}行（約{total // 60}分ぶん）読みました。"
-        f"{CLAUDE3_NAME}が切りどころを{n}本選びます…"
+        f"{ADVISOR_NAME}が切りどころを{n}本選びます…"
     )
     try:
         clips = await _pick_clip_ranges(_timed_transcript(rows), n)
@@ -7087,7 +7101,7 @@ def _match_trend_schedule(text, recent_topic=False):
     t = text or ""
     on_topic = bool(_TREND_TOPIC_RE.search(t))
     hm = _parse_jst_hour(t)
-    # 担当の指定は「毎日」が付かない言い方（「リサーチはクロード1にして」）が普通
+    # 担当の指定は「毎日」が付かない言い方（「リサーチはクロード2にして」）が普通
     if _TREND_WHO_RE.search(t):
         return "who", 0, 0
     # 直前にこの話をしていたなら、時刻だけの返事でも設定として受け取る
@@ -7122,9 +7136,7 @@ async def _daily_trend_loop():
                 continue
             last_done = now.date()
             print(f"[trend] 自動リサーチを開始: {now.isoformat()}")
-            _who = gen_settings.get("trend_who", "claude1")
-            _wname = {"claude1": CLAUDE1_NAME, "claude2": CLAUDE2_NAME,
-                      "claude3": CLAUDE3_NAME}.get(_who, CLAUDE1_NAME)
+            _wname = _trend_who_name()
             # ジャンルを複数設定してあるときは、日替わりで1つではなく
             # 【毎日その全部】を順に見る（2026-09-18 の要望）。
             # 同時に走らせると Gemini の枠をすぐ使い切るので、1つずつ順番に。
@@ -7227,10 +7239,11 @@ async def _trend_drive_loop():
 # 以前は engine 名（"Claude" / "Gemini"）をそのまま人格として渡していたため、
 # 「俺はGeminiじゃなくてクロード」と正体の訂正を始める事故が起きた。
 # どのエンジンを使うかは内部の都合であって、ユーザーには関係がない。
-# 普段の返事を書く担当。クロード1（調べる）・クロード3（別の見方）に対して、
-# クロード2は「話を受けて、決めて、進める人」＝PM。表に出る顔でもある。
+# 普段の返事を書く担当。「話を受けて、決めて、進める人」＝PM。表に出る顔。
+# アドバイザー（別の見方）と2人だけ。調べる役は 2026-09-27 に廃止し、
+# Claude Code のセッションに統合した。
 ORCH_PERSONA = (
-    f"{CLAUDE2_NAME}。koheiの相棒で、依頼を受けて段取りを決め、進める担当"
+    f"{PM_NAME}。koheiの相棒で、依頼を受けて段取りを決め、進める担当"
 )
 
 
@@ -7325,7 +7338,7 @@ def _match_casual_lead(text):
     if not m:
         return None
     who = m.group(1).lower()
-    return (("claude", CLAUDE2_NAME) if who in ("クロード", "claude")
+    return (("claude", PM_NAME) if who in ("クロード", "claude")
             else ("gemini", "Gemini"))
 
 
@@ -7660,7 +7673,7 @@ _VIDEO_NAME_RE = re.compile(r"[^\s▸/]+\.(?:mp4|mov|m4v|webm|mkv)", re.I)
 _VIDEO_PATH_RE = re.compile(
     r"https?://\S+\.(?:mp4|mov|webm|m4v)|~?/[^\s'\"]+\.(?:mp4|mov|webm|m4v|mkv)", re.I)
 
-# 役（クロード1/3）に意見を求める言い方。名前が出ただけでは呼ばない。
+# 役（アドバイザー）に意見を求める言い方。名前が出ただけでは呼ばない。
 _ASK_ROLE_RE = re.compile(
     "聞いて|訊いて|きいて|意見|どう思う|見て|見解|検討|相談|"
     "出して|答えて|教えて|考えて|分析"
@@ -7805,7 +7818,7 @@ def _match_gen_model(content):
 # ここに入るルートは「依頼の形をしている時だけ」動かす。
 # 語が当たったら動く方式では、誤爆のたびに正規表現を狭める作業が終わらず、
 # 実際に「もっと褒めて笑」「クロードコードって便利だよね」
-# 「リサーチはクロード1にして」などが作業を起こしていた。
+# 「リサーチはクロード2にして」などが作業を起こしていた。
 ACT_ROUTES = frozenset({
     "design", "image", "hf_auto", "hf_model", "revise", "edit", "short",
     "ad", "motion", "style_learn", "clip", "virality", "slideshow",
@@ -8179,11 +8192,14 @@ _YT_RESEARCH_RE = re.compile(
     r"|(リサーチ|調査)[^。\n]{0,10}(して|してほしい|お願い|進めて)", re.I)
 
 
-# リサーチャー（クロード1）を名指しした「探して」。
+# 名指し＋「探して」をリサーチとして受ける。
 # 事故（2026-09-12 09:11）：「クロード1、以下の事例を探して」が、貼り付けた
 # 引用の『実績』に引っかかって自分のチャンネルの実績分析へ流れた。引用は
 # 落としたが、その先で何にも繋がらず会話で終わっていた。
-# クロード1はリサーチ担当なので、名指し＋探し物はリサーチとして受ける。
+# ※ 2026-09-27 に「クロード1（リサーチャー）」の役は廃止した（いまの1番はPM）。
+#   それでもこの規則は残す——誰かを名指しして探し物を頼む形なら、
+#   担当が誰であれリサーチとして受けるのが妥当なため。「リサーチャー」の語も、
+#   役ではなく【そういう依頼の言い方】として拾っている。
 _R1_SEARCH_RE = re.compile(
     r"(クロード\s*1|クロード１|リサーチャー)[^。\n]{0,40}"
     r"(探して|さがして|検索して|調べて|見つけて|集めて|拾って)"
@@ -10706,7 +10722,7 @@ async def _run_slideshow(message, request):
         cuts = None
         if not total:
             await send_as(orch, cid,
-                          f"🎬 {CLAUDE2_NAME}が{len(paths)}枚を見て、"
+                          f"🎬 {PM_NAME}が{len(paths)}枚を見て、"
                           "カットごとの尺と動きを決めます…")
             cuts = await _plan_slideshow_cuts(paths, request)
         if cuts:
@@ -10951,16 +10967,16 @@ def _ad_plan_block(p, mark=""):
 
 
 async def _run_ad_make(message, brief):
-    """ブリーフから広告企画＋縦型CM動画を制作する。担当はクロード3（アドバイザー）。
+    """ブリーフから広告企画＋縦型CM動画を制作する。担当はアドバイザー（クロード2）。
     アドバイザーの役どころに合わせ、切り口を2案出して推しを1つ選ばせる
     （1案だけ出されるより、選べる方が広告は決まりやすい）。"""
     cid = message.channel.id
     await send_as(orch, cid,
-                  f"📣 **{CLAUDE3_NAME}** が広告プランを作ります（切り口を2案出します）…")
+                  f"📣 **{ADVISOR_NAME}** が広告プランを作ります（切り口を2案出します）…")
     sp = _style_snippet()
-    _, persona = CLAUDE_PERSONAS["claude3"]
+    _, persona = CLAUDE_PERSONAS["advisor"]
     ask = (
-        f"あなたは{CLAUDE3_NAME}。{persona}\n"
+        f"あなたは{ADVISOR_NAME}。{persona}\n"
         "次のブリーフから、縦型ショートCM(9:16, 5〜15秒)の企画を"
         "【切り口の違う2案】作り、どちらを推すか選んでJSONだけで返す。\n"
         '形式: {"concepts":[{"title":"案の名前","target":"ターゲット層",'
@@ -10995,14 +11011,14 @@ async def _run_ad_make(message, brief):
         for i, c in enumerate(cons[:2])
     )
     await send_as(claude_bot, cid, (
-        f"📋 **広告企画（{CLAUDE3_NAME}）**\n\n{body}\n"
+        f"📋 **広告企画（{ADVISOR_NAME}）**\n\n{body}\n"
         f"🧭 推す理由: {d.get('why', '-')}\n"
         f"📌 配信Tips: {d.get('tips', '-')}\n\n"
         f"🎬 このあと**案{pick + 1}**でCM動画を作ります"
         f"（別の案がよければ「**案{2 if pick == 0 else 1}で作って**」と言ってください）。\n"
         "完成したら「**バズ度分析して**」で広告効果を事前シミュレーションできます。"
     )[:1900])
-    add_history(cid, CLAUDE3_NAME, f"（広告企画を2案提示し、案{pick + 1}を推した）")
+    add_history(cid, ADVISOR_NAME, f"（広告企画を2案提示し、案{pick + 1}を推した）")
     full_prompt = (
         f"{p['video_prompt']}, premium commercial aesthetic, high production value, "
         "advertising quality, vertical 9:16"
@@ -11070,9 +11086,9 @@ def _log_short(entry):
 async def _make_short_concept(theme):
     """スタイリッシュ系ショートの企画を作る。JSONで
     {title, hook, prompt(英語), description, tags} を返す。"""
-    _, _p3 = CLAUDE_PERSONAS["claude3"]
+    _, _p3 = CLAUDE_PERSONAS["advisor"]
     base = (
-        f"あなたは{CLAUDE3_NAME}。{_p3}\n"
+        f"あなたは{ADVISOR_NAME}。{_p3}\n"
         "いまはバズるYouTube Shortsのアートディレクターとして企画する。"
         "スタイリッシュ/アート系の縦型ショート動画の企画をJSONだけで返す。\n"
         '形式: {"title":"日本語の惹かれるタイトル(30字以内)",'
@@ -11103,7 +11119,7 @@ async def _run_short(message, theme=None):
     """1本のショートを企画→縦型動画生成→投稿パック提示まで自動で行う。"""
     cid = message.channel.id
     await send_as(orch, cid,
-                  f"🎬 **{CLAUDE3_NAME}** が今日のショートを企画します"
+                  f"🎬 **{ADVISOR_NAME}** が今日のショートを企画します"
                   "（スタイリッシュ/アート系）…")
     try:
         c = await _make_short_concept(theme)
@@ -11515,7 +11531,7 @@ async def _orchestrate(mode, lead, search, history, recall=False):
     # 実際にどちらが書いたかを残す。クロードが枠切れでGeminiに落ちた時、
     # 文体が変わるのに「クロード2」と名乗っていて、同じ相手が急に
     # 他人行儀になったように見えていた（噛み合わない一因）。
-    _wrote["name"] = CLAUDE2_NAME
+    _wrote["name"] = PM_NAME
 
     # ① 単発モード：簡単な要求は得意モデル1つで即答（コスト節約）
     if mode == "single":
@@ -11807,7 +11823,7 @@ async def _handle_orchestrator(message, cid):
         kind, mode, lead, search, recall, reply = await _plan(history)
         # どのエンジンが書いたかは【この時点で】控える。あとで読むと、
         # 裏で動くGeminiの処理に _last_engine を書き換えられている
-        plan_engine = _last_engine.get("name") or CLAUDE2_NAME
+        plan_engine = _last_engine.get("name") or PM_NAME
     # 保険：質問や相談っぽい発言が作業系に誤分類されたらchatに戻す。
     # video/image も対象（「veo3の料金いくら？」で生成が始まる事故があった）。
     # sheet も対象。「エクセルで出せるの？」は可否の質問なので作り始めない
@@ -12002,7 +12018,7 @@ async def _handle_orchestrator(message, cid):
             answer += _reality_note(cid, latest)
         # 実際に書いたのが誰かで名乗る。クロードが枠切れでGeminiが代打に入ると
         # 文体が変わるので、「クロード2」と名乗ったままだと別人が混ざって見える。
-        _who = _wrote.get("name") or CLAUDE2_NAME
+        _who = _wrote.get("name") or PM_NAME
         if _who == GEMINI_STANDIN:
             answer += ("\n\n" + _limit_note(_wrote.get("why", "")))
     if _burst_superseded(cid, message):
@@ -12620,7 +12636,7 @@ class ApprovalView(discord.ui.View):
 async def _pipeline_plan(cid, feedback=""):
     p = projects[cid]
     prompt = (
-        f"あなたは{CLAUDE2_NAME}。映像ディレクターはkohei本人で、"
+        f"あなたは{PM_NAME}。映像ディレクターはkohei本人で、"
         "あなたはその【アシスタント】。決めるのはkoheiなので、"
         "こちらで決めきらず、判断できる材料として構成案を用意する。\n"
         f"お題「{p['topic']}」で短い映像の構成案を作る。"
@@ -12643,7 +12659,7 @@ async def _pipeline_plan(cid, feedback=""):
         return
     await send_as(
         orch, cid,
-        f"📝 【構成案】（{CLAUDE2_NAME}がディレクターのkohei向けに用意）\n"
+        f"📝 【構成案】（{PM_NAME}がディレクターのkohei向けに用意）\n"
         f"{p['plan']}\n\n———\n"
         "**決めるのはkohei**です。下のボタン、または「OK」で承認。"
         "直したい所はテキストで指示してください。",
@@ -14762,12 +14778,21 @@ async def _dispatch_message(message):
         _act, _h, _m = _trd
         if _act == "who":
             _who = re.search("クロード\\s*([123１２３])", content)
-            _n = "123"["０１２３".find(_who.group(1)) - 1] if _who and \
-                _who.group(1) in "１２３" else (_who.group(1) if _who else "1")
-            gen_settings["trend_who"] = f"claude{_n}"
+            _raw = _who.group(1) if _who else "1"
+            _n = {"１": "1", "２": "2", "３": "3"}.get(_raw, _raw)
+            if _n == "3":
+                # クロード3（アドバイザー）は2番に繰り上がり、
+                # クロード1（リサーチャー）は廃止した（2026-09-27）。
+                # 無い役を「設定しました」と言わない。
+                await message.channel.send(
+                    "⚠️ クロード3はもういません。いまは"
+                    f"**{PM_NAME}** と **{ADVISOR_NAME}** の2人です。\n"
+                    "「リサーチはクロード2にして」のように指定してください。")
+                return
+            gen_settings["trend_who"] = "pm" if _n == "1" else "advisor"
             _save_gen_settings()
             await message.channel.send(
-                f"🔎 リサーチの担当を **クロード{_n}** にしました。"
+                f"🔎 リサーチの担当を **{_trend_who_name()}** にしました。"
                 "毎日の自動リサーチも、その名前で結果を出します。"
             )
             return

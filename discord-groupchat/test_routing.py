@@ -467,38 +467,61 @@ def run():
 
     print("■ 匿名の人格を残さない（誰が担当かが分かること）")
     _src = open("ai_group_chat.py", encoding="utf-8").read()
-    check("ショート企画はクロード3が名乗る",
+    check("ショート企画はアドバイザーが名乗る",
           "いまはバズるYouTube Shortsのアートディレクターとして企画する" in _src, True)
     check("映像ディレクターはkohei本人",
           "映像ディレクターはkohei本人" in _src, True)
-    check("映像制作でクロード2はアシスタント",
+    check("映像制作でPMはアシスタント",
           "あなたはその【アシスタント】" in _src, True)
     check("『あなたは映像ディレクター』という名乗りは残っていない",
           "あなたは映像ディレクター。" in _src, False)
 
-    print("■ 広告代理店の役はクロード3（アドバイザー）が持つ")
-    check("クロード3に広告の役割がある",
-          "広告代理店" in bot.CLAUDE_PERSONAS["claude3"][1], True)
+    print("■ 広告代理店の役はアドバイザーが持つ")
+    check("アドバイザーに広告の役割がある",
+          "広告代理店" in bot.CLAUDE_PERSONAS["advisor"][1], True)
     check("複数案とリスクを出す役だと明記",
-          "リスク" in bot.CLAUDE_PERSONAS["claude3"][1], True)
+          "リスク" in bot.CLAUDE_PERSONAS["advisor"][1], True)
     _blk = bot._ad_plan_block(
         {"title": "夜の静けさ篇", "target": "20代", "hook": "無音",
          "message": "静けさ", "cta": "今すぐ", "risk": "地味に見える"}, "案1: ")
     check("企画書にリスク欄がある", "外した時のリスク" in _blk, True)
     check("企画書に案の番号が入る", "案1:" in _blk, True)
 
-    print("■ 話者の名前（1=リサーチャー / 2=PM / 3=アドバイザー）")
-    check("クロード1はリサーチャー", bot.CLAUDE1_NAME, "クロード1（リサーチャー）")
-    check("クロード2はPM", bot.CLAUDE2_NAME, "クロード2（PM）")
-    check("クロード3はアドバイザー", bot.CLAUDE3_NAME, "クロード3（アドバイザー）")
-    check("普段の返事はクロード2が出す",
-          bot._with_speaker("本文", bot.CLAUDE2_NAME), "**クロード2（PM）**: 本文")
-    check("PMの人格が入っている", bot.CLAUDE2_NAME in bot.ORCH_PERSONA, True)
+    print("■ 話者は2人だけ（1=PM / 2=アドバイザー）")
+    # 2026-09-27（本人の指示）：クロード1（リサーチャー）を廃止し、
+    # PMを1番、アドバイザーを2番に繰り上げた。調べる役は Claude Code の
+    # セッションに統合済み。番号で持つと取り違えるので、コードは役名で持つ。
+    check("1番はPM", bot.PM_NAME, "クロード1（PM）")
+    check("2番はアドバイザー", bot.ADVISOR_NAME, "クロード2（アドバイザー）")
+    check("リサーチャーは居ない",
+          any("リサーチャー" in v for v in (bot.PM_NAME, bot.ADVISOR_NAME)), False)
+    check("旧定数を残さない（番号の取り違えを防ぐ）",
+          any(hasattr(bot, _n) for _n in
+              ("CLAUDE1_NAME", "CLAUDE2_NAME", "CLAUDE3_NAME")), False)
+    check("普段の返事はPMが出す",
+          bot._with_speaker("本文", bot.PM_NAME), "**クロード1（PM）**: 本文")
+    check("PMの人格が入っている", bot.PM_NAME in bot.ORCH_PERSONA, True)
+    check("人格は2人ぶんだけ", sorted(bot.CLAUDE_PERSONAS), ["advisor"])
     check("役割の人格も名前と一致",
-          bot.CLAUDE_PERSONAS["claude1"][0], bot.CLAUDE1_NAME)
-    for _t in ("クロード2（PM）: 本文", "クロード2: 本文", "PM: 本文",
-               "クロード1（リサーチャー）: 本文", "クロード: 本文"):
+          bot.CLAUDE_PERSONAS["advisor"][0], bot.ADVISOR_NAME)
+    for _t in ("クロード1（PM）: 本文", "クロード1: 本文", "PM: 本文",
+               "クロード2（アドバイザー）: 本文", "クロード: 本文"):
         check(f"名乗りの前置きを落とす {_t!r}", bot._clean_reply(_t), "本文")
+    # 保存済みの設定は旧番号のことがある。読んで壊れないこと
+    _keepW = bot.gen_settings.get("trend_who")
+    try:
+        for _v, _want in (("claude1", bot.PM_NAME),      # 旧リサーチャー
+                          ("claude2", bot.PM_NAME),      # 旧PM
+                          ("claude3", bot.ADVISOR_NAME),  # 旧アドバイザー
+                          ("pm", bot.PM_NAME), ("advisor", bot.ADVISOR_NAME),
+                          (None, bot.PM_NAME), ("", bot.PM_NAME)):
+            bot.gen_settings["trend_who"] = _v
+            check(f"旧設定 {_v!r} でも壊れない", bot._trend_who_name(), _want)
+    finally:
+        if _keepW is None:
+            bot.gen_settings.pop("trend_who", None)
+        else:
+            bot.gen_settings["trend_who"] = _keepW
 
     print("■ Geminiは自分の名前で投稿しない（返信を止める）")
     import types as _ty2
@@ -1977,7 +2000,7 @@ def run():
     # 事故：クロードが週の上限に達し、Geminiが代わりに書いた返事が
     # 「クロード2（PM）」名義で、しかも敬語＋箇条書き。同じ相手が急に
     # 他人行儀になったように見えて会話が噛み合わなくなった。
-    check("代打の名乗りを持つ", bot.GEMINI_STANDIN != bot.CLAUDE2_NAME, True)
+    check("代打の名乗りを持つ", bot.GEMINI_STANDIN != bot.PM_NAME, True)
     check("代打と分かる名前", "代打" in bot.GEMINI_STANDIN, True)
     _n = bot._limit_note("You've hit your weekly limit · resets 12pm (Asia/Tokyo)")
     check("上限だと伝える", "利用上限" in _n, True)
