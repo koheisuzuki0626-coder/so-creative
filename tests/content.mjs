@@ -652,6 +652,64 @@ for (const [label, sec] of [['30秒', 30], ['90秒', 90], ['3分', 180], ['5分'
 check('タイトルの「最短2週間」が実態と合う',
     /最短2週間/.test(idx) && Math.min(...TIERS.flatMap(t => LENGTHS.map(s => leadWeeks(t, s)))) === 2);
 
+/* ---- 2本目の値段を ¥65,000 と言い切らない（2026-09-26） ----
+   式は base + 秒単価 × 【合計】秒数 + ¥65,000 × (本数 − 1) なので、
+   2本目にも秒単価がかかる。¥65,000 は本数加算だけの額で、2本目の値段ではない。
+   「2本目以降は ¥65,000」と9ページに書いていて、15秒の2本目で ¥52,500、
+   60秒・竹の2本目では ¥294,000 少なく見せていた。
+   まとめて頼んで安くなるのは、段にも尺にもよらず1本につき ¥25,000
+   （基本料金 ¥90,000 − 本数加算 ¥65,000）だけ。 */
+{
+    const PAGES = ['index.html', 'company-video.html', 'recruit-video.html', 'service-video.html',
+        'ad-video.html', 'sns-video.html', 'exhibition-video.html', 'internal-video.html',
+        'animation-video.html', 'record.html'];
+    /* 2本目を ¥65,000 だと言い切る形。式の一部として出すぶんには問題ない */
+    const WRONG = [
+        /2本目[^。<]{0,12}は\s*(?:1本\s*)?¥65,000\s*(?:です|。|<)/,
+        /2本目[^。<]{0,12}が\s*¥65,000/,
+        /(?:追加|短尺|STEP[^。<]{0,8})[^。<]{0,20}1本\s*¥65,000/,
+        /1本\s*¥65,000\s*で(?:出せ|済み)/,
+        /尺の料金[がは][^。<]{0,10}かから/,
+    ];
+    for (const f of PAGES) {
+        const html = readFileSync(`${ROOT}/${f}`, 'utf8')
+            /* 訂正の記録そのものは、間違った言い方を引用してよい */
+            .replace(/（2026-09-26 訂正）[\s\S]*?<\/b>/g, '');
+        const hit = WRONG.map((re) => html.match(re)).find(Boolean);
+        check(`${f} は2本目の値段を ¥65,000 と言い切っていない`, !hit, hit ? hit[0] : '');
+    }
+    /* 本文に出した「＋¥N」が、式から計算し直した額と合っているか */
+    const add = (perSec, sec) => PRICE.perExtra + perSec * sec;
+    const P = Object.fromEntries(TIERS.map((t) => [t.label, t.perSec]));
+    const WANT = [
+        ['index.html', add(P['梅'], 30)],
+        ['company-video.html', add(P['竹'], 15)],
+        ['recruit-video.html', add(P['竹'], 30)],
+        ['service-video.html', add(P['梅'], 15)],
+        ['ad-video.html', add(P['梅'], 15)],
+        ['sns-video.html', add(P['梅'], 15)],
+        ['exhibition-video.html', add(P['梅'], 15)],
+        ['internal-video.html', add(P['梅'], 30)],
+        ['animation-video.html', add(P['梅'], 15)],
+    ];
+    const yen = (n) => `¥${n.toLocaleString('en-US')}`;
+    for (const [f, want] of WANT) {
+        const html = readFileSync(`${ROOT}/${f}`, 'utf8');
+        check(`${f} の2本目の実額が式と一致`, html.includes(`＋${yen(want)}`), yen(want));
+    }
+    /* まとめたときの差は、段にも尺にもよらず常に ¥25,000 */
+    const bundle = PRICE.base - PRICE.perExtra;
+    check('まとめ買いの差が base − perExtra と一致', bundle === 25000, String(bundle));
+    for (const t of TIERS) for (const sec of LENGTHS) {
+        const together = PRICE.base + t.perSec * sec * 2 + PRICE.perExtra;
+        const apart = (PRICE.base + t.perSec * sec) * 2;
+        if (apart - together !== bundle) {
+            check(`まとめ買いの差が一定（${t.label}${sec}秒）`, false, String(apart - together));
+        }
+    }
+    check('まとめ買いの差は段と尺によらず一定', true, `¥${bundle.toLocaleString('en-US')}`);
+}
+
 /* ---- 「3日」を納期と読ませない（2026-09-26） ----
    3日は、自社サンプルを確認の往復なしで仕上げたときの制作工程だけの数字。
    工程表を足すと 9〜20営業日、FAQ も「30秒で約2週間」と書いてある。
@@ -1451,8 +1509,10 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         /リフレームはテロップを組み直さない/.test(t) && /使えない/.test(t));
     check('松から落とす仕様を明示している',
         /落とす/.test(t) && /4K/.test(t) && /3形式/.test(t));
+    /* 時間単価は ¥80,000/h（実際に出した額 ÷ 1.0h）。2026-09-26 まで ¥65,000/h と
+       書いていたが、これは本数加算だけを2本目の売上と見ていた誤り */
     check('縦型は追加本数で作ると書いている',
-        /追加の1本|追加本数/.test(t) && /¥65,000\/h/.test(t));
+        /追加の1本|追加本数/.test(t) && /本数加算 ¥65,000 ＋ 尺ぶん/.test(t));
     check('1,080クレジットを授業料として記録している', /1,080クレジットは授業料/.test(t));
     check('実際に納品した2本の尺と時間単価が載っている',
         /59秒/.test(t) && /15秒/.test(t) && /¥41,905\/h/.test(t) && /¥80,000\/h/.test(t));
