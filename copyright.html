@@ -26,6 +26,33 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=Zen+Kaku+Gothic+New:wght@300;400;500&display=swap">
+    <!-- FAQPage は使わない。見出しが実際の問答の形をしていないページで名乗ると、
+         Google のガイドライン違反になる（FAQ のリッチリザルト自体、2023年以降は
+         公的機関のサイトにしか出ない）。素直に WebPage + パンくずにしてある -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": "https://koheisuzuki0626-coder.github.io/so-creative/copyright.html#page",
+        "name": "AI動画の著作権はどうなるのか｜so-creative",
+        "description": "AIでつくった映像の権利について。納品物の著作権はお支払い完了をもってお客様へ移り、用途・媒体・期間の制限なくお使いいただけます。あわせて「保護が及ばない場合がある」「意図しない類似を完全には排除できない」という2つの限界も公開しています。",
+        "inLanguage": "ja",
+        "isPartOf": { "@id": "https://koheisuzuki0626-coder.github.io/so-creative/#site" },
+        "about": { "@id": "https://koheisuzuki0626-coder.github.io/so-creative/#org" },
+        "publisher": { "@id": "https://koheisuzuki0626-coder.github.io/so-creative/#org" }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "ホーム", "item": "https://koheisuzuki0626-coder.github.io/so-creative/" },
+        { "@type": "ListItem", "position": 2, "name": "AI動画の権利", "item": "https://koheisuzuki0626-coder.github.io/so-creative/copyright.html" }
+        ]
+      }
+      ]
+    }
+    </script>
     <link rel="stylesheet" href="assets/site.css">
     <!-- JSが動く端末にだけ出現アニメーションを掛ける。この1行が無いと、
          JSが届く前や動かないときにページが真っ白になる（2026-09-24） -->

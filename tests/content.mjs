@@ -834,6 +834,19 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         noindexed.length === 0 || noindexed.length === PUBLIC.length,
         pub.map(([f, v]) => `${f}:${v || '-'}`).join(' '));
 
+    /* ---- 開業日の切り替え手順に書いてある枚数（2026-09-26） ----
+       ロードマップの「サイトを検索に出す」に「公開◯ページの noindex を外す」と
+       書いてある。ページを足したときにここを直し忘れると、当日その枚数だけ外して
+       残りが noindex のまま取り残される。実際 6 のまま 15 まで増えていた。
+       文章のほうを正とせず、PUBLIC の数と突き合わせる */
+    {
+        const rm = readFileSync(`${ROOT}/roadmap.html`, 'utf8');
+        /* 太字の位置が動いても読めるよう、タグを落としてから数える */
+        const n = Number((rm.replace(/<[^>]+>/g, '').match(/公開(\d+)ページの noindex/) || [])[1]);
+        check('ロードマップの切り替え枚数が公開ページ数と合っている',
+            n === PUBLIC.length, `ロードマップ ${n} / 実際 ${PUBLIC.length}`);
+    }
+
     for (const f of INTERNAL) {
         check(`${f} は社内用なので必ず noindex`, /noindex/.test(await robotsOf(f)));
     }
