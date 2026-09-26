@@ -122,9 +122,9 @@ for (const [file, w, h, label] of revealCases) {
 }
 
 /* ---- 紙に出したときに読めるか（2026-09-26） ----
-   地を濃色にしたので、印刷の指定が無いと紙が真っ白になる。
-   ブラウザは既定で背景を刷らないため、地の #1d201f は紙に乗らず、
-   文字の #f2f4f3（ほぼ白）だけが残る。料金と権利のページは
+   紙も画面と同じ濃色で刷る。ブラウザは既定で背景色を刷らないので、
+   print-color-adjust: exact が外れるとその瞬間に地が白くなり、
+   ほぼ白の文字だけが残って白紙になる。料金・品質・権利のページは
    「稟議に添える」「法務に見せる」と書いてあるので、刷られる前提で持たせる。
    遷移も切っておく。切らないと、印刷に切り替えた瞬間から 0.9s かけて
    0 → 1 へ動くので、その途中で刷られると半透明のまま紙に乗る */
@@ -134,7 +134,11 @@ for (const [file, w, h, label] of revealCases) {
             .map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; });
         return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
     };
-    const cr = (c) => (1.05) / (lum(c) + 0.05);   /* 白い紙に対して */
+    /* 地に対して。紙も画面と同じ地なので、白い紙ではなく実際の地と比べる */
+    const cr = (c, bg) => {
+        const a = lum(c) + 0.05, b = lum(bg) + 0.05;
+        return a > b ? a / b : b / a;
+    };
     for (const file of ['index.html', 'pricing.html', 'quality.html', 'copyright.html', 'about.html']) {
         const page = await open(browser, { page: file, width: 1280 });
         await page.emulateMedia({ media: 'print' });
@@ -142,9 +146,14 @@ for (const [file, w, h, label] of revealCases) {
         const r = await page.evaluate(() => {
             const g = (s) => { const e = document.querySelector(s); return e ? getComputedStyle(e).color : null; };
             const nav = document.getElementById('nav');
+            const bodyCs = getComputedStyle(document.body);
             return {
                 head: g('h1') || g('h2'),
                 body: g('.body-text'),
+                /* 紙の地。ここが白に戻っていたら、濃色の指定が外れている */
+                bg: bodyCs.backgroundColor,
+                /* これが exact でないと、ブラウザは背景色を落として刷る */
+                exact: bodyCs.printColorAdjust || bodyCs.webkitPrintColorAdjust,
                 navHidden: !nav || getComputedStyle(nav).display === 'none',
                 faded: [...document.querySelectorAll('.reveal, .reveal-stagger > *')]
                     .filter((e) => getComputedStyle(e).opacity !== '1').length,
@@ -198,14 +207,18 @@ for (const [file, w, h, label] of revealCases) {
                             if (s2.display === 'none' || s2.visibility === 'hidden' || +s2.opacity === 0) { hidden = true; break; }
                         }
                         if (hidden) continue;
-                        out.push([t.slice(0, 20), cs.color]);
+                        out.push([t.slice(0, 20), cs.color, cs.backgroundColor]);
                     }
                     return out;
                 })(),
             };
         });
-        check(`${file} は紙でも見出しが読める`, cr(r.head) >= 7, `${cr(r.head).toFixed(1)}:1`);
-        check(`${file} は紙でも本文が読める`, cr(r.body) >= 7, `${cr(r.body).toFixed(1)}:1`);
+        check(`${file} は紙でも地が濃いまま`, lum(r.bg) < 0.1, r.bg);
+        check(`${file} は紙でも背景色を落とさない`, r.exact === 'exact', String(r.exact));
+        /* 紙も画面と同じ絵になったので、しきい値も画面と同じ AA に揃える。
+           ここだけ 7 にしていたのは、白い紙に薄い灰を刷ると飛ぶからだった */
+        check(`${file} は紙でも見出しが読める`, cr(r.head, r.bg) >= 7, `${cr(r.head, r.bg).toFixed(1)}:1`);
+        check(`${file} は紙でも本文が読める`, cr(r.body, r.bg) >= 4.5, `${cr(r.body, r.bg).toFixed(1)}:1`);
         check(`${file} は紙にヘッダーを刷らない`, r.navHidden);
         check(`${file} は紙で中身が薄くならない`, r.faded === 0, `${r.faded} 個が半透明`);
         check(`${file} は紙に計算機を刷らない`, r.calcShown === 0, `${r.calcShown} 個`);
@@ -214,8 +227,22 @@ for (const [file, w, h, label] of revealCases) {
         check(`${file} は紙で囲いを外している`, r.clipped === 0, `${r.clipped} 個がはみ出し切り`);
         check(`${file} は紙でも答えを開いておく`, r.faqsHidden === 0, `${r.faqsHidden} / ${r.faqs} 件が閉じたまま`);
         check(`${file} は紙の hero に浮いたものを残さない`, r.floating.length === 0, r.floating.join(' / '));
-        const faint = r.invisible.filter(([, c]) => cr(c) < 3);
-        check(`${file} は紙に白い字を残さない`, faint.length === 0,
+        /* 文字ごとに、その要素が自分で地を持っていればそれと、
+           持っていなければページの地と比べる。
+           半透明（チップスの rgba(255,255,255,0.07) など）は、
+           そのまま読むと真っ白として扱ってしまうので、地の上に重ねてから見る */
+        const over = (fg, bg) => {
+            const f = (fg.match(/[\d.]+/g) || []).map(Number);
+            const b = (bg.match(/[\d.]+/g) || []).map(Number);
+            const a = f.length > 3 ? f[3] : 1;
+            if (a >= 1) return fg;
+            return `rgb(${[0, 1, 2].map((i) => f[i] * a + b[i] * (1 - a)).join(', ')})`;
+        };
+        const faint = r.invisible.filter(([, c, b]) => {
+            const own = b && !/transparent/.test(b) && !/rgba\([^)]*,\s*0\)/.test(b);
+            return cr(c, own ? over(b, r.bg) : r.bg) < 3;
+        });
+        check(`${file} は紙でも文字が地から浮く`, faint.length === 0,
             faint.slice(0, 3).map(([t, c]) => `「${t}」${c}`).join(' / ') || `${r.invisible.length} 個を確認`);
         await page.close();
     }

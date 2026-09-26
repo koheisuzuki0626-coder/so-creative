@@ -1896,23 +1896,24 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
    料金ページと権利ページは「稟議に添える」「法務に見せる」と書いてある以上、
    刷られる前提で持たせる必要がある。色だけ入れ替え、紙に要らないものは落とす */
 @media print {
-    :root {
-        color-scheme: light;
-        --bg: #fff;
-        --bg-alt: #fff;
-        --card: #fff;
-        --bg-deep: #fff;
-        --ink: #000;
-        --ink-2: #1a1a1a;
-        --ink-dim: #444;          /* 紙では薄い灰が飛ぶので、画面より濃くする */
-        --on-ink: #fff;
-        --line: rgba(0, 0, 0, 0.28);
-        --line-strong: rgba(0, 0, 0, 0.45);
-        --accent: #14503c;        /* 紙は白地なので、濃いほうの深緑に戻す */
-        --accent-ink: #14503c;
-        --accent-soft: rgba(28, 92, 69, 0.10);
-    }
-    body { background: #fff; color: #000; }
+    /* 画面と同じ濃色のまま刷る（2026-09-26）。
+       ブラウザは既定で背景色を刷らないので、そのままだと地の #1d201f が
+       乗らず、ほぼ白の文字だけが残って白紙になる。
+       print-color-adjust: exact は「印刷ダイアログの “背景のグラフィック” が
+       off でも、この色は落とさない」という指定で、実測でも効いている */
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    /* 紙の端まで地を敷く。@page の余白の中は背景が塗られないので、
+       余白を 0 にして、そのぶんを body の padding で取り直す。
+       余白を残すと、濃い板が白い額縁に入ったような見た目になる */
+    @page { margin: 0; }
+    html { background: var(--bg); }
+    /* 左右の余白は body ではなく中身側で取る。body に付けると、
+       画面では全幅で切り替わっている帯（statement・stage・CTA）が
+       紙の上だけ左右に地の帯を残した「窓」に見える */
+    body { background: var(--bg); color: var(--ink); padding: 14mm 0; }
+    .wrap, .wrap-wide, .hero-inner, .stage-grid,
+    .footer-inner, .footer-bottom { padding-left: 14mm; padding-right: 14mm; }
+
     /* 紙に要らないもの。ヘッダーは全ページに刷られてしまうし、
        スクロール前提の演出は1枚目を占領するだけ。
        SCROLL の案内は hero の下端に絶対配置してあるので、
@@ -1920,9 +1921,8 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
     #nav, .menu, .menu-scrim, .progress, .hero-media, .lightbox,
     .swipe-hint, .cta-actions, .nav-uses, .scroll-hint { display: none !important; }
     /* 100svh のままだと、見出しだけで1ページ使う */
-    .hero { min-height: auto; padding: 24pt 0; background: none; }
-    .hero::before { display: none; }
-    .section, .statement, .cta-band, .page-head { padding: 18pt 0; }
+    .hero { min-height: auto; padding: 24pt 0; }
+    .section, .statement, .cta-band, .page-head { padding: 20pt 0; }
     /* 出現アニメーションは、JS が動く前に刷られると中身ごと消える。
        transition も切る。切らないと、印刷に切り替えた瞬間から 0.9s かけて
        0 → 1 へ動くので、その途中で刷られると半透明のまま紙に乗る */
@@ -1936,35 +1936,23 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
     }
     .stage-track { height: auto; }
     .stage-pin { position: static; height: auto; }
+    /* 背景に敷いた写真。stage-pin を静的に戻したせいで inset:0 の基準が
+       ずれ、本文とは無関係な位置に板として出る */
+    .stage-bg { display: none; }
     /* 札（出演者 0人 ／ 撮影日 0日）は中身なので残す。
        重ねて回転させた写真のほうは、紙では意味をなさないので落とす */
     .stack { aspect-ratio: auto; height: auto; }
     .stack figure { display: none; }
     .stage-mark { position: static; transform: none; opacity: 1;
-                  display: inline-block; margin: 0 0 8pt; padding: 0;
+                  display: inline-block; margin: 0 0 8pt;
                   white-space: normal;
-                  /* すりガラスの箱は、地が刷られないと枠だけが残る。
-                     backdrop-filter は背景ではなく中身として刷られる */
-                  background: none; border: 0; box-shadow: none;
+                  /* すりガラスは紙では効かない。地に馴染む箱にしておく */
                   backdrop-filter: none; -webkit-backdrop-filter: none; }
-    /* 背景に敷いた写真。filter が掛かっているぶん、背景ではなく中身として
-       刷られてしまう。しかも stage-pin を静的に戻したせいで、
-       inset:0 の基準がずれて本文とは無関係な位置に灰色の板が出る */
-    .stage-bg { display: none; }
     /* 紙の上では操作できないので、計算機は出さない。
        出すと、既定の組み合わせ（梅・1本・30秒）の額が「お見積り」という
        見出しのまま固定で刷られ、見積書と取り違えられる。
        すべての組み合わせは、すぐ上の料金表が持っている */
     .calc { display: none; }
-    /* 割れると読めなくなるものだけ、行またぎを止める。
-       表・計算機・金額の内訳にも掛けていたが、どれも1ページに収まらないので
-       丸ごと次ページへ送られ、手前に空白のページができていた。
-       金額の内訳は項目（.calc-why li）の単位で割れれば読めるので、
-       箱そのものには掛けない */
-    .genre, .plan, .card, .plan-common, .plan-pay, .plan-tax,
-    .flow-note, .faq-item, .calc-why li, .values li, .ba-item, tr {
-        break-inside: avoid; page-break-inside: avoid;
-    }
     /* よくあるご質問は details。閉じたまま刷ると、質問だけが並んで
        答えが1つも出ない。紙では全部開いた状態にする */
     details > *:not(summary) { display: block !important; }
@@ -1976,30 +1964,35 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
     }
     .faq-item summary { cursor: auto; }
     .faq-item summary::after { display: none; }
+    /* 割れると読めなくなるものだけ、行またぎを止める。
+       表・計算機・金額の内訳にも掛けていたが、どれも1ページに収まらないので
+       丸ごと次ページへ送られ、手前に空白のページができていた。
+       金額の内訳は項目（.calc-why li）の単位で割れれば読める */
+    .genre, .plan, .card, .plan-common, .plan-pay, .plan-tax,
+    .flow-note, .faq-item, .calc-why li, .values li, .ba-item, tr {
+        break-inside: avoid; page-break-inside: avoid;
+    }
     /* 表が複数ページに渡るときは、見出しの行を各ページの先頭に繰り返す */
     thead { display: table-header-group; }
     /* 横スクロールの入れ物は、そのままだとページをまたげない。
        中身ごと丸々次ページへ送られ、手前に空白のページができる。
        紙には横スクロールが無いので、囲いを外して普通の流れに戻す */
     .compare-wrap, .genre-price-table, .calc-formula, .genre-index {
-        overflow: visible; background: none; border: 0; border-radius: 0;
+        overflow: visible;
     }
     .compare-wrap { padding: 0; }
     /* 画面では1行に収めて横へ流す指定。紙は流せないので右が切れる */
     .calc-formula, .compare-wrap th, .compare-wrap td { white-space: normal; }
     h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
-    a { color: inherit; border-bottom: 0; }
+    /* 見出しを次ページへ送るとき、その上の小見出し（Comparison など）が
+       独りだけ残ってしまう。ひとかたまりとして扱う */
+    .eyebrow { break-after: avoid; page-break-after: avoid; }
+    .section-head, .page-head { break-inside: avoid; page-break-inside: avoid; }
     /* フッター。紙の上では押せないボタンと、リンクの一覧が2ページ分を食う。
        連絡先（メールアドレス）の列だけ残す */
     .f-cta, .pill, nav.f-col { display: none !important; }
     /* © の1行だけが最後の1枚に取り残されるのを防ぐ */
     .footer-bottom { break-before: avoid; page-break-before: avoid; }
-    /* ロゴマークは #f5f5f7 の線。濃色の地に載せる前提なので紙では消える */
-    .logo-mark { filter: invert(1); }
-    /* 白を直に指定しているので、地が刷られない紙では消える */
-    .cta-mail { color: #000; border-bottom-color: rgba(0, 0, 0, 0.45); }
-    /* 濃色の地に載せる前提の明るい緑。白い紙では 2:1 しかない */
-    .stage-dark .eyebrow, .cta-band .eyebrow { color: var(--accent); }
     /* 見本の映像は poster（静止画）を持っているので、紙でもその1枚が刷られる。
        消すと「こうなりました」の下が空になる。
        背景で流しているだけのヒーロー映像には poster が無いので、こちらは消す */
