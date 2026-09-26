@@ -549,7 +549,7 @@ check('金額の表示は税込で揃っている',
     const svc = await page.locator('#service').innerText();
     check('できるようになることを書いている',
         /訴求違い/.test(svc) && /差し替え/.test(svc), svc.slice(0, 40));
-    check('自社サンプルの日数と一致している', /3日間/.test(svc));
+    check('自社サンプルの日数と一致している', /着手から3日/.test(svc));
     check('2本目の値段が料金表と一致している', /¥65,000/.test(svc));
     check('誇大な言い方をしていない',
         !/必ず|絶対|劇的|革命|No\.?1|業界最|最先端/.test(svc), svc.slice(0, 60));
@@ -559,7 +559,7 @@ check('金額の表示は税込で揃っている',
         !/年に1本|年1本|どこの会社も|みなさん/.test(svc), svc.slice(0, 60));
     const hero = await page.locator('.hero-inner').innerText();
     check('ヒーローもできることで書いている',
-        /3日で1本できる/.test(hero) && /訴求違い/.test(hero));
+        /最短2週間で納品/.test(hero) && /訴求違い/.test(hero));
 }
 check('人物ナレーションの追加料金が FAQ と計算機で同じ',
     /1名 ¥70,000〜/.test(idx) && /narrationHuman: 70000/.test(calcSrc));
@@ -651,6 +651,29 @@ for (const [label, sec] of [['30秒', 30], ['90秒', 90], ['3分', 180], ['5分'
 }
 check('タイトルの「最短2週間」が実態と合う',
     /最短2週間/.test(idx) && Math.min(...TIERS.flatMap(t => LENGTHS.map(s => leadWeeks(t, s)))) === 2);
+
+/* ---- 「3日」を納期と読ませない（2026-09-26） ----
+   3日は、自社サンプルを確認の往復なしで仕上げたときの制作工程だけの数字。
+   工程表を足すと 9〜20営業日、FAQ も「30秒で約2週間」と書いてある。
+   ヒーローに「3日で1本できる」とだけ出していたので、
+   納品が3日だと読めた。数字を出すなら、条件も同じ場所に置く */
+{
+    const QUALIFIER = /自社|サンプル/;
+    for (const f of ['index.html', 'works.html', 'company-video.html']) {
+        const html = readFileSync(`${ROOT}/${f}`, 'utf8');
+        const bad = [];
+        for (const m of html.matchAll(/3日/g)) {
+            const around = html.slice(Math.max(0, m.index - 400), m.index + 400);
+            if (!QUALIFIER.test(around)) bad.push(html.slice(Math.max(0, m.index - 30), m.index + 10).replace(/\s+/g, ' '));
+        }
+        check(`${f} の「3日」に自社制作だと分かる条件が付いている`, bad.length === 0, bad.slice(0, 2).join(' / '));
+    }
+    /* 看板の速さは、工程表から出した数字（leadWeeks の最小＝2週間）とだけ言う */
+    check('ヒーローの速さがタイトルと同じ数字', /最短2週間/.test(idx.split('<ul class="hero-chips">')[1] || ''));
+    /* 「その週のうちに」「数日で公開」は、納品までの日数と矛盾する */
+    check('納品が数日だと読める言い方をしていない',
+        !/その週のうちに|数日で公開|数日で納品|3日で1本/.test(idx), idx.match(/その週のうちに|数日で公開|数日で納品|3日で1本/)?.[0] || '');
+}
 
 /* ---- 料金の説明文が段と矛盾していないか ----
    段で秒単価が変わるのに「1秒あたり ¥3,500」と書いてあると嘘になる */
