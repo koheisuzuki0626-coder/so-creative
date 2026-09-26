@@ -134,8 +134,14 @@ check('金額の表示は税込で揃っている',
     check('丸に戻っていない',
         await page.locator('#why .stage-mark').first().evaluate(
             (el) => getComputedStyle(el).borderRadius !== '50%'));
-    /* 1枚目のステージは背景も写真も暗い。札を黒にすると溶けて読めないので、
-       白で抜いていること（9/19 に黒→白へ直した） */
+    /* 1枚目のステージは背景も写真も暗い。札が溶けないことを見る。
+       2026-09-26 まではここを「札が白いこと」で担保していたが、
+       サイト全体を濃色にしたあとは、白い面はナビと CTA のボタンだけになり、
+       押せない札がボタンに見えていた。濃いガラスに変えたので、
+       見るのは「白いかどうか」ではなく
+         ・札の中でラベルと数字が読めること（コントラスト）
+         ・輪郭があること（塗りだけに頼らない）
+       の2つにする */
     const mk = await page.locator('#why .stage-mark').first().evaluate((el) => {
         const cs = getComputedStyle(el);
         const lum = (c) => {
@@ -143,9 +149,27 @@ check('金額の表示は税込で揃っている',
                 .map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; });
             return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
         };
-        return { bg: lum(cs.backgroundColor), fg: lum(cs.color) };
+        const label = getComputedStyle(el.querySelector('span')).color;
+        const cr = (a, b) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+        return {
+            bg: lum(cs.backgroundColor), fg: lum(cs.color), label: lum(label),
+            numCr: cr(lum(cs.backgroundColor), lum(cs.color)),
+            labelCr: cr(lum(cs.backgroundColor), lum(label)),
+            border: cs.borderTopWidth, borderColor: cs.borderTopColor,
+        };
     });
-    check('札が白っぽい（暗い背景に溶けない）', mk.bg > 0.6, JSON.stringify(mk));
+    check('札の数字が読める', mk.numCr >= 4.5, `${mk.numCr.toFixed(2)}:1`);
+    check('札のラベルが読める', mk.labelCr >= 4.5, `${mk.labelCr.toFixed(2)}:1`);
+    check('札に輪郭がある（暗い背景に溶けない）',
+        parseFloat(mk.border) > 0 && !/rgba\(0, 0, 0, 0\)|transparent/.test(mk.borderColor),
+        `${mk.border} ${mk.borderColor}`);
+    /* 置き場所はスタックごとに違う。写真に焼き込まれたテロップと顔の位置が
+       違うので、同じ位置に戻すとどちらかが必ず潰れる（2026-09-26 に実測して決めた） */
+    {
+        const pos = await page.locator('#why .stage-mark').evaluateAll(
+            (els) => els.map((e) => getComputedStyle(e).left + '/' + getComputedStyle(e).top));
+        check('2つの札は別の位置にある', pos.length === 2 && pos[0] !== pos[1], JSON.stringify(pos));
+    }
     /* スマホでも札を出す。写真の重なりだけ畳み、札は PC と同じ見た目にする
        （9/19。いったん「スマホでは出さない」と決めたが、出す方に変えた）。
        数字を vw で縮めると PC より小さくなるので、大きさが揃うことも見る */
@@ -167,7 +191,7 @@ check('金額の表示は税込で揃っている',
         check('札の大きさが PC と揃っている', spSize === wideSize, `${spSize} / ${wideSize}`);
         await wide.close();
     }
-    check('札の文字は濃い色', mk.fg < 0.2, JSON.stringify(mk));
+    check('札の文字は明るい色（濃いガラスの上）', mk.fg > 0.7, JSON.stringify(mk));
     /* 経緯をコメントに書いてあるので、コメントを外してから見る */
     const css = (await (await page.request.get(`${BASE}/assets/site.css`)).text())
         .replace(/\/\*[\s\S]*?\*\//g, '');

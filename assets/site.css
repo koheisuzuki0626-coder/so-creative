@@ -670,27 +670,37 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     position: absolute;
     z-index: 4;
     left: 50%; top: 50%;
-    padding: 14px 20px 15px;
-    border-radius: 10px;
-    /* 下に敷く写真も、1枚目のステージの背景も暗いので、札は白で抜く。
-       黒だと背景に溶けて読めなかった（9/19） */
-    background: rgba(255,255,255,0.94);
+    padding: 16px 24px 18px;
+    /* カードと同じ丸み。10px はサイトのどの寸法とも違っていた */
+    border-radius: 16px;
+    /* 2026-09-26：地を濃色にしたあとも、この札だけ白いまま残っていた。
+       いま白い面はナビと CTA のボタンだけなので、押せないのにボタンに見えていた。
+       濃いガラスに変え、「暗い背景に溶けない」は白の塗りではなく
+       輪郭（border）と影で担保する。9/19 に黒で溶けたのは輪郭が無かったため */
+    background: rgba(13, 15, 14, 0.80);
+    border: 1px solid rgba(255, 255, 255, 0.20);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    box-shadow: 0 20px 48px -18px rgba(0,0,0,0.6);
+    box-shadow: 0 24px 56px -20px rgba(0, 0, 0, 0.85);
     transform: translate(-50%, -50%) scale(calc(0.82 + var(--p, 0) * 0.18));
     opacity: clamp(0, calc((var(--p, 0) - 0.12) * 3), 1);
-    color: var(--on-ink);
+    color: var(--ink);
     text-align: center;
     white-space: nowrap;
 }
+/* 置き場所はスタックごとに変える。写真は納品した実物で、顔の位置も
+   焼き込みのテロップの位置もスタックごとに違う。中央（元の位置）だと、
+   出演者は「現場で、その場で。」に重なり、撮影日は人物の顔に乗る。
+   3か所 × 2スタックを実際に撮って決めた（2026-09-26） */
+.stack[data-stack="cast"] .stage-mark { left: 26%; top: 78%; }
+.stack[data-stack="schedule"] .stage-mark { left: 20%; top: 52%; }
+
 .stage-mark span {
     display: block;
     font-size: 0.7rem;
     font-weight: 500;
     letter-spacing: 0.16em;
-    /* 札だけは白地のままなので、ここは濃いほうの深緑を直に置く */
-    color: #14503c;
+    color: var(--accent);
 }
 .stage-mark b {
     display: block;
@@ -1649,6 +1659,10 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
        札の指定はいっさい変えず、.stack を札を置くためだけの枠として残す */
     .stack { aspect-ratio: auto; height: 132px; }
     .stack figure { display: none; }
+    /* 写真を出さないので、顔もテロップも避ける相手がいない。
+       PC 側でスタックごとにずらした位置を、ここでは枠の中央に戻す */
+    .stack[data-stack="cast"] .stage-mark,
+    .stack[data-stack="schedule"] .stage-mark { left: 50%; top: 50%; }
     .stage-track { height: 190vh; }
 }
 @media (max-width: 860px) {
