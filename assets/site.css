@@ -1914,9 +1914,11 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
     }
     body { background: #fff; color: #000; }
     /* 紙に要らないもの。ヘッダーは全ページに刷られてしまうし、
-       スクロール前提の演出は1枚目を占領するだけ */
+       スクロール前提の演出は1枚目を占領するだけ。
+       SCROLL の案内は hero の下端に絶対配置してあるので、
+       残すと、縮んだ hero のぶんだけチップスの上に重なって刷られる */
     #nav, .menu, .menu-scrim, .progress, .hero-media, .lightbox,
-    .swipe-hint, .cta-actions, .nav-uses { display: none !important; }
+    .swipe-hint, .cta-actions, .nav-uses, .scroll-hint { display: none !important; }
     /* 100svh のままだと、見出しだけで1ページ使う */
     .hero { min-height: auto; padding: 24pt 0; background: none; }
     .hero::before { display: none; }
@@ -1927,15 +1929,80 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
     .reveal, .reveal-stagger, .reveal-stagger > * {
         opacity: 1 !important; transform: none !important; transition: none !important;
     }
+    /* stage の文字は、スクロール量（--p）で濃さと位置が決まる。
+       紙では --p が 0 のままなので、打ち消さないと丸ごと消える */
+    .hero-inner, .stage-copy, .stack, .stage-mark {
+        opacity: 1 !important; transform: none !important; transition: none !important;
+    }
     .stage-track { height: auto; }
     .stage-pin { position: static; height: auto; }
+    /* 札（出演者 0人 ／ 撮影日 0日）は中身なので残す。
+       重ねて回転させた写真のほうは、紙では意味をなさないので落とす */
+    .stack { aspect-ratio: auto; height: auto; }
+    .stack figure { display: none; }
     .stage-mark { position: static; transform: none; opacity: 1;
-                  display: inline-block; margin-bottom: 8pt; }
-    .stack { display: none; }
-    /* 枠のあるものが行またぎで割れないように */
-    .genre, .plan, .card, .calc, .plan-note, .plan-common, .plan-pay, .plan-tax,
-    .flow-note, .faq-item, table { break-inside: avoid; page-break-inside: avoid; }
+                  display: inline-block; margin: 0 0 8pt; padding: 0;
+                  white-space: normal;
+                  /* すりガラスの箱は、地が刷られないと枠だけが残る。
+                     backdrop-filter は背景ではなく中身として刷られる */
+                  background: none; border: 0; box-shadow: none;
+                  backdrop-filter: none; -webkit-backdrop-filter: none; }
+    /* 背景に敷いた写真。filter が掛かっているぶん、背景ではなく中身として
+       刷られてしまう。しかも stage-pin を静的に戻したせいで、
+       inset:0 の基準がずれて本文とは無関係な位置に灰色の板が出る */
+    .stage-bg { display: none; }
+    /* 紙の上では操作できないので、計算機は出さない。
+       出すと、既定の組み合わせ（梅・1本・30秒）の額が「お見積り」という
+       見出しのまま固定で刷られ、見積書と取り違えられる。
+       すべての組み合わせは、すぐ上の料金表が持っている */
+    .calc { display: none; }
+    /* 割れると読めなくなるものだけ、行またぎを止める。
+       表・計算機・金額の内訳にも掛けていたが、どれも1ページに収まらないので
+       丸ごと次ページへ送られ、手前に空白のページができていた。
+       金額の内訳は項目（.calc-why li）の単位で割れれば読めるので、
+       箱そのものには掛けない */
+    .genre, .plan, .card, .plan-common, .plan-pay, .plan-tax,
+    .flow-note, .faq-item, .calc-why li, .values li, .ba-item, tr {
+        break-inside: avoid; page-break-inside: avoid;
+    }
+    /* よくあるご質問は details。閉じたまま刷ると、質問だけが並んで
+       答えが1つも出ない。紙では全部開いた状態にする */
+    details > *:not(summary) { display: block !important; }
+    details::details-content {
+        content-visibility: visible !important;
+        display: block !important;
+        block-size: auto !important;
+        opacity: 1 !important;
+    }
+    .faq-item summary { cursor: auto; }
+    .faq-item summary::after { display: none; }
+    /* 表が複数ページに渡るときは、見出しの行を各ページの先頭に繰り返す */
+    thead { display: table-header-group; }
+    /* 横スクロールの入れ物は、そのままだとページをまたげない。
+       中身ごと丸々次ページへ送られ、手前に空白のページができる。
+       紙には横スクロールが無いので、囲いを外して普通の流れに戻す */
+    .compare-wrap, .genre-price-table, .calc-formula, .genre-index {
+        overflow: visible; background: none; border: 0; border-radius: 0;
+    }
+    .compare-wrap { padding: 0; }
+    /* 画面では1行に収めて横へ流す指定。紙は流せないので右が切れる */
+    .calc-formula, .compare-wrap th, .compare-wrap td { white-space: normal; }
     h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
     a { color: inherit; border-bottom: 0; }
-    video { display: none; }
+    /* フッター。紙の上では押せないボタンと、リンクの一覧が2ページ分を食う。
+       連絡先（メールアドレス）の列だけ残す */
+    .f-cta, .pill, nav.f-col { display: none !important; }
+    /* © の1行だけが最後の1枚に取り残されるのを防ぐ */
+    .footer-bottom { break-before: avoid; page-break-before: avoid; }
+    /* ロゴマークは #f5f5f7 の線。濃色の地に載せる前提なので紙では消える */
+    .logo-mark { filter: invert(1); }
+    /* 白を直に指定しているので、地が刷られない紙では消える */
+    .cta-mail { color: #000; border-bottom-color: rgba(0, 0, 0, 0.45); }
+    /* 濃色の地に載せる前提の明るい緑。白い紙では 2:1 しかない */
+    .stage-dark .eyebrow, .cta-band .eyebrow { color: var(--accent); }
+    /* 見本の映像は poster（静止画）を持っているので、紙でもその1枚が刷られる。
+       消すと「こうなりました」の下が空になる。
+       背景で流しているだけのヒーロー映像には poster が無いので、こちらは消す */
+    .hero-video { display: none; }
+    video::-webkit-media-controls { display: none !important; }
 }

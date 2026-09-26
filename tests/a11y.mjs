@@ -148,12 +148,75 @@ for (const [file, w, h, label] of revealCases) {
                 navHidden: !nav || getComputedStyle(nav).display === 'none',
                 faded: [...document.querySelectorAll('.reveal, .reveal-stagger > *')]
                     .filter((e) => getComputedStyle(e).opacity !== '1').length,
+                /* 紙の上では触れないので、既定の組み合わせの額が
+                   「お見積り」の見出しのまま固定で刷られてしまう */
+                calcShown: [...document.querySelectorAll('.calc')]
+                    .filter((e) => getComputedStyle(e).display !== 'none').length,
+                /* 見本の映像は poster を持っている。消すと
+                   「こうなりました」の下が空のまま刷られる */
+                samples: [...document.querySelectorAll('.sample-video, .ba-media')]
+                    .filter((e) => e.tagName === 'VIDEO').length,
+                samplesHidden: [...document.querySelectorAll('.sample-video, .ba-media')]
+                    .filter((e) => e.tagName === 'VIDEO' && getComputedStyle(e).display === 'none').length,
+                /* 背景で流しているだけ。poster が無いので紙では白い箱になる */
+                heroVideoShown: [...document.querySelectorAll('.hero-video')]
+                    .filter((e) => getComputedStyle(e).display !== 'none').length,
+                /* 横スクロールの入れ物はページをまたげない。
+                   丸ごと次ページへ送られ、手前に空白のページができる */
+                clipped: [...document.querySelectorAll('.compare-wrap, .genre-price-table, .genre-index')]
+                    .filter((e) => getComputedStyle(e).overflowX !== 'visible').length,
+                /* よくあるご質問は details。閉じたまま刷ると、
+                   質問だけが並んで答えが1つも出ない */
+                faqs: document.querySelectorAll('.faq-a').length,
+                faqsHidden: [...document.querySelectorAll('.faq-a')]
+                    .filter((e) => e.offsetHeight === 0).length,
+                /* hero は紙では中身の高さまで縮む。中に絶対配置のものが
+                   残っていると、縮んだぶんだけ本文の上に重なって刷られる
+                   （SCROLL の案内がチップスの上に乗っていた） */
+                floating: [...document.querySelectorAll('.hero *')]
+                    .filter((e) => { const c = getComputedStyle(e);
+                        return c.display !== 'none' && (c.position === 'absolute' || c.position === 'fixed'); })
+                    .map((e) => e.className || e.tagName),
+                /* 濃色の地に白い字を置いた部品は、地が刷られないと
+                   白い紙に白い字として残る。フッターの「相談してみる」が
+                   まさにそうなっていた。刷られる文字を全部見て回る */
+                invisible: (() => {
+                    const out = [];
+                    for (const e of document.querySelectorAll('body *')) {
+                        const t = [...e.childNodes]
+                            .filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join('');
+                        if (!t) continue;
+                        /* video / audio の中の文字は、再生できないブラウザ向けの
+                           控えの文。動くブラウザでは描かれないので数えない */
+                        if (e.matches('video, audio, canvas, noscript')) continue;
+                        const cs = getComputedStyle(e);
+                        if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity === 0) continue;
+                        if (e.closest('[hidden]')) continue;
+                        let hidden = false;
+                        for (let a = e; a; a = a.parentElement) {
+                            const s2 = getComputedStyle(a);
+                            if (s2.display === 'none' || s2.visibility === 'hidden' || +s2.opacity === 0) { hidden = true; break; }
+                        }
+                        if (hidden) continue;
+                        out.push([t.slice(0, 20), cs.color]);
+                    }
+                    return out;
+                })(),
             };
         });
         check(`${file} は紙でも見出しが読める`, cr(r.head) >= 7, `${cr(r.head).toFixed(1)}:1`);
         check(`${file} は紙でも本文が読める`, cr(r.body) >= 7, `${cr(r.body).toFixed(1)}:1`);
         check(`${file} は紙にヘッダーを刷らない`, r.navHidden);
         check(`${file} は紙で中身が薄くならない`, r.faded === 0, `${r.faded} 個が半透明`);
+        check(`${file} は紙に計算機を刷らない`, r.calcShown === 0, `${r.calcShown} 個`);
+        check(`${file} は紙にも見本の映像を残す`, r.samplesHidden === 0, `${r.samplesHidden} / ${r.samples} 本が非表示`);
+        check(`${file} は紙に背景の映像を刷らない`, r.heroVideoShown === 0, `${r.heroVideoShown} 個`);
+        check(`${file} は紙で囲いを外している`, r.clipped === 0, `${r.clipped} 個がはみ出し切り`);
+        check(`${file} は紙でも答えを開いておく`, r.faqsHidden === 0, `${r.faqsHidden} / ${r.faqs} 件が閉じたまま`);
+        check(`${file} は紙の hero に浮いたものを残さない`, r.floating.length === 0, r.floating.join(' / '));
+        const faint = r.invisible.filter(([, c]) => cr(c) < 3);
+        check(`${file} は紙に白い字を残さない`, faint.length === 0,
+            faint.slice(0, 3).map(([t, c]) => `「${t}」${c}`).join(' / ') || `${r.invisible.length} 個を確認`);
         await page.close();
     }
 }
