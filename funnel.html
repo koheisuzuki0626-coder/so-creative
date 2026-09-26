@@ -81,6 +81,24 @@
             .step { grid-template-columns: 1fr 3.6em 3.4em; }
             .step .bar-wrap { grid-column: 1 / -1; }
         }
+    
+        /* ---- 紙 ---- 2026-09-26
+           画面と同じ濃色で刷る。ブラウザは既定で背景色を刷らないので、
+           この指定が無いと地の #1d201f が乗らず、ほぼ白の文字だけが残る。
+           print-color-adjust: exact は、印刷ダイアログの「背景のグラフィック」が
+           off でも色を落とさせない指定。公開ページ（site.css）と同じ扱いにする。
+           このページは site.css を読んでいないので、ここに書く必要がある */
+        @media print {
+            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            /* @page の余白の中は背景が塗られない。余白を 0 にして body で取り直す */
+            @page { margin: 0; }
+            html { background: var(--bg); }
+            body { max-width: none; padding: 14mm; }
+            a { color: inherit; }
+            h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
+            /* 横スクロールの入れ物はページをまたげない。丸ごと次ページへ送られる */
+            tr, .note { break-inside: avoid; page-break-inside: avoid; }
+        }
     </style>
 </head>
 <body>

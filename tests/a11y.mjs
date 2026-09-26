@@ -246,6 +246,36 @@ for (const [file, w, h, label] of revealCases) {
             faint.slice(0, 3).map(([t, c]) => `「${t}」${c}`).join(' / ') || `${r.invisible.length} 個を確認`);
         await page.close();
     }
+
+    /* 社内用の3ページは site.css を読まず、<style> にトークンを複製している。
+       つまり印刷の指定も複製が要る。2026-09-26 まで @media print が無く、
+       紙では地が落ちて、ほぼ白の文字だけが残る状態だった
+       （Chrome が薄い文字を勝手に濃くするので本文は読めたが、見出しは薄いまま） */
+    for (const file of ['roadmap.html', 'record.html', 'funnel.html']) {
+        const page = await open(browser, { page: file, width: 1280 });
+        await page.emulateMedia({ media: 'print' });
+        await page.waitForTimeout(300);
+        const r = await page.evaluate(() => {
+            const cs = getComputedStyle(document.body);
+            const h = document.querySelector('h1') || document.querySelector('h2');
+            const pEl = [...document.querySelectorAll('p')].find((e) => e.textContent.trim().length > 40);
+            return {
+                bg: cs.backgroundColor,
+                adjust: cs.printColorAdjust || cs.webkitPrintColorAdjust,
+                head: h ? getComputedStyle(h).color : null,
+                body: pEl ? getComputedStyle(pEl).color : null,
+                /* 横スクロールの入れ物はページをまたげない */
+                clipped: [...document.querySelectorAll('.wrap-x')]
+                    .filter((e) => getComputedStyle(e).overflowX !== 'visible').length,
+            };
+        });
+        check(`${file} は紙でも地が濃いまま`, lum(r.bg) < 0.1, r.bg);
+        check(`${file} は紙でも背景色を落とさない`, r.adjust === 'exact', String(r.adjust));
+        check(`${file} は紙でも見出しが読める`, cr(r.head, r.bg) >= 7, `${cr(r.head, r.bg).toFixed(1)}:1`);
+        check(`${file} は紙でも本文が読める`, cr(r.body, r.bg) >= 4.5, `${cr(r.body, r.bg).toFixed(1)}:1`);
+        check(`${file} は紙で囲いを外している`, r.clipped === 0, `${r.clipped} 個がはみ出し切り`);
+        await page.close();
+    }
 }
 
 await browser.close();
