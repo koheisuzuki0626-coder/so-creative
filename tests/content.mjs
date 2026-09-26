@@ -834,6 +834,27 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         noindexed.length === 0 || noindexed.length === PUBLIC.length,
         pub.map(([f, v]) => `${f}:${v || '-'}`).join(' '));
 
+    /* ---- ランドマークとタグの釣り合い（2026-09-26） ----
+       index.html だけ <main> が無く、余分な div の閉じタグが1つ宙に浮いていた。
+       ブラウザは黙って直すので見た目には出ないが、
+       ・スクリーンリーダーの「本文へ飛ぶ」が効かない
+       ・a11y.mjs が本文を切り出す処理が空振りする（indexOf が -1 を返し、
+         index.html だけ「自分自身にリンクしていない」検査が素通りしていた）
+       の2つが起きていた */
+    for (const f of PUBLIC) {
+        const raw = readFileSync(`${ROOT}/${f}`, 'utf8');
+        const h = raw.replace(/<!--[\s\S]*?-->/g, '');
+        check(`${f} に <main> がある`, /<main[\s>]/.test(h) && /<\/main>/.test(h));
+        const body = h.slice(h.indexOf('<body'), h.indexOf('</body>'))
+            .replace(/<script[\s\S]*?<\/script>/g, '');
+        for (const t of ['div', 'section', 'main', 'header', 'footer', 'ul', 'li']) {
+            const o = (body.match(new RegExp(`<${t}[\\s>]`, 'g')) || []).length;
+            const c = (body.match(new RegExp(`</${t}>`, 'g')) || []).length;
+            if (o !== c) check(`${f} の <${t}> が釣り合っている`, false, `開 ${o} / 閉 ${c}`);
+        }
+        check(`${f} のタグが釣り合っている`, true);
+    }
+
     /* ---- 開業日の切り替え手順に書いてある枚数（2026-09-26） ----
        ロードマップの「サイトを検索に出す」に「公開◯ページの noindex を外す」と
        書いてある。ページを足したときにここを直し忘れると、当日その枚数だけ外して
