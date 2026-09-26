@@ -121,6 +121,43 @@ for (const [file, w, h, label] of revealCases) {
     }
 }
 
+/* ---- 紙に出したときに読めるか（2026-09-26） ----
+   地を濃色にしたので、印刷の指定が無いと紙が真っ白になる。
+   ブラウザは既定で背景を刷らないため、地の #1d201f は紙に乗らず、
+   文字の #f2f4f3（ほぼ白）だけが残る。料金と権利のページは
+   「稟議に添える」「法務に見せる」と書いてあるので、刷られる前提で持たせる。
+   遷移も切っておく。切らないと、印刷に切り替えた瞬間から 0.9s かけて
+   0 → 1 へ動くので、その途中で刷られると半透明のまま紙に乗る */
+{
+    const lum = (c) => {
+        const v = (c.match(/[\d.]+/g) || []).slice(0, 3).map(Number)
+            .map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; });
+        return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+    };
+    const cr = (c) => (1.05) / (lum(c) + 0.05);   /* 白い紙に対して */
+    for (const file of ['index.html', 'pricing.html', 'quality.html', 'copyright.html', 'about.html']) {
+        const page = await open(browser, { page: file, width: 1280 });
+        await page.emulateMedia({ media: 'print' });
+        await page.waitForTimeout(400);
+        const r = await page.evaluate(() => {
+            const g = (s) => { const e = document.querySelector(s); return e ? getComputedStyle(e).color : null; };
+            const nav = document.getElementById('nav');
+            return {
+                head: g('h1') || g('h2'),
+                body: g('.body-text'),
+                navHidden: !nav || getComputedStyle(nav).display === 'none',
+                faded: [...document.querySelectorAll('.reveal, .reveal-stagger > *')]
+                    .filter((e) => getComputedStyle(e).opacity !== '1').length,
+            };
+        });
+        check(`${file} は紙でも見出しが読める`, cr(r.head) >= 7, `${cr(r.head).toFixed(1)}:1`);
+        check(`${file} は紙でも本文が読める`, cr(r.body) >= 7, `${cr(r.body).toFixed(1)}:1`);
+        check(`${file} は紙にヘッダーを刷らない`, r.navHidden);
+        check(`${file} は紙で中身が薄くならない`, r.faded === 0, `${r.faded} 個が半透明`);
+        await page.close();
+    }
+}
+
 await browser.close();
 
 /* JSが動かない端末で真っ白にならないこと（2026-09-24 に実機で発生）。

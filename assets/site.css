@@ -1888,3 +1888,54 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
     color: var(--accent-ink); padding-top: .35em; }
 .genre-index .g-name { font-size: 1.04rem; font-weight: 500; }
 .genre-index .g-lead { font-size: .9rem; line-height: 1.8; color: var(--ink-dim); }
+
+/* ---------- 印刷 ---------- */
+/* 2026-09-25 に地を濃色にしたことで、紙に出すと真っ白になっていた。
+   ブラウザは既定で背景を刷らないので、地の #1d201f は紙に乗らず、
+   文字の #f2f4f3（ほぼ白）だけが残って何も読めない状態だった。
+   料金ページと権利ページは「稟議に添える」「法務に見せる」と書いてある以上、
+   刷られる前提で持たせる必要がある。色だけ入れ替え、紙に要らないものは落とす */
+@media print {
+    :root {
+        color-scheme: light;
+        --bg: #fff;
+        --bg-alt: #fff;
+        --card: #fff;
+        --bg-deep: #fff;
+        --ink: #000;
+        --ink-2: #1a1a1a;
+        --ink-dim: #444;          /* 紙では薄い灰が飛ぶので、画面より濃くする */
+        --on-ink: #fff;
+        --line: rgba(0, 0, 0, 0.28);
+        --line-strong: rgba(0, 0, 0, 0.45);
+        --accent: #14503c;        /* 紙は白地なので、濃いほうの深緑に戻す */
+        --accent-ink: #14503c;
+        --accent-soft: rgba(28, 92, 69, 0.10);
+    }
+    body { background: #fff; color: #000; }
+    /* 紙に要らないもの。ヘッダーは全ページに刷られてしまうし、
+       スクロール前提の演出は1枚目を占領するだけ */
+    #nav, .menu, .menu-scrim, .progress, .hero-media, .lightbox,
+    .swipe-hint, .cta-actions, .nav-uses { display: none !important; }
+    /* 100svh のままだと、見出しだけで1ページ使う */
+    .hero { min-height: auto; padding: 24pt 0; background: none; }
+    .hero::before { display: none; }
+    .section, .statement, .cta-band, .page-head { padding: 18pt 0; }
+    /* 出現アニメーションは、JS が動く前に刷られると中身ごと消える。
+       transition も切る。切らないと、印刷に切り替えた瞬間から 0.9s かけて
+       0 → 1 へ動くので、その途中で刷られると半透明のまま紙に乗る */
+    .reveal, .reveal-stagger, .reveal-stagger > * {
+        opacity: 1 !important; transform: none !important; transition: none !important;
+    }
+    .stage-track { height: auto; }
+    .stage-pin { position: static; height: auto; }
+    .stage-mark { position: static; transform: none; opacity: 1;
+                  display: inline-block; margin-bottom: 8pt; }
+    .stack { display: none; }
+    /* 枠のあるものが行またぎで割れないように */
+    .genre, .plan, .card, .calc, .plan-note, .plan-common, .plan-pay, .plan-tax,
+    .flow-note, .faq-item, table { break-inside: avoid; page-break-inside: avoid; }
+    h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
+    a { color: inherit; border-bottom: 0; }
+    video { display: none; }
+}

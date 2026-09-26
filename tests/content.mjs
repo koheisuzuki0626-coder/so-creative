@@ -748,8 +748,11 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     }
 
     /* カードの地を直書きの白に戻さない。白のままでいいのは
-       「濃い帯の上の主ボタン」と「ヒーローに重なったナビの CTA」の2つだけ */
-    const whites = (css.replace(/\/\*[\s\S]*?\*\//g, '').match(/background:\s*#fff\b/g) || []).length;
+       「濃い帯の上の主ボタン」と「ヒーローに重なったナビの CTA」の2つだけ。
+       @media print の中は紙の話なので数えない（紙は白が正しい） */
+    const screenCss = css.replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/@media print\s*\{[\s\S]*$/, '');
+    const whites = (screenCss.match(/background:\s*#fff\b/g) || []).length;
     check('直書きの白い地は2か所だけ', whites === 2, `${whites} か所`);
 
     /* --ink を背景に敷いた上に白い文字を置くと、白地に白になる */
