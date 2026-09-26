@@ -8,6 +8,11 @@ const pwmod = (await import(PW)).default;
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
 const browser = await pwmod.chromium.launch();
 const page = await open(browser, {});
+/* 公開16ページ。検索まわりと <b> の検査で共通に使う */
+const PUBLIC_PAGES = ['index.html', 'pricing.html', 'works.html', 'about.html', 'privacy.html',
+    'copyright.html', 'quality.html', 'company-video.html', 'recruit-video.html',
+    'service-video.html', 'ad-video.html', 'sns-video.html', 'exhibition-video.html',
+    'internal-video.html', 'animation-video.html', 'music-video.html'];
 const idx = readFileSync(`${ROOT}/index.html`, 'utf8');
 /* 計算機は 2026-09-23 に assets/pricing.js へ切り出した。
    値（秒単価・ナレーションの増減）はそちらにある */
@@ -655,15 +660,35 @@ for (const [label, sec] of [['30秒', 30], ['90秒', 90], ['3分', 180], ['5分'
 check('タイトルの「最短2週間」が実態と合う',
     /最短2週間/.test(idx) && Math.min(...TIERS.flatMap(t => LENGTHS.map(s => leadWeeks(t, s)))) === 2);
 
+/* ---- <b> を入れ子にしない（2026-09-26） ----
+   料金の文を差し替えたとき、既にある <b>…</b> の中に書き足してしまい、
+   段落まるごとが太字になっていた。数えるだけでは釣り合ってしまうので、
+   深さを見る。<style> と <script> の中の文字（CSS のコメントに <b> と
+   書いてある）は数えない */
+{
+    const FILES = [...PUBLIC_PAGES, 'funnel.html', 'roadmap.html', 'record.html'];
+    for (const f of FILES) {
+        const html = readFileSync(`${ROOT}/${f}`, 'utf8')
+            .replace(/<style[\s\S]*?<\/style>/g, '')
+            .replace(/<script[\s\S]*?<\/script>/g, '');
+        let depth = 0, nested = 0, stray = 0, deepest = '';
+        for (const m of html.matchAll(/<b\b[^>]*>|<\/b\s*>/g)) {
+            if (m[0].startsWith('</')) { depth > 0 ? depth-- : stray++; }
+            else {
+                if (depth > 0 && !nested++) deepest = html.slice(Math.max(0, m.index - 50), m.index + 30).replace(/\s+/g, ' ');
+                depth++;
+            }
+        }
+        check(`${f} の <b> が入れ子になっていない`, nested === 0, deepest);
+        check(`${f} の <b> が釣り合っている`, depth === 0 && stray === 0, `閉じ忘れ ${depth} / 余分 ${stray}`);
+    }
+}
+
 /* ---- 検索まわり（2026-09-26） ----
    開業日まで noindex は外さない（体調しだいで未定。record.html の判断）。
    いま出来るのは、外した日にそのまま効く状態にしておくところまで。 */
 {
-    const B = 'https://koheisuzuki0626-coder.github.io/so-creative/';
-    const PUB = ['index.html', 'pricing.html', 'works.html', 'about.html', 'privacy.html',
-        'copyright.html', 'quality.html', 'company-video.html', 'recruit-video.html',
-        'service-video.html', 'ad-video.html', 'sns-video.html', 'exhibition-video.html',
-        'internal-video.html', 'animation-video.html', 'music-video.html'];
+    const PUB = PUBLIC_PAGES;
     const titles = new Map(), descs = new Map();
     for (const f of PUB) {
         const h = readFileSync(`${ROOT}/${f}`, 'utf8');
