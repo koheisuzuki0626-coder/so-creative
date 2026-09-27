@@ -1500,9 +1500,13 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
             (body.match(/.{0,20}目標の時間単価.{0,20}/) || [''])[0]);
         /* 経緯の説明として ¥14,900 に触れるのは構わない（9/21 に追記した）。
            見るのは「前提」の行で、いまの数字として出ていないこと */
-        const premise = await pg.locator('.note').innerText();
-        check(`${file} に古い時間単価が残っていない`, !/14,900/.test(premise),
-            (premise.match(/.{0,24}14,900.{0,24}/) || [''])[0]);
+        /* .note は1枚とは限らない（2026-09-27 に record.html へ出典の行を足して
+           strict mode で落ちた）。見たいのは「前提：」の行なので、それを選ぶ */
+        const notes = await pg.locator('.note').allInnerTexts();
+        const premise = notes.find((t) => t.includes('前提：'));
+        check(`${file} に「前提：」の行がある`, premise !== undefined, `${notes.length} 枚の .note`);
+        check(`${file} に古い時間単価が残っていない`, !/14,900/.test(premise ?? ''),
+            ((premise ?? '').match(/.{0,24}14,900.{0,24}/) || [''])[0]);
         await pg.close();
     }
 }
