@@ -705,6 +705,27 @@ check('タイトルの「最短2週間」が実態と合う',
         check('天井の稼働が 1,373h に収まる本数から出ている',
             rec.includes(`${(n * Hh(180)).toLocaleString('en-US')}h`), `${n}本 ${n * Hh(180)}h`);
     }
+    /* 現実的な上限＝稼働70%（余白3割）。天井（99%）を計画に使わせない。
+       段別の本数と金額を、料金モデルから計算し直して突き合わせる */
+    {
+        const REAL = 0.70;
+        for (const t of TIERS) {
+            const nar = t.id === 'matsu' ? 'human' : 'ai';
+            const h = hours(t, 180, 1, nar), p = price(t, 180, 1, nar);
+            const n = Math.floor(CAP * REAL / h);
+            const man = Math.round((n * p - TOOLS) / 10000).toLocaleString('en-US');
+            check(`現実的な上限（${t.label}3分）の本数が計算と一致`, rec.includes(`年${n}本`), `年${n}本`);
+            check(`現実的な上限（${t.label}3分）の金額が計算と一致`, rec.includes(`${man}万`), `${man}万`);
+        }
+        check('稼働上限を70%と書いている', /稼働上限を70%＝961h/.test(rec), '70%＝961h');
+        check('天井を計画に使わないと書いている', /天井は余白ゼロの数字なので、計画に使わないこと/.test(rec));
+    }
+    /* クレジットの買い足しは、古い 33/秒 の数字だと断ってから出す */
+    check('買い足しの額が古い単価のものだと断ってある',
+        /古い 33クレジット\/秒（Seedance）での見積り/.test(rec));
+    check('いまの単価での枠の使用率も併記してある',
+        /枠の20%/.test(rec) && /枠の37%/.test(rec));
+
     /* 古いツール代（月5万＝年60万）で引いた額に戻っていないか */
     check('年収を古いツール代で引いていない',
         !/¥16,680,000|¥26,400,000|¥32,400,000/.test(rec), '月5万の前提');
