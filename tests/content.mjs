@@ -683,10 +683,41 @@ check('タイトルの「最短2週間」が実態と合う',
     check('持ち時間に対する割合が計算と一致', rec.includes(`持ち時間の${pct}`), pct);
     check('空き時間の残りが 1,373h − 計画 と一致',
         rec.includes(`${(CAP - year).toFixed(1)}h 空く`), `${(CAP - year).toFixed(1)}h`);
-    /* ナレーションを数えない古い値に戻っていないか */
-    const old = q.reduce((a, [m, mix]) => a + mix.reduce((x, sec) => x + hours(U, sec, 1, 'none'), 0) * m, 0);
-    check('ナレーションを数えない工数に戻っていない',
-        !rec.includes(`${Math.round(old)}h`) && !rm.includes(`${Math.round(old)}h`), `${Math.round(old)}h`);
+    /* 「この先の伸ばし方」の各行。段階1だけが12ヶ月のならし年で、
+       あとは定常（その組み合わせを12ヶ月続けたとき）。
+       月4件の行は、売上を定常・工数をならし年で出していて基準が混ざっていた */
+    const P = (sec) => price(U, sec, 1, 'ai');
+    const Hh = (sec) => hours(U, sec, 1, 'ai');
+    const TOOLS = 694020;
+    const yenStr = (n) => `¥${Math.round(n).toLocaleString('en-US')}`;
+    const rows = [
+        ['段階2（梅3分×月2件）', P(180) * 2 * 12, Hh(180) * 2 * 12],
+        ['月4件（P3 を2セット）', (P(180) + P(90)) * 2 * 12, (Hh(180) + Hh(90)) * 2 * 12],
+    ];
+    for (const [lab, sales, h] of rows) {
+        check(`${lab} の年収が式と一致`, rec.includes(yenStr(sales - TOOLS)), yenStr(sales - TOOLS));
+        check(`${lab} の工数が式と一致`, rec.includes(`${Math.round(h).toLocaleString('en-US')}h`),
+            `${Math.round(h)}h`);
+    }
+    /* 天井は 1,373h を梅3分で埋められるだけ */
+    {
+        const n = Math.floor(CAP / Hh(180));
+        check('天井の稼働が 1,373h に収まる本数から出ている',
+            rec.includes(`${(n * Hh(180)).toLocaleString('en-US')}h`), `${n}本 ${n * Hh(180)}h`);
+    }
+    /* 古いツール代（月5万＝年60万）で引いた額に戻っていないか */
+    check('年収を古いツール代で引いていない',
+        !/¥16,680,000|¥26,400,000|¥32,400,000/.test(rec), '月5万の前提');
+
+    /* ナレーションを数えない古い値に戻っていないか。
+       訂正の経緯として本文に「464h」と書いてあるので、prose は見ない。
+       戻るとしたら数字のセルと roadmap の稼働の一文なので、そこだけ見る */
+    const old = `${Math.round(q.reduce((a, [m, mix]) =>
+        a + mix.reduce((x, sec) => x + hours(U, sec, 1, 'none'), 0) * m, 0))}h`;
+    const cells = [...rec.matchAll(/<td class="num">(?:<b>)?([^<]*)/g)].map((m) => m[1].trim());
+    check('ナレーションを数えない工数に戻っていない（表の数字）', !cells.includes(old), old);
+    check('ナレーションを数えない工数に戻っていない（roadmap の一文）',
+        !new RegExp(`年${old}`).test(rm), old);
 }
 
 /* ---- <b> を入れ子にしない（2026-09-26） ----
