@@ -660,6 +660,35 @@ for (const [label, sec] of [['30秒', 30], ['90秒', 90], ['3分', 180], ['5分'
 check('タイトルの「最短2週間」が実態と合う',
     /最短2週間/.test(idx) && Math.min(...TIERS.flatMap(t => LENGTHS.map(s => leadWeeks(t, s)))) === 2);
 
+/* ---- 計画の工数を工数モデルから引き直す（2026-09-27） ----
+   record.html の P1〜P3 の工数は、価格がナレーション込みの額を使っているのに
+   工数ではナレーションの 1.0h/本 を数えていなかった（年 463.5h と出て 464h と
+   書いてあった）。正しくは 487.5h・持ち時間の36%。
+   価格と工数で前提を変えると、時間単価がそのぶん高く出る */
+{
+    const U = TIERS.find((t) => t.id === 'ume');
+    const CAP = 1373;                       // 制作に使える時間／年（空き時間の実態）
+    const q = [[3, [90, 30]], [3, [180, 30]], [6, [180, 90]]];
+    const monthly = q.map(([, mix]) => mix.reduce((a, sec) => a + hours(U, sec, 1, 'ai'), 0));
+    const year = q.reduce((a, [m], i) => a + monthly[i] * m, 0);
+    const rec = readFileSync(`${ROOT}/record.html`, 'utf8');
+    const rm = readFileSync(`${ROOT}/roadmap.html`, 'utf8');
+    for (const h of monthly) {
+        check(`受注構成の月の工数が工数モデルと一致（${h.toFixed(1)}h）`,
+            rec.includes(`${h.toFixed(1)}h`), `${h.toFixed(1)}h`);
+    }
+    const yh = `${year.toFixed(1)}h`;
+    check('計画の年間工数が工数モデルと一致', rec.includes(yh) && rm.includes(yh), yh);
+    const pct = `${Math.round(year / CAP * 100)}%`;
+    check('持ち時間に対する割合が計算と一致', rec.includes(`持ち時間の${pct}`), pct);
+    check('空き時間の残りが 1,373h − 計画 と一致',
+        rec.includes(`${(CAP - year).toFixed(1)}h 空く`), `${(CAP - year).toFixed(1)}h`);
+    /* ナレーションを数えない古い値に戻っていないか */
+    const old = q.reduce((a, [m, mix]) => a + mix.reduce((x, sec) => x + hours(U, sec, 1, 'none'), 0) * m, 0);
+    check('ナレーションを数えない工数に戻っていない',
+        !rec.includes(`${Math.round(old)}h`) && !rm.includes(`${Math.round(old)}h`), `${Math.round(old)}h`);
+}
+
 /* ---- <b> を入れ子にしない（2026-09-26） ----
    料金の文を差し替えたとき、既にある <b>…</b> の中に書き足してしまい、
    段落まるごとが太字になっていた。数えるだけでは釣り合ってしまうので、
