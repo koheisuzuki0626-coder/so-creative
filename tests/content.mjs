@@ -825,6 +825,68 @@ check('タイトルの「最短2週間」が実態と合う',
         /max-width: 860px[\s\S]{0,200}saveData/.test(idx) && /removeAttribute\('src'\)/.test(idx));
 }
 
+/* ---- タイトルの値段が、そのページが実際に薦める構成と合っているか（2026-09-28） ----
+   company-video.html のタイトルだけ梅（60秒 ¥300,000）を出していた。
+   ところが本文は「よく選ばれるのは60秒・竹（¥384,000）」と書いていて、
+   載せているサンプルも登場人物2人＝竹。検索結果で ¥300,000 を見た人が
+   そのサンプルを観ると、¥84,000 安く見積もることになる。
+   recruit-video.html は前から竹の額（90秒 ¥531,000）を出していて、
+   サンプルが4人で料金表の上限（松で3人）を超えることも本文に書いてある。
+   その形に揃えた。music-video.html はタイトルに額を出していないので対象外。 */
+{
+    /* [ファイル, タイトルに出す尺, タイトルに出す段] */
+    const LEAD = [
+        ['company-video.html',    60, '竹'],
+        ['recruit-video.html',    90, '竹'],
+        ['service-video.html',    15, '梅'],
+        ['ad-video.html',         15, '梅'],
+        ['sns-video.html',        15, '梅'],
+        ['exhibition-video.html', 15, '梅'],
+        ['animation-video.html',  60, '梅'],
+        ['internal-video.html',   15, '梅'],
+    ];
+    const yen = (n) => `¥${n.toLocaleString('en-US')}`;
+    for (const [f, sec, label] of LEAD) {
+        const h = readFileSync(`${ROOT}/${f}`, 'utf8');
+        const t = TIERS.find((x) => x.label === label);
+        const want = yen(price(t, sec, 1));
+        const head = {
+            title: (h.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '',
+            description: (h.match(/<meta name="description" content="([\s\S]*?)"/) || [])[1] || '',
+            'og:description': (h.match(/<meta property="og:description" content="([\s\S]*?)"/) || [])[1] || '',
+        };
+        /* 尺に付いた額だけを見る。本数加算の ¥65,000 のような別の額が
+           同じ文に入っているのは正しい（sns-video の description がそれ）。
+           そちらは「2本目の値段」の検査で見ている */
+        for (const [where, text] of Object.entries(head)) {
+            for (const m of text.matchAll(/(\d+)秒\s*(¥[\d,]+)/g)) {
+                check(`${f} の ${where} の「${m[1]}秒 ${m[2]}」が料金表と合っている`,
+                    Number(m[1]) === sec && m[2] === want, `期待 ${sec}秒 ${want}`);
+            }
+        }
+        /* タイトルから額が消えていないこと（消すと上のループが空回りする） */
+        check(`${f} の title が ${sec}秒・${label}（${want}）を出している`,
+            new RegExp(`${sec}秒\\s*${want}`).test(head.title), head.title);
+        /* 「よく選ばれるのは」が別の段を指していたら、タイトルとどちらかが古い */
+        const rec = h.match(/よく選ばれるのは、[^。<]*?([梅竹松])/);
+        if (rec) {
+            check(`${f} の「よく選ばれるのは」がタイトルと同じ段（${label}）`,
+                rec[1] === label, `本文 ${rec[1]} ／ タイトル ${label}`);
+        }
+    }
+    /* サンプルに映る人数が、タイトルの段で作れる人数を超えていないか。
+       超えるなら、その旨を本文に書いていること */
+    const CAP = { '梅': 0, '竹': 2, '松': 3 };
+    for (const [f, , label] of LEAD) {
+        const h = readFileSync(`${ROOT}/${f}`, 'utf8');
+        const m = h.match(/登場人物は(\d+)人/);
+        if (!m) continue;
+        const people = Number(m[1]);
+        check(`${f} のサンプルの人数（${people}人）が ${label}（${CAP[label]}人まで）で作れる、または超える旨を書いている`,
+            people <= CAP[label] || /料金表の(?:上限|範囲)/.test(h), `${label} は ${CAP[label]}人まで`);
+    }
+}
+
 /* ---- 2本目の値段を ¥65,000 と言い切らない（2026-09-26） ----
    式は base + 秒単価 × 【合計】秒数 + ¥65,000 × (本数 − 1) なので、
    2本目にも秒単価がかかる。¥65,000 は本数加算だけの額で、2本目の値段ではない。
