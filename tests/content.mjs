@@ -1728,6 +1728,65 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     }
 }
 
+/* ---- 料金表と計算機に、出せる人数を出す（2026-09-30） ----
+   ジャンルのページの表には前から「梅（人物なし）」とあったが、トップと料金ページの表、
+   計算機の段の選択肢には「標準／上／特上」しかなく、何が違うのか人数で読めなかった */
+{
+    for (const f of ['index.html', 'pricing.html']) {
+        const h = readFileSync(`${ROOT}/${f}`, 'utf8');
+        const head = (h.match(/<thead><tr><th scope="col">尺(?:（1本）)?<\/th>([\s\S]*?)<\/tr><\/thead>/) || [])[1] || '';
+        check(`${f} の料金表の見出しに人数がある`, /人物なし/.test(head) && /2人まで/.test(head) && /3人まで/.test(head), head.replace(/<[^>]+>/g, ' ').trim());
+    }
+    const pg = await open(browser, { page: 'pricing.html' });
+    const opts = await pg.locator('#calc-tier .calc-opt').allInnerTexts();
+    check('計算機の段の選択肢に人数がある',
+        /人物なし/.test(opts[0] || '') && /2人まで/.test(opts[1] || '') && /3人まで/.test(opts[2] || ''), opts.join(' / ').replace(/\n/g, ' '));
+    await pg.close();
+}
+
+/* ---- スマホで、ヒーローの文字の塊が画面に収まる（2026-09-30） ----
+   画面に留めているので、はみ出すとボタンが下で切れ、見出しがヘッダーの下に潜る
+   （375×560 で 631px の塊に対して使えるのは 457px だった） */
+{
+    for (const [w, h] of [[375, 560], [390, 664], [430, 740]]) {
+        const pg = await open(browser, { page: 'index.html', width: w, height: h, mobile: true });
+        const span = await pg.evaluate(() => document.getElementById('top').offsetHeight - innerHeight);
+        await pg.evaluate((y) => window.scrollTo({ top: y, behavior: 'instant' }), span);
+        await pg.waitForTimeout(350);
+        const r = await pg.evaluate(() => {
+            const nav = document.getElementById('nav').getBoundingClientRect().bottom;
+            const h1 = document.querySelector('.hero h1').getBoundingClientRect();
+            const act = document.querySelector('.hero-actions').getBoundingClientRect();
+            return { nav: Math.round(nav), h1: Math.round(h1.top), act: Math.round(act.bottom), vh: innerHeight };
+        });
+        check(`${w}×${h}：ヒーローの見出しがヘッダーの下に潜らない`, r.h1 >= r.nav, JSON.stringify(r));
+        check(`${w}×${h}：ヒーローのボタンが画面の下で切れない`, r.act <= r.vh, JSON.stringify(r));
+        await pg.close();
+    }
+}
+
+/* ---- 背の低い画面（スマホの横向き）ではヒーローを留めない（2026-09-30） ----
+   高さ 390px では見出し・説明・ボタンが収まらず、ボタンが切れていた。
+   留めずに最初から文字を出す。あわせて、社内ページの表が小さい iPhone で横にはみ出していた */
+{
+    for (const [w, h] of [[664, 390], [844, 390]]) {
+        const pg = await open(browser, { page: 'index.html', width: w, height: h, mobile: true });
+        const r = await pg.evaluate(() => ({
+            pos: getComputedStyle(document.querySelector('.hero-pin')).position,
+            op: Number(getComputedStyle(document.querySelector('.hero h1')).opacity),
+        }));
+        check(`${w}×${h}：ヒーローを留めていない`, r.pos !== 'sticky', r.pos);
+        check(`${w}×${h}：開いた直後から見出しが見える`, r.op === 1, String(r.op));
+        await pg.close();
+    }
+    for (const f of ['record.html', 'roadmap.html', 'funnel.html', ...PUBLIC_PAGES]) {
+        const pg = await open(browser, { page: f, width: 375, height: 560, mobile: true });
+        const sw = await pg.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        check(`375×560：${f} が横にはみ出さない`, sw <= 1, `${sw}px`);
+        await pg.close();
+    }
+}
+
 /* ---- ヒーロー：開いた直後は映像だけ、スクロールで見出し（2026-09-29） ----
    「ヒーローは動画だけ見せて、スクロールしたら撮影しない、映像制作って出るようにして」。
    .hero を画面2枚ぶんにして中を留め、--hero-r（0→1）で映像を落として文字を出す */

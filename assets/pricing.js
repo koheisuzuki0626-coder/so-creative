@@ -79,13 +79,13 @@ const track = window.soTrack || (() => {});
            解像度や書き出し形式で差をつけるのはやめた。手間が増えないものに
            価格差をつけると、値付けの根拠ではなく口実になるため */
         const TIERS = [
-            { id: 'ume', label: '梅', sub: '標準', perSec: 4000, hours: 1.0, narration: false,
+            { id: 'ume', label: '梅', sub: '標準', cast: '人物なし', perSec: 4000, hours: 1.0, narration: false,
               detail: '登場人物なし（設備・製品・空間を中心に構成） ／ AIナレーションは料金に含まれます（本ごとに選べます。入れない本は1本につき −¥25,000／人物ナレーションは1名 ¥70,000〜で、何本に入れても1名ぶん） ／ 修正2回まで ／ 1080p（フルHD）で納品',
               use: 'SNS 投稿・社内共有・製品やサービスの紹介' },
-            { id: 'take', label: '竹', sub: '上', perSec: 5400, hours: 1.22, narration: false,
+            { id: 'take', label: '竹', sub: '上', cast: '2人まで', perSec: 5400, hours: 1.22, narration: false,
               detail: '登場人物2人まで（同じ人物を最後まで同じ顔で出せます） ／ AIナレーションは料金に含まれます（本ごとに選べます。入れない本は1本につき −¥25,000／人物ナレーションは1名 ¥70,000〜で、何本に入れても1名ぶん） ／ 修正3回まで ／ 1080p（フルHD）で納品',
               use: '採用サイト・会社紹介・サービス紹介' },
-            { id: 'matsu', label: '松', sub: '特上', perSec: 8000, hours: 1.36, narration: true,
+            { id: 'matsu', label: '松', sub: '特上', cast: '3人まで', perSec: 8000, hours: 1.36, narration: true,
               detail: '登場人物3人まで（4人以上は個別にお見積り） ／ 人物ナレーション込み（1名。声を選び、話す速さまで調整します。2人目は別途お見積り／ナレーションは本ごとに選べます。どの本にも人の声を入れないなら −¥25,000、ナレーションを入れない本は1本につきさらに −¥25,000） ／ 修正3回まで ／ 1080p（フルHD）で納品',
               use: '展示会での上映・ブランド映像・じっくり見せたい会社紹介' },
         ];
@@ -234,7 +234,7 @@ const track = window.soTrack || (() => {});
             if (!mailAddr) { return; }   // 宛先が分からない器は動かさない（空のメールを出さない）
 
             // 実物のラジオボタンで組む。丸が見えることで「選ぶところ」だと分かる
-            function makeOpt(text, box, group, value, onPick) {
+            function makeOpt(text, box, group, value, onPick, sub2 = '') {
                 const label = document.createElement('label');
                 label.className = 'calc-opt';
                 const input = document.createElement('input');
@@ -248,6 +248,13 @@ const track = window.soTrack || (() => {});
                 text_.className = 'calc-opt-t';
                 text_.dataset.narText = '';
                 text_.textContent = text;
+                /* 段の選択肢には、出せる人数を2行目に出す（9/30。料金を選ぶ場所で人数が分かるように） */
+                if (sub2) {
+                    const s2 = document.createElement('small');
+                    s2.className = 'calc-opt-s';
+                    s2.textContent = sub2;
+                    text_.append(s2);
+                }
                 label.append(input, dot, text_);
                 input.addEventListener('change', () => { if (input.checked) onPick(); });
                 box.append(label);
@@ -258,7 +265,7 @@ const track = window.soTrack || (() => {});
             const tierHint = q('tier-hint');
             TIERS.forEach((t) => {
                 const o = makeOpt(`${t.label} ${t.sub}`, tierBox, `calc-tier-${uid}`, t.id,
-                    () => { tier = t; nars = nars.map(() => defaultNar(t)); touch(); render(); });
+                    () => { tier = t; nars = nars.map(() => defaultNar(t)); touch(); render(); }, t.cast);
                 o.label.dataset.tier = t.id;
                 o.input.dataset.tier = t.id;
             });

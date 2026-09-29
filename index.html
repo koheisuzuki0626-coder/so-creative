@@ -601,7 +601,7 @@
                  会社紹介の定番は60秒・竹（載せているサンプルがそれ）なので外した -->
             <div class="compare-wrap reveal" tabindex="0" role="region" aria-label="尺ごとの料金の表（横にスクロールできます）">
                 <table class="compare">
-                    <thead><tr><th scope="col">尺（1本）</th><th scope="col">梅（標準）</th><th scope="col">竹（上）</th><th scope="col">松（特上）</th></tr></thead>
+                    <thead><tr><th scope="col">尺（1本）</th><th scope="col">梅（標準）<span class="th-sub">人物なし</span></th><th scope="col">竹（上）<span class="th-sub">2人まで</span></th><th scope="col">松（特上）<span class="th-sub">3人まで</span></th></tr></thead>
                     <tbody>
                         <tr><th scope="row">15秒</th><td>¥240,000</td><td>¥261,000</td><td>¥300,000</td></tr>
                         <tr><th scope="row">30秒</th><td>¥300,000</td><td>¥342,000</td><td>¥420,000</td></tr>
@@ -771,6 +771,7 @@
         const nav = document.getElementById('nav');
         const progress = document.getElementById('progress');
         const heroEl = document.getElementById('top');
+        const heroPin = heroEl.querySelector('.hero-pin');
         const stages = [...document.querySelectorAll('[data-stage]')];
         const darkAreas = [...document.querySelectorAll('.stage-dark, .cta-band')];
         const root = document.documentElement;
@@ -808,8 +809,10 @@
 
             /* ヒーロー（9/29）：画面に留めている区間（.hero の高さ − 画面1枚）の前6割で 0→1。
                残りの4割は文字が出きった状態で留まり、そのあと普通に流れていく */
+            /* 留めていないとき（背の低い画面・動きを減らす設定）は、最初から出しきった状態にする */
+            const heroPinned = getComputedStyle(heroPin).position === 'sticky';
             const heroSpan = heroEl.offsetHeight - window.innerHeight;
-            const heroR = heroSpan > 0 ? clamp01(window.scrollY / (heroSpan * 0.6)) : 1;
+            const heroR = heroPinned && heroSpan > 0 ? clamp01(window.scrollY / (heroSpan * 0.6)) : 1;
             heroEl.style.setProperty('--hero-r', heroR.toFixed(3));
             heroEl.classList.toggle('hero-open', heroR > 0.7);
 

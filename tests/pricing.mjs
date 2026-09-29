@@ -29,8 +29,9 @@ check('二度組み立てても選択肢が増えない', await (async () => {
         + await page.locator('#calc-cnt .calc-opt').count();
     return before === after;
 })());
+/* 9/30 から選択肢の2行目に出せる人数が入る（.calc-opt-s）。名前は1行目だけで見る */
 check('段の名前が梅竹松',
-    (await page.locator('#calc-tier .calc-opt').allInnerTexts()).join('|') === '梅 標準|竹 上|松 特上');
+    (await page.locator('#calc-tier .calc-opt-t').evaluateAll((els) => els.map((e) => e.firstChild.textContent))).join('|') === '梅 標準|竹 上|松 特上');
 /* 9/22 から尺は本ごとに選ぶ（select）。1本のときは行が1つだけ出る */
 check('本ごとの尺の行が本数ぶん出る', (await page.locator('#calc-len .calc-len-row').count()) === 1);
 check('尺が8つ', (await page.locator('#calc-len select[data-kind="len"][data-row="0"] option').count()) === LENGTHS.length);

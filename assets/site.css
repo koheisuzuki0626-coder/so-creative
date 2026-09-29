@@ -439,7 +439,10 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     padding: calc(var(--nav-h) + 60px) 0 90px;
     background: radial-gradient(70% 60% at 50% 38%, #262b29 0%, #141716 100%);
 }
-@media (prefers-reduced-motion: no-preference) {
+/* 背の低い画面（スマホの横向きなど、高さ 500px 以下）では留めない。
+   見出し・説明・ボタンが画面に収まらず、ボタンが下で切れていた（9/30）。
+   動きを減らす設定のときと同じく、最初から文字を出す */
+@media (prefers-reduced-motion: no-preference) and (min-height: 501px) {
     .js .hero { --hero-r: 0; height: 200svh; }
     .js .hero .hero-pin { position: sticky; top: 0; height: 100svh; min-height: 0; }
     /* 見えていないボタンをマウスで押せないようにする（キーボードでは入れる。下の :focus-within） */
@@ -1323,6 +1326,11 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
 }
 /* 実物の input は隠し、丸は .calc-dot で描く */
 .calc-opt input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
+@media (max-width: 860px) and (max-height: 640px) {
+    .hero-badge { display: none; }
+}
+/* 段の選択肢の2行目（出せる人数）。表の見出しの .th-sub と同じ扱い */
+.calc-opt-s, .th-sub { display: block; font-size: 0.78em; font-weight: 400; color: var(--ink-dim); margin-top: 2px; letter-spacing: 0; }
 .calc-dot {
     flex: none;
     width: 16px; height: 16px;
@@ -1698,6 +1706,16 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
     .stage-copy, .stack, .stage-mark { opacity: 1; transform: none; }
     .stage-mark { transform: translate(-50%, -50%); }
     .stage-bg { opacity: 0.18; transform: none; }
+    /* ヒーロー（9/30）：画面に留めているので、文字の塊が2段のヘッダーの下に収まらないと
+       ボタンが下で切れ、小さい iPhone では見出しがヘッダーの下に潜っていた（631px ／ 使えるのは457px）。
+       上下の余白・項目の間隔・チップとボタンの大きさを詰める */
+    .hero-pin { padding: calc(var(--nav-h) + 14px) 0 28px; }
+    .hero-badge { margin-bottom: 14px; }
+    .hero-lead { margin-top: 14px; font-size: 0.95rem; line-height: 1.7; }
+    .hero-chips { margin-top: 18px; gap: 6px; }
+    .hero-chips li { font-size: 0.8rem; padding: 5px 11px; }
+    .hero-actions { margin-top: 20px; gap: 10px; }
+    .hero-actions .pill { padding-top: 11px; padding-bottom: 11px; }
     #nav { padding: 10px 16px 0; flex-wrap: wrap; }
     #nav .logo { font-size: 1.12rem; }
     /* 狭い画面では項目を2段目に送り、入りきらないぶんは横スクロールさせる。
