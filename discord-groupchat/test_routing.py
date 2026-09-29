@@ -1660,7 +1660,8 @@ def run():
           in _srcH, False)
     check("当たり0本を控える", "_no_hit = bool(query) and not _hits" in _srcH, True)
     check("当たり0本なら『一般化してはいけない』と渡す",
-          "として一般化してはいけない" in _srcH and "if _no_hit else" in _srcH, True)
+          "として一般化してはいけない" in _srcH
+          and "if _no_hit else \"\")\n            + \"【トレンド概観】" in _srcH, True)
     check("当たり0本をレポートにも残す",
           "お題の語に当たった動画は0本" in _srcH, True)
 
