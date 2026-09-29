@@ -4888,12 +4888,6 @@ _GENERIC_QUERY_TERMS = {"動画", "映像", "制作", "制作事例", "事例", 
                         "紹介", "ムービー", "作品"}
 
 
-def _query_terms(query):
-    """検索語のうち、ジャンルを特定する語だけを返す（一般語は落とす）。"""
-    return [p for p in re.split(r"[\s　|]+", (query or "").strip())
-            if p and p not in _GENERIC_QUERY_TERMS]
-
-
 # ジャンル語の末尾に付く一般語。落として「核」を作る。
 # 事故（2026-09-30）：「会社紹介動画」を丸ごと一致で探していたので、
 # 実物のタイトル「会社紹介ムービー」「企業紹介動画」「会社案内」が全部外れた。
@@ -4928,6 +4922,20 @@ def _term_variants(term):
     """その語が実物のタイトルでどう書かれうるか（核＋言い換え）。"""
     core = _query_core(term)
     return [core] + _QUERY_ALIAS.get(core, [])
+
+
+def _query_terms(query):
+    """検索語のうち、ジャンルを特定する語だけを返す（一般語は落とす）。
+
+    一般語かどうかは【核でも見る】。事故（2026-09-30）：表に「制作事例」は
+    あったが「制作実績」が無かった。核は「制作」なので、「MV 制作実績」の
+    お題で制作会社の動画すべてに当たり、当たり5/5に【見えていた】
+    （実物はサービス紹介・飲食店PR・VTuber待機画面で、MVは0本）。
+    語を1つずつ表に足していくと、この抜け方が何度でも起きる。
+    """
+    return [p for p in re.split(r"[\s　|]+", (query or "").strip())
+            if p and p not in _GENERIC_QUERY_TERMS
+            and _query_core(p) not in _GENERIC_QUERY_TERMS]
 
 
 def _query_match_score(v, query):
