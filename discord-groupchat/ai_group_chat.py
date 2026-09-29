@@ -4646,6 +4646,7 @@ async def _run_sheet(cid, request, history):
 INSIGHTS_DIR = Path(os.getenv("INSIGHTS_DIR", os.path.join(_BASE, "insights")))
 INSIGHTS_DIR.mkdir(parents=True, exist_ok=True)
 _ANALYZED_IDS_FILE = INSIGHTS_DIR / "analyzed_ids.txt"
+_ANALYZED_CH_FILE = INSIGHTS_DIR / "analyzed_channels.txt"   # 日付\tチャンネル名
 
 
 def _load_analyzed_ids():
@@ -4657,12 +4658,35 @@ def _load_analyzed_ids():
     return set()
 
 
-def _mark_analyzed(video_id):
+def _mark_analyzed(video_id, channel=None):
     try:
         with open(_ANALYZED_IDS_FILE, "a", encoding="utf-8") as f:
             f.write(video_id + "\n")
     except Exception as e:  # noqa: BLE001
         print(f"[trend] 分析済みID保存失敗: {e}")
+    if channel:
+        # 「今日どのチャンネルを見たか」の台帳。プロセス内の記憶にしないのは、
+        # 自動更新で1日に何度も再起動するため（再起動のたびに忘れる）。
+        try:
+            with open(_ANALYZED_CH_FILE, "a", encoding="utf-8") as f:
+                f.write(f"{datetime.now(JST).strftime('%Y-%m-%d')}\t{channel}\n")
+        except Exception as e:  # noqa: BLE001
+            print(f"[trend] 視聴チャンネル保存失敗: {e}")
+
+
+def _channels_seen_today(day=None):
+    """今日すでに視聴して報告したチャンネル名の集合（台帳から読む）。"""
+    day = day or datetime.now(JST).strftime("%Y-%m-%d")
+    seen = set()
+    try:
+        if _ANALYZED_CH_FILE.exists():
+            for line in _ANALYZED_CH_FILE.read_text(encoding="utf-8").splitlines():
+                d, _, ch = line.partition("\t")
+                if d == day and ch:
+                    seen.add(ch)
+    except Exception as e:  # noqa: BLE001
+        print(f"[trend] 視聴チャンネル読込失敗: {e}")
+    return seen
 
 
 def _parse_iso_duration(s):
@@ -4896,6 +4920,40 @@ def _daily_order(candidates, score_fn, seed, need=None):
         rng.shuffle(bucket)                   # 同じ層の中だけ混ぜる
         out.extend(bucket)
     return out
+
+
+def _pick_diverse(candidates, n, seen_today=frozenset()):
+    """並びの上から n 本選ぶ。ただし【同じチャンネルは1本まで】、
+    【今日すでに見たチャンネルは後回し】。
+
+    事故（2026-09-29）：本人から「Crevo という会社がたくさん乗ってる」。
+    「〇〇 制作事例」で検索すると、制作会社が自社チャンネルに何百本も上げている
+    事例集がそのまま上位を占める（母数100本のうち上位10チャンネルで半分）。
+    同じ会社の作り方を1日に何本も見ても学びは1本ぶんしか増えない。
+    5日間（09-25〜29）で、同じチャンネルが2本入ったレポートが 42回中14回あった。
+
+    選び方は3段階の緩め方で、【本数は減らさない】（0本にしない・少なくしない）：
+      ① 今日まだ見ていないチャンネル、1本ずつ
+      ② 今日見たチャンネルも許す（1本ずつ）
+      ③ 同じチャンネルの2本目以降も許す
+    言い方ではなく【台帳の状態】で決めるので、チャンネル名の書き方に依らない。
+    """
+    picked, picked_ids, used = [], set(), set()
+    for allow_seen, allow_dup in ((False, False), (True, False), (True, True)):
+        for v in candidates:
+            if len(picked) >= n:
+                return picked
+            if id(v) in picked_ids:
+                continue
+            ch = str(v.get("channel") or "")
+            if not allow_dup and ch in used:
+                continue
+            if not allow_seen and ch in seen_today:
+                continue
+            picked.append(v)
+            picked_ids.add(id(v))
+            used.add(ch)
+    return picked
 
 
 # 検索の並び順。検索語を出したのに再生数順で引くと、その語と関係の薄い
@@ -6619,11 +6677,19 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
     # 信号そのものが薄いジャンル（MV・webcm）は _daily_order が並べ替えを
     # 見送るので、ここも従来どおり本数を減らさない。
     _hits = [v for v in candidates if _relevance_score(v, query) > 0] if query else []
-    targets = candidates[:(TREND_DEEP_COUNT if len(_hits) < min(TREND_DEEP_COUNT, 3)
-                           else min(TREND_DEEP_COUNT, len(_hits)))]
+    if len(_hits) < min(TREND_DEEP_COUNT, 3):
+        _pool, _n = candidates, TREND_DEEP_COUNT
+    else:
+        _pool, _n = _hits, min(TREND_DEEP_COUNT, len(_hits))
+    # 同じチャンネルは1本まで・今日見た所は後回し（_pick_diverse）。
+    # 選ぶ母集団は上と同じ（関連ありの時は _hits の中だけ）。裾には手を伸ばさない。
+    targets = _pick_diverse(_pool, _n, _channels_seen_today() if skip_analyzed else set())
     if query:
+        _dup_skipped = sum(1 for v in _pool[:_n] if v not in targets)
         print(f"[trend] 関連あり {len(_hits)}本 / 候補 {len(candidates)}本"
-              f"（{len(targets)}本を見る）", flush=True)
+              f"（{len(targets)}本を見る"
+              + (f"・同じチャンネル等で{_dup_skipped}本を入れ替え" if _dup_skipped else "")
+              + "）", flush=True)
     await _trend_say(
         channel,
         f"🎬 {label}の動画{len(videos)}本を取得しました。"
@@ -6677,7 +6743,7 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
             # 【一度も記録されず】、読む側が飛ばそうにも中身が空だった。
             # 記録は 2026-08-09 で止まっていた（本人の指摘で判明）。
             if skip_analyzed:
-                _mark_analyzed(v["id"])
+                _mark_analyzed(v["id"], v.get("channel"))
 
     # ランキング全体の傾向分析（Gemini枠切れ時はClaudeに自動切替）
     listing = "\n".join(
