@@ -5,7 +5,7 @@
 (() => {
 const track = window.soTrack || (() => {});
         /* ---------- 料金シミュレーター ----------
-           料金 = 基本料金 ¥180,000 + 秒単価×合計秒数 + ¥100,000×(本数-1) + ナレーション調整
+           料金 = 企画・構成費 ¥180,000 + 秒単価×合計秒数 + ¥100,000×(本数-1) + ナレーション調整
            工数 = 3.0h + 0.15h×倍率×合計秒数 + 1.5h×(本数-1) + 1.0h×ナレーション本数
 
            尺とナレーションは本ごとに選ぶ（2026-09-22）。ナレーション調整は2つだけ。
@@ -168,7 +168,7 @@ const track = window.soTrack || (() => {});
                 <p class="calc-out-head">お見積り</p>
                 <p class="calc-total"><span data-c="total">¥300,000</span><small>税込</small></p>
                 <dl class="calc-break">
-                    <div><dt>基本料金</dt><dd data-c="base">¥180,000</dd></div>
+                    <div><dt>企画・構成費</dt><dd data-c="base">¥180,000</dd></div>
                     <div><dt data-c="len-dt">尺</dt><dd data-c="lenfee">¥0</dd></div>
                     <div><dt data-c="cnt-dt">本数 1本</dt><dd data-c="cntfee">¥0</dd></div>
                     <div><dt data-c="nar-dt">ナレーション</dt><dd data-c="narfee">¥0</dd></div>
@@ -526,7 +526,7 @@ const track = window.soTrack || (() => {});
                     `・納品目安：${leadTime(sec, tier, narN, n)}`,
                     '',
                     '■ 内訳',
-                    `・基本料金：${yen(PRICE.base)}`,
+                    `・企画・構成費：${yen(PRICE.base)}`,
                     `・尺 ${n === 1 ? lenLabel : `合計${lenLabel}`} × ${yen(tier.perSec)}（${tier.label}）：${yen(lenFee)}`,
                     `・本数 ${n}本${n === 1 ? '' : `（${lensJoin()}）`}：${yen(cntFee)}`,
                     ...(!tier.narration && hasHuman() ? [`・ナレーション 人物1名：${yen(PRICE.narrationHuman)}〜`] : []),

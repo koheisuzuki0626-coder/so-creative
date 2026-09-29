@@ -558,7 +558,7 @@ check('本文に選んだ内容が入る',
     && new RegExp(`・納品目安：約${leadWeeks(TIERS[1], 90)}週間`).test(body));
 /* 本ごとの尺は本数の行に「30/60秒」と詰めて書く。
    全角で並べると1文字9バイトになり、mailto の上限に触るため */
-check('本文に内訳も入る', body.includes(`・基本料金：¥${PRICE.base.toLocaleString('en-US')}`)
+check('本文に内訳も入る', body.includes(`・企画・構成費：¥${PRICE.base.toLocaleString('en-US')}`)
     && body.includes(`・尺 合計90秒 × ¥${TIERS[1].perSec.toLocaleString('en-US')}（竹）`)
     && /・本数 2本（30\/60秒）：/.test(body));
 /* 尺と本数は件名と内訳にあるので、選んだ内容では繰り返さない（mailto の長さ対策） */
