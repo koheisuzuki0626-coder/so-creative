@@ -5,7 +5,7 @@
 (() => {
 const track = window.soTrack || (() => {});
         /* ---------- 料金シミュレーター ----------
-           料金 = 基本料金 ¥90,000 + 秒単価×合計秒数 + ¥65,000×(本数-1) + ナレーション調整
+           料金 = 基本料金 ¥180,000 + 秒単価×合計秒数 + ¥100,000×(本数-1) + ナレーション調整
            工数 = 3.0h + 0.15h×倍率×合計秒数 + 1.5h×(本数-1) + 1.0h×ナレーション本数
 
            尺とナレーションは本ごとに選ぶ（2026-09-22）。ナレーション調整は2つだけ。
@@ -54,7 +54,7 @@ const track = window.soTrack || (() => {});
            クレジット原価は 41cr/秒 ≒ ¥310/秒（追加購入単価）で、松の秒単価の5%。
            実績は納品物 2,462cr ÷ 74秒（本編59秒＋展示会用15秒）＝ 33cr/秒。
            本編の尺だけで割った 41 を安全側として採っている。 */
-        const PRICE = { base: 90000, perExtra: 65000, narrationAi: 0, narrationHuman: 70000,
+        const PRICE = { base: 180000, perExtra: 100000, narrationAi: 0, narrationHuman: 70000,
             /* AIナレーションは料金に含まれているので、使わないなら返す。梅・竹だけ。
                松は人物ナレーションが込みで、これは秒単価に溶けているので対象外。
                3万にすると梅15秒×1本だけ ¥21,429/h（目標の93.2%）で下限を割るため 2.5万 */
@@ -78,13 +78,13 @@ const track = window.soTrack || (() => {});
            解像度や書き出し形式で差をつけるのはやめた。手間が増えないものに
            価格差をつけると、値付けの根拠ではなく口実になるため */
         const TIERS = [
-            { id: 'ume', label: '梅', sub: '標準', perSec: 3500, hours: 1.0, narration: false,
+            { id: 'ume', label: '梅', sub: '標準', perSec: 4000, hours: 1.0, narration: false,
               detail: '登場人物なし（設備・製品・空間を中心に構成） ／ AIナレーションは料金に含まれます（本ごとに選べます。入れない本は1本につき −¥25,000／人物ナレーションは1名 ¥70,000〜で、何本に入れても1名ぶん） ／ 修正2回まで ／ 1080p（フルHD）で納品',
               use: 'SNS 投稿・社内共有・製品やサービスの紹介' },
-            { id: 'take', label: '竹', sub: '上', perSec: 4400, hours: 1.22, narration: false,
+            { id: 'take', label: '竹', sub: '上', perSec: 5400, hours: 1.22, narration: false,
               detail: '登場人物2人まで（同じ人物を最後まで同じ顔で出せます） ／ AIナレーションは料金に含まれます（本ごとに選べます。入れない本は1本につき −¥25,000／人物ナレーションは1名 ¥70,000〜で、何本に入れても1名ぶん） ／ 修正3回まで ／ 1080p（フルHD）で納品',
               use: '採用サイト・会社紹介・サービス紹介' },
-            { id: 'matsu', label: '松', sub: '特上', perSec: 6650, hours: 1.36, narration: true,
+            { id: 'matsu', label: '松', sub: '特上', perSec: 8000, hours: 1.36, narration: true,
               detail: '登場人物3人まで（4人以上は個別にお見積り） ／ 人物ナレーション込み（1名。声を選び、話す速さまで調整します。2人目は別途お見積り／ナレーションは本ごとに選べます。どの本にも人の声を入れないなら −¥25,000、ナレーションを入れない本は1本につきさらに −¥25,000） ／ 修正3回まで ／ 1080p（フルHD）で納品',
               use: '展示会での上映・ブランド映像・じっくり見せたい会社紹介' },
         ];
@@ -166,9 +166,9 @@ const track = window.soTrack || (() => {});
             </div>
             <div class="calc-out">
                 <p class="calc-out-head">お見積り</p>
-                <p class="calc-total"><span data-c="total">¥195,000</span><small>税込</small></p>
+                <p class="calc-total"><span data-c="total">¥300,000</span><small>税込</small></p>
                 <dl class="calc-break">
-                    <div><dt>基本料金</dt><dd data-c="base">¥90,000</dd></div>
+                    <div><dt>基本料金</dt><dd data-c="base">¥180,000</dd></div>
                     <div><dt data-c="len-dt">尺</dt><dd data-c="lenfee">¥0</dd></div>
                     <div><dt data-c="cnt-dt">本数 1本</dt><dd data-c="cntfee">¥0</dd></div>
                     <div><dt data-c="nar-dt">ナレーション</dt><dd data-c="narfee">¥0</dd></div>
@@ -200,7 +200,7 @@ const track = window.soTrack || (() => {});
             const cntBox = q('cnt');
             const cntHint = q('cnt-hint');
             /* 本ごとの尺（秒）。長さが本数、合計が尺の合計。
-               料金は base + 秒単価 × 合計秒数 + ¥65,000 × (本数 − 1) なので、
+               料金は base + 秒単価 × 合計秒数 + ¥100,000 × (本数 − 1) なので、
                どう割り振っても合計が同じなら金額は変わらない。
                変わるのは「何を何秒で作るか」が相手に伝わるかどうか */
             /* 置いた場所の尺で始める。ジャンルの計算機は、そのサンプルの実尺 */

@@ -305,8 +305,16 @@ check('ナレーションの工数は1本 1.0h（AI・人で同じ）', HOURS_NA
        価格は動かさず、計算機がその場で「松のほうが安い」と出して潰す（下の検査） */
     /* 1本あたり15秒未満は選べないので、この一覧に 15秒×2本 は出てこない
        （2本にすると合計が30秒になる。下の検査は maxPieces で回している） */
-    check('竹＋人物が松を上回るのは15秒・30秒だけ',
-        inverted.join(',') === '15秒×1本,30秒×1本,30秒×2本', inverted.join(',') || 'なし');
+    /* 2026-09-29 に竹・松の秒単価の差が ¥2,600 に広がり、逆転は 15秒×1本 だけになった
+       （2,600×30秒＝¥78,000 が ¥70,000 を超える）。一覧は式から出して突き合わせる */
+    const expectInv = [];
+    for (const sec of LENGTHS) for (let n = 1; n <= 6; n++) {
+        if (sec / n < 15) continue;
+        if ((matsu.perSec - take.perSec) * sec < PRICE.narrationHuman) expectInv.push(`${sec}秒×${n}本`);
+    }
+    check(`竹＋人物が松を上回るのは ${expectInv.join('・') || 'なし'} だけ`,
+        inverted.join(',') === expectInv.join(','), inverted.join(',') || 'なし');
+    check('竹＋人物が松を上回るのは15秒×1本だけ（2026-09-29 の価格）', inverted.join(',') === '15秒×1本', inverted.join(','));
     /* AIは料金に含むので、どの組み合わせでも松を上回らない */
     check('AIナレーションでは逆転しない',
         reachable().every(({ sec, n }) => price(take, sec, n, 'ai') <= price(matsu, sec, n, 'human')));
@@ -381,7 +389,7 @@ for (const t of TIERS) ladder.push(await pick(page, t.id, 90, 1));
 check('段が上がるほど高い', ladder[0] < ladder[1] && ladder[1] < ladder[2], JSON.stringify(ladder));
 /* 初期状態（AIナレーション）での額。AIは料金に含むので従来と同じ。
    ここが 380,000 になったら、初期が「なし」に戻って差し引きが効いている */
-check('梅は従来価格を据え置き', ladder[0] === 405000, `¥${ladder[0]}`);
+check('梅の初期状態はAIナレーション込みの額', ladder[0] === price(TIERS[0], 90, 1, 'ai'), `¥${ladder[0]}`);
 check('短い尺でも松が選べる',
     (await pick(page, 'matsu', 30, 1)) === price(TIERS[2], 30, 1, 'human'),
     String(await pick(page, 'matsu', 30, 1)));
@@ -550,7 +558,7 @@ check('本文に選んだ内容が入る',
     && new RegExp(`・納品目安：約${leadWeeks(TIERS[1], 90)}週間`).test(body));
 /* 本ごとの尺は本数の行に「30/60秒」と詰めて書く。
    全角で並べると1文字9バイトになり、mailto の上限に触るため */
-check('本文に内訳も入る', /・基本料金：¥90,000/.test(body)
+check('本文に内訳も入る', body.includes(`・基本料金：¥${PRICE.base.toLocaleString('en-US')}`)
     && body.includes(`・尺 合計90秒 × ¥${TIERS[1].perSec.toLocaleString('en-US')}（竹）`)
     && /・本数 2本（30\/60秒）：/.test(body));
 /* 尺と本数は件名と内訳にあるので、選んだ内容では繰り返さない（mailto の長さ対策） */

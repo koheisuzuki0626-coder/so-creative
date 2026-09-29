@@ -2,7 +2,7 @@
 // 料金で検索して来た人が最初に着くのがこのページで、二重に持つと式が食い違うため。
 /* 料金計算機の段差(ファネル計測)と、それを見るページ。
    料金表を公開している以上、価格で諦めた人はここにしか残らない。 */
-import { check, report, open, BASE, PW } from './lib.mjs';
+import { check, report, open, BASE, PW, price, TIERS } from './lib.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
@@ -28,11 +28,11 @@ const L = await log(p);
 check('条件を変えたら calc_use', L.includes('calc_use'));
 check('calc_use は1人1回だけ', L.filter(x => x === 'calc_use').length === 1);
 const res = (await rows(p)).find(r => r.name === 'calc_result');
-check('金額と段が記録される', res.total === 90000 + 3500 * 180 && res.tier === 'ume', JSON.stringify(res));
+check('金額と段が記録される', res.total === price(TIERS[0], 180, 1, 'ai') && res.tier === 'ume', JSON.stringify(res));
 await leave(p); await p.waitForTimeout(200);
 const lv = (await rows(p)).find(r => r.name === 'calc_leave');
 check('相談せずに閉じた人が残る', lv && lv.used === true && lv.cta === false, JSON.stringify(lv));
-check('離脱時の金額と段が残る', lv && lv.total === 90000 + 3500 * 180 && lv.tier === 'ume');
+check('離脱時の金額と段が残る', lv && lv.total === price(TIERS[0], 180, 1, 'ai') && lv.tier === 'ume');
 await p.close();
 
 /* ---- どこまで読んで帰ったか（9/23） ----

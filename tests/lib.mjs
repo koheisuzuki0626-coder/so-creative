@@ -20,7 +20,7 @@ export const PW = process.env.PW || '/opt/node22/lib/node_modules/playwright/ind
    ここを書き換えるときは index.html も必ず合わせること */
 /* narrationAi は 0。AIナレーションは料金に含める（2026-09-17）。
    工数（1本 1.0h）はかかるので、時間単価はそのぶん下がる。下限は下の検査で見ている */
-export const PRICE = { base: 90000, perExtra: 65000, narrationAi: 0, narrationHuman: 70000,
+export const PRICE = { base: 180000, perExtra: 100000, narrationAi: 0, narrationHuman: 70000,
     /* AIナレーションは料金に含まれている。使わない（テロップのみ）なら返す。
        梅・竹だけ。松は人物ナレーションが込みで、これは秒単価に溶けているので対象外。
        3万にすると梅15秒×1本だけが ¥21,429/h（目標の93.2%）で下限を割る。
@@ -33,9 +33,9 @@ export const PRICE = { base: 90000, perExtra: 65000, narrationAi: 0, narrationHu
    9/19 までの −¥50,000 と同じ額になる。別の定数にすると片方だけ動くので、出して使う */
 export const matsuToNone = () => PRICE.matsuToAi + PRICE.noNarration;
 export const TIERS = [
-    { id: 'ume',   label: '梅', perSec: 3500, hours: 1.0,  narration: false },
-    { id: 'take',  label: '竹', perSec: 4400, hours: 1.22, narration: false },
-    { id: 'matsu', label: '松', perSec: 6650, hours: 1.36, narration: true },
+    { id: 'ume',   label: '梅', perSec: 4000, hours: 1.0,  narration: false },
+    { id: 'take',  label: '竹', perSec: 5400, hours: 1.22, narration: false },
+    { id: 'matsu', label: '松', perSec: 8000, hours: 1.36, narration: true },
 ];
 export const LENGTHS = [15, 30, 45, 60, 90, 120, 180, 300];
 /* 9/22 まで：「合計の尺」を「本数」で割る形だったので、1本が短くなりすぎないよう

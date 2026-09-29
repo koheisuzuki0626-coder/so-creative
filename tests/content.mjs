@@ -555,7 +555,7 @@ check('金額の表示は税込で揃っている',
     check('できるようになることを書いている',
         /訴求違い/.test(svc) && /差し替え/.test(svc), svc.slice(0, 40));
     check('自社サンプルの日数と一致している', /着手から3日/.test(svc));
-    check('2本目の値段が料金表と一致している', /¥65,000/.test(svc));
+    check('2本目の値段が料金表と一致している', svc.includes(`¥${PRICE.perExtra.toLocaleString('en-US')}`));
     check('誇大な言い方をしていない',
         !/必ず|絶対|劇的|革命|No\.?1|業界最|最先端/.test(svc), svc.slice(0, 60));
     /* お客様の状況を勝手に決めつけない（2026-09-20）。
@@ -975,9 +975,10 @@ check('タイトルの「最短2週間」が実態と合う',
         const html = readFileSync(`${ROOT}/${f}`, 'utf8');
         check(`${f} の2本目の実額が式と一致`, html.includes(`＋${yen(want)}`), yen(want));
     }
-    /* まとめたときの差は、段にも尺にもよらず常に ¥25,000 */
+    /* まとめたときの差は、段にも尺にもよらず常に base − perExtra
+       （9/29 に ¥25,000 → ¥80,000。基本料金 ¥180,000・本数加算 ¥100,000） */
     const bundle = PRICE.base - PRICE.perExtra;
-    check('まとめ買いの差が base − perExtra と一致', bundle === 25000, String(bundle));
+    check('まとめ買いの差が base − perExtra と一致', bundle === 80000, String(bundle));
     for (const t of TIERS) for (const sec of LENGTHS) {
         const together = PRICE.base + t.perSec * sec * 2 + PRICE.perExtra;
         const apart = (PRICE.base + t.perSec * sec) * 2;
@@ -1015,7 +1016,7 @@ check('タイトルの「最短2週間」が実態と合う',
    段で秒単価が変わるのに「1秒あたり ¥3,500」と書いてあると嘘になる */
 const why = await (await open(browser, { page: 'pricing.html' })).locator('.calc-why').innerText();
 check('内訳の秒単価が段の幅で書いてある',
-    /¥3,500〜6,650/.test(why) && /仕上げの段階/.test(why), why.split('\n').find(l => l.includes('1秒')) || '');
+    why.includes(`¥${TIERS[0].perSec.toLocaleString('en-US')}〜${TIERS[2].perSec.toLocaleString('en-US')}`) && /仕上げの段階/.test(why), why.split('\n').find(l => l.includes('1秒')) || '');
 check('制作にかかる日数が何で変わるか書いてある',
     /尺と仕上げの段階によって前後します/.test(await page.locator('#process').innerText()));
 
@@ -1427,8 +1428,20 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
 {
     const rm = await open(browser, { page: 'roadmap.html' });
     const t = await rm.locator('body').innerText();
+    /* 計画は梅だけで組む（P1＝90秒＋30秒、P2＝3分＋30秒、P3＝3分＋90秒、各3・3・6ヶ月）。
+       9/29 に価格を改定したので、数字は書き写さず料金モデルから出す */
+    const U = TIERS[0], pu = (sec) => price(U, sec, 1, 'ai');
+    const PLAN = { P1: pu(90) + pu(30), P2: pu(180) + pu(30), P3: pu(180) + pu(90) };
+    PLAN.sales = 3 * PLAN.P1 + 3 * PLAN.P2 + 6 * PLAN.P3;
+    PLAN.net = PLAN.sales - 694020 - 192375;
+    const yj = (n) => `¥${n.toLocaleString('en-US')}`;
+    /* 手元の推移（実額の列）。M+2 まで入金なし、M+3 に30秒1件、M+4 から P1 のペース */
+    const EXP = 138000;
+    const cash = { 'M+3': -414000 + pu(30) - EXP };
+    for (let m = 4; m <= 11; m++) cash[`M+${m}`] = cash[`M+${m - 1}`] + PLAN.P1 - EXP;
+    const man = (n) => `${(n / 10000).toFixed(1)}万`;
 
-    check('目標が計画と一致', /¥11,295,000/.test(t) && /¥10,408,605/.test(t));
+    check('目標が計画と一致', t.includes(yj(PLAN.sales)) && t.includes(yj(PLAN.net)), `${yj(PLAN.sales)} ${yj(PLAN.net)}`);
     check('要約版に折りたたみを置いていない',
         await rm.locator('details').count() === 0);
     check('裏づけのページへ導線がある',
@@ -1467,7 +1480,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     check('要約版に収支の推移の要点がある',
         /収支の推移/.test(t) && /入金のない月が3つ続く/.test(t));
     check('要約版に月ごとの表が載っている',
-        /M\+0/.test(t) && /M\+11/.test(t) && /333\.9万/.test(t));
+        /M\+0/.test(t) && /M\+11/.test(t) && t.includes(man(cash['M+11'])), man(cash['M+11']));
     check('置き直した理由が書いてある',
         /登録が通ってから声かけを始める/.test(t) && /受注も納品もできない月が先に来る/.test(t));
     check('月数が前提であって実績でないと断っている',
@@ -1480,7 +1493,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     check('着手金なしの数字に直っている',
         /−13\.8万/.test(t) && !/484\.1万/.test(t));
     check('底と回復の月が新しい順番になっている',
-        /−41\.4万/.test(t) && /＋10\.5万/.test(t) && !/38\.1万/.test(t));
+        /−41\.4万/.test(t) && t.includes(`＋${man(cash['M+4'])}`) && !/38\.1万/.test(t), `＋${man(cash['M+4'])}`);
     /* 必要な貯えが 14万 → 42万 に変わった。古い数字が残っていると開業日を誤る */
     check('開業前に残す額が置き直されている',
         /開業時点で 42万/.test(t) && !/開業時点で <b>14万<\/b>/.test(t));
@@ -1500,7 +1513,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     const stages = await rm.locator('table.t-wide tbody tr').count();
     check('4つの段階が表になっている', stages >= 4, String(stages));
     check('段階ごとの月商が計画と一致',
-        /¥600,000/.test(t) && /¥915,000/.test(t) && /¥1,125,000/.test(t));
+        [PLAN.P1, PLAN.P2, PLAN.P3].every((v) => t.includes(yj(v))), [PLAN.P1, PLAN.P2, PLAN.P3].map(yj).join(' '));
 
     /* P0 はいま動いている段階なので、要約版に残りタスクを置く */
     check('P0 の残りタスクが載っている',
@@ -1726,8 +1739,12 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     /* 折りたたむ前に、たたんだ状態のままで主要な数字が読めるかを見る。
        たたんだ見出しに数字が出ていないと、開かないと何も分からない資料になる */
     const folded = await rc.locator('body').innerText();
+    const RPLAN = (() => { const pu = (sec) => price(TIERS[0], sec, 1, 'ai');
+        const P1 = pu(90) + pu(30), P2 = pu(180) + pu(30), P3 = pu(180) + pu(90);
+        return { q: [3 * P1, 3 * P2, 3 * P3], sales: 3 * P1 + 3 * P2 + 6 * P3, net: 3 * P1 + 3 * P2 + 6 * P3 - 694020 - 192375 }; })();
+    const ry = (n) => `¥${n.toLocaleString('en-US')}`;
     check('たたんだままでも年商・年収が読める',
-        /¥11,295,000/.test(folded) && /¥10,408,605/.test(folded));
+        folded.includes(ry(RPLAN.sales)) && folded.includes(ry(RPLAN.net)), `${ry(RPLAN.sales)} ${ry(RPLAN.net)}`);
     check('たたんだままでも天井と必要な問い合わせ数が読める',
         /1,950万/.test(folded) && /6\.7件/.test(folded));
     check('ロードマップへ戻る導線がある',
@@ -1766,7 +1783,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
 
     const t = await rc.locator('body').innerText();
     check('四半期計が計画と一致',
-        /¥1,800,000/.test(t) && /¥2,745,000/.test(t) && /¥3,375,000/.test(t) && /¥11,295,000/.test(t));
+        [...RPLAN.q, RPLAN.sales].every((v) => t.includes(ry(v))), [...RPLAN.q, RPLAN.sales].map(ry).join(' '));
     check('P1〜P3 の中身が移っている',
         /90秒で足場をつくる/.test(t) && /3分を売れるようにする/.test(t) && /年収1,000万に乗せる/.test(t));
     /* サンプルは 9/17 に5本足して7ジャンル全部に載った。
@@ -1794,7 +1811,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     /* 時間単価は ¥80,000/h（実際に出した額 ÷ 1.0h）。2026-09-26 まで ¥65,000/h と
        書いていたが、これは本数加算だけを2本目の売上と見ていた誤り */
     check('縦型は追加本数で作ると書いている',
-        /追加の1本|追加本数/.test(t) && /本数加算 ¥65,000 ＋ 尺ぶん/.test(t));
+        /追加の1本|追加本数/.test(t) && t.includes(`本数加算 ¥${PRICE.perExtra.toLocaleString('en-US')} ＋ 尺ぶん`));
     check('1,080クレジットを授業料として記録している', /1,080クレジットは授業料/.test(t));
     check('実際に納品した2本の尺と時間単価が載っている',
         /59秒/.test(t) && /15秒/.test(t) && /¥41,905\/h/.test(t) && /¥80,000\/h/.test(t));
@@ -1915,7 +1932,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     check('ナレーションの条件が見積書にある',
         /−¥25,000/.test(mitsu) && /¥70,000/.test(mitsu));
     check('料金の単位がサイトと揃っている(基本料金と追加本数)',
-        /¥90,000/.test(mitsu) && /¥65,000/.test(mitsu));
+        mitsu.includes(`¥${PRICE.base.toLocaleString('en-US')}`) && mitsu.includes(`¥${PRICE.perExtra.toLocaleString('en-US')}`));
     check('契約書にAI特有の免責がある',
         /著作権による保護を\s*受けない場合がある/.test(keiyaku) && /意図しない類似/.test(keiyaku));
     check('契約書に権利の帰属がある',

@@ -29,7 +29,7 @@ PRICE_NOTE = ('<p class="body-text measure" style="margin-top:14px">'
               '松で人ではなくAIにする場合も ¥25,000 引きです。'
               '<a href="pricing.html#plans">料金ページの計算機</a>で、その組み合わせの実額が出ます。</p>')
 
-BASEP, PER = 90000, {'ume': 3500, 'take': 4400, 'matsu': 6650}
+BASEP, PER = 180000, {'ume': 4000, 'take': 5400, 'matsu': 8000}
 LAB = {15: '15秒', 30: '30秒', 60: '60秒', 90: '90秒', 180: '3分'}
 yen = lambda n: '¥' + format(n, ',')
 
