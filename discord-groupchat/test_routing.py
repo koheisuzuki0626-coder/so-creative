@@ -1663,13 +1663,55 @@ def run():
     _got2 = bot._pick_diverse(_mix, 3, seen_today={"Crevo"})
     check("今日すでに見たチャンネルは後回し",
           [v["channel"] for v in _got2], ["A社", "B社", "C社"])
-    check("後回しにしても足りなければ入れる（本数は減らさない）",
-          [v["channel"] for v in bot._pick_diverse(_mix, 5, seen_today={"Crevo"})],
-          ["A社", "B社", "C社", "Crevo", "Crevo"])
+    # 【id で確かめる】。チャンネル名だけを見ていると、後ろの段で並びを
+    # 逆から取る実装でも通ってしまう（2026-09-30 の反証役の指摘。実際に
+    # reversed で回す偽物を作ったら、名前だけの検査は全部通った）。
+    check("後回しにしても足りなければ入れる（本数は減らさない・並びも保つ）",
+          [v["id"] for v in bot._pick_diverse(_mix, 5, seen_today={"Crevo"})],
+          ["v10", "v11", "v12", "v0", "v1"])
     check("全部同じチャンネルでも本数は減らさない（0本にしない）",
-          len(bot._pick_diverse(_crevo, 3)), 3)
+          [v["id"] for v in bot._pick_diverse(_crevo, 3)], ["v0", "v1", "v2"])
     check("候補が足りない時は候補ぶんだけ", len(bot._pick_diverse(_crevo[:2], 5)), 2)
     check("空なら空", bot._pick_diverse([], 5), [])
+    check("n=0 なら空", bot._pick_diverse(_mix, 0), [])
+    # 段の順番：②（今日見たチャンネルを1本）が③（同じチャンネルの2本目）より先。
+    # 逆だと「今日見た所を避ける」目的のために同じ会社を2本入れることになる。
+    _order = [_vid(20, "A社"), _vid(21, "A社"), _vid(22, "S社")]
+    check("今日見たチャンネルより、同じチャンネルの2本目のほうを後にする",
+          [v["id"] for v in bot._pick_diverse(_order, 2, seen_today={"S社"})],
+          ["v20", "v22"])
+
+    print("■ チャンネルの後回しが、お題との関連を追い越さないこと")
+    # 反証役の指摘（2026-09-30）：「今日見たチャンネルは後回し」を関連度の層を
+    # またいで効かせると、お題と関係の薄いものがレポートに入る。
+    # 2026-09-25 に直した「裾で埋めない」と同じ事故なので、層の中だけで回す。
+    _QT = "採用動画 制作事例"
+    _on = {"title": "採用動画｜株式会社A", "channel": "Crevo", "desc": "", "tags": [],
+           "id": "on1"}
+    _off1 = {"title": "猫がかわいい", "channel": "ねこch", "desc": "", "tags": [],
+             "id": "off1"}
+    _off2 = {"title": "今日の晩ごはん", "channel": "ごはんch", "desc": "", "tags": [],
+             "id": "off2"}
+    check("前提：関連あり／なしで点が違う",
+          bot._relevance_score(_on, _QT) > 0 and bot._relevance_score(_off1, _QT) == 0,
+          True)
+    _sf = lambda v: bot._relevance_score(v, _QT)          # noqa: E731
+    check("関連ありは、今日見たチャンネルでも無関係より先",
+          [v["id"] for v in bot._pick_diverse(
+              [_off1, _off2, _on], 2, seen_today={"Crevo"}, score_fn=_sf)],
+          ["on1", "off1"])
+    check("層を見なければ無関係で埋まる（前提の確認）",
+          [v["id"] for v in bot._pick_diverse(
+              [_off1, _off2, _on], 2, seen_today={"Crevo"})],
+          ["off1", "off2"])
+    check("同じ層の中では今日見たチャンネルを後回しにする（効き目は残す）",
+          [v["id"] for v in bot._pick_diverse(
+              [dict(_on, id="on2", channel="Crevo"), dict(_on, id="on3", channel="B社")],
+              1, seen_today={"Crevo"}, score_fn=_sf)],
+          ["on3"])
+    check("呼ぶ側が層（関連度）を渡している",
+          "score_fn=(lambda v: _relevance_score(v, query)) if query else None" in _srcS,
+          True)
     # 台帳：日付ごと。今日の分だけを返す
     import tempfile as _tfC
     import pathlib as _plC
@@ -1686,6 +1728,10 @@ def run():
         bot._mark_analyzed("x3")                   # チャンネル無しでも落ちない
         check("見たチャンネルが今日の台帳に入る",
               bot._channels_seen_today(), {"Crevo", "A社"})
+        check("書いた側と読む側の日付が揃っている（日付を明示しても同じ）",
+              bot._channels_seen_today(
+                  bot.datetime.now(bot.JST).strftime("%Y-%m-%d")),
+              {"Crevo", "A社"})
         check("昨日の分は数えない", bot._channels_seen_today("2000-01-01"), set())
         check("IDの台帳も隔離先に書いている（本物を汚さない）",
               bot._load_analyzed_ids(), {"x1", "x2", "x3"})
