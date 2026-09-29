@@ -220,6 +220,9 @@ Mac で動いているボットは読まない。「ここで決めたのに Dis
 | CODE_PATHS は実行場所からの相対で書く | `_git_self` は BASE_DIR で動く |
 | 「最新」はプロセスのコミットで測る | `_sync_to_origin` の `LOADED_COMMIT` 比較 |
 | 同じ制作会社でリサーチを埋めない | `_pick_diverse` ＋ `_channels_seen_today` |
+| お題の語は実物の書き方で当てる | `_query_core` / `_QUERY_ALIAS` |
+| 当たり0本をジャンルの「型」にしない | `_no_hit`（`_hits` は `_query_match_score` で数える） |
+| 見る層が1つに固まらない | `TREND_LAYERS` / `_todays_layer` |
 
 ## ボットへの指示（プロンプト）を足すときの鉄則
 
