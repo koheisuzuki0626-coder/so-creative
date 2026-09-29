@@ -419,7 +419,16 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
 .menu-links a:hover { color: var(--accent-ink); }
 
 /* ---------- Hero ---------- */
+/* 2026-09-29：開いた直後は映像だけ。スクロールすると映像が落ちて「撮影しない、映像制作。」が出る。
+   JS が動いていて（<head> で付く .js）、動きを減らす設定でないときだけ、.hero を画面2枚ぶんの
+   高さにして .hero-pin を留める。--hero-r は 0（映像だけ）→ 1（文字が出きった）で、スクロールで JS が書く。
+   既定は 1 なので、JS が動かないとき・動きを減らす設定のときは最初から文字が読める。
+   CSS 側で切り替えるのは、スクリプトが走るまでの一瞬に文字がちらつかないようにするため */
 .hero {
+    position: relative;
+    background: #141716;
+}
+.hero-pin {
     position: relative;
     min-height: 100svh;
     display: flex;
@@ -430,8 +439,14 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     padding: calc(var(--nav-h) + 60px) 0 90px;
     background: radial-gradient(70% 60% at 50% 38%, #262b29 0%, #141716 100%);
 }
-/* 文字の背後にだけ地の色を敷き、流れるサムネイルと同化させない */
-.hero::before {
+@media (prefers-reduced-motion: no-preference) {
+    .js .hero { --hero-r: 0; height: 200svh; }
+    .js .hero .hero-pin { position: sticky; top: 0; height: 100svh; min-height: 0; }
+    /* 見えていないボタンをマウスで押せないようにする（キーボードでは入れる。下の :focus-within） */
+    .js .hero:not(.hero-open) .hero-actions { pointer-events: none; }
+}
+/* 文字の背後にだけ地の色を敷く。映像だけの間は敷かない */
+.hero-pin::before {
     content: "";
     position: absolute;
     inset: 0;
@@ -439,23 +454,19 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     pointer-events: none;
     background: radial-gradient(ellipse 48% 46% at 50% 48%,
                 rgba(29,32,31,0.94) 0%, rgba(29,32,31,0.82) 46%, rgba(29,32,31,0) 74%);
+    opacity: var(--hero-r, 1);
 }
-/* 背景は実際に納品した映像そのもの。中央は .hero::before の地の色で抜き、
-   まわりはマスクで端に向かって消す。文字に干渉しない濃さに抑える */
+/* 背景は実際に納品した映像そのもの。開いた直後は全面・原色で見せ、
+   文字が出るにつれて 0.16 の質感まで落とす（文字が出きったあとは 9/25 までと同じ見え方） */
 .hero-media {
     position: absolute;
-    inset: -6%;
-    /* 2026-09-25：地を濃色にしたので 0.22 → 0.16 へ落とした。
-       重ね方（0.22）は同じでも、まわりが暗いと映像だけが浮いて主役に見える。
-       文字の背後の地は .hero::before が抜くので、ここは質感として残す濃さにする */
-    opacity: 0.16;
-    filter: saturate(0.72);
+    inset: 0;
+    opacity: calc(1 - var(--hero-r, 1) * 0.84);
+    filter: saturate(calc(1 - var(--hero-r, 1) * 0.28));
     pointer-events: none;
-    transform: scale(calc(1 + var(--hero-p, 0) * 0.16));
-    /* 中央は .hero::before の地の色で抜けるので、ここでは端に向かって薄く消すだけにする。
-       以前のように中央を大きく抜くと、映像は外周しか見えず何が映っているか分からない */
-    -webkit-mask-image: radial-gradient(ellipse 78% 74% at 50% 50%, #000 34%, rgba(0,0,0,0.35) 100%);
-    mask-image: radial-gradient(ellipse 78% 74% at 50% 50%, #000 34%, rgba(0,0,0,0.35) 100%);
+    transform: scale(calc(1 + var(--hero-r, 1) * 0.06));
+    -webkit-mask-image: radial-gradient(ellipse 78% 74% at 50% 50%, #000 34%, rgba(0,0,0, calc(1 - var(--hero-r, 1) * 0.65)) 100%);
+    mask-image: radial-gradient(ellipse 78% 74% at 50% 50%, #000 34%, rgba(0,0,0, calc(1 - var(--hero-r, 1) * 0.65)) 100%);
 }
 .hero-video {
     width: 100%;
@@ -464,15 +475,25 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     display: block;
 }
 
+/* 見出しが先に、説明とボタンがあとから出る */
 .hero-inner {
     position: relative;
     z-index: 2;
     padding: 0 24px;
     max-width: 940px;
-    /* スクロールに合わせて奥へ引いていく */
-    transform: translateY(calc(var(--hero-p, 0) * -60px)) scale(calc(1 - var(--hero-p, 0) * 0.06));
-    opacity: calc(1 - var(--hero-p, 0) * 1.15);
 }
+.hero-badge, .hero-inner h1 {
+    opacity: clamp(0, calc(var(--hero-r, 1) * 1.8), 1);
+    transform: translateY(calc((1 - clamp(0, calc(var(--hero-r, 1) * 1.8), 1)) * 28px));
+}
+.hero-lead, .hero-chips, .hero-actions {
+    opacity: clamp(0, calc((var(--hero-r, 1) - 0.45) * 2), 1);
+    transform: translateY(calc((1 - clamp(0, calc((var(--hero-r, 1) - 0.45) * 2), 1)) * 20px));
+}
+/* キーボードで CTA に入ったら、スクロール位置に関係なく全部見せる */
+.hero-inner:focus-within .hero-badge, .hero-inner:focus-within h1,
+.hero-inner:focus-within .hero-lead, .hero-inner:focus-within .hero-chips,
+.hero-inner:focus-within .hero-actions { opacity: 1; transform: none; }
 .hero-badge {
     display: inline-block;
     font-size: 0.82rem;
@@ -513,8 +534,9 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     z-index: 2;
     font-size: 0.7rem;
     letter-spacing: 0.24em;
-    color: var(--ink-dim);
-    opacity: calc(1 - var(--hero-p, 0) * 2.2);
+    color: var(--ink);
+    text-shadow: 0 1px 8px rgba(0,0,0,0.6);
+    opacity: calc(1 - var(--hero-r, 1) * 3);
 }
 .scroll-hint::after {
     content: "";
@@ -1921,7 +1943,10 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
     #nav, .menu, .menu-scrim, .progress, .hero-media, .lightbox,
     .swipe-hint, .cta-actions, .nav-uses, .scroll-hint { display: none !important; }
     /* 100svh のままだと、見出しだけで1ページ使う */
-    .hero { min-height: auto; padding: 24pt 0; }
+    .hero, .js .hero { height: auto; --hero-r: 1; }
+    .hero-pin, .js .hero .hero-pin { position: static; height: auto; min-height: auto; padding: 24pt 0; }
+    .hero-pin::before { display: none; }
+    .hero-badge, .hero-inner h1, .hero-lead, .hero-chips, .hero-actions { opacity: 1 !important; transform: none !important; }
     .section, .statement, .cta-band, .page-head { padding: 20pt 0; }
     /* 出現アニメーションは、JS が動く前に刷られると中身ごと消える。
        transition も切る。切らないと、印刷に切り替えた瞬間から 0.9s かけて

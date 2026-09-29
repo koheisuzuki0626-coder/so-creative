@@ -275,8 +275,11 @@
     <main>
     <header class="hero" id="top">
         <!-- 背景は YouTube のサムネイルを流していたが、実際に納品した映像そのものに差し替えた（9/19）。
-             文字の背後は .hero::before の白で抜いてあるので、見出しの読みやすさは変わらない。
+             2026-09-29：開いた直後は映像だけを見せ、スクロールすると見出しが出る形にした。
+             .hero を画面2枚ぶんの高さにして、中の .hero-pin を画面に留めたまま --hero-r（0→1）で
+             映像を落とし、文字を出す。JS が動かないとき・動きを減らす設定のときは、最初から文字を出す。
              reduced-motion のときは再生せず、ポスター画像のまま止める -->
+        <div class="hero-pin">
         <div class="hero-media" aria-hidden="true">
             <video class="hero-video" id="hero-video" muted loop playsinline preload="metadata"
                    poster="assets/works/hero-reel.jpg">
@@ -299,6 +302,7 @@
             </div>
         </div>
         <div class="scroll-hint">SCROLL</div>
+        </div>
     </header>
 
     <section class="statement" id="service">
@@ -802,9 +806,12 @@
 
             if (reduceMotion) return;
 
-            // ヒーローは自分の高さ分スクロールする間に退場する
-            const heroH = heroEl.offsetHeight || 1;
-            heroEl.style.setProperty('--hero-p', clamp01(window.scrollY / heroH).toFixed(3));
+            /* ヒーロー（9/29）：画面に留めている区間（.hero の高さ − 画面1枚）の前6割で 0→1。
+               残りの4割は文字が出きった状態で留まり、そのあと普通に流れていく */
+            const heroSpan = heroEl.offsetHeight - window.innerHeight;
+            const heroR = heroSpan > 0 ? clamp01(window.scrollY / (heroSpan * 0.6)) : 1;
+            heroEl.style.setProperty('--hero-r', heroR.toFixed(3));
+            heroEl.classList.toggle('hero-open', heroR > 0.7);
 
             // 各ステージは「固定されている区間」の進み具合を 0→1 で持つ
             for (const stage of stages) {
@@ -963,12 +970,12 @@
             const v = document.getElementById('hero-video');
             if (!v) return;
             const still = window.matchMedia('(prefers-reduced-motion: reduce)');
-            /* 背景の映像は 1MB ある。opacity 0.16 の質感でしかないので、
-               狭い画面と通信量を節約したい人には最初から取りに行かせない。
+            /* 背景の映像は 1MB ある。9/26 までは opacity 0.16 の質感でしかなかったので、
+               狭い画面では取りに行かせていなかった。9/29 から開いた直後の画面は映像そのものに
+               なったので、狭い画面でも流す。通信量を節約する設定の人にだけは取りに行かせない。
                <source> を外してから load() を呼ばないと、指定済みの URL を
                取りに行ってしまう（preload="metadata" でも play() で全部落ちる） */
-            const heavy = window.matchMedia('(max-width: 860px)').matches
-                || (navigator.connection && navigator.connection.saveData);
+            const heavy = navigator.connection && navigator.connection.saveData;
             if (still.matches || heavy) {
                 v.querySelectorAll('source').forEach((el) => el.remove());
                 v.removeAttribute('src');

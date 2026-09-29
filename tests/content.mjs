@@ -820,9 +820,10 @@ check('タイトルの「最短2週間」が実態と合う',
     const future = mods.filter((d) => !/^\d{4}-\d{2}-\d{2}$/.test(d) || d > today);
     check('lastmod が日付として成立していて、未来になっていない', future.length === 0, future.join(' '));
 
-    /* 背景の映像は 1MB ある。狭い画面では取りに行かせない */
-    check('狭い画面では背景の映像を読み込まない',
-        /max-width: 860px[\s\S]{0,200}saveData/.test(idx) && /removeAttribute\('src'\)/.test(idx));
+    /* 背景の映像は 1MB ある。9/29 から開いた直後の画面は映像そのものなので狭い画面でも流すが、
+       通信量を節約する設定の人には取りに行かせない */
+    check('通信量を節約する設定では背景の映像を読み込まない',
+        /saveData[\s\S]{0,300}removeAttribute\('src'\)/.test(idx) && !/max-width: 860px\)'\)\.matches\s*\|\|/.test(idx));
 }
 
 /* ---- タイトルの値段が、そのページが実際に薦める構成と合っているか（2026-09-28） ----
@@ -1678,7 +1679,55 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         await still.waitForTimeout(900);
         check('動きを減らす設定では再生しない',
             await still.locator('#hero-video').evaluate((e) => e.paused));
+        /* 動かさない人には、最初から見出しを出しておく（スクロールで出す演出をしない） */
+        check('動きを減らす設定では、開いた直後から見出しが見える',
+            Number(await still.locator('.hero h1').evaluate((e) => getComputedStyle(e).opacity)) === 1);
         await still.close();
+    }
+}
+
+/* ---- ヒーロー：開いた直後は映像だけ、スクロールで見出し（2026-09-29） ----
+   「ヒーローは動画だけ見せて、スクロールしたら撮影しない、映像制作って出るようにして」。
+   .hero を画面2枚ぶんにして中を留め、--hero-r（0→1）で映像を落として文字を出す */
+{
+    const op = (pg, sel) => pg.locator(sel).first().evaluate((e) => Number(getComputedStyle(e).opacity));
+    for (const [label, opts] of [['PC', {}], ['スマホ', { width: 390, height: 844, mobile: true }]]) {
+        const pg = await open(browser, { page: 'index.html', ...opts });
+        await pg.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+        await pg.waitForTimeout(400);
+        check(`${label}：開いた直後は見出しを出していない`, await op(pg, '.hero h1') === 0, String(await op(pg, '.hero h1')));
+        check(`${label}：開いた直後は映像を原色で見せている`, await op(pg, '.hero-media') === 1, String(await op(pg, '.hero-media')));
+        check(`${label}：開いた直後に映像が流れている`,
+            await pg.locator('#hero-video').evaluate((e) => !e.paused && e.currentSrc !== ''),
+            JSON.stringify(await pg.locator('#hero-video').evaluate((e) => ({ paused: e.paused, src: e.currentSrc }))));
+        check(`${label}：スクロールを促す表示がある`, await op(pg, '.scroll-hint') > 0.9);
+        const span = await pg.evaluate(() => document.getElementById('top').offsetHeight - innerHeight);
+        check(`${label}：見出しを出すためのスクロールの区間がある`, span > 0, String(span));
+        await pg.evaluate((y) => window.scrollTo({ top: y, behavior: 'instant' }), Math.round(span * 0.7));
+        await pg.waitForTimeout(400);
+        check(`${label}：スクロールすると見出しが出る`, await op(pg, '.hero h1') === 1);
+        check(`${label}：スクロールすると説明とボタンも出る`,
+            await op(pg, '.hero-lead') === 1 && await op(pg, '.hero-actions') === 1);
+        check(`${label}：見出しが出たら映像は質感まで落ちる`, await op(pg, '.hero-media') < 0.2,
+            String(await op(pg, '.hero-media')));
+        check(`${label}：見出しが画面の中にある`,
+            await pg.locator('.hero h1').evaluate((e) => { const r = e.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; }));
+        await pg.close();
+    }
+    /* キーボードで相談ボタンに入ったら、スクロール前でも見えること */
+    {
+        const pg = await open(browser, { page: 'index.html' });
+        await pg.locator('.hero-actions a').first().focus();
+        check('スクロール前でも、キーボードで入ったボタンは見える', await op(pg, '.hero-actions') === 1);
+        await pg.close();
+    }
+    /* JS が動かないときは最初から見出しが読める（隠したまま出てこない、を防ぐ） */
+    {
+        const ctx = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 1280, height: 900 } });
+        const pg = await ctx.newPage();
+        await pg.goto(`${BASE}/index.html`, { waitUntil: 'domcontentloaded' });
+        check('JS が動かないときは最初から見出しが見える', await op(pg, '.hero h1') === 1);
+        await ctx.close();
     }
 }
 
