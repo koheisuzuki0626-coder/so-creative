@@ -8,6 +8,7 @@ insights/
 .selffix_backup/
 run_bot.pid
 bot.log
+launchd.log
 STOP
 
 # APIキーの退避・バックアップ（絶対にコミットしない）
