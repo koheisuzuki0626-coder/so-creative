@@ -4922,7 +4922,7 @@ def _daily_order(candidates, score_fn, seed, need=None):
     return out
 
 
-def _pick_diverse(candidates, n, seen_today=frozenset()):
+def _pick_diverse(candidates, n, seen_today=frozenset(), score_fn=None):
     """並びの上から n 本選ぶ。ただし【同じチャンネルは1本まで】、
     【今日すでに見たチャンネルは後回し】。
 
@@ -4932,17 +4932,25 @@ def _pick_diverse(candidates, n, seen_today=frozenset()):
     同じ会社の作り方を1日に何本も見ても学びは1本ぶんしか増えない。
     5日間（09-25〜29）で、同じチャンネルが2本入ったレポートが 42回中14回あった。
 
-    選び方は3段階の緩め方で、【本数は減らさない】（0本にしない・少なくしない）：
+    緩め方は3段階で、【本数は減らさない】（0本にしない・少なくしない）：
       ① 今日まだ見ていないチャンネル、1本ずつ
       ② 今日見たチャンネルも許す（1本ずつ）
       ③ 同じチャンネルの2本目以降も許す
+
+    ⚠️ ①②は【関連度の同じ層の中だけ】で回す（score_fn を渡した時）。
+    層をまたいで「今日見たチャンネルだから後回し」をやると、お題と関係の薄い
+    ものがレポートに入る——2026-09-25 に直した「裾で埋めない」と同じ事故に
+    なる。逆に③（同じチャンネルの2本目）は層をまたいで譲る。それが目的だから。
+    score_fn を渡さなければ全部が1つの層＝ただの多様化。
+
     言い方ではなく【台帳の状態】で決めるので、チャンネル名の書き方に依らない。
     """
     picked, picked_ids, used = [], set(), set()
-    for allow_seen, allow_dup in ((False, False), (True, False), (True, True)):
-        for v in candidates:
+
+    def _take(pool, allow_seen, allow_dup):
+        for v in pool:
             if len(picked) >= n:
-                return picked
+                return
             if id(v) in picked_ids:
                 continue
             ch = str(v.get("channel") or "")
@@ -4953,6 +4961,15 @@ def _pick_diverse(candidates, n, seen_today=frozenset()):
             picked.append(v)
             picked_ids.add(id(v))
             used.add(ch)
+
+    scored = [(score_fn(v) if score_fn else 0, v) for v in candidates]
+    for sc in sorted({x for x, _ in scored}, reverse=True):
+        tier = [v for x, v in scored if x == sc]
+        _take(tier, False, False)      # ① その層の、今日まだ見ていないチャンネル
+        _take(tier, True, False)       # ② その層の、今日見たチャンネルも許す
+        if len(picked) >= n:
+            return picked
+    _take(candidates, True, True)      # ③ 足りなければ同じチャンネルの2本目以降
     return picked
 
 
@@ -6683,7 +6700,9 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
         _pool, _n = _hits, min(TREND_DEEP_COUNT, len(_hits))
     # 同じチャンネルは1本まで・今日見た所は後回し（_pick_diverse）。
     # 選ぶ母集団は上と同じ（関連ありの時は _hits の中だけ）。裾には手を伸ばさない。
-    targets = _pick_diverse(_pool, _n, _channels_seen_today() if skip_analyzed else set())
+    targets = _pick_diverse(
+        _pool, _n, _channels_seen_today() if skip_analyzed else set(),
+        score_fn=(lambda v: _relevance_score(v, query)) if query else None)
     if query:
         _dup_skipped = sum(1 for v in _pool[:_n] if v not in targets)
         print(f"[trend] 関連あり {len(_hits)}本 / 候補 {len(candidates)}本"
