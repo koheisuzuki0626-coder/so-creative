@@ -217,6 +217,26 @@ check('上の段ほど時間単価が実質的に下がらない',
     byTier.every((x, i) => i === 0 || x.avg >= byTier[i - 1].avg * 0.98),
     byTier.map((x) => `${x.label} ¥${Math.round(x.avg)}`).join(' / '));
 
+/* 同じ注文（尺・本数・ナレーションの付け方）で段だけを上げたとき、時間単価が
+   下がる組み合わせが1つも無いこと（2026-09-29）。上の平均の比較では端の逆転を拾えない。
+   実際、竹が ¥4,900 のときは松の15秒・ナレーションなしが竹より1時間あたり ¥1,047 低かった
+   （松はナレーションを外すと ¥50,000 返すため）。竹を ¥4,050 まで下げる案は、
+   竹がどの尺でも梅を下回るので取らなかった。¥4,400 で両方の段差が正になる。
+   人に読んでもらうナレーションは除く。足す ¥70,000 が段に関係なく同じなので、
+   短い尺では段の差を薄める（15〜30秒で竹が梅を約 ¥500 下回る。record.html に記載） */
+for (let i = 1; i < TIERS.length; i += 1) {
+    const [below, above] = [TIERS[i - 1], TIERS[i]];
+    const r = (t, c) => priceModes(t, c.sec, c.modes) / hoursModes(t, c.sec, c.modes);
+    let worst = { d: Infinity, c: '' };
+    for (const c of reachableNar()) {
+        if (c.modes.includes('human')) continue;
+        const d = r(above, c) - r(below, c);
+        if (d < worst.d) worst = { d, c: `${c.sec}秒×${c.n}本・${c.modes.join('/')}` };
+    }
+    check(`どの注文でも${above.label}の時間単価が${below.label}を下回らない（人のナレーションを除く）`,
+        worst.d >= 0, `最小差 ${Math.round(worst.d)}/h @ ${worst.c}`);
+}
+
 /* モデルが実測より短く見積もっていないこと。
    短い側に倒れると納期に遅れる。倍率を下げるなら実測を伴わせる */
 for (const m of MEASURED) {
@@ -531,7 +551,7 @@ check('本文に選んだ内容が入る',
 /* 本ごとの尺は本数の行に「30/60秒」と詰めて書く。
    全角で並べると1文字9バイトになり、mailto の上限に触るため */
 check('本文に内訳も入る', /・基本料金：¥90,000/.test(body)
-    && /・尺 合計90秒 × ¥4,900（竹）/.test(body)
+    && body.includes(`・尺 合計90秒 × ¥${TIERS[1].perSec.toLocaleString('en-US')}（竹）`)
     && /・本数 2本（30\/60秒）：/.test(body));
 /* 尺と本数は件名と内訳にあるので、選んだ内容では繰り返さない（mailto の長さ対策） */
 check('選んだ内容で尺と本数を繰り返していない', !/・合計の尺：/.test(body) && !/・本数：2本/.test(body));

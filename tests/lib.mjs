@@ -34,7 +34,7 @@ export const PRICE = { base: 90000, perExtra: 65000, narrationAi: 0, narrationHu
 export const matsuToNone = () => PRICE.matsuToAi + PRICE.noNarration;
 export const TIERS = [
     { id: 'ume',   label: '梅', perSec: 3500, hours: 1.0,  narration: false },
-    { id: 'take',  label: '竹', perSec: 4900, hours: 1.22, narration: false },
+    { id: 'take',  label: '竹', perSec: 4400, hours: 1.22, narration: false },
     { id: 'matsu', label: '松', perSec: 6650, hours: 1.36, narration: true },
 ];
 export const LENGTHS = [15, 30, 45, 60, 90, 120, 180, 300];

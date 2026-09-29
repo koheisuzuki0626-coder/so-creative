@@ -81,7 +81,7 @@ const track = window.soTrack || (() => {});
             { id: 'ume', label: '梅', sub: '標準', perSec: 3500, hours: 1.0, narration: false,
               detail: '登場人物なし（設備・製品・空間を中心に構成） ／ AIナレーションは料金に含まれます（本ごとに選べます。入れない本は1本につき −¥25,000／人物ナレーションは1名 ¥70,000〜で、何本に入れても1名ぶん） ／ 修正2回まで ／ 1080p（フルHD）で納品',
               use: 'SNS 投稿・社内共有・製品やサービスの紹介' },
-            { id: 'take', label: '竹', sub: '上', perSec: 4900, hours: 1.22, narration: false,
+            { id: 'take', label: '竹', sub: '上', perSec: 4400, hours: 1.22, narration: false,
               detail: '登場人物2人まで（同じ人物を最後まで同じ顔で出せます） ／ AIナレーションは料金に含まれます（本ごとに選べます。入れない本は1本につき −¥25,000／人物ナレーションは1名 ¥70,000〜で、何本に入れても1名ぶん） ／ 修正3回まで ／ 1080p（フルHD）で納品',
               use: '採用サイト・会社紹介・サービス紹介' },
             { id: 'matsu', label: '松', sub: '特上', perSec: 6650, hours: 1.36, narration: true,
