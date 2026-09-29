@@ -1742,6 +1742,27 @@ def run():
         check("昨日の分は数えない", bot._channels_seen_today("2000-01-01"), set())
         check("IDの台帳も隔離先に書いている（本物を汚さない）",
               bot._load_analyzed_ids(), {"x1", "x2", "x3"})
+        # 台帳は追記ではなく【その日の行だけを残して書き直す】。
+        # ①昨日以前の死んだ行が積まない ②壊れても翌日に治る
+        _ch = bot._ANALYZED_CH_FILE
+        check("今日の行だけが残る（昨日以前は積まない）",
+              sorted(_ch.read_text(encoding="utf-8").splitlines()),
+              sorted(f"{bot.datetime.now(bot.JST).strftime('%Y-%m-%d')}\t{c}"
+                     for c in ("A社", "Crevo")))
+        _ch.write_text("2000-01-01\tむかしの会社\n"
+                       + _ch.read_text(encoding="utf-8"), encoding="utf-8")
+        bot._mark_analyzed("x4", "B社")
+        check("書き直しで昨日以前の行が落ちる",
+              "むかしの会社" in _ch.read_text(encoding="utf-8"), False)
+        check("今日の分は落とさない",
+              bot._channels_seen_today(), {"Crevo", "A社", "B社"})
+        # 1バイト壊れても全滅しない（errors="replace"）。追記のままだと、
+        # 一度壊れた日から【ずっと】「今日は何も見ていない」になっていた。
+        _ch.write_bytes(_ch.read_bytes() + b"\xff\n")
+        check("壊れたバイトが混じっても、正しい行は読める",
+              bot._channels_seen_today() >= {"Crevo", "A社", "B社"}, True)
+        _ch.unlink()
+        check("台帳が消えても落ちない（空を返す）", bot._channels_seen_today(), set())
     finally:
         bot._ANALYZED_CH_FILE, bot._ANALYZED_IDS_FILE = _keep_ch, _keep_ids2
     check("選ぶ側が台帳を見ている",
@@ -1749,6 +1770,39 @@ def run():
           True)
     check("上から n 本そのまま取る古い作りが残っていない",
           "targets = candidates[:" in _srcS, False)
+    # ログは「何本入れ替えたか」ではなく【状態】を書く。入れ替えの原因は3つ
+    # あるのに1つを名乗り、しかも偏りを防げなかった回に限って0で黙っていた。
+    check("ログに原因を推測して書かない", "本を入れ替え" in _srcS, False)
+    check("ログにチャンネル数と、同じ所が2本以上あるかを書く",
+          "チャンネル" in _srcS and "同じ所が2本以上" in _srcS, True)
+    check("その状態をレポートにも残す（ログは流れて消える）",
+          'f"視聴 {_note}"' in _srcS, True)
+    check("同じジャンルが1日2巡しても上書きしない",
+          "while _out.exists():" in _srcS, True)
+
+    print("■ 見られなかった理由を推測で報告しない")
+    # 事故（2026-09-30 に発覚）：絵を見られない道は4つ（0本・営業素材だけ・
+    # 枠切れ・視聴の例外）あるのに、結末の報告は全部「Gemini の枠が戻らず」
+    # だった。静かモードでは途中の説明が消えるので、これだけが本人に届く。
+    _srcAll = _insp.getsource(bot._run_trend_all)
+    check("控えた理由を使う（推測しない）",
+          "_trend_fail_why.pop(cid" in _srcAll, True)
+    check("『枠が戻ったらやり直します』を言う文は1つだけ（枠切れ用）",
+          _srcAll.count('"枠が戻ったらやり直します。")'), 1)
+    check("枠切れ以外にも言えるようになっていない",
+          'if _why == "quota":' in _srcAll, True)
+    for _why, _want in (("quota", "枠が戻ったら"),
+                        ("YouTubeで1本も見つからなかった", "次の巡で"),
+                        ("動画の視聴に失敗した（枠切れではない）", "次の巡で")):
+        check(f"理由ごとに言い分けている: {_why[:12]}", _want in _srcAll, True)
+    check("理由を控える口が4つある（0本・営業素材・枠切れ・視聴の例外）",
+          _srcS.count("_trend_fail_why[cid]"), 4)
+    # 流れたお題は、書くだけで読まれていなかった（値を読む場所が1つも無かった）
+    _srcR = _insp.getsource(bot._gemini_recovery_loop)
+    check("枠が戻ったら、流れたお題を実際に使う",
+          "_redo = _trend_redo.pop(cid" in _srcR and "if _redo:" in _srcR, True)
+    check("流れたお題で枠を食い直さない（本数を増やさない）",
+          "_redo[:max(1, len(_genres_now))]" in _srcR, True)
     check("記録する側がチャンネルを渡している",
           '_mark_analyzed(v["id"], v.get("channel"))' in _srcS, True)
     check("母集団は従来どおり（関連ありの時は _hits の中だけ・裾に伸ばさない）",
@@ -4117,7 +4171,14 @@ def run():
     import pathlib as _plA
     _keep_ids = bot._ANALYZED_IDS_FILE
     try:
-        bot._ANALYZED_IDS_FILE = _plA.Path(_tfA.mkdtemp()) / "ids.txt"
+        # ch 台帳も一緒に逃がす。ここは _mark_analyzed を第2引数なしで呼んで
+        # いるので【偶然】本物を汚していないだけ。チャンネル名を足した途端に
+        # 本物の insights/analyzed_channels.txt へ今日の日付で書き込み、
+        # その日の残りのジャンルで【そのチャンネルを実際に後回しにする】。
+        _tmpA = _plA.Path(_tfA.mkdtemp())
+        bot._ANALYZED_IDS_FILE = _tmpA / "ids.txt"
+        _keep_chA = bot._ANALYZED_CH_FILE
+        bot._ANALYZED_CH_FILE = _tmpA / "ch.txt"
         check("最初は空", bot._load_analyzed_ids(), set())
         for _v in ("aaa", "bbb", "ccc"):
             bot._mark_analyzed(_v)
@@ -4128,6 +4189,7 @@ def run():
               [v["id"] for v in _vids if v["id"] not in _seen], ["ddd", "eee"])
     finally:
         bot._ANALYZED_IDS_FILE = _keep_ids
+        bot._ANALYZED_CH_FILE = _keep_chA
     _tr = bot_src()
     _tr = _tr[_tr.index("async def _run_trend_study"):]
     _tr = _tr[:_tr.index("# ランキング全体の傾向分析")]
