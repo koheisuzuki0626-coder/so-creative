@@ -1709,6 +1709,13 @@ def run():
               [dict(_on, id="on2", channel="Crevo"), dict(_on, id="on3", channel="B社")],
               1, seen_today={"Crevo"}, score_fn=_sf)],
           ["on3"])
+    check("関連ありが同じ会社に偏っていても、裾より先に2本目を取る",
+          [v["id"] for v in bot._pick_diverse(
+              [dict(_on, id="on4"), dict(_on, id="on5"), _off1], 2, score_fn=_sf)],
+          ["on4", "on5"])
+    check("関連ありが尽きたら裾も使う（本数は減らさない）",
+          [v["id"] for v in bot._pick_diverse(
+              [dict(_on, id="on6"), _off1], 2, score_fn=_sf)], ["on6", "off1"])
     check("呼ぶ側が層（関連度）を渡している",
           "score_fn=(lambda v: _relevance_score(v, query)) if query else None" in _srcS,
           True)

@@ -4962,14 +4962,26 @@ def _pick_diverse(candidates, n, seen_today=frozenset(), score_fn=None):
             picked_ids.add(id(v))
             used.add(ch)
 
+    def _by_tier(group):
+        for sc in sorted({x for x, _ in group}, reverse=True):
+            tier = [v for x, v in group if x == sc]
+            _take(tier, False, False)  # ① その層の、今日まだ見ていないチャンネル
+            _take(tier, True, False)   # ② その層の、今日見たチャンネルも許す
+        return len(picked) >= n
+
     scored = [(score_fn(v) if score_fn else 0, v) for v in candidates]
-    for sc in sorted({x for x, _ in scored}, reverse=True):
-        tier = [v for x, v in scored if x == sc]
-        _take(tier, False, False)      # ① その層の、今日まだ見ていないチャンネル
-        _take(tier, True, False)       # ② その層の、今日見たチャンネルも許す
-        if len(picked) >= n:
-            return picked
-    _take(candidates, True, True)      # ③ 足りなければ同じチャンネルの2本目以降
+    strong = [(x, v) for x, v in scored if x > 0]     # お題に当たっているもの
+    weak = [(x, v) for x, v in scored if x <= 0]      # 当たっていない＝裾
+    if _by_tier(strong):
+        return picked
+    # ③ 同じチャンネルの2本目。ただし【裾より先】。関連のあるものが同じ会社に
+    # 偏っている時に、無関係なものを1本入れて多様に見せるのは本末転倒
+    # （2026-09-25「裾で埋めない」。少なく見て少なく書くほうが正しい）。
+    _take([v for _, v in strong], True, True)
+    if len(picked) >= n:
+        return picked
+    _by_tier(weak)                     # ここまで来て初めて裾に手を伸ばす
+    _take(candidates, True, True)
     return picked
 
 
