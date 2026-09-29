@@ -4667,25 +4667,43 @@ def _mark_analyzed(video_id, channel=None):
     if channel:
         # 「今日どのチャンネルを見たか」の台帳。プロセス内の記憶にしないのは、
         # 自動更新で1日に何度も再起動するため（再起動のたびに忘れる）。
+        # 【追記ではなく、その日の行だけを残して書き直す。】理由は2つ：
+        #  ① 昨日以前の行は二度と読まない（読む側が今日の日付で絞る）ので、
+        #     追記だと死んだ行が永久に積む（約45行/日）
+        #  ② 読みは丸ごと1回なので、1バイト壊れると【その日以降ずっと】
+        #     「今日は何も見ていない」に見え、偏りの防止が黙って消える。
+        #     毎回書き直せば、壊れても翌日には自然に治る
         try:
-            with open(_ANALYZED_CH_FILE, "a", encoding="utf-8") as f:
-                f.write(f"{datetime.now(JST).strftime('%Y-%m-%d')}\t{channel}\n")
+            today = datetime.now(JST).strftime("%Y-%m-%d")
+            rows = sorted(_channels_seen_today(today) | {channel})
+            tmp = _ANALYZED_CH_FILE.with_suffix(".tmp")
+            tmp.write_text("".join(f"{today}\t{c}\n" for c in rows),
+                           encoding="utf-8")
+            tmp.replace(_ANALYZED_CH_FILE)      # 途中で落ちても壊れた版を残さない
         except Exception as e:  # noqa: BLE001
-            print(f"[trend] 視聴チャンネル保存失敗: {e}")
+            # print だけだと debug/discord_log.md に出ない＝調べる時に見えない。
+            _log_error("trend:視聴チャンネル保存", e)
 
 
 def _channels_seen_today(day=None):
-    """今日すでに視聴して報告したチャンネル名の集合（台帳から読む）。"""
+    """今日すでに視聴して報告したチャンネル名の集合（台帳から読む）。
+
+    読めない時は空を返す＝「まだ何も見ていない」に倒す（本数を減らさない側）。
+    ただし黙って倒れると偏りの防止が消えたことに気づけないので、
+    ①1バイトの壊れで全滅しないよう errors="replace" で読み
+    ②失敗はエラーログに残す（debug/discord_log.md に出る）。
+    """
     day = day or datetime.now(JST).strftime("%Y-%m-%d")
     seen = set()
     try:
         if _ANALYZED_CH_FILE.exists():
-            for line in _ANALYZED_CH_FILE.read_text(encoding="utf-8").splitlines():
+            text = _ANALYZED_CH_FILE.read_text(encoding="utf-8", errors="replace")
+            for line in text.splitlines():
                 d, _, ch = line.partition("\t")
                 if d == day and ch:
                     seen.add(ch)
     except Exception as e:  # noqa: BLE001
-        print(f"[trend] 視聴チャンネル読込失敗: {e}")
+        _log_error("trend:視聴チャンネル読込", e)
     return seen
 
 
@@ -6712,15 +6730,24 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
         _pool, _n = _hits, min(TREND_DEEP_COUNT, len(_hits))
     # 同じチャンネルは1本まで・今日見た所は後回し（_pick_diverse）。
     # 選ぶ母集団は上と同じ（関連ありの時は _hits の中だけ）。裾には手を伸ばさない。
+    _seen_ch = _channels_seen_today() if skip_analyzed else set()
     targets = _pick_diverse(
-        _pool, _n, _channels_seen_today() if skip_analyzed else set(),
+        _pool, _n, _seen_ch,
         score_fn=(lambda v: _relevance_score(v, query)) if query else None)
+    # 見た結果の【状態】を1行に残す。「何本入れ替えたか」を書いていたのを
+    # やめた理由（2026-09-30）：入れ替えの原因は3つ（同じチャンネル／今日見た所／
+    # 関連度の繰り上げ）あるのに1つだけを名乗り、しかも
+    # 【偏りを防げなかった回（候補が1社しか無い）に限って0になって黙る】。
+    # 直したい事象だけがログから見えないのは一番まずい。数えられる事実を書く。
+    _chs = [str(v.get("channel") or "") for v in targets]
+    _dups = sorted({c for c in _chs if _chs.count(c) > 1})
+    _note = (f"{len(targets)}本 / {len(set(_chs))}チャンネル"
+             + (f"・同じ所が2本以上：{'・'.join(_dups)}" if _dups else "")
+             + (f"・今日すでに見た所 {sum(1 for c in _chs if c in _seen_ch)}本"
+                if _seen_ch else ""))
     if query:
-        _dup_skipped = sum(1 for v in _pool[:_n] if v not in targets)
         print(f"[trend] 関連あり {len(_hits)}本 / 候補 {len(candidates)}本"
-              f"（{len(targets)}本を見る"
-              + (f"・同じチャンネル等で{_dup_skipped}本を入れ替え" if _dup_skipped else "")
-              + "）", flush=True)
+              f"（視聴 {_note}）", flush=True)
     await _trend_say(
         channel,
         f"🎬 {label}の動画{len(videos)}本を取得しました。"
@@ -6823,15 +6850,24 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
     fname = today + (
         "_" + re.sub(r"[^\w぀-ヿ一-鿿]+", "_", query)[:24] if query else ""
     ) + ".md"
-    full = [f"# YouTube{label}リサーチ {today}", "", "## トレンド概観", overview or "（取得失敗）"]
+    full = [f"# YouTube{label}リサーチ {today}", "", f"視聴 {_note}", "",
+            "## トレンド概観", overview or "（取得失敗）"]
     if meta_analysis:
         full += ["", "## メタ情報ベースの傾向分析", meta_analysis]
     for v, a in reports:
         full += ["", f"## {v['title']}（{v['channel']} / {v['views']:,}回）", v["url"], "", a]
     try:
-        (INSIGHTS_DIR / fname).write_text("\n".join(full), encoding="utf-8")
+        # 同じジャンルは1日に2巡することがある（9ジャンル・1日最大8巡）。
+        # 上書きしていたので、2026-09-29 は16回分析して9本しか残っていなかった
+        # （Gemini の個別映像分析＝一番高い出力が毎日消えていた）。連番で逃がす。
+        _out = INSIGHTS_DIR / fname
+        _i = 2
+        while _out.exists():
+            _out = INSIGHTS_DIR / (fname[:-3] + f"_{_i}.md")
+            _i += 1
+        _out.write_text("\n".join(full), encoding="utf-8")
     except Exception as e:  # noqa: BLE001
-        print(f"[trend] レポート保存失敗: {e}")
+        _log_error("trend:レポート保存", e)
 
     # ダイジェストを作ってDiscordに投稿＋会話の記憶に追加
     digest = ""
