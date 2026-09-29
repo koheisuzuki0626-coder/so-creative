@@ -2149,6 +2149,10 @@ GEMINI_COOLDOWN_SEC = int(os.getenv("GEMINI_COOLDOWN_SEC", "1800"))  # 既定30�
 # 枠切れで「視聴なし」になったリサーチのお題。枠が戻ったらやり直す。
 # {チャンネルID: [お題, ...]}（お題が None なら急上昇TOP100）
 _trend_redo = {}
+# 直前のリサーチが「絵を見られなかった」理由。{チャンネルID: 理由}
+# 理由を控えないと、結末の報告が全部「Gemini の枠切れ」になる
+# （2026-09-30 に発覚。0本・営業素材だけ・視聴の例外まで枠切れと言っていた）。
+_trend_fail_why = {}
 
 
 # 枠が戻るたびに回し続ける（本人の希望・2026-09-18「ずっと、定期的に」）。
@@ -2392,11 +2396,17 @@ async def _gemini_recovery_loop():
             _gemini_watch["outage_cid"] = None
             # 枠が戻るたびに、設定してあるジャンルを回す（1日の上限まで）。
             # 分析済みは飛ばすので、回すたびにリストの奥へ進む。
-            _trend_redo.pop(cid, None)
+            # 枠切れで流れたお題を【実際に使う】。2026-09-30 まで、ここは
+            # pop して捨てるだけで、記録した値を読む場所が1つも無かった
+            # （「枠が戻ったらこのお題をやり直す」は実行されていなかった）。
+            _redo = _trend_redo.pop(cid, None)
             # 日替わりの切り出しは復活側でも同じものを使う。ここだけ全部にすると、
             # 枠が戻るたびに設定した全ジャンルが走って枠を食い直す
             _genres_now = _todays_genres(gen_settings.get("trend_query"),
                                          round_no=_trend_runs_today()) or [None]
+            if _redo:
+                # 流れたお題を先に、同じ本数だけ（枠を食い直さないため）
+                _genres_now = _redo[:max(1, len(_genres_now))]
             # すでに走っている時は起動しない。2本目の枠待ちの最中に
             # ここがもう1本立ち上げると、同じお題が二重に回る。
             _already = any("YouTubeリサーチ" in n for n, _ in _busy_tasks(cid))
@@ -6628,6 +6638,7 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
         # 並びはAPIの関連順のまま使う（企業VPのお題は _corp_gate が
         # 「らしい順」に並べ替える）。
         if not videos:
+            _trend_fail_why[cid] = "YouTubeで1本も見つからなかった"
             await _trend_say(channel, f"🔎 {label}に合う動画が見つかりませんでした。")
             return False
         if len(_used_queries) > 1:
@@ -6717,6 +6728,7 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
             "・「採用ムービー」「ブランドフィルム」「周年記念ムービー」\n"
             "・企業名を足す（例：「〇〇株式会社 会社紹介」）\n"
             "「**リサーチのジャンルを〇〇にして**」で毎朝のお題を変えられます。")
+        _trend_fail_why[cid] = "取れた動画が全部、制作会社の営業素材だった"
         return
     # 足りない分を裾から埋めない。埋めた分はジャンル違いで、しかも Gemini は
     # 何を見せても必ず「型」を書くので、知見ファイルに嘘の学びが入る
@@ -6777,6 +6789,7 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
             )
         except GeminiQuotaExceeded as e:
             quota_hit = True
+            _trend_fail_why[cid] = "quota"
             _gemini_watch["outage_cid"] = cid
             # 枠が戻ったら、このお題は視聴つきでやり直す（本人の希望・2026-09-18）。
             # メタ情報だけの分析は「タイトルの付け方」までしか分からず、
@@ -6930,6 +6943,10 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
 
     if require_video and not reports:
         # 絵を見られなかった回は出さない。枠が戻ったときにやり直す。
+        if not quota_hit:
+            # 枠切れ以外で全滅した（通信・非公開・動画が長すぎる等）。
+            # ここを枠切れと report すると「枠が戻ったらやり直します」が嘘になる。
+            _trend_fail_why[cid] = "動画の視聴に失敗した（枠切れではない）"
         print(f"[trend] 視聴できなかったので投稿を見送る（{label}）")
         return False
 
@@ -7198,16 +7215,29 @@ async def _run_trend_all(cid, genres):
                 pass
     if _seen_any:
         _mark_trend_run()      # 絵を見られた巡だけを1日の上限に数える
+        _trend_fail_why.pop(cid, None)
     else:
         _mark_trend_fail()     # 見られなかった。次までの間隔を伸ばす
         # 事故（2026-09-20〜21）：「見てきます…」と告げたのに、視聴できない回は
         # 何も返さず終わっていた。静かモードで理由も出ないので、2日続けて
         # 音信不通に見えた。【開始を告げたなら、必ず結末を告げる】。
+        # 理由は控えたものを使う（推測しない）。枠切れの時だけ
+        # 「枠が戻ったらやり直します」と言う——それ以外では復活の仕掛け
+        # （_gemini_recovery_loop）が動かないので、言えば嘘になる。
+        _why = _trend_fail_why.pop(cid, None)
+        if _why == "quota":
+            _msg = ("📭 今回は Gemini の枠が戻らず、動画を見て分析できませんでした。"
+                    "タイトルだけの分析はしません（映像のヒントが取れないため）。"
+                    "枠が戻ったらやり直します。")
+        elif _why:
+            _msg = (f"📭 今回は動画を見て分析できませんでした（{_why}）。"
+                    "タイトルだけの分析はしません（映像のヒントが取れないため）。"
+                    "次の巡でやり直します。")
+        else:
+            _msg = ("📭 今回は動画を見て分析できませんでした（理由は記録済み）。"
+                    "次の巡でやり直します。")
         try:
-            await send_as(orch, cid,
-                          "📭 今回は Gemini の枠が戻らず、動画を見て分析できません"
-                          "でした。タイトルだけの分析はしません（映像のヒントが"
-                          "取れないため）。枠が戻ったらやり直します。")
+            await send_as(orch, cid, _msg)
         except Exception:  # noqa: BLE001
             pass
 
