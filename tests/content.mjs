@@ -887,6 +887,49 @@ check('タイトルの「最短2週間」が実態と合う',
     }
 }
 
+/* ---- 「会社紹介」と名指しで出す額を1つに揃える（2026-09-29） ----
+   同じ「会社紹介」に4つの額が付いていた。
+     ¥195,000  pricing.html のタイトル（30秒・梅）
+     ¥300,000  company-video.html のタイトル（60秒・梅）
+     ¥384,000  company-video.html の本文「よく選ばれるのは60秒・竹」
+     ¥531,000  pricing.html の計算機プリセット（90秒・竹）
+   基準は、ページに載せている動画そのもの（59秒・登場人物2人＝竹の60秒）。
+   それ以外の額を「会社紹介は」と言って出さない。 */
+{
+    const want = `¥${price(TIERS.find((x) => x.label === '竹'), 60, 1).toLocaleString('en-US')}`;
+    /* 「会社紹介…¥N」と名指しで書いている箇所。表の行や、本数加算の説明は対象外
+       （そちらは尺ごと・差額ごとの額で、会社紹介1本の値段ではない） */
+    for (const f of ['pricing.html', 'company-video.html', 'index.html']) {
+        const h = readFileSync(`${ROOT}/${f}`, 'utf8');
+        for (const m of h.matchAll(/会社紹介(?:動画)?(?:は|の)?\s*(\d+)秒\s*(¥[\d,]+)/g)) {
+            check(`${f} の「会社紹介${m[1]}秒 ${m[2]}」が載せている動画の見積り（60秒 ${want}）と同じ`,
+                m[1] === '60' && m[2] === want, `期待 60秒 ${want}`);
+        }
+    }
+    /* 計算機のプリセットも同じ組み合わせであること（額は pricing.mjs で実際に押して見ている） */
+    const pr = readFileSync(`${ROOT}/pricing.html`, 'utf8');
+    const pre = pr.match(/<button[^>]*data-tier="([^"]*)"[^>]*data-len="([^"]*)"[^>]*>\s*<b>会社紹介<\/b>(\d+)秒/);
+    check('会社紹介のプリセットが 60秒・竹 で、表示と data-len が一致している',
+        !!pre && pre[1] === 'take' && pre[2] === '60' && pre[3] === '60',
+        pre ? `${pre[1]} data-len=${pre[2]} 表示${pre[3]}秒` : '見つからない');
+    /* 展示会ページの「会社紹介◯秒・段」も揃えておく */
+    const ex = readFileSync(`${ROOT}/exhibition-video.html`, 'utf8');
+    const exm = ex.match(/会社紹介(\d+)秒・([梅竹松])/);
+    if (exm) {
+        check('exhibition-video.html の「会社紹介」が 60秒・竹',
+            exm[1] === '60' && exm[2] === '竹', `${exm[1]}秒・${exm[2]}`);
+    }
+    /* 90秒を会社紹介の定番として書き戻していないか */
+    for (const f of ['index.html', 'pricing.html', 'company-video.html']) {
+        const h = readFileSync(`${ROOT}/${f}`, 'utf8')
+            /* 訂正のメモそのものは、外した言い方を引用してよい */
+            .replace(/2026-09-29：[\s\S]*?-->/g, '');
+        check(`${f} が90秒を会社紹介の定番として書いていない`,
+            !/会社紹介[^。<]{0,10}(?:でいちばん多い尺|の定番)[^。<]{0,6}90秒/.test(h)
+            && !/90秒[^。<]{0,6}会社紹介でいちばん多い/.test(h));
+    }
+}
+
 /* ---- 2本目の値段を ¥65,000 と言い切らない（2026-09-26） ----
    式は base + 秒単価 × 【合計】秒数 + ¥65,000 × (本数 − 1) なので、
    2本目にも秒単価がかかる。¥65,000 は本数加算だけの額で、2本目の値段ではない。

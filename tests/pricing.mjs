@@ -477,7 +477,12 @@ check('プリセットは用途名',
    ラジオで松を選ぶと ¥1,287,000、同じ条件をプリセットで選ぶと ¥1,262,000
    （松＋AIで −25,000）になり、公開している料金表とも食い違っていた。
    いまは段の既定（松は人物、梅・竹はAI）に揃う */
-for (const [t, sec] of [['ume', 30], ['take', 90], ['matsu', 180]]) {
+/* 尺はボタンの data-len から読む。ここに書き写すと、プリセットを直したときに
+   検査だけ古い尺のまま通ってしまう（9/29 に会社紹介を90秒→60秒へ変えて気づいた） */
+const presetLens = Object.fromEntries(await Promise.all(
+    ['ume', 'take', 'matsu'].map(async (t) => [t, Number(
+        await page.locator(`.calc-preset[data-tier="${t}"]`).getAttribute('data-len'))])));
+for (const [t, sec] of Object.entries(presetLens)) {
     await page.locator(`.calc-preset[data-tier="${t}"]`).click();
     await page.waitForTimeout(80);
     const tier = TIERS.find((x) => x.id === t);
@@ -491,6 +496,21 @@ for (const [t, sec] of [['ume', 30], ['take', 90], ['matsu', 180]]) {
     /* 公開している表の額（基本料金＋秒単価×尺）と一致すること */
     check(`プリセット(${t})が料金表と同じ額`,
         shown === PRICE.base + tier.perSec * sec, `¥${shown}`);
+}
+
+/* 会社紹介のプリセットは、company-video.html に載せているサンプル
+   （59秒・登場人物2人＝竹の60秒）と同じ見積りであること。
+   9/29 まで 90秒・竹（¥531,000）で、サンプルより ¥147,000 高く出していた。
+   同じページの本文は「よく選ばれるのは60秒・竹」と書いていた */
+{
+    const take = TIERS.find((x) => x.label === '竹');
+    const want = `¥${price(take, 60, 1).toLocaleString('en-US')}`;
+    const cv = readFileSync(`${ROOT}/company-video.html`, 'utf8');
+    check('会社紹介のプリセットが60秒・竹（載せているサンプルと同じ）',
+        presetLens.take === 60, `${presetLens.take}秒`);
+    check(`会社紹介の見積りが company-video.html の額（${want}）と揃っている`,
+        new RegExp(`60秒\\s*${want}`).test(cv) && /<b>会社紹介<\/b>60秒/.test(
+            readFileSync(`${ROOT}/pricing.html`, 'utf8')), want);
 }
 
 /* ---- メール本文 ----
