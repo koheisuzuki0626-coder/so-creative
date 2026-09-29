@@ -942,7 +942,8 @@ check('タイトルの「最短2週間」が実態と合う',
     }
     const pr = readFileSync(`${ROOT}/pricing.html`, 'utf8');
     check('料金ページに企画・構成費の額と中身が書いてある',
-        pr.includes(`企画・構成費 ¥${PRICE.base.toLocaleString('en-US')}`) && /ヒアリング・構成案づくり・絵コンテづくり/.test(pr));
+        pr.includes(`企画・構成費 ¥${(PRICE.base - PRICE.perExtra).toLocaleString('en-US')}（1案件に1回）`)
+        && pr.includes(`制作費 1本につき ¥${PRICE.perExtra.toLocaleString('en-US')}`) && /ヒアリング・企画・進行管理/.test(pr));
 }
 
 /* ---- 2本目の値段を ¥65,000 と言い切らない（2026-09-26） ----
@@ -1874,7 +1875,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     /* 時間単価は ¥80,000/h（実際に出した額 ÷ 1.0h）。2026-09-26 まで ¥65,000/h と
        書いていたが、これは本数加算だけを2本目の売上と見ていた誤り */
     check('縦型は追加本数で作ると書いている',
-        /追加の1本|追加本数/.test(t) && t.includes(`本数加算 ¥${PRICE.perExtra.toLocaleString('en-US')} ＋ 尺ぶん`));
+        /追加の1本|追加本数/.test(t) && t.includes(`制作費 ¥${PRICE.perExtra.toLocaleString('en-US')} ＋ 尺ぶん`));
     check('1,080クレジットを授業料として記録している', /1,080クレジットは授業料/.test(t));
     check('実際に納品した2本の尺と時間単価が載っている',
         /59秒/.test(t) && /15秒/.test(t) && /¥41,905\/h/.test(t) && /¥80,000\/h/.test(t));
@@ -1995,7 +1996,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     check('ナレーションの条件が見積書にある',
         /−¥25,000/.test(mitsu) && /¥70,000/.test(mitsu));
     check('料金の単位がサイトと揃っている(基本料金と追加本数)',
-        mitsu.includes(`¥${PRICE.base.toLocaleString('en-US')}`) && mitsu.includes(`¥${PRICE.perExtra.toLocaleString('en-US')}`));
+        mitsu.includes(`¥${(PRICE.base - PRICE.perExtra).toLocaleString('en-US')}`) && mitsu.includes(`¥${PRICE.perExtra.toLocaleString('en-US')}`));
     check('契約書にAI特有の免責がある',
         /著作権による保護を\s*受けない場合がある/.test(keiyaku) && /意図しない類似/.test(keiyaku));
     check('契約書に権利の帰属がある',

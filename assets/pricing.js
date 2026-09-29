@@ -5,7 +5,8 @@
 (() => {
 const track = window.soTrack || (() => {});
         /* ---------- 料金シミュレーター ----------
-           料金 = 企画・構成費 ¥180,000 + 秒単価×合計秒数 + ¥100,000×(本数-1) + ナレーション調整
+           料金 = 企画・構成費 ¥80,000（1案件に1回） + 制作費 ¥100,000×本数 + 秒単価×合計秒数 + ナレーション調整
+           （9/29 に見せ方だけ変えた。PRICE.base ＝ 企画・構成費 ＋ 1本目の制作費 で、合計は1円も変わらない）
            工数 = 3.0h + 0.15h×倍率×合計秒数 + 1.5h×(本数-1) + 1.0h×ナレーション本数
 
            尺とナレーションは本ごとに選ぶ（2026-09-22）。ナレーション調整は2つだけ。
@@ -168,9 +169,9 @@ const track = window.soTrack || (() => {});
                 <p class="calc-out-head">お見積り</p>
                 <p class="calc-total"><span data-c="total">¥300,000</span><small>税込</small></p>
                 <dl class="calc-break">
-                    <div><dt>企画・構成費</dt><dd data-c="base">¥180,000</dd></div>
+                    <div><dt>企画・構成費（1案件に1回）</dt><dd data-c="base">¥80,000</dd></div>
+                    <div><dt data-c="cnt-dt">制作費 1本</dt><dd data-c="cntfee">¥100,000</dd></div>
                     <div><dt data-c="len-dt">尺</dt><dd data-c="lenfee">¥0</dd></div>
-                    <div><dt data-c="cnt-dt">本数 1本</dt><dd data-c="cntfee">¥0</dd></div>
                     <div><dt data-c="nar-dt">ナレーション</dt><dd data-c="narfee">¥0</dd></div>
                 </dl>
                 <p class="calc-lead">納品目安 <strong data-c="lead-v">約2週間</strong></p>
@@ -469,10 +470,13 @@ const track = window.soTrack || (() => {});
                 narHint.classList.toggle('calc-hint-warn', cheaperMatsu);
 
                 const lenFee = tier.perSec * sec;
-                const cntFee = PRICE.perExtra * (n - 1);
+                /* 見せ方（9/29）：企画・構成費は1案件に1回、制作費は1本ごと。
+                   PRICE.base ＝ 企画・構成費 ＋ 1本目の制作費 なので、合計は前と同じ */
+                const planFee = PRICE.base - PRICE.perExtra;
+                const cntFee = PRICE.perExtra * n;
                 const narN = narTracks();
                 const narFeeNow = narFee();
-                const total = PRICE.base + lenFee + cntFee + narFeeNow;
+                const total = planFee + cntFee + lenFee + narFeeNow;   // ＝ PRICE.base ＋ 尺 ＋ perExtra×(本数−1) ＋ ナレーション
                 const lenLabel = secLabel(sec);
                 /* 「〜」を付けるのは人のときだけ。AI は額が決まっている */
                 const approx = !tier.narration && hasHuman();
@@ -497,14 +501,12 @@ const track = window.soTrack || (() => {});
                     .join('/');
 
                 q('total').textContent = yen(total) + (approx ? '〜' : '');
-                q('base').textContent = yen(PRICE.base);
+                q('base').textContent = yen(planFee);
                 q('len-dt').textContent = n === 1
                     ? `尺 ${lenLabel} × ${yen(tier.perSec)}（${tier.label}）`
                     : `尺 合計${lenLabel}（${lensText()}） × ${yen(tier.perSec)}（${tier.label}）`;
                 q('lenfee').textContent = yen(lenFee);
-                q('cnt-dt').textContent = n === 1
-                    ? '本数 1本'
-                    : `本数 ${n}本（2本目以降 ${n - 1}本）`;
+                q('cnt-dt').textContent = `制作費 ${n}本 × ${yen(PRICE.perExtra)}`;
                 q('cntfee').textContent = yen(cntFee);
                 q('nar-dt').textContent = narText;
                 q('narfee').textContent =
@@ -526,9 +528,10 @@ const track = window.soTrack || (() => {});
                     `・納品目安：${leadTime(sec, tier, narN, n)}`,
                     '',
                     '■ 内訳',
-                    `・企画・構成費：${yen(PRICE.base)}`,
-                    `・尺 ${n === 1 ? lenLabel : `合計${lenLabel}`} × ${yen(tier.perSec)}（${tier.label}）：${yen(lenFee)}`,
-                    `・本数 ${n}本${n === 1 ? '' : `（${lensJoin()}）`}：${yen(cntFee)}`,
+                    `・企画・構成費：${yen(planFee)}`,
+                    `・制作費 ${n}本${n === 1 ? '' : `（${lensJoin()}）`}：${yen(cntFee)}`,
+                    /* 段の名前は上の「仕上げ」にあるので繰り返さない（9/29。制作費の行を足して mailto の上限に触ったため） */
+                    `・尺 ${n === 1 ? lenLabel : `合計${lenLabel}`} × ${yen(tier.perSec)}：${yen(lenFee)}`,
                     ...(!tier.narration && hasHuman() ? [`・ナレーション 人物1名：${yen(PRICE.narrationHuman)}〜`] : []),
                     /* 引きは1行にまとめる。松の人物ぶんと「なし」の本数ぶんを別の行にすると、
                        6本ぜんぶ「なし」のときに mailto の上限に触る。内訳は画面に出ている */

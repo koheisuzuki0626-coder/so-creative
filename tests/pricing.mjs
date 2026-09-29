@@ -558,9 +558,23 @@ check('本文に選んだ内容が入る',
     && new RegExp(`・納品目安：約${leadWeeks(TIERS[1], 90)}週間`).test(body));
 /* 本ごとの尺は本数の行に「30/60秒」と詰めて書く。
    全角で並べると1文字9バイトになり、mailto の上限に触るため */
-check('本文に内訳も入る', body.includes(`・企画・構成費：¥${PRICE.base.toLocaleString('en-US')}`)
-    && body.includes(`・尺 合計90秒 × ¥${TIERS[1].perSec.toLocaleString('en-US')}（竹）`)
-    && /・本数 2本（30\/60秒）：/.test(body));
+check('本文に内訳も入る', body.includes(`・企画・構成費：¥${(PRICE.base - PRICE.perExtra).toLocaleString('en-US')}`)
+    && body.includes(`・制作費 2本（`)
+    && body.includes(`・尺 合計90秒 × ¥${TIERS[1].perSec.toLocaleString('en-US')}：`)
+    && /・制作費 2本（30\/60秒）：/.test(body));
+/* 内訳の見せ方を「企画・構成費（1案件に1回）＋ 制作費×本数」に変えた（9/29）。
+   表示した内訳を足すと合計になること。内訳だけ変えて合計の式を直し忘れると、
+   1本ぶん ¥100,000 高く出る（実際に一度そう書きかけた） */
+for (const [t, sec, n] of [['ume', 30, 1], ['take', 90, 2], ['matsu', 180, 3]]) {
+    await pick(page, t, sec, n);
+    await page.waitForTimeout(80);
+    const num = async (id) => Number((await page.locator(`#calc-${id}`).innerText()).replace(/[^\d]/g, '')) * ((await page.locator(`#calc-${id}`).innerText()).includes('−') ? -1 : 1);
+    const parts = await Promise.all(['base', 'cntfee', 'lenfee', 'narfee'].map(num));
+    const total = await num('total');
+    check(`内訳を足すと合計になる（${t} ${sec}秒×${n}本）`, parts.reduce((a, b) => a + b, 0) === total, `${parts.join('+')} / ${total}`);
+    check(`企画・構成費は本数によらず1回（${t} ${n}本）`, parts[0] === PRICE.base - PRICE.perExtra, String(parts[0]));
+    check(`制作費は本数ぶん（${t} ${n}本）`, parts[1] === PRICE.perExtra * n, String(parts[1]));
+}
 /* 尺と本数は件名と内訳にあるので、選んだ内容では繰り返さない（mailto の長さ対策） */
 check('選んだ内容で尺と本数を繰り返していない', !/・合計の尺：/.test(body) && !/・本数：2本/.test(body));
 check('先方に書いてもらう欄がある',
