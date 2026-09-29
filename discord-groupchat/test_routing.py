@@ -1738,7 +1738,10 @@ def run():
     finally:
         bot._ANALYZED_CH_FILE, bot._ANALYZED_IDS_FILE = _keep_ch, _keep_ids2
     check("選ぶ側が台帳を見ている",
-          "_pick_diverse(_pool, _n, _channels_seen_today()" in _srcS, True)
+          "_pick_diverse(" in _srcS and "_channels_seen_today() if skip_analyzed" in _srcS,
+          True)
+    check("上から n 本そのまま取る古い作りが残っていない",
+          "targets = candidates[:" in _srcS, False)
     check("記録する側がチャンネルを渡している",
           '_mark_analyzed(v["id"], v.get("channel"))' in _srcS, True)
     check("母集団は従来どおり（関連ありの時は _hits の中だけ・裾に伸ばさない）",
