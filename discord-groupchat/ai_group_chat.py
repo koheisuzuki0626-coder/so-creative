@@ -6603,6 +6603,7 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
     戻り値：動画を実際に視聴できたら True。"""
     channel = orch.get_channel(cid) or await orch.fetch_channel(cid)
     label = f"「{query}」" if query else "急上昇"
+    _days = None
 
     if query:
         # 毎日の自動リサーチ（skip_analyzed=True）は、窓を狭めたうえで
@@ -6611,7 +6612,7 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
         # 制作事例」で3本）。母数が薄いと、その中の外れも避けられない。
         # 足りなければ検索語を広げて足す。使った語は後で報告する。
         _limit = TREND_POOL if skip_analyzed else 50
-        _days = TREND_DAILY_DAYS if skip_analyzed else None
+        _days = TREND_DAILY_DAYS if skip_analyzed else None   # 概観の説明文でも使う
         videos, _used_queries = [], []
         for _q in _query_variants(query):
             _got = await _search_videos(_q, limit=_limit, days=_days)
@@ -6808,8 +6809,12 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
         f"{i + 1}. {v['title']}（{v['channel']} / {v['views']:,}回）"
         for i, v in enumerate(videos)
     )
+    # 2026-09-23 に再生数順の並べ替えを外した（TREND_SEARCH_ORDER="relevance"）のに、
+    # この説明文だけ「再生数順」のままだった。AIに嘘の前提を渡すと
+    # 「再生数上位は〇〇の型」という検証できない断定が返ってくる（2026-09-30 に発覚）。
     overview_src = (
-        f"以下は「{query}」で検索したYouTube人気動画（直近{TREND_SEARCH_DAYS}日・再生数順）。"
+        f"以下は「{query}」でYouTubeを検索した結果（直近{_days or TREND_SEARCH_DAYS}日・"
+        "並びは検索語との関連順。再生数順ではないので再生数の多寡を論じないこと）。"
         if query else
         "以下は本日のYouTube急上昇TOP100のランキング。"
     )
@@ -6834,7 +6839,9 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
             for i, v in enumerate(videos[:20])
         )
         meta_prompt = (
-            "以下はYouTube急上昇上位20本のメタ情報（タイトル・説明文・タグ・再生数・長さ）。"
+            (f"以下は「{query}」でYouTubeを検索した上位20本" if query
+             else "以下はYouTube急上昇上位20本")
+            + "のメタ情報（タイトル・説明文・タグ・再生数・長さ）。"
             "映像そのものは見られない前提で、メタ情報から読み取れる映像制作のヒントを"
             "600字以内でまとめて。\n"
             "① 企画・構成の傾向 ② タイトル/サムネ戦略 ③ 想定される演出・編集手法 "
