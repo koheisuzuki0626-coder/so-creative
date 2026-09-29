@@ -1641,6 +1641,52 @@ def run():
     check("関連の測り方はお題を見るほう（企業VPらしさ単体を使わない）",
           "_relevance_score" in _srcS and "sorted(_corp," not in _srcS, True)
 
+    print("■ 同じチャンネルで1レポートを埋めない（Crevo偏りの修正・2026-09-29）")
+    # 本人から「Crevo という会社がたくさん乗ってる」。制作会社が自社チャンネルに
+    # 何百本も上げている事例集が上位を占め、5日間で同じチャンネルが2本入った
+    # レポートが 42回中14回あった。1チャンネル1本・今日見た所は後回し。
+    # 判定は言い方でなく【台帳の状態】（_channels_seen_today）。
+    def _vid(i, ch):
+        return {"id": f"v{i}", "title": f"採用動画{i}（{ch}制作実績）",
+                "channel": ch, "desc": "", "tags": []}
+    _crevo = [_vid(i, "Crevo") for i in range(3)]
+    _mix = _crevo[:1] + [_vid(10, "A社")] + _crevo[1:] + [_vid(11, "B社"), _vid(12, "C社")]
+    _got = bot._pick_diverse(_mix, 3)
+    check("同じチャンネルは1本まで",
+          [v["channel"] for v in _got], ["Crevo", "A社", "B社"])
+    check("並びの上から取る（関連順を捨てない）", _got[0] is _mix[0], True)
+    _got2 = bot._pick_diverse(_mix, 3, seen_today={"Crevo"})
+    check("今日すでに見たチャンネルは後回し",
+          [v["channel"] for v in _got2], ["A社", "B社", "C社"])
+    check("後回しにしても足りなければ入れる（本数は減らさない）",
+          [v["channel"] for v in bot._pick_diverse(_mix, 5, seen_today={"Crevo"})],
+          ["A社", "B社", "C社", "Crevo", "Crevo"])
+    check("全部同じチャンネルでも本数は減らさない（0本にしない）",
+          len(bot._pick_diverse(_crevo, 3)), 3)
+    check("候補が足りない時は候補ぶんだけ", len(bot._pick_diverse(_crevo[:2], 5)), 2)
+    check("空なら空", bot._pick_diverse([], 5), [])
+    # 台帳：日付ごと。今日の分だけを返す
+    import tempfile as _tfC
+    import pathlib as _plC
+    _keep_ch = bot._ANALYZED_CH_FILE
+    try:
+        bot._ANALYZED_CH_FILE = _plC.Path(_tfC.mkdtemp()) / "ch.txt"
+        check("台帳が無ければ空", bot._channels_seen_today(), set())
+        bot._mark_analyzed("x1", "Crevo")
+        bot._mark_analyzed("x2", "A社")
+        bot._mark_analyzed("x3")                   # チャンネル無しでも落ちない
+        check("見たチャンネルが今日の台帳に入る",
+              bot._channels_seen_today(), {"Crevo", "A社"})
+        check("昨日の分は数えない", bot._channels_seen_today("2000-01-01"), set())
+    finally:
+        bot._ANALYZED_CH_FILE = _keep_ch
+    check("選ぶ側が台帳を見ている",
+          "_pick_diverse(_pool, _n, _channels_seen_today()" in _srcS, True)
+    check("記録する側がチャンネルを渡している",
+          '_mark_analyzed(v["id"], v.get("channel"))' in _srcS, True)
+    check("母集団は従来どおり（関連ありの時は _hits の中だけ・裾に伸ばさない）",
+          "_pool, _n = _hits, min(TREND_DEEP_COUNT, len(_hits))" in _srcS, True)
+
     print("■ レポートにボット自身の道具の事情を書かない")
     # 事故（2026-09-27）：展示会の回のレポート先頭に
     # 「文字数確認のBashコマンドが承認待ちで止まったので、手計算で提示します。」
