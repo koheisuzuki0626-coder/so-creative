@@ -1668,9 +1668,13 @@ def run():
     # 台帳：日付ごと。今日の分だけを返す
     import tempfile as _tfC
     import pathlib as _plC
-    _keep_ch = bot._ANALYZED_CH_FILE
+    _keep_ch, _keep_ids2 = bot._ANALYZED_CH_FILE, bot._ANALYZED_IDS_FILE
     try:
-        bot._ANALYZED_CH_FILE = _plC.Path(_tfC.mkdtemp()) / "ch.txt"
+        # 両方の台帳を逃がす。片方だけ逃がすと _mark_analyzed が本物の
+        # analyzed_ids.txt に x1/x2/x3 を書く（2026-09-29 に実際に書いた）。
+        _tmpC = _plC.Path(_tfC.mkdtemp())
+        bot._ANALYZED_CH_FILE = _tmpC / "ch.txt"
+        bot._ANALYZED_IDS_FILE = _tmpC / "ids.txt"
         check("台帳が無ければ空", bot._channels_seen_today(), set())
         bot._mark_analyzed("x1", "Crevo")
         bot._mark_analyzed("x2", "A社")
@@ -1678,8 +1682,10 @@ def run():
         check("見たチャンネルが今日の台帳に入る",
               bot._channels_seen_today(), {"Crevo", "A社"})
         check("昨日の分は数えない", bot._channels_seen_today("2000-01-01"), set())
+        check("IDの台帳も隔離先に書いている（本物を汚さない）",
+              bot._load_analyzed_ids(), {"x1", "x2", "x3"})
     finally:
-        bot._ANALYZED_CH_FILE = _keep_ch
+        bot._ANALYZED_CH_FILE, bot._ANALYZED_IDS_FILE = _keep_ch, _keep_ids2
     check("選ぶ側が台帳を見ている",
           "_pick_diverse(_pool, _n, _channels_seen_today()" in _srcS, True)
     check("記録する側がチャンネルを渡している",
