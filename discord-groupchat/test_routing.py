@@ -83,6 +83,11 @@ import ai_group_chat as bot  # noqa: E402
 import _testenv  # noqa: E402
 _TMP_STATE, _REAL_STATE = _testenv.isolate(bot)
 _REAL_BEFORE = _testenv.snapshot(_REAL_STATE)
+# リサーチの台帳（insights/）は history/ の外なので上の隔離に入らない。
+# 事故（2026-09-29）：台帳のテストが本物の analyzed_ids.txt に x1/x2/x3 を書いた。
+import pathlib as _plL  # noqa: E402
+_LEDGERS = tuple(_plL.Path(p) for p in (bot._ANALYZED_IDS_FILE, bot._ANALYZED_CH_FILE))
+_LEDGERS_BEFORE = {str(p): (p.stat().st_size if p.exists() else None) for p in _LEDGERS}
 
 
 def _make_doc_path():
@@ -5403,6 +5408,9 @@ def run():
     _dirty = _testenv.assert_clean(_REAL_STATE, _REAL_BEFORE)
     check(f"本物の history/ を書き換えていない（{len(_dirty)}件）",
           _dirty, [])
+    _dirty_l = [k for k, v in _LEDGERS_BEFORE.items()
+                if (_plL.Path(k).stat().st_size if _plL.Path(k).exists() else None) != v]
+    check("本物のリサーチ台帳（insights/analyzed_*.txt）を書き換えていない", _dirty_l, [])
 
     print(f"\n結果: ✅ {ok} 件成功 / ❌ {fail} 件失敗")
     return fail == 0
