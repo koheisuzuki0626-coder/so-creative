@@ -4894,6 +4894,42 @@ def _query_terms(query):
             if p and p not in _GENERIC_QUERY_TERMS]
 
 
+# ジャンル語の末尾に付く一般語。落として「核」を作る。
+# 事故（2026-09-30）：「会社紹介動画」を丸ごと一致で探していたので、
+# 実物のタイトル「会社紹介ムービー」「企業紹介動画」「会社案内」が全部外れた。
+_TERM_TRAIL_RE = re.compile(r"(?:動画|映像|ムービー|ビデオ|事例|実績)+$")
+
+# 核ごとの言い換え。YouTubeのタイトルは同じものを別の語で書く。
+# ⚠️ これは【本人の発言】を数え上げる表ではなく、【YouTubeのタイトルの語彙】。
+# 9ジャンルぶんの閉じた集合で、実データで効果を測れる（2026-09-30 に測った）。
+_QUERY_ALIAS = {
+    "会社紹介": ["企業紹介", "会社案内", "企業案内", "会社概要", "コーポレート",
+               "corporate", "ブランドムービー", "ブランドフィルム"],
+    "研修": ["マニュアル", "eラーニング", "社員教育", "新人教育", "業務手順",
+           "安全教育", "社内教育", "OJT", "教育動画", "研修"],
+    "採用": ["リクルート", "求人", "新卒採用", "中途採用"],
+    "サービス紹介": ["商品紹介", "製品紹介", "サービス説明"],
+    "展示会": ["ブース", "サイネージ", "展示", "見本市"],
+    "WebCM": ["WEBCM", "ウェブCM", "web cm"],
+    "SNS広告": ["縦型", "ショート", "リール", "reels", "shorts", "tiktok"],
+    "アニメーション": ["アニメ", "モーショングラフィック", "インフォグラフィック",
+                  "図解", "イラスト"],
+    "MV": ["ミュージックビデオ", "music video", "ミュージック・ビデオ"],
+    "ミュージックビデオ": ["MV", "music video"],
+}
+
+
+def _query_core(term):
+    """ジャンル語の核（末尾の一般語を落としたもの）。落として空になるなら元のまま。"""
+    return _TERM_TRAIL_RE.sub("", term or "") or term
+
+
+def _term_variants(term):
+    """その語が実物のタイトルでどう書かれうるか（核＋言い換え）。"""
+    core = _query_core(term)
+    return [core] + _QUERY_ALIAS.get(core, [])
+
+
 def _query_match_score(v, query):
     """その動画自身のメタ情報に、ジャンルを特定する語がいくつ出てくるか。
 
@@ -4908,7 +4944,8 @@ def _query_match_score(v, query):
         str(v.get("title") or ""), str(v.get("channel") or ""),
         str(v.get("desc") or ""), " ".join(str(t) for t in (v.get("tags") or [])),
     ]).lower()
-    return sum(1 for t in terms if t.lower() in text)
+    return sum(1 for t in terms
+               if any(x.lower() in text for x in _term_variants(t)))
 
 
 def _relevance_score(v, query):
@@ -5252,11 +5289,18 @@ VIDEO_STUDY_PROMPT = (
     "③ テロップ：入っているか。位置・1枚あたりの字数・出るタイミング\n"
     "④ 音：BGM／ナレーション／環境音／無音の使い分け\n"
     "⑤ 人物：出ているか。顔が一貫しているか。何人か\n"
-    "⑥ **AIで再現できるか**：次の3つに分けて具体的に\n"
+    # 2026-09-30 追加。この2つを項目に入れていなかったので、79回のうち
+    # 色・ライティングは7回、カメラワークは35回しか触れられていなかった。
+    # AI映像が安く見えるかを一番左右するのは色とライティング。
+    "⑥ 色とライティング：色調（暖色／寒色）・明るさ・影の出方・質感\n"
+    "　　（AIで再現する時に何を指定すべきかが分かるように書く）\n"
+    "⑦ カメラワークとサイズ：寄り／引き・固定／動き（パン・ズーム・手持ち）・"
+    "目線の高さ\n"
+    "⑧ **AIで再現できるか**：次の3つに分けて具体的に\n"
     "　　・そのまま作れる（生成でいける画）\n"
     "　　・工夫すれば作れる（分割する・寄りにする等、方法も書く）\n"
     "　　・作れない（理由も。実在の人物・商品・ロゴ・正確な文字など）\n"
-    "⑦ 明日の制作で試すこと：1つだけ、手順の形で（例「冒頭3秒を寄りの手元にする」）\n"
+    "⑨ 明日の制作で試すこと：1つだけ、手順の形で（例「冒頭3秒を寄りの手元にする」）\n"
     "日本語で、各項目2〜3行。"
 )
 
@@ -6736,13 +6780,22 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
     # 社内報の型として記録していた）。少なく見て、少なく書くほうが正しい。
     # 信号そのものが薄いジャンル（MV・webcm）は _daily_order が並べ替えを
     # 見送るので、ここも従来どおり本数を減らさない。
-    _hits = [v for v in candidates if _relevance_score(v, query) > 0] if query else []
+    # ⚠️ ここは _relevance_score（＝企業VPらしさを足した点）では数えない。
+    # 事故（2026-09-30 に発覚）：corp だけで点が付くので、お題の語が1本も
+    # 当たっていない回まで「関連あり5本」になっていた。実害：「研修動画 制作事例」
+    # の6日ぶん15本は【1本も研修動画でなく】（お絵かきムービー・人生ムービー・
+    # 小学校の記念式典）、それを材料に「研修動画の型」を書いて蓄積していた。
+    # お題に当たったかは _query_match_score だけで見る。
+    _hits = [v for v in candidates if _query_match_score(v, query) > 0] if query else []
     if len(_hits) < min(TREND_DEEP_COUNT, 3):
         _pool, _n = candidates, TREND_DEEP_COUNT
     else:
         _pool, _n = _hits, min(TREND_DEEP_COUNT, len(_hits))
     # 同じチャンネルは1本まで・今日見た所は後回し（_pick_diverse）。
     # 選ぶ母集団は上と同じ（関連ありの時は _hits の中だけ）。裾には手を伸ばさない。
+    # お題の語が1本も当たらなかった＝その語には公開事例がほぼ無い。
+    # 見るのはやめないが、【そのジャンルの型として一般化させない】。
+    _no_hit = bool(query) and not _hits
     _seen_ch = _channels_seen_today() if skip_analyzed else set()
     targets = _pick_diverse(
         _pool, _n, _seen_ch,
@@ -6755,6 +6808,7 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
     _chs = [str(v.get("channel") or "") for v in targets]
     _dups = sorted({c for c in _chs if _chs.count(c) > 1})
     _note = (f"{len(targets)}本 / {len(set(_chs))}チャンネル"
+             + ("・⚠️ お題の語に当たった動画は0本（近い制作事例で代替）" if _no_hit else "")
              + (f"・同じ所が2本以上：{'・'.join(_dups)}" if _dups else "")
              + (f"・今日すでに見た所 {sum(1 for c in _chs if c in _seen_ch)}本"
                 if _seen_ch else ""))
@@ -6901,13 +6955,16 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
         # 「今日の型」には渡していなかった。テロップの同期は日本の企業映像なら
         # ほぼ必ず成り立つので、放っておくと毎回そこに戻る（4回中4回）。
         _kata = _past_items("今日の型")
+        _layer = _todays_layer(round_no=_trend_runs_today())
         digest_prompt = (
             "以下はYouTube動画の映像分析。AI映像制作の受注につなげるための"
             "知見としてまとめて。一般論（【】で煽る・数字を入れる等）は書かない。\n\n"
             "次の形で、全体700字以内：\n"
-            "1. **今日の型**：分析した動画に共通する作りを1つ。秒数やカット数で具体的に。"
-            "数字は、元の分析が「数えた」と書いているものだけ断定し、"
-            "推定なら「推定」と付ける\n"
+            f"1. **今日の型**：今日は【{_layer}】の層だけを見て、"
+            "分析した動画に共通する作りを1つ。この層で具体的に書く"
+            "（カット数・秒数は、この層の説明に必要な時だけ添える。"
+            "それ自体を型にしない）。数字は、元の分析が「数えた」と"
+            "書いているものだけ断定し、推定なら「推定」と付ける\n"
             "2. **AIで作れるもの**：2つ。どう作るかの手順つき\n"
             "3. **AIで作れないもの**：1つ。なぜ作れないか\n"
             "4. **次に試すこと**：1つだけ。明日の制作でそのまま実行できる形で\n"
@@ -6929,6 +6986,12 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
             + ("【既出：今日の型（同じ型は禁止。テロップの字数・同期の話が"
                "続いているなら、別の層——カット割り・カメラ・音・構成の順番——を見る）】\n"
                + "\n".join(f"・{x}" for x in _kata) + "\n\n" if _kata else "")
+            + ("⚠️【このお題に合う動画は1本も見つからなかった】"
+               f"見た5本は「{query}」ではなく、近い制作事例で代替したもの。"
+               f"だから「{query}の型」として一般化してはいけない。"
+               "『このお題では公開事例が見つからなかった』と最初に1行書き、"
+               "そのうえで実際に見た動画から言えることだけを書く。\n\n"
+               if _no_hit else "")
             + "【トレンド概観】\n" + (overview or "")
             + "\n\n【個別分析】\n" + digest_src
         )
@@ -7240,6 +7303,28 @@ async def _run_trend_all(cid, genres):
             await send_as(orch, cid, _msg)
         except Exception:  # noqa: BLE001
             pass
+
+
+# 「今日の型」で見る層。1つに固まるのを防ぐため日替わりで回す。
+# 事故（2026-09-30 に測った）：ダイジェストの指示が「秒数やカット数で具体的に」
+# だったので、79回のうち【70回】がカット数の算術で始まっていた。
+# 一方、AI映像が安く見えるかを一番左右する色・ライティングは 7/79 しか出ていない。
+# 層はコード側で決めて渡す（プロンプトの文章で「いろいろ見て」と頼んでも効かない）。
+TREND_LAYERS = [
+    "色とライティング（色調・明るさ・影の出方・質感。AIで一番差が出る層）",
+    "カメラワークとサイズ（寄り／引き・固定／動き・目線の高さ）",
+    "構成（冒頭3秒で何を見せ、どの順に並べ、どう終わるか）",
+    "音（BGM・ナレーション・環境音・無音の使い分けと、画との合わせ方）",
+    "テロップ（位置・字数・出るタイミング・画との役割分担）",
+    "カット割りとテンポ（カット数と平均秒数。用途による密度の違い）",
+]
+
+
+def _todays_layer(day=None, round_no=None):
+    """今日の巡で見る層。同じ日の同じ巡なら同じ（調べられるように）。"""
+    d = day or datetime.now(JST)
+    i = (d.toordinal() + (round_no or 0)) % len(TREND_LAYERS)
+    return TREND_LAYERS[i]
 
 
 def _todays_genre(query, day=None):
