@@ -1616,6 +1616,85 @@ def run():
               {"title": "社員インタビュー", "channel": "株式会社サンプル",
                "desc": "弊社の社内報としてお届けします", "tags": []}, _Q) > 0, True)
 
+    print("■ お題の語は、実物のタイトルの書き方で当てる（核＋言い換え）")
+    # 事故（2026-09-30 に測った）：「会社紹介動画」を丸ごと一致で探していたので、
+    # 実物の「会社紹介ムービー」「企業紹介動画」「会社案内」が全部外れ、
+    # 9ジャンルのうち【会社紹介と研修は視聴206本中1本も当たっていなかった】。
+    # 当たらないと _corporate_score だけで順位が決まる＝09-25 に禁じた形に戻る。
+    check("末尾の一般語を落として核にする", bot._query_core("会社紹介動画"), "会社紹介")
+    check("核だけの語はそのまま", bot._query_core("展示会"), "展示会")
+    check("落とすと空になる語は落とさない", bot._query_core("動画"), "動画")
+    for _t, _title in (
+            ("会社紹介動画", "企業紹介ムービー｜株式会社サンプル"),
+            ("会社紹介動画", "【会社案内】株式会社サンプル"),
+            ("研修動画", "新入社員向け 業務手順マニュアル動画"),
+            ("採用動画", "リクルートムービー｜2027新卒"),
+            ("WebCM", "ウェブCM 15秒"),
+            ("SNS広告", "縦型ショート広告の作り方"),
+            ("MV", "ミュージックビデオ｜サンプル")):
+        check(f"言い換えでも当たる: {_t} ← {_title[:16]}",
+              bot._query_match_score(
+                  {"title": _title, "channel": "", "desc": "", "tags": []},
+                  _t + " 制作事例") > 0, True)
+    check("無関係なものは当たらない（広げすぎていない）",
+          bot._query_match_score(
+              {"title": "猫がかわいい", "channel": "ねこch", "desc": "", "tags": []},
+              "会社紹介動画 制作事例"), 0)
+    check("実際に外れていた例が当たるようになった",
+          bot._query_match_score(
+              {"title": "医療機器コンサル業務請負企業紹介動画事例",
+               "channel": "株式会社 Global Japan Corporation(GJC)",
+               "desc": "", "tags": []}, "会社紹介動画 制作事例") > 0, True)
+
+    print("■ お題に1本も当たらない回を、そのジャンルの「型」にしない")
+    # 事故（2026-09-30 に発覚）：「研修動画 制作事例」で視聴した15本は
+    # 1本も研修動画でなく（お絵かきムービー・人生ムービー・小学校の記念式典）、
+    # それを材料に「研修動画の型」を書いて知見ファイルに溜めていた。
+    # 原因は _hits を _relevance_score（＝corpを足した点）で数えていたこと。
+    _srcH = _insp.getsource(bot._run_trend_study)
+    check("当たりは _query_match_score だけで数える",
+          "_hits = [v for v in candidates if _query_match_score(v, query) > 0]"
+          in _srcH, True)
+    check("企業VPらしさで当たりを数える古い作りが残っていない",
+          "_hits = [v for v in candidates if _relevance_score(v, query) > 0]"
+          in _srcH, False)
+    check("当たり0本を控える", "_no_hit = bool(query) and not _hits" in _srcH, True)
+    check("当たり0本なら『一般化してはいけない』と渡す",
+          "として一般化してはいけない" in _srcH and "if _no_hit else" in _srcH, True)
+    check("当たり0本をレポートにも残す",
+          "お題の語に当たった動画は0本" in _srcH, True)
+
+    print("■ 見る層を日替わりで回す（カット数の算術に固まらせない）")
+    # 事測（2026-09-30）：79回のうち70回が「今日の型」をカット数の数字で始めて
+    # いた。色・ライティングは7/79 しか触れられていない。指示文で「いろいろ見て」
+    # と頼んでも効かないので、層をコード側で決めて渡す。
+    check("層が6つある", len(bot.TREND_LAYERS), 6)
+    check("色とライティングが入っている",
+          any("色" in x and "ライティング" in x for x in bot.TREND_LAYERS), True)
+    import datetime as _dtmod
+    _d0 = _dtmod.datetime(2026, 9, 30)
+    check("同じ日・同じ巡なら同じ層（調べられる）",
+          bot._todays_layer(_d0, 0), bot._todays_layer(_d0, 0))
+    check("巡が進むと層が変わる",
+          bot._todays_layer(_d0, 0) != bot._todays_layer(_d0, 1), True)
+    check("日が変わると層が変わる",
+          bot._todays_layer(_d0, 0) != bot._todays_layer(
+              _dtmod.datetime(2026, 10, 1), 0), True)
+    check("6巡で全部の層を通る（取りこぼさない）",
+          len({bot._todays_layer(_d0, i) for i in range(6)}), 6)
+    check("ダイジェストが層を渡している",
+          "_layer = _todays_layer(round_no=_trend_runs_today())" in _srcH
+          and "今日は【{_layer}】の層だけを見て" in _srcH, True)
+    check("カット数で書けという古い指示が残っていない",
+          "秒数やカット数で具体的に" in _srcH, False)
+    check("視聴プロンプトに色とライティングの項目がある",
+          "⑥ 色とライティング" in bot.VIDEO_STUDY_PROMPT, True)
+    check("視聴プロンプトにカメラワークの項目がある",
+          "⑦ カメラワークとサイズ" in bot.VIDEO_STUDY_PROMPT, True)
+    check("項目の番号が飛んでいない（⑨まで通し）",
+          all(x in bot.VIDEO_STUDY_PROMPT
+              for x in "①②③④⑤⑥⑦⑧⑨"), True)
+
     print("■ 日替わりの並びが、関連性の順位を捨てないこと")
     # 事故（2026-09-25）：関連性で並べ替えた【直後】に全体をシャッフルしており、
     # 並べ替えが毎回そのまま捨てられていた。ログの「企業動画らしいもの N本を優先」
