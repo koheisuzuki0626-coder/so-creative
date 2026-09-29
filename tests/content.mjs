@@ -1701,6 +1701,33 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     }
 }
 
+/* ---- スマホで「撮影しない理由」の区間が見切れない（2026-09-30） ----
+   中身が約700px あり、画面に留めると2段のヘッダーの下に見出しの上が隠れていた
+   （iPhone の Safari 390×664 の実機で報告）。スマホでは留めずに流す */
+{
+    for (const [w, h] of [[390, 664], [375, 560], [430, 740]]) {
+        const pg = await open(browser, { page: 'index.html', width: w, height: h, mobile: true });
+        const n = await pg.locator('.stage-pin').count();
+        for (let i = 0; i < n; i++) {
+            const st = await pg.locator('.stage-pin').nth(i).evaluate((e) => getComputedStyle(e).position);
+            check(`${w}×${h}：撮影しない理由の区間${i + 1}を画面に留めていない`, st === 'static', st);
+            /* 見出しまでスクロールしたとき、ヘッダーに隠れず、中身が全部見えている */
+            /* 区間の頭に移ったとき（メニューから飛んだときと同じ。scroll-margin でヘッダーの下に止まる） */
+            await pg.locator('.stage').nth(i).evaluate((e) => e.scrollIntoView({ block: 'start', behavior: 'instant' }));
+            await pg.waitForTimeout(250);
+            const r = await pg.evaluate((i) => {
+                const nav = document.getElementById('nav').getBoundingClientRect().bottom;
+                const h2 = document.querySelectorAll('.stage-copy .headline')[i].getBoundingClientRect();
+                const op = Number(getComputedStyle(document.querySelectorAll('.stage-copy')[i]).opacity);
+                return { nav: Math.round(nav), top: Math.round(h2.top), op };
+            }, i);
+            check(`${w}×${h}：区間${i + 1}の見出しがヘッダーの下に隠れない`, r.top >= r.nav, JSON.stringify(r));
+            check(`${w}×${h}：区間${i + 1}の文字が最初から見えている`, r.op === 1, String(r.op));
+        }
+        await pg.close();
+    }
+}
+
 /* ---- ヒーロー：開いた直後は映像だけ、スクロールで見出し（2026-09-29） ----
    「ヒーローは動画だけ見せて、スクロールしたら撮影しない、映像制作って出るようにして」。
    .hero を画面2枚ぶんにして中を留め、--hero-r（0→1）で映像を落として文字を出す */
