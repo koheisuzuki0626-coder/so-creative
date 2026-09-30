@@ -1,5 +1,5 @@
 # Discord デバッグログ（自動共有）
-- 書き出し: 2026-09-30 10:09:15
+- 書き出し: 2026-09-30 11:09:16
 - 実行中のコード: a4b27fb（最新）
 - チャンネル: 1523755120351772672
 
@@ -56,9 +56,6 @@
 
 ## ボットが実際に送った内容（会話履歴に残らないものも含む）
 ```
-09-29 13:10:25  🎬 **YouTube「展示会 動画 制作事例」リサーチ（2026-09-29）** <本日5/8巡目> 1. **今日の型**：クオリティア「QUALITIA」（Crevo制作実績）は15カット・数えた・30秒・平均2秒。同じCrevo制作のクールマン（41カット・平均約17秒）や単体のCrevo作品（20カット・平
-09-29 13:39:57  **クロード1（PM）**: 無職になっただけでは自動免除にはならない。国民健康保険で減免・軽減が受けられるのは主に次のケース。 - **前年所得が一定以下**の世帯(法定軽減。7割・5割・2割減額。世帯の所得に応じて自動判定されるので申請不要な場合が多い) - **失業・退職**でも、**会社を解雇・雇い止め等の非自
-09-29 14:46:55  🎬 **YouTube「研修動画 制作事例」リサーチ（2026-09-29）** <本日6/8巡目> **1. 今日の型**：5本中2本（HOPPA19カット・数えた/平均18秒、南野幸子 約85カット・推定/平均11秒）がホワイトボード手書きアニメーションで、テロップを編集合成でなく手書き文字として描き、場面転換は「
 09-29 14:50:21  🎬 **YouTube「アニメーション 説明動画 制作事例」リサーチ（2026-09-29）** <本日6/8巡目> 1. **今日の型**：分析5本中2本（セルアニメ風広告17カット・数えた／平均1.7秒、総栄採用アニメ34カット・数えた／平均4.3秒）は同一制作会社（粕田屋）制作実績。同じ会社でも、SNS拡散狙いの
 09-29 16:29:25  🎬 **YouTube「MV 制作実績」リサーチ（2026-09-29）** <本日7/8巡目> **1. 今日の型** CENTRAL BURGER SHOP（45カット・数えた／総尺約46秒）と神楽酒造（30カット・数えた／46秒）は、社名・ロゴのテロップが共に43〜46秒目、つまり全体の93%を過ぎるまで一切出な
 09-29 16:30:19  🎬 **YouTube「会社紹介動画 制作事例」リサーチ（2026-09-29）** <本日7/8巡目> 1. **今日の型**：VOSS CREATE事例（15カット・数えた／総尺約122秒／平均8.1秒）はテロップ1枚あたり11〜25字と長めで、各シーンの開始と同時に出て次のシーンまで表示され続ける（カット単位でテ
@@ -96,14 +93,13 @@
 09-30 10:09:14  ⚠️ 「採用動画 制作事例」のリサーチでつまずきました（記録済み）。残りのジャンルは続けます。
 09-30 10:09:14  ⚠️ 「WebCM 制作事例」のリサーチでつまずきました（記録済み）。残りのジャンルは続けます。
 09-30 10:09:14  📭 今回は動画を見て分析できませんでした（理由は記録済み）。次の巡でやり直します。
+09-30 11:09:14  ⚠️ 「採用動画 制作事例」のリサーチでつまずきました（記録済み）。残りのジャンルは続けます。
+09-30 11:09:14  ⚠️ 「WebCM 制作事例」のリサーチでつまずきました（記録済み）。残りのジャンルは続けます。
+09-30 11:09:14  📭 今回は動画を見て分析できませんでした（理由は記録済み）。次の巡でやり直します。
 ```
 
 ## 直近のエラー
 ```
-🔴 ===== 2026-08-14 06:13:37 | Gemini画像生成 =====
-   内訳: gemini-2.5-flash-image: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and  / gemini-2.5-flash-image-preview: 404 NOT_FOUND. {'error': {'code': 404, 'message': 'models/gemini-2.5-flash-image-preview is not found for API version
-🔴 ===== 2026-08-16 08:44:10 | Gemini画像生成 =====
-   内訳: gemini-2.5-flash-image: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and  / gemini-2.5-flash-image-preview: 404 NOT_FOUND. {'error': {'code': 404, 'message': 'models/gemini-2.5-flash-image-preview is not found for API version
 🔴 ===== 2026-08-20 19:10:10 | Gemini画像生成 =====
    内訳: gemini-2.5-flash-image: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and  / gemini-2.5-flash-image-preview: 404 NOT_FOUND. {'error': {'code': 404, 'message': 'models/gemini-2.5-flash-image-preview is not found for API version
 🔴 ===== 2026-08-20 20:20:14 | Gemini画像生成 =====
@@ -119,6 +115,10 @@
 🔴 ===== 2026-09-30 10:09:14 | trend:採用動画 制作事例 =====
    aiohttp.client_exceptions.ClientConnectorDNSError: Cannot connect to host www.googleapis.com:443 ssl:default [nodename nor servname provided, or not known]
 🔴 ===== 2026-09-30 10:09:14 | trend:WebCM 制作事例 =====
+   aiohttp.client_exceptions.ClientConnectorDNSError: Cannot connect to host www.googleapis.com:443 ssl:default [nodename nor servname provided, or not known]
+🔴 ===== 2026-09-30 11:09:14 | trend:採用動画 制作事例 =====
+   aiohttp.client_exceptions.ClientConnectorDNSError: Cannot connect to host www.googleapis.com:443 ssl:default [nodename nor servname provided, or not known]
+🔴 ===== 2026-09-30 11:09:14 | trend:WebCM 制作事例 =====
    aiohttp.client_exceptions.ClientConnectorDNSError: Cannot connect to host www.googleapis.com:443 ssl:default [nodename nor servname provided, or not known]
 ```
 
