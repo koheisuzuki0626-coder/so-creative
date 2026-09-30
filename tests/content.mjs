@@ -447,6 +447,25 @@ check('金額の表示は税込で揃っている',
         return before !== after && /narration/.test(after);
     })());
     check('差し替え前の古いナレーション版を残していない', !/company-60s\.mp4/.test(worksSrc));
+    /* 会社紹介のページでも聴き比べられる（2026-09-30）。それまではテロップ版だけで、
+       「制作サンプルのページでどうぞ」と別ページへ送っていた。料金表は
+       「ナレーション込みの額」なのに、そのページでは声入りを聴けなかった */
+    {
+        const cp = await open(browser, { page: 'company-video.html' });
+        check('会社紹介のページにもナレーションの切り替えがある', (await cp.locator('.sample-sw').count()) === 2);
+        check('会社紹介のページでも音声がAIだと書いてある',
+            /AIナレーションあり/.test(await cp.locator('.sample-switch').innerText())
+            && /このナレーションはAI音声です/.test(await cp.locator('body').innerText()));
+        const v = cp.locator('#sample-video');
+        const before = await v.getAttribute('src');
+        await cp.locator('.sample-sw', { hasText: 'ナレーションあり' }).click();
+        await cp.waitForTimeout(400);
+        const after = await v.getAttribute('src');
+        check('会社紹介のページで切り替えると音源が変わる', before !== after && /narration/.test(after), `${before} → ${after}`);
+        check('会社紹介のページが聴き比べを別ページへ送っていない',
+            !/制作サンプルのページ<\/a>でどうぞ/.test(readFileSync(`${ROOT}/company-video.html`, 'utf8')));
+        await cp.close();
+    }
     /* 人物ナレーションの額は、実績の注釈・FAQ・計算機の3か所に出る。
        どれかだけ直すとここが落ちる */
     check('人物ナレーションの値段が実績でも料金表と同じ', /1名 ¥70,000〜/.test(works));

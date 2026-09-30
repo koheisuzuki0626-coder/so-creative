@@ -125,15 +125,22 @@
                 <h2 class="headline">つくった実例（59秒）</h2>
                 <p class="body-text measure">架空の製造業を題材に、実際の進め方そのままで制作したものです。<b>登場人物は2人、撮影も出演者の手配もしていません。</b>この規模は料金表の<b>竹（2人まで）</b>に当たり、60秒なら <b>¥504,000</b> です。人物を出さず設備や製品だけにする場合は梅で、60秒 ¥420,000 から始められます。</p>
                 <figure class="sample reveal">
-                    <video class="sample-video" controls preload="none" playsinline
+                    <video class="sample-video" id="sample-video" controls preload="none" playsinline
                            poster="assets/works/company-60s.jpg"
                            src="assets/works/company-60s-telop.mp4"
                            aria-label="会社紹介動画のサンプル 59秒">
                         お使いのブラウザでは再生できません。
                     </video>
+                    <!-- 2026-09-30：ナレーションの有無を、このページで聴き比べられるようにした。
+                         それまでは「制作サンプルのページでどうぞ」と別ページへ送っていて、
+                         料金表は「ナレーション込みの額」なのに、ここではテロップ版しか聴けなかった -->
+                    <div class="sample-switch" role="group" aria-label="AIナレーションの有無を切り替える">
+                        <button type="button" class="sample-sw is-on" data-file="company-60s-telop.mp4" aria-pressed="true">ナレーションなし（テロップのみ）</button>
+                        <button type="button" class="sample-sw" data-file="company-60s-narration.mp4" aria-pressed="false">AIナレーションあり</button>
+                    </div>
                 </figure>
                 <p class="genre-note"><b>59秒 ／ 1920×1080・30fps ／ 19カット ／ 着手から3日</b>（書き出したファイルを実測した値。3日はご確認の往復が無い自社制作での数字で、ご依頼の場合は最短2週間です）</p>
-                <p class="body-text measure" style="margin-top:14px">同じ映像でナレーションの有無を聴き比べられます。<a href="works.html#genre-company">制作サンプルのページ</a>でどうぞ。</p>
+                <p class="body-text measure" style="margin-top:14px">映像の下のボタンで、<b>同じ映像のナレーションの有無を聴き比べられます</b>。<b>このナレーションはAI音声です。</b>AIナレーションは全段とも料金に含まれます。人に読んでもらう場合は、松には1名ぶん含まれ、梅・竹では1名 ¥70,000〜 の追加です。</p>
             </div>
         </section>
 
@@ -374,5 +381,6 @@
     </script>
     <script src="assets/funnel.js" defer></script>
     <script src="assets/pricing.js" defer></script>
+    <script src="assets/sample.js" defer></script>
 </body>
 </html>
