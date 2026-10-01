@@ -1689,6 +1689,56 @@ def run():
     check("末尾の一般語を落として核にする", bot._query_core("会社紹介動画"), "会社紹介")
     check("核だけの語はそのまま", bot._query_core("展示会"), "展示会")
     check("落とすと空になる語は落とさない", bot._query_core("動画"), "動画")
+
+    print("■ 言い換え表に到達できること（C3・2026-10-01）")
+    # 事故（2026-09-30）：核だけをキーに引いていたので、表のキー
+    # 「ミュージックビデオ」は核が「ミュージック」になって【到達不能】、
+    # 稼働中の「コーポレートムービー」「マニュアル動画」には言い換えが
+    # 1つも効いていなかった。ジャンル名を変えた瞬間に黙って消えた。
+    # 実測：コーポレートムービー 1語→13語、マニュアル動画 1語→10語、縦型 1語→7語。
+    # 稼働9ジャンルの当たり本数は 158本→158本（±0）＝精度は買っていない。
+    # 買ったのは「次に名前を変えても黙って壊れないこと」。
+    check("改名したジャンル名から言い換えが引ける",
+          len(bot._term_variants("コーポレートムービー")) > 1, True)
+    check("値側にしか無かった語からも引ける（マニュアル動画）",
+          len(bot._term_variants("マニュアル動画")) > 1, True)
+    check("生の語で引ける（核にすると到達できないもの）",
+          "mv" in [x.lower() for x in bot._term_variants("ミュージックビデオ")], True)
+    check("会社紹介とコーポレートムービーが同じまとまり",
+          set(x.lower() for x in bot._term_variants("会社紹介動画"))
+          == set(x.lower() for x in bot._term_variants("コーポレートムービー")), True)
+    # まとまりの語は全部、生の語でも核でも引けること（表を足すときの不変条件）
+    _unreach = [w for g in bot._QUERY_SYNONYMS for w in g
+                if len(bot._term_variants(w)) <= 1]
+    check("表に入れた語は全部引ける（到達不能を作らない）", _unreach, [])
+    # 1語が2つのまとまりに入ると、2つのジャンルが1つに融合する
+    _dups = [w for w in {x.lower() for g in bot._QUERY_SYNONYMS for x in g}
+             if sum(1 for g in bot._QUERY_SYNONYMS
+                    if w in [y.lower() for y in g]) > 1]
+    check("同じ語を2つのまとまりに入れていない", _dups, [])
+    # 短い語は部分文字列で定型文・社名に素で当たる。
+    # 実データで「オンワードコーポレートデザイン（社名）」が会社紹介に当たっていた。
+    check("コーポレート単体では当たらない（社名で誤爆しない）",
+          bot._query_match_score(
+              {"title": "【社内広報動画の制作事例】株式会社オンワードコーポレートデザイン様",
+               "channel": "Video BRAIN", "desc": "", "tags": []},
+              "コーポレートムービー 制作事例"), 0)
+    check("複合語なら当たる",
+          bot._query_match_score(
+              {"title": "【株式会社アダル】コーポレートムービー", "channel": "アダル",
+               "desc": "", "tags": []}, "コーポレートムービー 制作事例") > 0, True)
+    # 同じまとまりの語をお題が2つ含むと、1本で2点付いて「お題の語を2つ満たした」
+    # ように見えていた（「SNS広告 縦型 事例」の 縦型）。
+    check("同じまとまりの語は1点に畳む",
+          bot._query_match_score(
+              {"title": "【制作事例】縦型動画広告", "channel": "テスト",
+               "desc": "", "tags": []}, "SNS広告 縦型 事例"), 1)
+    # お題は Discord から変えられるので、到達可能性は実行時にも見る
+    check("言い換えが効くお題は True", bot._lane_has_synonyms("採用動画 制作事例"), True)
+    check("言い換えが1つも無いお題は False",
+          bot._lane_has_synonyms("ほげほげ動画 制作事例"), False)
+    check("実行時にも警告する",
+          "には言い換えが1つも効いていない" in bot_src(), True)
     for _t, _title in (
             ("会社紹介動画", "企業紹介ムービー｜株式会社サンプル"),
             ("会社紹介動画", "【会社案内】株式会社サンプル"),
