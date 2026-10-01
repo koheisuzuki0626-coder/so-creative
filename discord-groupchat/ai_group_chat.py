@@ -4739,6 +4739,10 @@ def _video_dict(item):
         "duration": _parse_iso_duration(
             item.get("contentDetails", {}).get("duration")
         ),
+        # 2026-10-01（C0）：この2つを捨てていたので、古さで下げることも
+        # チャンネル単位の台帳を作ることもできなかった。使う前に、まず残す。
+        "published": (sn.get("publishedAt") or "")[:10],
+        "channel_id": sn.get("channelId") or "",
         "url": f"https://www.youtube.com/watch?v={item['id']}",
     }
 
@@ -4956,6 +4960,49 @@ def _query_match_score(v, query):
                if any(x.lower() in text for x in _term_variants(t)))
 
 
+def _query_hit_title(v, query):
+    """題名とチャンネル名だけで、お題の語がいくつ当たるか。説明文・タグは見ない。
+
+    実測（2026-10-01）：説明文・タグまで見る _query_match_score は 497本中270本=54%
+    を「当たり」と言うが、題名＋チャンネル名だけなら 226本=45%。差の44本は
+    制作会社の定型説明文（9ジャンルの語が目次のように並ぶ）に当たったもので、
+    目視では大半が誤判定だった。
+    ⚠️ _query_match_score の代わりに使ってはいけない（本物のMV8本と
+    サービス紹介の実物2本は説明文由来で当たっている）。これは【数えるため】の版。
+    落とす／残すの判定に説明文を使わないのは _not_promo_reason と同じ方針。
+    """
+    return _query_match_score(
+        {"title": v.get("title"), "channel": v.get("channel"), "desc": "", "tags": []},
+        query)
+
+
+def _log_genre_supply(query, n_videos, n_candidates, n_hits, n_title_hits,
+                      n_targets, used_queries=None):
+    """1レポート1行で、母数と当たりの推移を残す（insights/genre_supply.tsv）。
+
+    2026-10-01（C0）に足した。それまで「尺で何本落ちたか」「候補が何本残ったか」が
+    どこにも残っていなかったので、直した効果も取りこぼしも後から測れなかった。
+    insights/ は .gitignore 済みなので Mac ローカルにしか残らない＝
+    CODE_PATHS（*.py）に当たらないので、書き込みで自動再起動は起きない。
+    失敗しても黙って諦める（リサーチ本体を止めない）。
+    """
+    try:
+        INSIGHTS_DIR.mkdir(parents=True, exist_ok=True)
+        f = INSIGHTS_DIR / "genre_supply.tsv"
+        if not f.exists():
+            f.write_text("日時\tお題\t母数\t候補\t当たり\t題名一致\t視聴\t使った検索語\n",
+                         encoding="utf-8")
+        with f.open("a", encoding="utf-8") as fp:
+            fp.write("\t".join([
+                datetime.now(JST).strftime("%Y-%m-%d %H:%M"),
+                str(query or "急上昇"), str(n_videos), str(n_candidates),
+                str(n_hits), str(n_title_hits), str(n_targets),
+                "|".join(used_queries or []),
+            ]) + "\n")
+    except Exception as e:  # noqa: BLE001
+        print(f"[trend] 供給の記録に失敗: {str(e)[:150]}", flush=True)
+
+
 def _relevance_score(v, query):
     """そのお題の実物らしさ。ジャンル語の一致が企業VPらしさに常に勝つ。
 
@@ -5063,6 +5110,10 @@ def _pick_diverse(candidates, n, seen_today=frozenset(), score_fn=None):
 # 「会社紹介動画 制作事例」でAIツールの宣伝が選ばれていた）。
 # 企業VPは再生数が数百〜数千回なのが普通で、再生数順はこの用途に最も向かない。
 TREND_SEARCH_ORDER = os.getenv("TREND_SEARCH_ORDER", "relevance")
+# 検索は1ページ100ユニット（1日10,000）。limit を増やしたときに
+# ページを無制限に繰ると枠を一気に使う（2026-09-25 に実際に 429 が出ている）。
+# いまの TREND_POOL=100・maxResults=50 では2ページで終わるので、3は余裕の蓋。
+TREND_MAX_PAGES = int(os.getenv("TREND_MAX_PAGES", "3"))
 
 
 async def _search_videos(query, limit=50, days=None):
@@ -5094,8 +5145,9 @@ async def _search_videos(query, limit=50, days=None):
         for attempt in range(2):
             if attempt == 1:
                 params.pop("publishedAfter", None)
-            ids, token = [], None
-            while len(ids) < limit:
+            ids, token, _pages = [], None, 0
+            while len(ids) < limit and _pages < TREND_MAX_PAGES:
+                _pages += 1
                 page = dict(params)
                 page["maxResults"] = str(min(limit - len(ids), 50))
                 if token:
@@ -6720,6 +6772,21 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
                 and TREND_MIN_SECONDS <= v["duration"] <= TREND_MAX_MINUTES * 60]
 
     candidates = _pick(skip_analyzed)
+    # 2026-10-01（C0）：ここで落ちた本数がどこにも残っていなかった。
+    # ⚠️ _drop_why に足してはいけない——あれは _excluded（制作事例でないもの）の
+    # 内訳として表示されるので、別の理由を混ぜると合計が _excluded と合わなくなる。
+    # 重複あり（短すぎてかつ既に見た動画は両方に数えられる）なので、そう書く。
+    _pick_drop = {
+        "既に見た": sum(1 for v in videos if skip_analyzed and v["id"] in analyzed),
+        "尺が短い": sum(1 for v in videos
+                     if v["duration"] < TREND_MIN_SECONDS),
+        "尺が長い": sum(1 for v in videos
+                     if v["duration"] > TREND_MAX_MINUTES * 60),
+    }
+    print(f"[trend] 母数 {len(videos)}本 → 候補 {len(candidates)}本"
+          + ("（重複あり: "
+             + " / ".join(f"{k} {n}本" for k, n in _pick_drop.items() if n)
+             + "）" if any(_pick_drop.values()) else ""), flush=True)
     # 全部見終わっていたら、飛ばすのをやめて見る（0本で終わらせない）。
     # 黙って戻すと「同じ動画」に見えるので、そう言ってから見る。
     _reanalyzing = False
@@ -6820,9 +6887,16 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
              + (f"・同じ所が2本以上：{'・'.join(_dups)}" if _dups else "")
              + (f"・今日すでに見た所 {sum(1 for c in _chs if c in _seen_ch)}本"
                 if _seen_ch else ""))
+    # 題名＋チャンネル名だけで数えた当たり（説明文・タグ由来の誤当たりを除いた値）。
+    # 表示には使わない（_note の文言は C5 で一度に確定させる）。記録だけ。
+    _title_hits = (sum(1 for v in candidates if _query_hit_title(v, query))
+                   if query else 0)
     if query:
-        print(f"[trend] 関連あり {len(_hits)}本 / 候補 {len(candidates)}本"
-              f"（視聴 {_note}）", flush=True)
+        print(f"[trend] 関連あり {len(_hits)}本（題名だけなら {_title_hits}本）"
+              f" / 候補 {len(candidates)}本（視聴 {_note}）", flush=True)
+    _log_genre_supply(query, len(videos), len(candidates), len(_hits),
+                      _title_hits, len(targets),
+                      _used_queries if query else None)
     await _trend_say(
         channel,
         f"🎬 {label}の動画{len(videos)}本を取得しました。"
@@ -6995,7 +7069,7 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
                "続いているなら、別の層——カット割り・カメラ・音・構成の順番——を見る）】\n"
                + "\n".join(f"・{x}" for x in _kata) + "\n\n" if _kata else "")
             + ("⚠️【このお題に合う動画は1本も見つからなかった】"
-               f"見た5本は「{query}」ではなく、近い制作事例で代替したもの。"
+               f"見た{len(reports)}本は「{query}」ではなく、近い制作事例で代替したもの。"
                f"だから「{query}の型」として一般化してはいけない。"
                "『このお題では公開事例が見つからなかった』と最初に1行書き、"
                "そのうえで実際に見た動画から言えることだけを書く。\n\n"
