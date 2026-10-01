@@ -1829,7 +1829,7 @@ def run():
     check("注記を出す条件そのものを固定する",
           "and 0 < _hit_seen_reports < len(reports)) else \"\"" in _srcC5, True)
     check("見た分が1本も当たらない回は『見つからなかった』側へ落ちる",
-          "if (_no_hit or (query and reports and _hit_seen_reports == 0))"
+          "_no_hit or (query and reports and _hit_seen_reports == 0)"
           in _srcC5, True)
     # ⚠️ 実行できない指示を文章で渡さない。材料（digest_src）には題名と分析本文
     # しか無いので、AI側は「どれが当たりか」を特定できない（当たりは説明文・
@@ -1857,6 +1857,71 @@ def run():
           in _srcC5, False)
     check("永久に閉じたと書いていない（測り直す道を残す）",
           "永久に閉じたわけではない" in _srcC5, True)
+
+    print("■ 視聴して別物と分かったら、型の材料から外す（C9・2026-10-01）")
+    # 実測：視聴255本のうち73本（29%）がそのお題の実物ではなかった。
+    # Gemini は本文では正しく見抜いていた（「解説者本人が正面から視聴者へ
+    # 直接語りかける」「全体的にPC画面のキャプチャ映像」）のに、その判定を
+    # 読み戻す経路が1本も無かった。実害：ノウハウ解説から「採用動画の型」＋
+    # 見積り約246,800円、画面キャプチャから「アニメーション説明動画の型」＋
+    # 約398,700円が fixtures/youtube_insights.md に残っている。
+    for _a, _want in (
+            ("⓪ 違う\n① 冒頭3秒：…", "違う"),
+            ("⓪ ちがう", "違う"),
+            ("⓪ 実物ではない", "違う"),
+            ("**⓪ 違う**", "違う"),
+            ("⓪：違う", "違う"),
+            ("⓪ 近い", "近い"),
+            ("⓪ 実物", "実物")):
+        check(f"判定を読む: {_a[:12]} → {_want}", bot._study_verdict(_a), _want)
+    # ⚠️ 迷ったら None（＝材料として残す）に倒す。_ai_route_veto と同じ片側。
+    check("無回答なら残す（判定しない）", bot._study_verdict("① 冒頭3秒：ロゴ"), None)
+    check("解析失敗でも残す", bot._study_verdict(""), None)
+    check("None でも落ちない", bot._study_verdict(None), None)
+    # 問いを丸ごと書き写した行は判定として採らない（定義に「違う」が入っている）
+    check("問いの書き写しを判定にしない",
+          bot._study_verdict(
+              "⓪ この動画は、リサーチのお題「採用動画 制作事例」の実物か。"
+              "実物＝まさにその用途で作られた本編／近い＝…／違う＝別物"), None)
+    check("長い言い訳も判定にしない",
+          bot._study_verdict("⓪ 判定：実物だと思われますが一部は違うとも言えます"),
+          None)
+    # ⓪ は【お題がある時に付け足す側】に置く。本体の通し番号を壊さない
+    check("⓪ を VIDEO_STUDY_PROMPT 本体に入れていない",
+          "⓪" in bot.VIDEO_STUDY_PROMPT, False)
+    check("①〜⑨ は残っている（通し番号）",
+          all(x in bot.VIDEO_STUDY_PROMPT for x in "①②③④⑤⑥⑦⑧⑨"), True)
+    _srcC9 = _insp.getsource(bot._run_trend_study)
+    # ⚠️ 「最優先」の語そのものは数えない——経緯のコメントに自分で書いてある。
+    # 見たいのは【プロンプトに渡す文】なので、元のリテラルが消えたかで見る。
+    check("お題を先入れするリテラルが消えている",
+          'f"\\n特にリサーチ目的『{query}』の観点を最優先で分析して。"' in _srcC9,
+          False)
+    check("⓪ で判定を聞いている", "この動画は、リサーチのお題「{query}」の実物か"
+          in _srcC9, True)
+    check("1語だけ書かせている（理由を書かせない）",
+          "のどれか1語だけ**を書く" in _srcC9, True)
+    # ⚠️ reports は減らさない。減らすと require_video の経路で嘘の理由を報告し、
+    # _mark_analyzed も走らないので翌日また同じ外れを視聴する。
+    check("型の材料だけを別に持つ（reports は減らさない）",
+          "_kata_src = [(v, a) for v, a in reports if _study_verdict(a) != \"違う\"]"
+          in _srcC9, True)
+    check("reports そのものを絞り込んでいない",
+          "reports = [(v, a) for v, a in reports" in _srcC9, False)
+    check("全部『違う』でも材料を0本にしない",
+          "for v, a in (_kata_src or reports))" in _srcC9, True)
+    check("全部『違う』なら『見つからなかった』側の文に落ちる",
+          "or (query and reports and not _kata_src)" in _srcC9, True)
+    # 「近い」は外さない（adjacent は255本中55本＝22%。外すと材料が枯れる）
+    check("『近い』は外していない", '!= "違う"' in _srcC9, True)
+    check("『近い』も外す形になっていない",
+          'in ("違う", "近い")' in _srcC9, False)
+    # レポートの1行は【加算】。減算すると何本見たかが読めなくなる
+    check("レポートの1行に足している（減らしていない）",
+          "_note += f\"・⚠️ 見たら別物だった {_off_n}本" in _srcC9, True)
+    # 数え方を2か所に置かない（ずれる）
+    check("外した本数を数えるのは1か所だけ",
+          _srcC9.count("_off_n = len(reports) - len(_kata_src)"), 1)
 
     print("■ お題に1本も当たらない回を、そのジャンルの「型」にしない")
     # 事故（2026-09-30 に発覚）：「研修動画 制作事例」で視聴した15本は

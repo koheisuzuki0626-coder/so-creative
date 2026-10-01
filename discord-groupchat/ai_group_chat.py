@@ -5495,6 +5495,40 @@ VIDEO_STUDY_PROMPT = (
 )
 
 
+# 視聴の分析の先頭に書かせる判定（⓪）を読む。2026-10-01（C9）。
+# ⚠️ ⓪ は【お題があるときに付け足す側】に書く。VIDEO_STUDY_PROMPT 本体の
+# ①〜⑨は test_routing.py が通し番号を検査しているので触らない。
+_STUDY_VERDICT_WORDS = ("違う", "ちがう", "実物ではない", "実物でない", "近い", "実物")
+
+
+def _study_verdict(analysis):
+    """視聴の分析から ⓪ の判定を読む。"実物" / "近い" / "違う" か None。
+
+    ⚠️ 迷ったら None（＝型の材料として残す）に倒す。_ai_route_veto と同じ
+    片側の効き方で、**はっきり「違う」と書いた回だけ**材料から外す。
+    判定が無い・読めない・AIが問いを書き写しただけの回で材料を減らすと、
+    知見が黙って枯れる（しかもログに出ない）。
+
+    ⓪ の行は「1語だけ」書かせているので、**短い行しか受け取らない**。
+    問いを丸ごと書き写した行（定義の「違う＝別物…」を含む）を拾って
+    誤って外すのを防ぐため。
+    """
+    for line in str(analysis or "").splitlines():
+        if "⓪" not in line:
+            continue
+        tail = line.split("⓪", 1)[1]
+        # 記号・強調・空白を落として、残った語だけを見る
+        tail = re.sub(r"[\s:：*＊「」『』【】。、.\-—－]+", "", tail)
+        if not tail or len(tail) > 12:
+            return None            # 問いの書き写し・長い説明は判定として採らない
+        for w in _STUDY_VERDICT_WORDS:
+            if w in tail:
+                return "違う" if w in ("違う", "ちがう", "実物ではない",
+                                      "実物でない") else w
+        return None
+    return None
+
+
 def _gemini_watch_youtube_sync(url, prompt=None, tag="gemini_watch_youtube"):
     """Gemini にYouTube動画のURLを渡して「視聴」させる（ダウンロード不要）。"""
     from google.genai import types
@@ -7140,8 +7174,24 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
     )
 
     # お題指定時は、その観点を重視して視聴する
+    # 2026-10-01（C9）：ここは「お題の観点を最優先で分析して」だった。
+    # それが VIDEO_STUDY_PROMPT の「推測では書かず、実際に見えたものだけを書く」と
+    # 矛盾し、別ジャンルの動画でもお題に寄せた分析が返っていた。
+    # 実測：視聴255本のうち73本（29%）がそのお題の実物ではなかったのに、
+    # Gemini は本文では正しく見抜いていた（「解説者本人が正面から視聴者へ
+    # 直接語りかける」「全体的にPC画面のキャプチャ映像」）。
+    # 見抜いた結果を【判定として読み戻す経路が1本も無かった】ので、
+    # ノウハウ解説から「採用動画の型」＋見積り約246,800円が知見に残った。
+    # 先入れをやめ、⓪ で判定だけ先に書かせる（1語だけ・理由は書かせない）。
     study_prompt = VIDEO_STUDY_PROMPT + (
-        f"\n特にリサーチ目的『{query}』の観点を最優先で分析して。" if query else ""
+        f"\n\n⓪ この動画は、リサーチのお題「{query}」の実物か。"
+        "**この行には【実物】【近い】【違う】のどれか1語だけ**を書く"
+        "（例「⓪ 違う」）。理由や説明はここに書かない。\n"
+        "　　実物＝まさにその用途で作られた本編／"
+        "近い＝用途は別だが同じ系統（別ジャンルの企業映像・実績ダイジェスト）／"
+        "違う＝別物（作り方の解説・セミナー・ボイスサンプル・個人の作品・画面録画）\n"
+        "お題に寄せて書かないこと。別物なら「違う」と書いてよく、"
+        "そのうえで実際に見えたものだけを①以降に書く。" if query else ""
     )
 
     # 動画の「視聴」フェーズ。Gemini無料枠切れを検知したら以降の視聴はスキップし、
@@ -7261,6 +7311,24 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
         except Exception as e:  # noqa: BLE001
             print(f"[trend] メタ情報分析も失敗: {str(e)[:200]}")
 
+    # 2026-10-01（C9）：視聴して「違う」と分かった本数を、レポートの1行に【足す】。
+    # 減算してはいけない（何本見たかが読めなくなる）。視聴前に組んだ _note に
+    # 後ろから足す形なので、Discordの開始の告知には出ない（まだ見ていないため）。
+    # 2026-10-01（C9）：⓪ で「違う」と書かれたものを型の材料から外す。
+    # 「近い」は外さない（adjacent は255本中55本＝22%。外すと材料が枯れる）。
+    # ⚠️ reports そのものは減らさない。減らすと require_video の経路で
+    # 「動画の視聴に失敗した（枠切れではない）」＝嘘の理由を報告し、
+    # _mark_analyzed も走らないので翌日また同じ外れを視聴する。
+    _kata_src = [(v, a) for v, a in reports if _study_verdict(a) != "違う"]
+    _off_n = len(reports) - len(_kata_src)
+    if _off_n:
+        print(f"[trend] ⓪で「違う」と判定されたので型の材料から外す: {_off_n}本"
+              f"（視聴 {len(reports)}本）", flush=True)
+        # レポートの1行には【足す】。減算してはいけない（何本見たかが
+        # 読めなくなる）。視聴前に組んだ _note に後ろから足すので、
+        # Discordの開始の告知には出ない（その時点ではまだ見ていない）。
+        _note += f"・⚠️ 見たら別物だった {_off_n}本（型の材料から外した）"
+
     # 全文レポートを insights/ に保存（日付ごと。お題指定はお題入りファイル名）
     today = datetime.now(JST).strftime("%Y-%m-%d")
     fname = today + (
@@ -7306,7 +7374,10 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
                             if _query_match_score(v, query) > 0)
                          if query else 0)
     if reports:
-        digest_src = "\n\n".join(f"■{v['title']}\n{a}" for v, a in reports)
+        # 全部「違う」だった回は、材料は全部渡して【一般化させない】側で守る
+        # （下の digest_prompt が _no_hit と同じ文に落ちる）。
+        digest_src = "\n\n".join(f"■{v['title']}\n{a}"
+                                 for v, a in (_kata_src or reports))
         # 過去の知見を渡して、同じ結論を毎回書かせない。
         # 「【】で煽る」「数字を入れる」が何度も出ていた（2026-09-21）。
         _tries = _past_items("次に試すこと")
@@ -7374,7 +7445,8 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
                f"だから「{query}の型」として一般化してはいけない。"
                "『このお題では公開事例が見つからなかった』と最初に1行書き、"
                "そのうえで実際に見た動画から言えることだけを書く。\n\n"
-               if (_no_hit or (query and reports and _hit_seen_reports == 0))
+               if (_no_hit or (query and reports and _hit_seen_reports == 0)
+                   or (query and reports and not _kata_src))
                else "")
             # 2026-10-01（C2）：「トレンド概観」という名前だと、見て確かめた話として
             # 扱われる。中身は未視聴の候補一覧の題名だけなので、そう名乗る。
