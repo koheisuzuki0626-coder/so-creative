@@ -6954,22 +6954,48 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
                 _mark_analyzed(v["id"], v.get("channel"))
 
     # ランキング全体の傾向分析（Gemini枠切れ時はClaudeに自動切替）
+    # ⚠️ 直上のコメント文字列は test_routing.py:4340 が範囲の境界に使っている。消さない。
+    #
+    # 2026-10-01（C2）：材料を candidates（尺と除外を通った候補）に変えた。
+    # それまでは videos（除外前・最大100本）そのままで、ボイスサンプル・
+    # ノウハウ解説・30秒未満・20分超・分析済みが全部入っていた。しかもこの出力は
+    # 「視聴 5本 / 5チャンネル」の直下に「## トレンド概観」として保存されるので、
+    # 読む側は視聴結果の要約として読む。
+    # 実害（2026-09-30 コーポレートムービー）：概観が挙げた5社と、実際に視聴した
+    # 5チャンネルが1つも一致していなかった。
+    # ⚠️ _hits にはしない——説明文由来の誤当たりを概観に持ち込むうえ、当たり0本の回が
+    # 31%あるので概観が空になる回が3割出る。候補が薄い回は videos へ退避する。
+    # ⚠️ 退避のしきい値は _pool を決める門（min(TREND_DEEP_COUNT, 3)）とは別に持つ。
+    # 共用すると、片方を直したときにもう片方が黙って連動する。
+    OVERVIEW_MIN_POOL = 3
+    _ov_pool = (candidates if (query and len(candidates) >= OVERVIEW_MIN_POOL)
+                else videos)
+    # お題ありの時は再生数を渡さない。渡したまま「論じるな」と文章で禁じても
+    # 効かなかった——その一文を足した 2026-09-30 05:32 より後に出た16レポートが、
+    # 16本すべて伸び系の語で書かれていた（「文章で条件を守らせない」の実例）。
+    # 急上昇（query なし）は順位＝再生数そのものに意味があるので残す。
     listing = "\n".join(
-        f"{i + 1}. {v['title']}（{v['channel']} / {v['views']:,}回）"
-        for i, v in enumerate(videos)
+        (f"{i + 1}. {v['title']}（{v['channel']}）" if query
+         else f"{i + 1}. {v['title']}（{v['channel']} / {v['views']:,}回）")
+        for i, v in enumerate(_ov_pool)
     )
     # 2026-09-23 に再生数順の並べ替えを外した（TREND_SEARCH_ORDER="relevance"）のに、
     # この説明文だけ「再生数順」のままだった。AIに嘘の前提を渡すと
     # 「再生数上位は〇〇の型」という検証できない断定が返ってくる（2026-09-30 に発覚）。
     overview_src = (
-        f"以下は「{query}」でYouTubeを検索した結果（直近{_days or TREND_SEARCH_DAYS}日・"
-        "並びは検索語との関連順。再生数順ではないので再生数の多寡を論じないこと）。"
+        f"以下は「{query}」でYouTubeを検索し、尺と除外の条件を通った候補"
+        f"{len(_ov_pool)}本の【題名とチャンネル名だけ】"
+        f"（直近{_days or TREND_SEARCH_DAYS}日・並びは検索語との関連順）。"
+        "映像は見ていない。公開日も再生数もサムネも渡していないので、"
+        "伸びているか・増えているか・再生数の多寡は書けない。"
         if query else
         "以下は本日のYouTube急上昇TOP100のランキング。"
     )
     overview_prompt = (
         overview_src + "映像クリエイターの視点で、\n"
-        "① 伸びているジャンル・企画の傾向 ② タイトル・サムネの傾向 "
+        + ("① この検索語で実際に多い企画・尺・業種（数えられる範囲で）"
+           if query else "① 伸びているジャンル・企画の傾向")
+        + " ② タイトルの傾向 "
         "③ 映像制作のヒント を400字以内でまとめて。\n\n" + listing
     )
     try:
@@ -6981,11 +7007,14 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
     # 視聴できなかった場合のフォールバック：メタ情報ベースの深掘り分析
     meta_analysis = ""
     if quota_hit or not reports:
+        # 2026-10-01（C2）：概観と同じ母集団（_ov_pool）に揃える。
+        # ここだけ videos のままにすると、視聴できなかった回の本体が
+        # 除外済みの営業素材から書かれる（概観だけ直すのは片手間になる）。
         meta_src = "\n".join(
             f"{i + 1}. {v['title']}（{v['channel']} / {v['views']:,}回 / 約{v['duration'] // 60}分）\n"
             f"   説明: {v['desc'] or 'なし'}\n"
             f"   タグ: {', '.join(v['tags']) if v['tags'] else 'なし'}"
-            for i, v in enumerate(videos[:20])
+            for i, v in enumerate(_ov_pool[:20])
         )
         meta_prompt = (
             (f"以下は「{query}」でYouTubeを検索した上位20本" if query
@@ -6993,7 +7022,8 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
             + "のメタ情報（タイトル・説明文・タグ・再生数・長さ）。"
             "映像そのものは見られない前提で、メタ情報から読み取れる映像制作のヒントを"
             "600字以内でまとめて。\n"
-            "① 企画・構成の傾向 ② タイトル/サムネ戦略 ③ 想定される演出・編集手法 "
+            # サムネは渡していないので聞かない（渡していないものを聞くと埋められる）
+            "① 企画・構成の傾向 ② タイトル戦略 ③ 想定される演出・編集手法 "
             "④ 自分の映像制作への転用アイデア\n\n" + meta_src
         )
         try:
@@ -7006,8 +7036,21 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
     fname = today + (
         "_" + re.sub(r"[^\w぀-ヿ一-鿿]+", "_", query)[:24] if query else ""
     ) + ".md"
+    # 2026-10-01（C2）：第1節が「視聴結果の要約」と読まれていたので、
+    # 何本の何から書いたかを見出しに出し、母数の内訳を1行添える。
+    # これまで除外の内訳は Discord の通知にしか出ず、レポートに残っていなかった。
+    _ov_head = ("## 検索結果一覧の傾向"
+                f"（未視聴・題名とチャンネル名のみ・{len(_ov_pool)}本）"
+                if query else "## トレンド概観")
+    _supply = (f"母数 {len(videos)}本 → 候補 {len(candidates)}本"
+               + ("（" + " / ".join(f"{k} {n}本"
+                                   for k, n in _pick_drop.items() if n) + "）"
+                  if any(_pick_drop.values()) else "")
+               + ("／制作事例でない: "
+                  + " / ".join(f"{k} {n}本" for k, n in sorted(_drop_why.items()))
+                  if _drop_why else ""))
     full = [f"# YouTube{label}リサーチ {today}", "", f"視聴 {_note}", "",
-            "## トレンド概観", overview or "（取得失敗）"]
+            _supply, "", _ov_head, overview or "（取得失敗）"]
     if meta_analysis:
         full += ["", "## メタ情報ベースの傾向分析", meta_analysis]
     for v, a in reports:
@@ -7074,7 +7117,10 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
                "『このお題では公開事例が見つからなかった』と最初に1行書き、"
                "そのうえで実際に見た動画から言えることだけを書く。\n\n"
                if _no_hit else "")
-            + "【トレンド概観】\n" + (overview or "")
+            # 2026-10-01（C2）：「トレンド概観」という名前だと、見て確かめた話として
+            # 扱われる。中身は未視聴の候補一覧の題名だけなので、そう名乗る。
+            + "【参考・未視聴の候補一覧から（題名とチャンネル名だけ）】\n"
+            + (overview or "")
             + "\n\n【個別分析】\n" + digest_src
         )
         try:

@@ -1724,9 +1724,54 @@ def run():
           "_hits = [v for v in candidates if _relevance_score(v, query) > 0]"
           in _srcH, False)
     check("当たり0本を控える", "_no_hit = bool(query) and not _hits" in _srcH, True)
+    # 2026-10-01（C2）：ここは改行と字下げ込みの【隣接】で固定していたので、
+    # 間にコメントを1行入れただけで落ちた。見たい事実は「当たり0本の注記が、
+    # 未視聴の一覧を渡すより前にある」ことなので、順序で見る。
+    # （概観の見出しは「トレンド概観」→「参考・未視聴の候補一覧から」に改名した。
+    #  見て確かめた話として扱われていたため）
+    _ov_label = "【参考・未視聴の候補一覧から"
     check("当たり0本なら『一般化してはいけない』と渡す",
           "として一般化してはいけない" in _srcH
-          and "if _no_hit else \"\")\n            + \"【トレンド概観】" in _srcH, True)
+          and 'if _no_hit else ""' in _srcH
+          and _ov_label in _srcH
+          and _srcH.index('if _no_hit else ""') < _srcH.index(_ov_label), True)
+    check("概観が『見て確かめた話』として渡っていない",
+          '+ "【トレンド概観】' in _srcH, False)
+
+    print("■ トレンド概観は『見ていない候補の題名だけ』から書く（C2・2026-10-01）")
+    # 事故（2026-09-30）：概観の材料が videos（除外前・最大100本）だったので、
+    # ボイスサンプル・ノウハウ解説・尺で落ちたものまで入っていた。
+    # コーポレートムービーの回は、概観が挙げた5社と実際に視聴した5チャンネルが
+    # 1つも一致していなかった。しかも「視聴 5本」の直下に置かれるので、
+    # 読む側は視聴結果の要約として読む。
+    check("概観の材料は候補（除外と尺を通ったもの）",
+          "for i, v in enumerate(_ov_pool)" in _srcH, True)
+    check("除外前の母数をそのまま渡す古い作りが残っていない",
+          "for i, v in enumerate(videos)\n    )" in _srcH, False)
+    check("メタ情報の分析も同じ母集団に揃えている",
+          "for i, v in enumerate(_ov_pool[:20])" in _srcH, True)
+    # 再生数は「渡したまま文章で禁じる」をやめて、渡さない形にした。
+    # 禁止文を足した 2026-09-30 05:32 より後の16レポートが16本すべて
+    # 伸び系の語で書かれていた（文章で条件を守らせない・CLAUDE.md）。
+    check("お題ありのときは再生数を渡さない",
+          "(f\"{i + 1}. {v['title']}（{v['channel']}）\" if query" in _srcH, True)
+    check("渡さなくなったので『論じないこと』の一文も消えている",
+          "再生数の多寡を論じないこと" in _srcH, False)
+    # 「サムネ」の語そのものは数えない——この節の説明文（公開日も再生数もサムネも
+    # 渡していない）に自分で当たる。見たいのは【問いの文】なので、そこだけ見る。
+    check("渡していないもの（サムネ）を聞いていない",
+          "タイトル・サムネの傾向" in _srcH or "タイトル/サムネ戦略" in _srcH, False)
+    # 退避のしきい値を _pool の門と共用すると、片方を直したときに
+    # もう片方が黙って連動する（別々に持つことが条件）。
+    check("概観の退避は専用のしきい値で持つ",
+          "OVERVIEW_MIN_POOL = 3" in _srcH
+          and "len(candidates) >= OVERVIEW_MIN_POOL" in _srcH, True)
+    check("概観の母集団を _hits にしていない（誤当たりを持ち込まない）",
+          "_ov_pool = _hits" in _srcH, False)
+    check("レポートの見出しが何から書いたかを名乗る",
+          "（未視聴・題名とチャンネル名のみ・" in _srcH, True)
+    check("母数の内訳がレポートに残る（Discordの通知だけで消えない）",
+          "_supply = (f\"母数 {len(videos)}本 → 候補 {len(candidates)}本\"" in _srcH, True)
     check("当たり0本をレポートにも残す",
           "お題の語に当たった動画は0本" in _srcH, True)
 
