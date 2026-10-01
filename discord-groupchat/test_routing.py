@@ -1729,10 +1729,11 @@ def run():
                "desc": "", "tags": []}, "コーポレートムービー 制作事例") > 0, True)
     # 同じまとまりの語をお題が2つ含むと、1本で2点付いて「お題の語を2つ満たした」
     # ように見えていた（「SNS広告 縦型 事例」の 縦型）。
-    check("同じまとまりの語は1点に畳む",
+    check("同じまとまりの語は1点に畳む（重みに依らない形で見る）",
           bot._query_match_score(
               {"title": "【制作事例】縦型動画広告", "channel": "テスト",
-               "desc": "", "tags": []}, "SNS広告 縦型 事例"), 1)
+               "desc": "", "tags": []}, "SNS広告 縦型 事例"),
+          bot.QUERY_WEIGHT_TITLE)
     # お題は Discord から変えられるので、到達可能性は実行時にも見る
     check("言い換えが効くお題は True", bot._lane_has_synonyms("採用動画 制作事例"), True)
     check("言い換えが1つも無いお題は False",
@@ -1760,6 +1761,45 @@ def run():
               {"title": "医療機器コンサル業務請負企業紹介動画事例",
                "channel": "株式会社 Global Japan Corporation(GJC)",
                "desc": "", "tags": []}, "会社紹介動画 制作事例") > 0, True)
+
+    print("■ 当たりは出処で重みを付ける（題名＞説明文・C4・2026-10-01）")
+    # 実測（2026-10-01）：説明文・タグまで見ると 497本中270本=54%が当たりだが、
+    # 題名＋チャンネル名だけなら 226本=45%。差の44本は、9ジャンルの語が
+    # 目次のように並ぶ制作会社の概要欄に当たったもので、目視では大半が誤判定。
+    # ⚠️ 外さずに重みを付ける——外すと本物のMV8本とサービス紹介の実物2本が落ちる。
+    # 重みを入れたあとの実測：当たりの集合は 323本／稼働9ジャンル158本で【不変】。
+    # 稼働9ジャンルの内訳は 題名で当たり135本・説明文だけ23本に分かれた。
+    _tQ = "採用動画 制作事例"
+    _byT = {"title": "【制作事例】採用動画｜株式会社テスト", "channel": "テスト映像",
+            "desc": "", "tags": []}
+    _byD = {"title": "今日の雑談", "channel": "個人チャンネル",
+            "desc": "採用動画・会社紹介動画・MVの制作はこちら", "tags": ["採用"]}
+    check("題名で当たるほうが点が高い",
+          bot._query_match_score(_byT, _tQ) > bot._query_match_score(_byD, _tQ), True)
+    check("説明文だけでも当たり扱いのまま（外していない）",
+          bot._query_match_score(_byD, _tQ) > 0, True)
+    check("出処が読める（題名）", bot._query_match_where(_byT, _tQ), "題名1")
+    check("出処が読める（説明文）", bot._query_match_where(_byD, _tQ), "説明文1")
+    check("当たっていなければ空",
+          bot._query_match_where(
+              {"title": "猫", "channel": "ねこ", "desc": "", "tags": []}, _tQ), "")
+    # ここが崩れると層が混ざる：企業VPらしさ（最大2点）が重みの差を
+    # 埋めてはいけない。埋めると「説明文だけ当たり＋企業VPらしい」が
+    # 「題名で当たり」より上に来て、2026-09-25 に直した「裾で埋めない」が戻る。
+    _byD_corp = dict(_byD, channel="株式会社サンプル",
+                     title="社員インタビュー｜会社紹介")
+    check("企業VPらしさは重みの差を埋められない",
+          bot._relevance_score(_byT, _tQ)
+          > bot._relevance_score(dict(_byD, channel="株式会社サンプル"), _tQ), True)
+    # 閾値と式には触っていないこと（_hits の母集団・_no_hit・strong/weak の境界）
+    check("当たりの閾値は > 0 のまま",
+          "_hits = [v for v in candidates if _query_match_score(v, query) > 0]"
+          in bot_src(), True)
+    check("_relevance_score の式は変えていない",
+          "return _query_match_score(v, query) * 10 + _corporate_score(v)"
+          in bot_src(), True)
+    check("点数を返す関数の返り値を文字列やタプルに変えていない",
+          isinstance(bot._query_match_score(_byT, _tQ), int), True)
 
     print("■ お題に1本も当たらない回を、そのジャンルの「型」にしない")
     # 事故（2026-09-30 に発覚）：「研修動画 制作事例」で視聴した15本は

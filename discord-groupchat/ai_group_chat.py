@@ -5029,27 +5029,65 @@ def _query_match_score(v, query):
     題名・チャンネル名・説明文・タグを対象にする（題名だけだと、
     説明文にしかジャンル名を書かない本物を落としてしまう）。
     """
+    return sum(w for w, _ in _query_match_parts(v, query))
+
+
+# 出処ごとの重み。題名とチャンネル名は【投稿者が自分の作品に付けた名前】、
+# 説明文とタグは【制作会社の定型文】で、同じ重みで数えてはいけない。
+# 実測（2026-10-01）：説明文・タグまで見ると 497本中270本=54%が当たりだが、
+# 題名＋チャンネル名だけなら 226本=45%。差の44本は、9ジャンルの語が目次のように
+# 並ぶ概要欄に当たったもので、目視では大半が誤判定だった。
+# ⚠️ 外すのではなく重みを付ける——外すと本物のMV8本とサービス紹介の実物2本が
+# 落ちる（_query_match_score の説明に書いてある事故）。
+# ⚠️ 0かどうかの意味は変えない。_hits（> 0）・_no_hit・_pick_diverse の
+# strong/weak の境界（score > 0）は、この重み付けでは一切動かない。
+# 動くのは【同じ層の中の並び】だけ（_daily_order と _pick_diverse の層分け）。
+QUERY_WEIGHT_TITLE = 3
+QUERY_WEIGHT_DESC = 1
+
+
+def _query_match_parts(v, query):
+    """[(点, 出処)] を返す。出処は "題名" か "説明文"。
+
+    同じまとまりの語は1つに畳む（2026-10-01・C3）。
+    「SNS広告 縦型 事例」は SNS広告 と 縦型 が同義のまとまりなので、
+    縦型と書いてあるだけで2点付いていた（お題の語を2つ満たしたように見える）。
+    """
     terms = _query_terms(query)
     if not terms:
-        return 0
-    text = " ".join([
+        return []
+    title_text = " ".join([
         str(v.get("title") or ""), str(v.get("channel") or ""),
-        str(v.get("desc") or ""), " ".join(str(t) for t in (v.get("tags") or [])),
     ]).lower()
-    # 2026-10-01（C3）：同じまとまりの語は1点に畳む。
-    # 「SNS広告 縦型 事例」は SNS広告 と 縦型 が同義のまとまりなので、
-    # 縦型と書いてあるだけで2点付いていた（お題の語を2つ満たしたように見える）。
-    _seen = set()
-    hit = 0
+    desc_text = " ".join([
+        str(v.get("desc") or ""),
+        " ".join(str(t) for t in (v.get("tags") or [])),
+    ]).lower()
+    seen, out = set(), []
     for t in terms:
         variants = _term_variants(t)
         key = tuple(sorted(x.lower() for x in variants))
-        if key in _seen:
+        if key in seen:
             continue
-        _seen.add(key)
-        if any(x.lower() in text for x in variants):
-            hit += 1
-    return hit
+        seen.add(key)
+        low = [x.lower() for x in variants]
+        if any(x in title_text for x in low):
+            out.append((QUERY_WEIGHT_TITLE, "題名"))
+        elif any(x in desc_text for x in low):
+            out.append((QUERY_WEIGHT_DESC, "説明文"))
+    return out
+
+
+def _query_match_where(v, query):
+    """どこで当たったかを短く（"題名2・説明文1"）。当たっていなければ空。
+
+    ⚠️ 点数は返さない。_relevance_score が _query_match_score を 10倍しているので、
+    返り値をタプルや文字列に変えると算術が壊れる（別の関数として持つ）。
+    """
+    n = {}
+    for _w, src in _query_match_parts(v, query):
+        n[src] = n.get(src, 0) + 1
+    return "・".join(f"{k}{c}" for k, c in n.items())
 
 
 def _query_hit_title(v, query):
@@ -6990,8 +7028,11 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
     _title_hits = (sum(1 for v in candidates if _query_hit_title(v, query))
                    if query else 0)
     if query:
+        _where = [w for w in (_query_match_where(v, query) for v in targets) if w]
         print(f"[trend] 関連あり {len(_hits)}本（題名だけなら {_title_hits}本）"
-              f" / 候補 {len(candidates)}本（視聴 {_note}）", flush=True)
+              f" / 候補 {len(candidates)}本（視聴 {_note}"
+              + (f"・当たった出処 {'／'.join(_where)}" if _where else "")
+              + ")", flush=True)
     _log_genre_supply(query, len(videos), len(candidates), len(_hits),
                       _title_hits, len(targets),
                       _used_queries if query else None)
