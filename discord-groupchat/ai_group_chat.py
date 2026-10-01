@@ -6929,6 +6929,29 @@ def _attach_quote(text):
     return "\n".join(fixed)
 
 
+# _past_items が本文をつなぐのを、どこで止めるか（2026-10-01・C8）。
+# 見出しらしい行＝`#`／`**`／`【`／`1.` で始まる行。
+_NOTE_HEAD_RE = re.compile(r"^(?:#|\*\*|【|\s*\d+\.)")
+
+
+def _demote_headings(text, min_level=3):
+    """分析本文の見出しを、動画の見出し（`## `）より深くする（2026-10-01・C8）。
+
+    レポートは `## {題名}（{局名} / {再生数}）` で動画を区切っているので、
+    本文が `#` や `## ` で始まると同じ階層にぶつかり、その動画ぶんの分析が
+    無関係な見出しの下に孤立する。実測：insights の902節のうち
+    380件（42%）が本文に見出し記号を持っていた
+    （`# YouTube急上昇20本メタ情報分析` のような第1階層も混ざっている）。
+
+    ⚠️ `^#{1,6}` のあとに【空白を要求する】。実データに
+    `## 採用動画制作で抑えるべき３つのポイント#映像制作会社 #福岡` のような
+    ハッシュタグ入りの題名があり、空白を要さないと本文の `#` まで触る。
+    """
+    def _fix(m):
+        return "#" * max(len(m.group(1)), min_level) + m.group(2)
+    return re.sub(r"(?m)^(#{1,6})([ \t])", _fix, str(text or ""))
+
+
 def _past_items(key, limit=25):
     """貯めた知見から、指定の見出しの中身だけを新しい順に集める。
 
@@ -6945,8 +6968,29 @@ def _past_items(key, limit=25):
         if key not in ln:
             continue
         body = ln.split(key, 1)[1].strip("*：: 　")
-        if not body and i + 1 < len(lines):   # 見出しだけの行は次行が本文
-            body = lines[i + 1].strip()
+        # 2026-10-01（C8）：110字に届かない間だけ、続く非空行をつなぐ。
+        # それまでは「次の1行だけ」だったので、見出しに層名の括弧が付いた瞬間
+        # （`**1. 今日の型（色とライティング）**`）に、本文の代わりに
+        # 【層名そのもの】が既出として渡っていた。渡す中身が「（色とライティング）」
+        # だけになると「同じ型は禁止」が効かない。
+        # 実測：165件のうち10件がこの退化で、ほかに本文が空で拾えていなかった
+        # ものが5件（次に試すこと2・AIで作れないもの2・今日の型1）。
+        # 110字以上あったものは1文字も変わらない（154件が同一）。
+        # ⚠️ 字数のしきい値で「短すぎる行」を弾く形にはしない——12字では
+        # 「色とライティングによる感情喚起」（15字）を拾えず、30字では31字の
+        # 実例が素通りする＝言い方の数え上げになる。
+        j = i + 1
+        while len(body) < 110 and j < len(lines):
+            nxt = lines[j]
+            if not nxt.strip():
+                j += 1
+                if body:
+                    break              # 本文を拾ったあとの空行で止める
+                continue               # まだ空なら空行を飛ばす
+            if _NOTE_HEAD_RE.match(nxt):
+                break                  # 次の見出しらしい行まで来た
+            body = (body + " " + nxt.strip()).strip() if body else nxt.strip()
+            j += 1
         if body:
             out.append(body[:110])
     return out[-limit:][::-1]
@@ -7419,9 +7463,14 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
     if meta_analysis:
         full += ["", "## メタ情報ベースの傾向分析", meta_analysis]
     for v, a in reports:
+        # 機械可読の1行。題名やチャンネル名にカッコが入れ子になっていても
+        # 読む側が壊れない（実測：全角カッコの入れ子4本が抽出から漏れていた）。
         full += ["", f"## {v['title']}（{v['channel']} / {v['views']:,}回"
                  + (f" / {v['duration']}秒" if v.get("duration") else "") + "）",
-                 v["url"], "", a]
+                 f"<!-- video id={v.get('id') or '-'} "
+                 f"duration={v.get('duration') or 0} "
+                 f"verdict={_study_verdict(a) or '-'} -->",
+                 v["url"], "", _demote_headings(a)]
     try:
         # 同じジャンルは1日に2巡することがある（9ジャンル・1日最大8巡）。
         # 上書きしていたので、2026-09-29 は16回分析して9本しか残っていなかった

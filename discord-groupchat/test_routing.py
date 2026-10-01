@@ -3896,6 +3896,100 @@ def run():
     check("既出を見出し単位で拾える",
           callable(getattr(bot, "_past_items", None)), True)
     check("拾えない時も落ちない", bot._past_items("ありえない見出し"), [])
+
+    print("■ 既出ガードが本文を取り落とさない／見出しがぶつからない（C8・2026-10-01）")
+    # 事故：見出しに層名の括弧が付いた瞬間（`**1. 今日の型（色とライティング）**`）、
+    # 本文の代わりに【層名そのもの】が既出として渡っていた。渡す中身が
+    # 「（色とライティング）」だけになると「同じ型は禁止」が効かない。
+    # 実測（本物の知見ファイル）：165件のうち10件がこの退化で、ほかに本文が
+    # 空で拾えていなかったものが5件。110字以上あったものは1文字も変わらない
+    # （154件が同一）。括弧だけの項目は7件→0件。
+    # ⚠️ 字数のしきい値で短い行を弾く形にはしない——12字では
+    # 「色とライティングによる感情喚起」（15字）を拾えず、30字では31字の
+    # 実例が素通りする＝言い方の数え上げになる。
+    _keepN = bot.NOTES["insight"]
+    import pathlib as _plC8
+    _tmpN = _plC8.Path(bot.HISTORY_DIR) / "c8_insight_test.md"
+    bot.NOTES["insight"] = (_tmpN,) + tuple(_keepN[1:])
+    try:
+        _tmpN.write_text("\n".join([
+            "**1. 今日の型（色とライティング）**",
+            "5本中3本は白基調・拡散光のハイキートーンで清潔感を演出。",
+            "残り2本は寒色系×強いコントラストで重厚感を出していた。",
+            "",
+            "**2. AIで作れるもの**",
+            "手順つきで2つ",
+            "",
+            "**1. 今日の型**",
+            "",
+            "テロップは映像と並行して補足を伝える補助線として使われていた。",
+            "",
+            "**1. 今日の型**: " + "あ" * 150,
+            "",
+            # 15字の層名。字数のしきい値（12字など）で弾く形にすると、
+            # ここが本文に届かず素通りする＝実データで起きていた退化そのもの。
+            "**1. 今日の型**：色とライティングによる感情喚起",
+            "影を排したフラット照明に、彩度の高いアクセントカラーを局所的に置く配色で統一していた。",
+            "",
+            # 空行を挟まずに次の項目が来る形。空行は別の条件で止まるので、
+            # 【見出しらしい行で止める】条件が効いているのはこのケースだけで分かる。
+            "**1. 今日の型**",
+            "空行なしで次が来る本文。",
+            "**4. 次に試すこと**",
+            "飲み込んではいけない行",
+        ]), encoding="utf-8")
+        _items = bot._past_items("今日の型")
+        check("層名だけで終わらない（続く行をつなぐ）",
+              any("白基調" in x for x in _items), True)
+        check("次の見出しで止まる（別項目を飲み込まない）",
+              any("手順つきで2つ" in x for x in _items), False)
+        check("本文が空でも、空行の先の行を拾う",
+              any("補助線" in x for x in _items), True)
+        check("もともと110字以上あったものは切り方が変わらない",
+              any(x == "あ" * 110 for x in _items), True)
+        check("15字の層名でも本文まで届く（字数で弾いていない）",
+              any("アクセントカラー" in x for x in _items), True)
+        check("空行が無くても次の見出しで止まる",
+              any("飲み込んではいけない行" in x for x in _items), False)
+        check("その本文自体は拾えている",
+              any("空行なしで次が来る本文" in x for x in _items), True)
+        check("件数は増えも減りもしない（見出しの数と同じ）", len(_items), 5)
+    finally:
+        bot.NOTES["insight"] = _keepN
+        if _tmpN.exists():
+            _tmpN.unlink()
+    check("止める条件を正規表現で1か所に持っている",
+          bot._NOTE_HEAD_RE.match("## 見出し") is not None
+          and bot._NOTE_HEAD_RE.match("**1. 今日の型**") is not None
+          and bot._NOTE_HEAD_RE.match("【制作事例】") is not None
+          and bot._NOTE_HEAD_RE.match("1. 項目") is not None
+          and bot._NOTE_HEAD_RE.match("ふつうの本文") is None, True)
+
+    # レポートの見出しの衝突。本文が `#`／`## ` で始まると、動画の見出し
+    # （`## {題名}`）と同じ階層にぶつかって、その動画の分析が無関係な見出しの
+    # 下に孤立する。実測：insights の902節のうち4件が第1〜2階層を持っていた
+    # （`# YouTube急上昇20本メタ情報分析` など）→ 段下げ後は0件。
+    for _a, _want in (
+            ("# YouTube急上昇20本メタ情報分析", "### YouTube急上昇20本メタ情報分析"),
+            ("## 映像制作分析: 「My Only」", "### 映像制作分析: 「My Only」"),
+            ("### ① 演出手法", "### ① 演出手法"),
+            ("#### 細かい節", "#### 細かい節")):
+        check(f"段下げ: {_a[:22]}", bot._demote_headings(_a), _want)
+    # ⚠️ `#` のあとに空白を要求する。実データにハッシュタグ入りの題名がある。
+    check("ハッシュタグは触らない（空白が無い）",
+          bot._demote_headings("本文に #福岡 と書いてある"), "本文に #福岡 と書いてある")
+    check("行頭のハッシュタグも触らない",
+          bot._demote_headings("#映像制作"), "#映像制作")
+    check("空でも None でも落ちない",
+          bot._demote_headings("") == "" and bot._demote_headings(None) == "", True)
+    _srcC8 = _insp.getsource(bot._run_trend_study)
+    check("レポートに貼る時に段下げしている",
+          "_demote_headings(a)" in _srcC8, True)
+    check("機械可読の1行を出している（カッコの入れ子でも読める）",
+          "<!-- video id=" in _srcC8, True)
+    check("機械可読の1行に判定と尺が入っている",
+          "verdict={_study_verdict(a) or '-'}" in _srcC8
+          and "duration={v.get('duration') or 0}" in _srcC8, True)
     _dg = _src3.split("digest_prompt = (")[1][:2000]
     check("既出の『次に試すこと』を渡す", "次に試すこと（新しい順" in _dg, True)
     check("既出の『作れないもの』を渡す", "AIで作れないもの（同じ結論" in _dg, True)
