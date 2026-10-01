@@ -5529,6 +5529,61 @@ def _study_verdict(analysis):
     return None
 
 
+# カット数×平均秒数が実尺と合うかを検算する（2026-10-01・C7）。
+# 実測：insights の523節のうち尺と突き合わせられるのは230件で、22件（10%）が
+# 合わない。例：「482カット×2.2秒＝1060秒」が実尺309秒の動画に付いていた／
+# 「11カット×28.3秒＝311秒」が192秒／「27カット×1.2秒＝32秒」が56秒。
+# 「数えた」と書いてあっても合わない。実尺はコード側が持っている（v["duration"]）
+# のに、Gemini にも digest にも渡していなかったので検算されなかった。
+#
+# ⚠️ 本文は書き換えない。平均をコードで再計算もしない——分析の多くは
+# すでに「平均 ≒ 尺 ÷ カット数」で書かれているので、再計算すると検算が
+# 恒久的に通り、守りが黙って消える。合わない時に1行足すだけ。
+_CUT_N_RE = re.compile(
+    r"([0-9０-９]+)\s*カット(?!の平均|あたり|当たり|の尺|の長さ|の秒)")
+_CUT_AVG_RE = re.compile(
+    r"(?:平均|1カットの平均|平均秒数)[^0-9]{0,8}"
+    r"([0-9]+(?:\.[0-9]+)?)\s*(?:〜|~|-|–)?\s*([0-9]+(?:\.[0-9]+)?)?\s*秒")
+# カット数は2以上を要求する。実測で、これが誤爆をほぼ全部止めている
+# （「1カットの平均秒数は約2.4秒」の 1 を拾わないため）。
+_CUT_MIN_N = 2
+# 平均秒数の常識の範囲。外れた値は読み取りの失敗なので、注記を出さない。
+_CUT_AVG_RANGE = (0.5, 60.0)
+# ずれの許容。±20%に狭めると丸めの範囲を叩き始める（22件→27件）。
+CUT_MATH_TOL = float(os.getenv("TREND_CUT_MATH_TOL", "0.30"))
+
+
+def _cut_math_note(analysis, duration):
+    """カット数×平均秒数が実尺と合わない時だけ1行返す。合う／読めない時は None。
+
+    ⚠️ 読み取れない時は何も足さない（推測で警告を出さない）。
+    """
+    try:
+        d = int(duration or 0)
+    except (TypeError, ValueError):
+        return None
+    if d <= 0:
+        return None
+    text = str(analysis or "")
+    ns = [int(x.translate(str.maketrans("０１２３４５６７８９", "0123456789")))
+          for x in _CUT_N_RE.findall(text)]
+    ns = [n for n in ns if n >= _CUT_MIN_N]
+    m = _CUT_AVG_RE.search(text)
+    if not ns or not m:
+        return None
+    n = max(ns)                       # 複数あれば大きい方（総計のほうを採る）
+    a1 = float(m.group(1))
+    a2 = float(m.group(2)) if m.group(2) else a1
+    avg = (a1 + a2) / 2              # 範囲で書かれていたら中央値
+    if not (_CUT_AVG_RANGE[0] <= avg <= _CUT_AVG_RANGE[1]):
+        return None
+    est = n * avg
+    if abs(est - d) / d <= CUT_MATH_TOL:
+        return None
+    return (f"⚠️ 実尺{d}秒。カット数{n}×平均{avg:g}秒＝{est:.0f}秒で合わない"
+            "（どちらかが誤り。この数字を型に使わないこと）")
+
+
 def _gemini_watch_youtube_sync(url, prompt=None, tag="gemini_watch_youtube"):
     """Gemini にYouTube動画のURLを渡して「視聴」させる（ダウンロード不要）。"""
     from google.genai import types
@@ -7200,8 +7255,14 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
     quota_hit = False
     for v in targets:
         try:
+            # 2026-10-01（C7）：実尺を渡す（追加クォータ0）。渡していなかったので
+            # 「482カット×2.2秒＝1060秒」が実尺309秒の動画に付いていた。
             analysis = await asyncio.to_thread(
-                _gemini_watch_youtube_sync, v["url"], study_prompt
+                _gemini_watch_youtube_sync, v["url"],
+                study_prompt + (f"\n\nこの動画の長さは {v['duration']}秒。"
+                                "②のカット数×平均秒数が、この長さとおおよそ"
+                                "合うかを自分で確かめてから書く。"
+                                if v.get("duration") else "")
             )
         except GeminiQuotaExceeded as e:
             quota_hit = True
@@ -7225,6 +7286,12 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
             print(f"[trend] 視聴失敗 {v['id']}: {str(e)[:200]}")
             continue
         if analysis:
+            # 検算の注記を本文の末尾に平文で足す（## 見出しにしない）。
+            # ⚠️ ダイジェストの出力には出さない——_drop_tool_preamble に消されるか、
+            # _past_items が翌日「今日の型」の本文として拾ってしまう。
+            _cm = _cut_math_note(analysis, v.get("duration"))
+            if _cm:
+                analysis = f"{analysis}\n\n{_cm}"
             reports.append((v, analysis))
             # 飛ばす側（skip_analyzed）と揃える。ここを `not query` にしていた
             # ため、ジャンル指定（「ミュージックビデオ」）の毎日のリサーチでは
@@ -7352,7 +7419,9 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
     if meta_analysis:
         full += ["", "## メタ情報ベースの傾向分析", meta_analysis]
     for v, a in reports:
-        full += ["", f"## {v['title']}（{v['channel']} / {v['views']:,}回）", v["url"], "", a]
+        full += ["", f"## {v['title']}（{v['channel']} / {v['views']:,}回"
+                 + (f" / {v['duration']}秒" if v.get("duration") else "") + "）",
+                 v["url"], "", a]
     try:
         # 同じジャンルは1日に2巡することがある（9ジャンル・1日最大8巡）。
         # 上書きしていたので、2026-09-29 は16回分析して9本しか残っていなかった
@@ -7376,8 +7445,11 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
     if reports:
         # 全部「違う」だった回は、材料は全部渡して【一般化させない】側で守る
         # （下の digest_prompt が _no_hit と同じ文に落ちる）。
-        digest_src = "\n\n".join(f"■{v['title']}\n{a}"
-                                 for v, a in (_kata_src or reports))
+        digest_src = "\n\n".join(
+            f"■{v['title']}"
+            + (f"（{v['duration']}秒）" if v.get("duration") else "")
+            + f"\n{a}"
+            for v, a in (_kata_src or reports))
         # 過去の知見を渡して、同じ結論を毎回書かせない。
         # 「【】で煽る」「数字を入れる」が何度も出ていた（2026-09-21）。
         _tries = _past_items("次に試すこと")
