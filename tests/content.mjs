@@ -2195,8 +2195,21 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
        60日サイトでは入金が M+4 へずれ、底も1ヶ月ぶん深くなる（−36.6万 → −48.8万）。
        それまでは「底の深さは変わらない・必要な手元は約22万」と書いてあったが、
        これは初入金が M+1 だった 9/22 時点のモデルの話だった */
+    /* 2026-10-02：record.html から金額を外した（record 自身の「2か所に同じ数字を
+       置くと片方だけ古くなる」という方針を金額全部に広げた）。
+       数字はロードマップ側で見る。ここは【事実と参照先】が残っていることを見る */
     check('60日サイトだと表が1ヶ月ずれると書いてある',
-        /M\+4/.test(folded) && /約49万/.test(folded) && !/約22万/.test(folded));
+        /初入金が M\+3 → M\+4 へずれる/.test(folded)
+        && /崩れるとき/.test(folded)
+        && !/約22万/.test(folded) && !/約49万/.test(folded));
+    {
+        const recSrc = readFileSync(`${ROOT}/record.html`, 'utf8');
+        check('record に古い金額が残っていない',
+            !/105万/.test(recSrc) && !/−36\.6万/.test(recSrc)
+            && !/約8\.6ヶ月/.test(recSrc));
+        check('record から最新はロードマップだと案内している',
+            /最新は<a href="roadmap\.html">ロードマップ<\/a>の要約表だけを見ること/.test(recSrc));
+    }
 
     /* 折りたたみを全部開いてから、中身の数字を突き合わせる */
     const foldCount = await rc.evaluate(() => {
