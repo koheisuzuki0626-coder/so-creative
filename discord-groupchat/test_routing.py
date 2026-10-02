@@ -4168,6 +4168,137 @@ def run():
             ("海外の反応 リアクション動画", "本編でない（舞台裏・反応・切り抜き）"),
             ("【神回】Roblox Tower Battles 実況プレイ", "ゲーム・実況")):
         check(f"外す: {_t[:22]}", bot._not_promo_reason({"title": _t}), _why)
+    print("■ 生成モデルの別名が、実在するモデルを指していること（2026-10-03）")
+    # Higgsfield のモデルカタログのスナップショット（2026-10-03・APIキーで照会した84件）
+    # https://platform.higgsfield.ai/models の slug をそのまま写したもの。
+    #
+    # なぜ要るか：2026-10-03 に照会したら、GEN_ALIASES の12本のモデルパスのうち
+    # 【10本が存在しなかった】。「シードリームで作って」は消えたIDに投げて失敗する
+    # 状態で、テストは1件も落ちていなかった（パスを検査していなかったので）。
+    # 向こうのカタログは勝手に変わるので、ここを突き合わせて「次に消えた時に落ちる」
+    # ようにする。落ちたら ./venv/bin/python /tmp/snap3.py 相当で取り直して差し替える。
+    # ⚠️ 落ちたことを「テストが古い」と解釈してスナップショットだけ更新してはいけない。
+    # 先に GEN_ALIASES の別名が、後継のあるモデルを指しているかを確かめること。
+    HF_CATALOG_2026_10_03 = frozenset({
+        "alibaba/happy-horse/image-to-video",
+        "alibaba/happy-horse/reference-to-video",
+        "alibaba/happy-horse/text-to-video",
+        "alibaba/happy-horse/v1.1/image-to-video",
+        "alibaba/happy-horse/v1.1/reference-to-video",
+        "alibaba/happy-horse/v1.1/text-to-video",
+        "alibaba/qwen-image-3/edit",
+        "alibaba/qwen-image-3/text-to-image",
+        "alibaba/wan-3.0-prime/image-to-video",
+        "alibaba/wan-3.0-prime/reference-to-video",
+        "alibaba/wan-3.0-prime/text-to-video",
+        "alibaba/wan-3.0/image-to-video",
+        "alibaba/wan-3.0/reference-to-video",
+        "alibaba/wan-3.0/text-to-video",
+        "bytedance/seedance-2.0/image-to-video",
+        "bytedance/seedance-2.0/reference-to-video",
+        "bytedance/seedance-2.0/text-to-video",
+        "bytedance/seedance-2.5/image-to-video",
+        "bytedance/seedance-2.5/reference-to-video",
+        "bytedance/seedance-2.5/text-to-video",
+        "bytedance/seedance-2.5/video-edit",
+        "bytedance/seedance-2.5/video-extend",
+        "higgsfield-ai/soul/standard",
+        "higgsfield-ai/soul/v2/image-to-image",
+        "higgsfield-ai/soul/v2/standard",
+        "higgsfield/cinema-studio/4.0",
+        "higgsfield/genjutsu/motion-transfer/v1.0",
+        "higgsfield/genjutsu/object-swap/v1.0",
+        "higgsfield/genjutsu/restyle/v1.0",
+        "ideogram/v4.0",
+        "kling-video/motion-control/pro",
+        "kling-video/motion-control/std",
+        "kling-video/o3/first-last-frame",
+        "kling-video/o3/image-reference",
+        "kling-video/o3/video-edit",
+        "kling-video/o3/video-reference",
+        "kling-video/omni/first-last-frame",
+        "kling-video/omni/image-reference",
+        "kling-video/omni/video-edit",
+        "kling-video/omni/video-reference",
+        "kling-video/v2.5-turbo/pro/image-to-video",
+        "kling-video/v2.5-turbo/pro/text-to-video",
+        "kling-video/v2.5-turbo/standard/image-to-video",
+        "kling-video/v2.6/pro/image-to-video",
+        "kling-video/v2.6/pro/text-to-video",
+        "kling-video/v3.0-turbo/image-to-video",
+        "kling-video/v3.0-turbo/text-to-video",
+        "kling-video/v3.0/4k/image-to-video",
+        "kling-video/v3.0/4k/text-to-video",
+        "kling-video/v3.0/pro/image-to-video",
+        "kling-video/v3.0/pro/text-to-video",
+        "kling-video/v3.0/std/image-to-video",
+        "kling-video/v3.0/std/text-to-video",
+        "kling-video/v3/motion-control/pro",
+        "kling-video/v3/motion-control/std",
+        "lightricks/ltx-2.5/image-to-video/fast",
+        "lightricks/ltx-2.5/image-to-video/pro",
+        "lightricks/ltx-2.5/text-to-video/fast",
+        "lightricks/ltx-2.5/text-to-video/pro",
+        "marketing-studio/image",
+        "marketing-studio/image/flare",
+        "marketing-studio/image/sunburst",
+        "minimax/h3/image-to-video",
+        "minimax/h3/reference-to-video",
+        "minimax/h3/text-to-video",
+        "minimax/hailuo-2.3/standard/image-to-video",
+        "minimax/hailuo-2.3/standard/text-to-video",
+        "pixverse/v6/image-to-video",
+        "pixverse/v6/text-to-video",
+        "recraft/v4.1/pro/text-to-image",
+        "recraft/v4.1/text-to-image",
+        "recraft/v4.1/utility/pro/text-to-image",
+        "recraft/v4.1/utility/text-to-image",
+        "soul",
+        "soul-id",
+        "wan/v2.6/image-to-video",
+        "wan/v2.6/reference-to-video",
+        "wan/v2.6/text-to-video",
+        "wan/v2.7/image-to-video",
+        "wan/v2.7/reference-to-video",
+        "wan/v2.7/text-to-video",
+        "xai/grok-imagine-image-2.0",
+        "xai/grok-imagine-video/v1.5/reference-to-video",
+        "z-image/turbo",
+    })
+    _bad = {}
+    for _name, (_target, _path) in bot.GEN_ALIASES.items():
+        if not _path:
+            continue            # image_gemini は Google 側なのでカタログに無い
+        if _path not in HF_CATALOG_2026_10_03:
+            _bad[_name] = _path
+    check("別名のモデルパスが全部カタログに在る（消えたIDを叩かない）",
+          _bad, {})
+    # 付け替えの結果そのものも押さえる（黙って元に戻されないため）
+    for _n, _want in (("シーダンス", "bytedance/seedance-2.5/image-to-video"),
+                      ("ハイルオ", "minimax/hailuo-2.3/standard/image-to-video"),
+                      ("qwen", "alibaba/qwen-image-3/text-to-image"),
+                      ("recraft", "recraft/v4.1/pro/text-to-image"),
+                      ("ideogram", "ideogram/v4.0")):
+        check(f"別名 {_n} の行き先", bot.GEN_ALIASES.get(_n, (None, None))[1], _want)
+    # 後継が無くて消した別名は、復活させない（似て非なるモデルへ流さない）
+    for _n in ("dop", "シードリーム", "seedream", "フラックス", "flux"):
+        check(f"後継が無い別名は持たない: {_n}", _n in bot.GEN_ALIASES, False)
+    # 2026-10-03（本人判断）：ナノバナナ Pro は Higgsfield 経由だけで使う。
+    # 無料枠の経路（Google 直叩き）では Pro を呼ばない。
+    # ⚠️ 「枠切れの逃げ場が減るから戻そう」で復活させてはいけない。外した理由は
+    # 品質でも枠でもなく、クライアント素材を無料枠に入れないという判断。
+    check("無料枠の候補にナノバナナ Pro を入れない",
+          [m for m in bot.GEMINI_IMAGE_MODELS if "pro-image" in m], [])
+    check("無料枠の候補は残っている（全部消してはいない）",
+          len(bot.GEMINI_IMAGE_MODELS) >= 3, True)
+    # 消えたモデル名を【表示の既定】に使っていないこと。
+    # ⚠️ "flux-pro/kontext" で探してはいけない——消した経緯を書いた
+    # ai_group_chat.py のコメント自身に当たって、テストが空回りで落ちる
+    #（2026-10-03 に実際にやった）。表示に使う文字列の形で押さえる。
+    check("表示の既定に消えたモデル名を使わない",
+          "flux-pro/kontext/max（既定）" in _srcK, False)
+    check("未設定はそう表示する", "未設定（自動選定）" in _srcK, True)
+
     for _t in ("ニッコーさま 会社紹介動画",
                "【会社紹介動画】技術者集団｜株式会社ガイア",
                "VIBEX - Stay Close (Official Music Video)"):

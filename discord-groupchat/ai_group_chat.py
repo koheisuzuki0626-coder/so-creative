@@ -3685,20 +3685,34 @@ def _current_model_label():
 GEN_ALIASES = {
     "クリング": ("video", "kling-video/v2.5-turbo/pro/image-to-video"),
     "kling": ("video", "kling-video/v2.5-turbo/pro/image-to-video"),
-    "シーダンス": ("video", "bytedance/seedance/v1/pro/image-to-video"),
-    "seedance": ("video", "bytedance/seedance/v1/pro/image-to-video"),
-    "ハイルオ": ("video", "minimax/hailuo-02/pro/image-to-video"),
-    "hailuo": ("video", "minimax/hailuo-02/pro/image-to-video"),
-    "minimax": ("video", "minimax/hailuo-02/pro/image-to-video"),
-    "dop": ("video", "higgsfield/dop-turbo/image2video"),
+    # 2026-10-03：APIキーで実物のカタログ（84件）を照会したら、
+    # ここの12本のモデルパスのうち【10本が存在しなかった】。
+    # 「シードリームで作って」は、消えたIDに投げて失敗する状態だった。
+    #   消滅: bytedance/seedance/v1/pro/image-to-video（→ seedance-2.5 に）
+    #         minimax/hailuo-02/pro/image-to-video（→ hailuo-2.3 に）
+    #         higgsfield/dop-turbo/image2video（後継なし＝別名を消した）
+    #         bytedance/seedream/v4/text-to-image（後継なし。ByteDanceの画像は撤退）
+    #         flux-pro/kontext/max/text-to-image（後継なし。Flux は無くなった）
+    # 後継が無いものは【付け替えずに消す】。似て非なるモデルへ黙って流すと、
+    # 頼んだものと違う絵が出て、しかも理由が出ない（CLAUDE.md「無い機能をあることにしない」）。
+    # 下の test_routing.py のスナップショット検査が、次に消えた時に落ちる。
+    "シーダンス": ("video", "bytedance/seedance-2.5/image-to-video"),
+    "seedance": ("video", "bytedance/seedance-2.5/image-to-video"),
+    "ハイルオ": ("video", "minimax/hailuo-2.3/standard/image-to-video"),
+    "hailuo": ("video", "minimax/hailuo-2.3/standard/image-to-video"),
+    "minimax": ("video", "minimax/hailuo-2.3/standard/image-to-video"),
     "ナノバナナ": ("image_gemini", None),
     "nano banana": ("image_gemini", None),
     "nanobanana": ("image_gemini", None),
     "gemini画像": ("image_gemini", None),
-    "シードリーム": ("image_hf", "bytedance/seedream/v4/text-to-image"),
-    "seedream": ("image_hf", "bytedance/seedream/v4/text-to-image"),
-    "フラックス": ("image_hf", "flux-pro/kontext/max/text-to-image"),
-    "flux": ("image_hf", "flux-pro/kontext/max/text-to-image"),
+    # 在る画像モデルに付け替えた（2026-10-03 のカタログで確認済み）
+    "クウェン": ("image_hf", "alibaba/qwen-image-3/text-to-image"),
+    "qwen": ("image_hf", "alibaba/qwen-image-3/text-to-image"),
+    "リクラフト": ("image_hf", "recraft/v4.1/pro/text-to-image"),
+    "recraft": ("image_hf", "recraft/v4.1/pro/text-to-image"),
+    "アイデオグラム": ("image_hf", "ideogram/v4.0"),
+    "ideogram": ("image_hf", "ideogram/v4.0"),
+    "ソウル": ("image_hf", "higgsfield-ai/soul/v2/standard"),
 }
 
 # モデル指定の意図を示す語（「クリングってどう？」のような雑談での誤発動を防ぐ）
@@ -3736,7 +3750,9 @@ def _apply_model_mentions(content):
 
 def _gen_settings_summary():
     img = ("Gemini（Nano Banana・無料枠）" if gen_settings["image_engine"] == "gemini"
-           else f"Higgsfield: {gen_settings['image_app'] or 'flux-pro/kontext/max（既定）'}")
+           # 2026-10-03：既定の表示が 'flux-pro/kontext/max' だったが、
+           # そのモデルはカタログから消えている。未設定は「未設定」と出す。
+           else f"Higgsfield: {gen_settings['image_app'] or '未設定（自動選定）'}")
     vid = gen_settings["video_app"] or "higgsfield 既定（dop）"
     return f"🎨 画像: {img}\n🎬 動画: {vid}"
 # 画像生成に使うモデル。1つに固定していたため、そのIDが使えなくなった時に
@@ -3755,10 +3771,19 @@ GEMINI_IMAGE_MODELS = [
         # 後ろの3つは枠切れのときの逃げ場。モデルごとに日次の無料枠が別なので、
         # 候補を増やすほど「枠は残っているのに作れない」が起きにくくなる。
         # 並びは枠の厚そうな順（lite → flash → pro）。
+        # 2026-10-03（本人判断）：**ナノバナナ Pro は Higgsfield 経由だけで使う。**
+        # だから gemini-3-pro-image をここから外した。理由は品質ではなく権利：
+        # ここは Google の【無料枠】のAPIキーで叩く経路で、無料枠は一般に
+        # 入力・出力をサービス改善に使う側に置かれ、知的財産の補償も有料限定が普通。
+        # クライアントから預かった未公開の素材を入れると、説明できない状態になる。
+        # Pro を使うのは Claude Code セッション（Higgsfield MCP の nano_banana_pro）。
+        # ⚠️ Higgsfield の REST カタログには Google 系モデルが1つも無い
+        #（84件を照会して banana / gemini / google すべて0件・2026-10-03）。
+        # つまりボットから Pro を Higgsfield 経由で呼ぶことはできない。できるのは
+        # 「ボットでは Pro を使わない」だけで、これがこの1行の意味。
         "gemini-2.5-flash-image,"
         "gemini-3.1-flash-lite-image,"
-        "gemini-3.1-flash-image,"
-        "gemini-3-pro-image",
+        "gemini-3.1-flash-image",
     ).split(",") if m.strip()
 ]
 _gemini_image_ok = {"model": ""}      # 一度通ったモデルを次回から先に試す
