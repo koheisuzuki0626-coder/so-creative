@@ -2162,7 +2162,15 @@ _trend_fail_why = {}
 # 本人の判断（2026-09-18）：通知は1日8通前後まで。数えたら約108通あった。
 # 4巡（2〜3時間おき）にして、途中経過（取得しました／枠切れ／枠待ち）は黙る。
 # レポートだけ出す。分析そのものは毎回行い、youtube_insights.md には全部貯まる。
-TREND_MAX_RUNS_PER_DAY = int(os.getenv("TREND_MAX_RUNS_PER_DAY", "8"))
+# 2026-10-02：8巡は【消費が補充を上回る】ことが実測で分かったので4巡に戻した。
+# 10-02 の実績＝16レーン実行・視聴71本＝1レーンあたり 7.9本/日。同じ日の供給ログで
+# 候補が 展示会22→14→9・マニュアル23→15→12・SNS広告10→4→3 と毎回ほぼ視聴数ぶん
+# 減っており（新規の流入はほぼ0）、MV レーンは候補33本のうち32本が既視＝実供給1本の
+# 床に着いていた。その結果が「見たら別物だった4本」「お題の語に当たった動画は0本」。
+# 4巡なら 4.4本/日で、TREND_POOL=250 の実測166本に対して約37日もつ。
+# クォータの上限とも噛み合う（下の TREND_MAX_PAGES のコメントに式がある）。
+# ⚠️ ここを上げるときは TREND_MAX_PAGES を一緒に下げること（test_routing が検査する）。
+TREND_MAX_RUNS_PER_DAY = int(os.getenv("TREND_MAX_RUNS_PER_DAY", "4"))
 # 回す間隔の下限。枠が戻るたびに回すと、朝の2時間で1日ぶんを使い切って
 # 残り22時間が沈黙する（2026-09-19 に判明）。1日に散らすための下限。
 TREND_MIN_GAP_SEC = int(os.getenv("TREND_MIN_GAP_SEC", str(90 * 60)))
@@ -4788,8 +4796,13 @@ TREND_SEARCH_DAYS = int(os.getenv("TREND_SEARCH_DAYS", "1825"))
 #  残らない。2026-09-23）。分析済みを飛ばす仕組みがあるので顔ぶれは変わる。
 TREND_DAILY_DAYS = int(os.getenv("TREND_DAILY_DAYS", "1825"))   # 5年
 # 毎日のリサーチで、その中から選ぶ母数（TOP何本まで見るか）。
-# 検索APIは1回50件なので、既定は50（増やすとページを繰る）。
-TREND_POOL = int(os.getenv("TREND_POOL", "100"))
+# 検索APIは1回50件なので、増やすとページを繰る（TREND_MAX_PAGES が蓋）。
+# 2026-10-02：100 → 250。深いページで質が落ちないことを実測した
+# （「ミュージックビデオ」250本をページ単位で門に通すと、候補 48/48/47/42/40、
+#  題名一致 39/40/41/33/34。3ページ目まで1ページ目と同等）。
+# 既視台帳を引いた実供給は 100本で48本 → 250本で166本（ユニークch 36→103）。
+# 母数の枯れ（exact 50% の本体）に効く唯一の手で、語の入れ替えより寿命が長い。
+TREND_POOL = int(os.getenv("TREND_POOL", "250"))
 
 
 def _query_variants(query):
@@ -5242,8 +5255,16 @@ def _pick_diverse(candidates, n, seen_today=frozenset(), score_fn=None):
 TREND_SEARCH_ORDER = os.getenv("TREND_SEARCH_ORDER", "relevance")
 # 検索は1ページ100ユニット（1日10,000）。limit を増やしたときに
 # ページを無制限に繰ると枠を一気に使う（2026-09-25 に実際に 429 が出ている）。
-# いまの TREND_POOL=100・maxResults=50 では2ページで終わるので、3は余裕の蓋。
-TREND_MAX_PAGES = int(os.getenv("TREND_MAX_PAGES", "3"))
+# TREND_POOL=250・maxResults=50 では5ページで終わるので、5が蓋。
+#
+# 1日の消費の式（これが 10,000 を越えないことが守りの本体）：
+#   TREND_MAX_RUNS_PER_DAY × TREND_GENRES_PER_DAY
+#     × (TREND_MAX_PAGES × 100 ＋ ページ数ぶんの videos.list)
+#   = 4 × 2 × (5 × 100 + 5) = 4,040 ユニット/日（枠の40%）
+# 2026-10-02 に 8巡 × 2 × 505 = 8,080 を試算して却下した（429 の再発側）。
+# ⚠️ ここか TREND_MAX_RUNS_PER_DAY を上げるときは、この式を数え直すこと。
+# test_routing.py が式そのものを検査しているので、片方だけ上げると落ちる。
+TREND_MAX_PAGES = int(os.getenv("TREND_MAX_PAGES", "5"))
 
 
 async def _search_videos(query, limit=50, days=None):
@@ -6757,6 +6778,24 @@ _NOT_PROMO_PATTERNS = (
         r"対訳|和訳|歌詞付き|歌ってみた|弾いてみた|cover|カラオケ", re.I)),
     ("ゲーム・実況", re.compile(
         r"実況|ゲーム実況|gameplay|プレイ動画|攻略|roblox|minecraft", re.I)),
+    # 2026-10-02：MVレーンを「ミュージックビデオ」に戻すときに測って足した。
+    # 本編の【派生版】は、映像としては完成しているので視聴も分析も通るが、
+    # ダンスだけ・歌だけ・短縮版なので「そのジャンルの型」にならない。
+    #
+    # ⚠️ 適合率を測ってから足した語だけを入れてある（門を通った実物327本で検証）。
+    #   足した   Dance Performance / Performance Only / パフォーマンスver … 4本・4本とも派生版
+    #            Short Ver. / ショートver / MV short                  … 2本・2本とも短縮版
+    #            【告知】/ プレミア公開                                … 1本・1本とも告知
+    #   足さない 「ver.」を広く見る         … 10本当たって5本が実物。
+    #            新浜レオン「ミュージックビデオ(フル Ver.)」は【本編そのもの】で、
+    #            ベリーグッドマンの Anniversary Ver. 3本も実物のMV。適合率50%。
+    #            紅白歌合戦|FNS歌謡祭      … 3本当たって2本が実物
+    #            （Vaundy「踊り子：MUSIC VIDEO」、M!LK「Official Music Video」は
+    #             紅白の歌唱曲というタグが付いているだけの実物）。適合率33%。
+    ("本編でない（別バージョン・短縮版・告知）", re.compile(
+        r"Dance\s*Performance|Performance\s*Only|パフォーマンスver|"
+        r"Performance\s*ver|Short\s*Ver\.?|ショート\s*ver|MV\s*short|"
+        r"【告知】|プレミア公開", re.I)),
 )
 
 # 制作会社が自社の集客のために作った解説・セミナー。

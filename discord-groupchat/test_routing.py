@@ -2497,9 +2497,30 @@ def run():
           "require_video=False" in _srcK, True)
     # 本人の判断（2026-09-18）：通知は1日8通前後まで。数えたら約108通あった。
     # 途中経過（取得／枠切れ／枠待ち／復活）は黙り、レポートだけ出す。
-    # 2026-09-22：本人の希望で巡数を8へ。通知が増えるのは承知のうえ
-    #（増えるのはレポートだけ。途中経過は静かモードのまま黙る）。
-    check("既定は1日8巡", bot.TREND_MAX_RUNS_PER_DAY, 8)
+    # 2026-09-22：本人の希望で巡数を8へ。通知が増えるのは承知のうえ。
+    # 2026-10-02：本人の了解を得て4へ戻した（レポートは1日16本→8本に減る）。
+    # 理由は通知の数ではなく【母数が追いつかない】こと。実測：
+    #   10-02 は16レーン実行・視聴71本＝1レーンあたり 7.9本/日。
+    #   同じ日の供給ログで候補が 展示会22→14→9・マニュアル23→15→12 と
+    #   毎回ほぼ視聴数ぶん減り（新規の流入はほぼ0）、MV レーンは候補33本中
+    #   32本が既視＝実供給1本で床に着いていた。
+    #   それが「見たら別物だった4本」「お題の語に当たった動画は0本」の正体。
+    check("既定は1日4巡", bot.TREND_MAX_RUNS_PER_DAY, 4)
+    # 2026-10-02：母数を増やす（TREND_POOL 100→250）のと巡数は、同じ
+    # YouTube の1日10,000ユニットを食い合う。片方だけ上げると枠を割る
+    # （8巡 × 2ジャンル × 505 = 8,080 で、2026-09-25 の 429 の再発側だった）。
+    # 文章の約束では守られないので、式そのものを検査する。
+    _units_day = (bot.TREND_MAX_RUNS_PER_DAY * bot.TREND_GENRES_PER_DAY
+                  * (bot.TREND_MAX_PAGES * 100 + bot.TREND_MAX_PAGES))
+    check(f"1日のYouTube消費が枠の6割以内（巡数と母数は食い合う・{_units_day}ユニット/日）",
+          _units_day <= 6000, True)
+    # 母数の蓋とページの蓋がずれていると、母数を増やしても取れない
+    # （TREND_POOL=250 に対して MAX_PAGES=3 だと150本で止まる）。
+    import math as _math
+    check(f"ページの蓋が母数に足りている（POOL={bot.TREND_POOL}/PAGES={bot.TREND_MAX_PAGES}）",
+          bot.TREND_MAX_PAGES >= _math.ceil(bot.TREND_POOL / 50), True)
+    check("母数は実測で枯れない量にしてある（2026-10-02：250で実供給166本）",
+          bot.TREND_POOL >= 250, True)
     check("既定は静かモード", bot.TREND_QUIET, True)
     # 事故（2026-09-22）：起点が定時と枠の復活だけで、1日1巡で止まっていた。
     with open(bot.__file__, encoding="utf-8") as _f:
@@ -4151,6 +4172,29 @@ def run():
                "【会社紹介動画】技術者集団｜株式会社ガイア",
                "VIBEX - Stay Close (Official Music Video)"):
         check(f"外さない: {_t[:22]}", bot._not_promo_reason({"title": _t}), None)
+    # 2026-10-02：MVレーンの派生版（ダンスだけ・短縮版・告知）を落とす。
+    # 門を通った実物327本で測り、適合率100%の語だけ入れた。
+    _DERIV = "本編でない（別バージョン・短縮版・告知）"
+    for _t, _why in (
+            ("SixTONES – マイオンリー -Dance Performance Only ver.-", _DERIV),
+            ("MAZZEL / The Voice - Dance Performance Video -", _DERIV),
+            ("ILLIT (아일릿) 'It’s Me’ Official MV (Performance ver.)", _DERIV),
+            ("桑田佳祐 - 人誑し ミュージック・ビデオ（バンドパフォーマンスver.）公開", _DERIV),
+            ("倉木麻衣「風のららら」ミュージックビデオ（Short Ver.）", _DERIV),
+            ("【告知】10月14日 20時00分～ミュージックビデオ プレミア公開", _DERIV)):
+        check(f"外す（派生版）: {_t[:26]}", bot._not_promo_reason({"title": _t}), _why)
+    # ⚠️ ここが本番。「ver.」を広く見ると実物が落ちる。測って却下した語を、
+    # あとから「漏れている」と言って足し直さないための押さえ。
+    #   ・「フル Ver.」は本編そのもの（短縮版の反対）
+    #   ・Anniversary Ver. は別撮りの実物のMV
+    #   ・紅白歌合戦は、その曲が紅白で歌われたというタグが付いただけの実物
+    for _t in ("新浜レオン「捕まえて、今夜。」ミュージックビデオ(フル Ver.)【公式】",
+               "ベリーグッドマン「大丈夫 (Major Debut 10th Anniversary Ver.)」ミュージックビデオ",
+               "「告白（2026ver.）」MUSIC VIDEO",
+               "【第75回NHK紅白歌合戦 歌唱曲】踊り子 / Vaundy：MUSIC VIDEO",
+               "M!LK - イイじゃん(Official Music Video) 【第76回NHK紅白歌合戦歌唱曲】",
+               "[あおきいろ]【ツバメ】ダンスミュージックビデオ フルver. YOASOBI"):
+        check(f"外さない（実物）: {_t[:26]}", bot._not_promo_reason({"title": _t}), None)
 
     print("■ 制作会社の集客ノウハウ解説を落とす（語∧尺・C6・2026-10-01）")
     # 実害：ノウハウ解説動画から「採用動画の型」＋見積り約246,800円が
