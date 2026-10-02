@@ -1694,9 +1694,12 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         && /廃業して再び労務不能になっても/.test(t));
     check('残る受け皿が障害年金だけだと書いてある',
         /開業後に残る受け皿は障害年金だけ/.test(t));
+    /* 2026-10-02 訂正：「2027-12 に開業すればゼロ」は1ヶ月ずれていた。
+       開業月を含めて数えるので、2027-12 開業でも1ヶ月ぶん＝17万は捨てる。ゼロは2028-01 */
     check('捨てる手当と、待って回収できる額を出している',
         /2027-08 開業なら5ヶ月ぶん＝85万を捨てる/.test(t)
-        && /2027-12 に開業すればゼロ/.test(t)
+        && /2027-12 なら1ヶ月ぶん＝17万だけ/.test(t)
+        && /2028-01 でゼロ/.test(t)
         && /2028-01 以降は待っても増えない/.test(t));
     check('撤退する条件を先に決めろと書いてある',
         /撤退する条件を数字で先に決めておくこと/.test(t)
@@ -1711,6 +1714,35 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         /const VR = \[/.test(rmSrc) && /const VP = \[/.test(rmSrc)
         && !/const VC = \[/.test(rmSrc));
     check('なぞり読みがベストの場合だけを出していない', !/ベストの場合/.test(rmSrc));
+    /* 2026-10-02：グラフを作り直したときに #cash-cross を落としていて、
+       「指でなぞると数字が出ます」が嘘になっていた（テスト0件で気づけなかった）。
+       要素の存在だけでなく【実際に数字が変わること】で見る。
+       当たり判定の透明な矩形も要る——SVGは描かれている所にしか当たらないので、
+       これが無いと線の上を通った時しか反応しない */
+    check('なぞる当たり判定がある',
+        await rm.locator('.c-svg rect[pointer-events="all"]').count() >= 1);
+    check('なぞり読みの縦線が実在する',
+        await rm.locator('.c-svg #cash-cross').count() === 1);
+    {
+        const el = rm.locator('.c-svg').first();
+        await el.scrollIntoViewIfNeeded();
+        const box = await el.boundingBox();
+        const tip = rm.locator('#cash-tip');
+        const before = await tip.innerText();
+        await rm.mouse.move(box.x + box.width * 0.9, box.y + box.height * 0.4);
+        const after = await tip.innerText();
+        check('なぞると数字が出る', after !== before && /実額/.test(after), after.slice(0, 40));
+        /* ラベルと値がずれていないこと。右はしは M+11＝731.0万 */
+        check('なぞり読みのラベルと値が合っている',
+            /M\+11/.test(after) && /731\.0万/.test(after), after.slice(0, 50));
+    }
+    /* ラベルは月末基準。index1 は 2026-10末（前は 2026-11 と1ヶ月ずれていた） */
+    check('なぞり読みのラベルが月末基準',
+        /const LABELS = \["いま", "2026-10", "2026-11"/.test(rmSrc));
+    check('div の開きと閉じが釣り合っている', (() => {
+        const b = rmSrc.slice(rmSrc.indexOf('<body>'));
+        return (b.match(/<div\b/g) || []).length === (b.match(/<\/div>/g) || []).length;
+    })());
     /* 営業できない間は Higgsfield を Pro に落としている。戻し忘れると
        受注した月に90秒1本も作れない（Pro は600クレジット＝約18秒ぶん） */
     check('受注したら Max に戻すと書いている',
