@@ -177,6 +177,9 @@ def main(argv=None):
     ap.add_argument("--note", default="", help="備考に1行足す")
     ap.add_argument("--addr", default="〔住所〕", help="契約書：甲の住所")
     ap.add_argument("--rep", default="〔代表取締役 ◯◯ ◯◯〕", help="契約書：甲の代表者")
+    ap.add_argument("--music", action="store_true",
+                    help="契約書：第13条（楽曲を扱う場合の特約）を差し込む。"
+                         "MV・リリックビデオ・社歌など、甲が楽曲を用意する案件だけ")
     ap.add_argument("--out", help="書き出し先のPDF")
     a = ap.parse_args(argv)
 
@@ -220,13 +223,22 @@ def main(argv=None):
             "摘要": (f"納品日 {d.year}年{d.month}月{d.day}日／"
                      f"納品物 MP4 {a.count}本（1920×1080・{a.sec}秒）"),
         }
+    # 条件付きの条文は【別ファイル】にして差し込む。
+    # ⚠️ 契約書をコピーして「MV用の別書式」を作らないこと。2026-10-03 に、
+    # Markdown と HTML が食い違って第6条「意図しない類似」の免責が一度も
+    # お客様に届いていなかった事故が起きた。共通条文は1本に保つ。
+    # {{楽曲特約}} は契約書の書式にしか無いので、他の書類では空で埋める。
+    if a.kind == "業務委託契約書":
+        common["楽曲特約"] = ((FMT / "_楽曲特約.html").read_text(encoding="utf-8")
+                            if a.music else "")
     html = fill((FMT / f"{a.kind}.html").read_text(encoding="utf-8"), common)
     OUT.mkdir(parents=True, exist_ok=True)
     stem = common.get("番号") or f"C-{day:%Y%m%d}-01"
     out = pathlib.Path(a.out) if a.out else OUT / f"{stem}_{a.kind}_{a.to}.pdf"
     render(html, out)
     print(f"✅ {out}")
-    print(f"   {a.title}／{a.tier}・{a.sec}秒×{a.count}本・ナレーション={a.nar}")
+    print(f"   {a.title}／{a.tier}・{a.sec}秒×{a.count}本・ナレーション={a.nar}"
+          + ("／第13条 楽曲特約つき" if (a.kind == "業務委託契約書" and a.music) else ""))
     for name, detail, amount in rows:
         print(f"     {name:<16} {('−¥'+yen(-amount)) if amount<0 else '¥'+yen(amount):>10}")
     print(f"     {'合計':<16} {'¥'+yen(total):>10}（税込・消費税は申し受けません）")
