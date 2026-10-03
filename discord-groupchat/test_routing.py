@@ -6295,6 +6295,46 @@ def run():
         check(f"会話のまま: {_t!r}",
               bool(bot._is_drive_cmd(_t) or bot._is_drive_code(_t)), False)
 
+    print("■ お客様に出す契約書：Markdown と PDF の書式が食い違わないこと")
+    # 事故（2026-10-03）：契約書の写しが3つあり、3つ違う状態になっていた。
+    # ・作業ブランチの Markdown … 支払条件が古い版（税別・月末締め翌月末日）
+    # ・main の Markdown        … 現行（税込総額・着手金なし・30日以内）
+    # ・_書式/業務委託契約書.html … お客様に渡るPDFの元。ここに第6条の
+    #   「意図しない類似」の免責が【入っていなかった】＝9/24 に書いた条文が
+    #   一度もお客様に届いていなかった。
+    # Markdown の冒頭に「両方直すこと」と書いたが、文章の約束は守られないので
+    # （CLAUDE.md「決めたルールはコードの守り手とテストをセットにする」）、
+    # 条の見出しと、落とすと困る文言の両方を突き合わせる。
+    #
+    # ⚠️ tests/content.mjs（サイト側）ではできない。あちらは main にあり、
+    # main には _書式/ が無い（道具は作業ブランチ側）。両方あるのはここだけ。
+    import re as _reK
+    _docs = (_plL.Path(bot.BASE_DIR).parent / "成果物" / "書類ひな形")
+    _md_p, _html_p = _docs / "業務委託契約書.md", _docs / "_書式" / "業務委託契約書.html"
+    _music_p = _docs / "_書式" / "_楽曲特約.html"
+    check("契約書のMarkdownと書式が両方ある",
+          _md_p.exists() and _html_p.exists() and _music_p.exists(), True)
+    if _md_p.exists() and _html_p.exists() and _music_p.exists():
+        _md = _md_p.read_text(encoding="utf-8")
+        _html = _html_p.read_text(encoding="utf-8") + _music_p.read_text(encoding="utf-8")
+        # 条の見出しの集合が一致すること（第6条の3 をMDだけに足した、を捕まえる）
+        _md_arts = set(_reK.findall(r"^### (第\d+条(?:の\d+)?)", _md, _reK.M))
+        _html_arts = set(_reK.findall(r"<h2>(第\d+条(?:の\d+)?)", _html))
+        check("契約書の条が Markdown と書式で一致する",
+              sorted(_md_arts ^ _html_arts), [])
+        # 落とすと実害が出る文言は、両方に在ること（見出しだけでは条の中身の
+        # 抜けを捕まえられない。「意図しない類似」がまさにそれだった）
+        # ⚠️ 空白と改行を落としてから比べる。Markdown は行を折り返すので
+        # 「許諾を\n   示す資料」になり、素の in では偽陽性になる
+        #（2026-10-03 に実際にこれで1件落ちた）。HTMLのタグも落とす。
+        _flat = lambda x: _reK.sub(r"\s+", "", _reK.sub(r"<[^>]+>", "", x))
+        _mdF, _htmlF = _flat(_md), _flat(_html)
+        for _w in ("意図しない類似", "第29条第1項", "独占的利用と転用禁止",
+                   "差し止められることを保証しない", "本楽曲の権利処理を行わない",
+                   "許諾を示す資料", "制作実績として掲載"):
+            check(f"契約書の要点が両方に在る: {_w}",
+                  (_w in _mdF, _w in _htmlF), (True, True))
+
     print("■ テストが本物の記録を汚していないこと")
     # 事故（2026-08-21）：テストを流すたびに本物の history/errors.log へ
     # 偽のエラーが書かれ、ボットは再起動のたびに自己テストを流すので、
