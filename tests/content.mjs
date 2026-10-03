@@ -2395,16 +2395,40 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     check('契約書に楽曲の特約がある',
         /### 第13条（楽曲を扱う場合の特約）/.test(keiyaku)
         && /乙は本楽曲の権利処理を行わない/.test(keiyaku));
-    /* 9/24：末尾に置いたので、消しても前の条番号が動かない */
-    check('楽曲の特約がMV以外では外せると書いてある',
-        /この条を丸ごと削除する/.test(keiyaku) && /前の条番号は動かない/.test(keiyaku));
+    /* 9/24：末尾に置いたので、消しても前の条番号が動かない。
+       10/03：手で消す運用をやめ、make_doc.py の --music で切り替える形にした。
+       条文の実体は _書式/_楽曲特約.html にあり、契約書本体をコピーした
+       「MV用の別書式」は作らない（写しが増えると食い違う。実際に第6条の
+       「意図しない類似」がHTMLに無く、お客様に一度も届いていなかった）。
+       守りたいのは【MV以外では付かないことが書かれている】ことなので、
+       文言ではなく切り替えの仕組みが書かれているかを見る */
+    check('楽曲の特約がMV以外では付かないと書いてある',
+        /条件付き/.test(keiyaku)
+        && /--music/.test(keiyaku)
+        && /前の条番号は動かない/.test(keiyaku));
+    check('楽曲の特約の実体が別ファイルだと書いてある',
+        /_楽曲特約\.html/.test(keiyaku) && /別書式.{0,20}作らない/.test(keiyaku));
     check('楽曲の特約に権利・差替え・容姿・クレジットが入っている',
         ['著作隣接権', '差し替わった場合', '容姿', 'クレジット'].every((w) => keiyaku.includes(w)));
-    /* 条番号を繰り下げたので、重複や飛びが出ていないこと */
-    check('契約書の条番号が第1条から連番',
-        (keiyaku.match(/^### 第(\d+)条/gm) || []).map((x) => Number(x.match(/\d+/)[0]))
-            .every((n, i) => n === i + 1),
-        (keiyaku.match(/^### 第\d+条/gm) || []).join(','));
+    /* 条番号を繰り下げたので、重複や飛びが出ていないこと。
+       10/03：枝番（第6条の2・第6条の3）を足したら、ここが「飛び」として
+       落ちた。枝番は日本の法令で標準の書き方で、あとから条を足しても
+       後続の番号が動かないためのもの。本体と枝番を分けて数える。 */
+    const artAll = (keiyaku.match(/^### 第(\d+)条(の(\d+))?/gm) || []);
+    const artBase = artAll.filter((x) => !/の\d/.test(x))
+        .map((x) => Number(x.match(/\d+/)[0]));
+    check('契約書の条番号が第1条から連番（本体）',
+        artBase.every((n, i) => n === i + 1), artAll.join(','));
+    /* 枝番は、親の条が在り、2から順に続いていること（第6条の3だけ在る、は誤り） */
+    const branches = {};
+    artAll.filter((x) => /の\d/.test(x)).forEach((x) => {
+        const [, a, , b] = x.match(/第(\d+)条(の(\d+))?/);
+        (branches[a] = branches[a] || []).push(Number(b));
+    });
+    check('枝番は親の条が在って2から順に続く',
+        Object.entries(branches).every(([a, list]) =>
+            artBase.includes(Number(a)) && list.every((n, i) => n === i + 2)),
+        JSON.stringify(branches));
     check('見積書にMVの扱いが書いてある',
         /料金表の対象外/.test(mitsu) && /楽曲の権利処理/.test(mitsu));
 
