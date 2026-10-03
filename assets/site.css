@@ -112,12 +112,12 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
    足したとき気づいた。それまで本文リンク37か所が全部この状態だった）。
    色だけで区別すると色覚によっては分からないので、下線も一緒に引く。
    .clink（シェブロン付き）と .pill（ボタン）は自前の見た目を持つので外す */
-.body-text a:not(.clink):not(.pill), .faq-a a, .calc-why a {
+.body-text a:not(.clink):not(.pill), .faq-a a, .calc-why a, .plan-common a {
     color: var(--accent-ink);
     border-bottom: 1px solid rgba(121, 194, 161, 0.45);
     transition: border-color 0.25s ease;
 }
-.body-text a:not(.clink):not(.pill):hover, .faq-a a:hover, .calc-why a:hover {
+.body-text a:not(.clink):not(.pill):hover, .faq-a a:hover, .calc-why a:hover, .plan-common a:hover {
     border-bottom-color: var(--accent-ink);
 }
 
