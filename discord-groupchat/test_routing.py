@@ -501,9 +501,13 @@ def run():
     # 番号（クロード1/2/3）は、役を足したり消したりするたびに意味が黙ってずれる。
     # 実際に3回ずれた——リサーチャー廃止(09-20)／番号の付け替え(09-27)／今回。
     # 1人なら番号が要らないので、ずれようがない。
-    check("話者はクロードだけ", bot.PM_NAME, "クロード")
+    # 名前は Discord のアカウント名（koheiのOrchestrator）に合わせる。
+    # 本文の頭とアカウント名が違うと、誰が喋っているのか分からなくなる。
+    check("話者はオーケストレーターだけ", bot.PM_NAME, "オーケストレーター")
     check("名前に番号を入れない",
           any(c in bot.PM_NAME for c in "123１２３"), False)
+    # 1人が PM・アドバイザー・クリエイティブディレクターの役を全部やる。
+    # 役ごとに話者を分けない（分けると番号がずれる）。名前に役を出さない。
     check("役名を名前に入れない（PM/アドバイザー/リサーチャー）",
           any(w in bot.PM_NAME for w in ("PM", "アドバイザー", "リサーチャー")), False)
     check("旧定数を残さない（番号・役の取り違えを防ぐ）",
@@ -511,7 +515,7 @@ def run():
               ("CLAUDE1_NAME", "CLAUDE2_NAME", "CLAUDE3_NAME",
                "ADVISOR_NAME", "CLAUDE_PERSONAS")), False)
     check("普段の返事はこの名前で出す",
-          bot._with_speaker("本文", bot.PM_NAME), "**クロード**: 本文")
+          bot._with_speaker("本文", bot.PM_NAME), "**オーケストレーター**: 本文")
     check("人格が入っている", bot.PM_NAME in bot.ORCH_PERSONA, True)
     # 旧番号の名乗りも落とす（学習済みの言い方が残るため）
     for _t in ("クロード1（PM）: 本文", "クロード1: 本文", "PM: 本文",
