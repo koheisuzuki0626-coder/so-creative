@@ -497,6 +497,22 @@ def run():
     check("企画書にリスク欄がある", "外した時のリスク" in _blk, True)
     check("企画書に案の番号が入る", "案1:" in _blk, True)
 
+    print("■ 名指し以外は全部オーケストレーターが喋る（融合版として見せる）")
+    # 2026-10-04：ボットのアカウントは3つある（orch / claude_bot / gemini_bot）が、
+    # 普段喋るのは orch だけ。claude_bot・gemini_bot は
+    # 【@で名指しされた時】と !talk の時だけ答える。
+    # 広告企画の結果を claude_bot が投稿していたのを orch に寄せた——
+    # 名指しでない場面で別アカウントが出ると、中で誰がやっているかが見えてしまう。
+    _srcS = open("ai_group_chat.py", encoding="utf-8").read()
+    for _b in ("claude_bot", "gemini_bot"):
+        check(f"{_b} は自分からは投稿しない",
+              _srcS.count(f"send_as({_b},"), 0)
+    check("投稿はオーケストレーターから出す", _srcS.count("send_as(orch,") > 100, True)
+    # 名指しの経路そのものは残す（本人が呼んだ時は本人が答えてよい）
+    check("名指しされたら本人が答える経路は在る",
+          'targets.append(("Claude", claude_bot, ask_claude))' in _srcS
+          and 'targets.append(("Gemini", gemini_bot, ask_gemini))' in _srcS, True)
+
     print("■ 話者は1人だけ（2026-10-04：アドバイザー役を廃止）")
     # 番号（クロード1/2/3）は、役を足したり消したりするたびに意味が黙ってずれる。
     # 実際に3回ずれた——リサーチャー廃止(09-20)／番号の付け替え(09-27)／今回。

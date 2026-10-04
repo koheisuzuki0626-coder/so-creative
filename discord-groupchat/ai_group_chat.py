@@ -11952,7 +11952,11 @@ async def _run_ad_make(message, brief):
         _ad_plan_block(c, f"{'◎推し ' if i == pick else ''}案{i + 1}: ")
         for i, c in enumerate(cons[:2])
     )
-    await send_as(claude_bot, cid, (
+    # 2026-10-04：claude_bot が投稿していたのをオーケストレーターに寄せた。
+    # 名指し（@クロード / @Gemini）以外は全部オーケストレーターが喋る、が原則。
+    # ここは名指しではなく自分の作業の結果なので、別アカウントで出すと
+    # 「中で誰がやっているか」が見えてしまう（融合版として扱わない形になる）。
+    await send_as(orch, cid, (
         f"📋 **広告企画**\n\n{body}\n"
         f"🧭 推す理由: {d.get('why', '-')}\n"
         f"📌 配信Tips: {d.get('tips', '-')}\n\n"
