@@ -472,7 +472,7 @@ def run():
 
     print("■ 匿名の人格を残さない（誰が担当かが分かること）")
     _src = open("ai_group_chat.py", encoding="utf-8").read()
-    check("ショート企画はアドバイザーが名乗る",
+    check("ショート企画はアートディレクターとして作る",
           "いまはバズるYouTube Shortsのアートディレクターとして企画する" in _src, True)
     check("映像ディレクターはkohei本人",
           "映像ディレクターはkohei本人" in _src, True)
@@ -481,44 +481,49 @@ def run():
     check("『あなたは映像ディレクター』という名乗りは残っていない",
           "あなたは映像ディレクター。" in _src, False)
 
-    print("■ 広告代理店の役はアドバイザーが持つ")
-    check("アドバイザーに広告の役割がある",
-          "広告代理店" in bot.CLAUDE_PERSONAS["advisor"][1], True)
-    check("複数案とリスクを出す役だと明記",
-          "リスク" in bot.CLAUDE_PERSONAS["advisor"][1], True)
+    print("■ 広告の作り方の指示（2026-10-04：人格をやめて、ただの指示にした）")
+    # 別人格（クロード2・アドバイザー）としてではなく、作り方の指示として持つ。
+    # 出力の質に効いていたのは人格ではなく、下のやり方そのものだった。
+    check("広告の役割が指示に残っている",
+          "広告代理店" in bot.AD_DIRECTION_RULES, True)
+    check("複数案とリスクを出すと明記",
+          "リスク" in bot.AD_DIRECTION_RULES, True)
+    check("推しを1つ選ぶと明記", "推しを1つ" in bot.AD_DIRECTION_RULES, True)
+    check("人格の形に戻っていない（あなたは◯◯、と名乗らせない）",
+          "あなたは" in bot.AD_DIRECTION_RULES, False)
     _blk = bot._ad_plan_block(
         {"title": "夜の静けさ篇", "target": "20代", "hook": "無音",
          "message": "静けさ", "cta": "今すぐ", "risk": "地味に見える"}, "案1: ")
     check("企画書にリスク欄がある", "外した時のリスク" in _blk, True)
     check("企画書に案の番号が入る", "案1:" in _blk, True)
 
-    print("■ 話者は2人だけ（1=PM / 2=アドバイザー）")
-    # 2026-09-27（本人の指示）：クロード1（リサーチャー）を廃止し、
-    # PMを1番、アドバイザーを2番に繰り上げた。調べる役は Claude Code の
-    # セッションに統合済み。番号で持つと取り違えるので、コードは役名で持つ。
-    check("1番はPM", bot.PM_NAME, "クロード1（PM）")
-    check("2番はアドバイザー", bot.ADVISOR_NAME, "クロード2（アドバイザー）")
-    check("リサーチャーは居ない",
-          any("リサーチャー" in v for v in (bot.PM_NAME, bot.ADVISOR_NAME)), False)
-    check("旧定数を残さない（番号の取り違えを防ぐ）",
+    print("■ 話者は1人だけ（2026-10-04：アドバイザー役を廃止）")
+    # 番号（クロード1/2/3）は、役を足したり消したりするたびに意味が黙ってずれる。
+    # 実際に3回ずれた——リサーチャー廃止(09-20)／番号の付け替え(09-27)／今回。
+    # 1人なら番号が要らないので、ずれようがない。
+    check("話者はクロードだけ", bot.PM_NAME, "クロード")
+    check("名前に番号を入れない",
+          any(c in bot.PM_NAME for c in "123１２３"), False)
+    check("役名を名前に入れない（PM/アドバイザー/リサーチャー）",
+          any(w in bot.PM_NAME for w in ("PM", "アドバイザー", "リサーチャー")), False)
+    check("旧定数を残さない（番号・役の取り違えを防ぐ）",
           any(hasattr(bot, _n) for _n in
-              ("CLAUDE1_NAME", "CLAUDE2_NAME", "CLAUDE3_NAME")), False)
-    check("普段の返事はPMが出す",
-          bot._with_speaker("本文", bot.PM_NAME), "**クロード1（PM）**: 本文")
-    check("PMの人格が入っている", bot.PM_NAME in bot.ORCH_PERSONA, True)
-    check("人格は2人ぶんだけ", sorted(bot.CLAUDE_PERSONAS), ["advisor"])
-    check("役割の人格も名前と一致",
-          bot.CLAUDE_PERSONAS["advisor"][0], bot.ADVISOR_NAME)
+              ("CLAUDE1_NAME", "CLAUDE2_NAME", "CLAUDE3_NAME",
+               "ADVISOR_NAME", "CLAUDE_PERSONAS")), False)
+    check("普段の返事はこの名前で出す",
+          bot._with_speaker("本文", bot.PM_NAME), "**クロード**: 本文")
+    check("人格が入っている", bot.PM_NAME in bot.ORCH_PERSONA, True)
+    # 旧番号の名乗りも落とす（学習済みの言い方が残るため）
     for _t in ("クロード1（PM）: 本文", "クロード1: 本文", "PM: 本文",
-               "クロード2（アドバイザー）: 本文", "クロード: 本文"):
+               "クロード2（アドバイザー）: 本文", "クロード2: 本文", "クロード: 本文"):
         check(f"名乗りの前置きを落とす {_t!r}", bot._clean_reply(_t), "本文")
     # 保存済みの設定は旧番号のことがある。読んで壊れないこと
     _keepW = bot.gen_settings.get("trend_who")
     try:
-        for _v, _want in (("claude1", bot.PM_NAME),      # 旧リサーチャー
-                          ("claude2", bot.PM_NAME),      # 旧PM
-                          ("claude3", bot.ADVISOR_NAME),  # 旧アドバイザー
-                          ("pm", bot.PM_NAME), ("advisor", bot.ADVISOR_NAME),
+        # 話者が1人になったので、保存済みの値が何であっても同じ名前を返す
+        for _v, _want in (("claude1", bot.PM_NAME), ("claude2", bot.PM_NAME),
+                          ("claude3", bot.PM_NAME), ("pm", bot.PM_NAME),
+                          ("advisor", bot.PM_NAME),
                           (None, bot.PM_NAME), ("", bot.PM_NAME)):
             bot.gen_settings["trend_who"] = _v
             check(f"旧設定 {_v!r} でも壊れない", bot._trend_who_name(), _want)

@@ -2088,43 +2088,37 @@ async def ask_claude(history):
 # 2026-09-27（本人の指示）：クロード1（リサーチャー）を廃止し、
 # PMを1番、アドバイザーを2番に繰り上げた。調べる役は Claude Code の
 # セッションに統合済み（CLAUDE.md「相談を受けるときの構え」）。
-PM_NAME = "クロード1（PM）"                  # 普段の返事を書く担当。表に出る顔
-ADVISOR_NAME = "クロード2（アドバイザー）"    # 別の見方・広告の企画
+# 2026-10-04（本人の指示）：アドバイザー役を廃止し、**話者は1人**にした。
+# 番号（クロード1/2/3）は、役を足したり消したりするたびに意味が黙ってずれる。
+# 実際に3回ずれた——リサーチャー廃止(09-20)／番号の付け替え(09-27)／今回。
+# 1人なら番号が要らないので、ずれようがない。
+PM_NAME = "クロード"                         # 唯一の話者。表に出る顔
 
-# リサーチの結果を誰の名前で出すか。保存済みの値は旧番号のことがある
-# （claude1=リサーチャー / claude2=PM / claude3=アドバイザー）。
-# 役を廃止・繰り上げたので、読むときに今の2役へ寄せる（2026-09-27）。
-_TREND_WHO_NAMES = {
-    "pm": PM_NAME, "advisor": ADVISOR_NAME,
-    "claude1": PM_NAME,       # 旧リサーチャー。役を廃止したのでPMが出す
-    "claude2": PM_NAME,       # 旧PM
-    "claude3": ADVISOR_NAME,  # 旧アドバイザー
-}
+# リサーチの結果を誰の名前で出すか。話者が1人になったので、
+# 保存済みの値が何であっても同じ名前を返す。設定は読んでも壊れないが、
+# 選ぶ意味はもう無い（「リサーチはクロード2にして」はその旨を返す）。
+_TREND_WHO_NAMES = {}
 
 
 def _trend_who_name():
-    """リサーチの結果を出す担当の表示名。旧番号の設定でも壊れない。"""
-    return _TREND_WHO_NAMES.get(
-        (gen_settings.get("trend_who") or "pm"), PM_NAME)
+    """リサーチの結果を出す担当の表示名。話者は1人なので常にこれ。"""
+    return PM_NAME
 
-# 役の人格。2026-09-20 に「複数視点で検討する」機能（multiview）は削除した。
-# 1年近く一度も使われず、相談は Claude Code のセッションでやるほうが噛み合う。
-# 2026-09-27：リサーチャーの人格も消した（どこからも使われていなかったうえ、
-# 調べる役はセッションに統合したため）。残すのはアドバイザーだけ——
-# 広告代理店モード（縦型CMの企画）とショート量産ラインが、
-# プロンプトの下地として実際に使っている。
-CLAUDE_PERSONAS = {
-    "advisor": (
-        ADVISOR_NAME,
-        "あなたはアドバイザー。ひとつの結論に飛びつかず、"
-        "賛成・反対・第三の見方を並べ、見落とされがちな観点やリスクを指摘する。"
-        "『こう見ることもできる』という角度を最低3つ挙げ、最後に一番妥当だと思う見方を1行で示す。"
-        "広告・企画・打ち出し方の相談では、一流広告代理店の"
-        "クリエイティブディレクターとして振る舞う。"
-        "誰に何を言うかを定め、切り口を複数出し、"
-        "外した時のリスクまで示したうえで推しを1つ選ぶ。",
-    ),
-}
+# 広告・企画を作るときの指示。2026-10-04 に【人格をやめて、ただの指示にした】。
+# 元は CLAUDE_PERSONAS["advisor"]（クロード2・アドバイザー）という別人格だったが、
+# 役を増やすと番号がずれ、「誰が言っているか」を管理する手間だけが残る。
+# 出力の質に効いていたのは人格ではなく、下のやり方（複数案・リスク・推しを1つ）。
+# なので中身はそのまま残し、名乗りだけ落とした。
+# ⚠️ ここを「あなたは◯◯です」という人格の形に戻さないこと。
+AD_DIRECTION_RULES = (
+    "ひとつの結論に飛びつかず、賛成・反対・第三の見方を並べ、"
+    "見落とされがちな観点やリスクを指摘する。"
+    "『こう見ることもできる』という角度を最低3つ挙げ、最後に一番妥当だと思う見方を1行で示す。"
+    "広告・企画・打ち出し方では、一流広告代理店の"
+    "クリエイティブディレクターとして考える。"
+    "誰に何を言うかを定め、切り口を複数出し、"
+    "外した時のリスクまで示したうえで推しを1つ選ぶ。"
+)
 
 
 def _is_quota_error(e):
@@ -6364,7 +6358,7 @@ async def _run_clip_shorts(message, url, n=CLIP_DEFAULT_N, kind="youtube"):
     await send_as(
         orch, cid,
         f"🔎 字幕を{len(rows)}行（約{total // 60}分ぶん）読みました。"
-        f"{ADVISOR_NAME}が切りどころを{n}本選びます…"
+        f"切りどころを{n}本選びます…"
     )
     try:
         clips = await _pick_clip_ranges(_timed_transcript(rows), n)
@@ -11903,16 +11897,15 @@ def _ad_plan_block(p, mark=""):
 
 
 async def _run_ad_make(message, brief):
-    """ブリーフから広告企画＋縦型CM動画を制作する。担当はアドバイザー（クロード2）。
-    アドバイザーの役どころに合わせ、切り口を2案出して推しを1つ選ばせる
+    """ブリーフから広告企画＋縦型CM動画を制作する。
+    切り口を2案出して推しを1つ選ばせる
     （1案だけ出されるより、選べる方が広告は決まりやすい）。"""
     cid = message.channel.id
     await send_as(orch, cid,
-                  f"📣 **{ADVISOR_NAME}** が広告プランを作ります（切り口を2案出します）…")
+                  "📣 広告プランを作ります（切り口を2案出します）…")
     sp = _style_snippet()
-    _, persona = CLAUDE_PERSONAS["advisor"]
     ask = (
-        f"あなたは{ADVISOR_NAME}。{persona}\n"
+        f"{AD_DIRECTION_RULES}\n"
         "次のブリーフから、縦型ショートCM(9:16, 5〜15秒)の企画を"
         "【切り口の違う2案】作り、どちらを推すか選んでJSONだけで返す。\n"
         '形式: {"concepts":[{"title":"案の名前","target":"ターゲット層",'
@@ -11947,14 +11940,14 @@ async def _run_ad_make(message, brief):
         for i, c in enumerate(cons[:2])
     )
     await send_as(claude_bot, cid, (
-        f"📋 **広告企画（{ADVISOR_NAME}）**\n\n{body}\n"
+        f"📋 **広告企画**\n\n{body}\n"
         f"🧭 推す理由: {d.get('why', '-')}\n"
         f"📌 配信Tips: {d.get('tips', '-')}\n\n"
         f"🎬 このあと**案{pick + 1}**でCM動画を作ります"
         f"（別の案がよければ「**案{2 if pick == 0 else 1}で作って**」と言ってください）。\n"
         "完成したら「**バズ度分析して**」で広告効果を事前シミュレーションできます。"
     )[:1900])
-    add_history(cid, ADVISOR_NAME, f"（広告企画を2案提示し、案{pick + 1}を推した）")
+    add_history(cid, PM_NAME, f"（広告企画を2案提示し、案{pick + 1}を推した）")
     full_prompt = (
         f"{p['video_prompt']}, premium commercial aesthetic, high production value, "
         "advertising quality, vertical 9:16"
@@ -12022,9 +12015,8 @@ def _log_short(entry):
 async def _make_short_concept(theme):
     """スタイリッシュ系ショートの企画を作る。JSONで
     {title, hook, prompt(英語), description, tags} を返す。"""
-    _, _p3 = CLAUDE_PERSONAS["advisor"]
     base = (
-        f"あなたは{ADVISOR_NAME}。{_p3}\n"
+        f"{AD_DIRECTION_RULES}\n"
         "いまはバズるYouTube Shortsのアートディレクターとして企画する。"
         "スタイリッシュ/アート系の縦型ショート動画の企画をJSONだけで返す。\n"
         '形式: {"title":"日本語の惹かれるタイトル(30字以内)",'
@@ -12055,7 +12047,7 @@ async def _run_short(message, theme=None):
     """1本のショートを企画→縦型動画生成→投稿パック提示まで自動で行う。"""
     cid = message.channel.id
     await send_as(orch, cid,
-                  f"🎬 **{ADVISOR_NAME}** が今日のショートを企画します"
+                  "🎬 今日のショートを企画します"
                   "（スタイリッシュ/アート系）…")
     try:
         c = await _make_short_concept(theme)
@@ -15720,24 +15712,13 @@ async def _dispatch_message(message):
         _trend_talk[cid] = time.time()
         _act, _h, _m = _trd
         if _act == "who":
-            _who = re.search("クロード\\s*([123１２３])", content)
-            _raw = _who.group(1) if _who else "1"
-            _n = {"１": "1", "２": "2", "３": "3"}.get(_raw, _raw)
-            if _n == "3":
-                # クロード3（アドバイザー）は2番に繰り上がり、
-                # クロード1（リサーチャー）は廃止した（2026-09-27）。
-                # 無い役を「設定しました」と言わない。
-                await message.channel.send(
-                    "⚠️ クロード3はもういません。いまは"
-                    f"**{PM_NAME}** と **{ADVISOR_NAME}** の2人です。\n"
-                    "「リサーチはクロード2にして」のように指定してください。")
-                return
-            gen_settings["trend_who"] = "pm" if _n == "1" else "advisor"
-            _save_gen_settings()
+            # 2026-10-04：話者を1人（クロード）にしたので、担当は選べなくなった。
+            # 無い役を「設定しました」と言わない（CLAUDE.md「無い機能を
+            # 『ある』ことにしない」）。設定の保存もしない。
             await message.channel.send(
-                f"🔎 リサーチの担当を **{_trend_who_name()}** にしました。"
-                "毎日の自動リサーチも、その名前で結果を出します。"
-            )
+                f"⚠️ 担当は選べません。話者は **{PM_NAME}** の1人だけです"
+                "（2026-10-04 にアドバイザー役を廃止）。\n"
+                "毎日の自動リサーチも、この名前で結果を出します。")
             return
         if _act == "ask":
             _on, _hh, _mm, _tcid = _trend_conf()
