@@ -34,9 +34,22 @@ BASE = pathlib.Path(__file__).resolve().parent.parent.parent
 FMT = BASE / "成果物" / "書類ひな形" / "_書式"
 OUT = BASE / "成果物" / "書類ひな形" / "_発行済み"
 
-PRICE_BASE = 90000
-PER_SEC = {"梅": 3500, "竹": 4900, "松": 6650}
-EXTRA_CUT = 65000
+# 2026-10-04：サイト（assets/pricing.js）の値上げに追いついていなかった。
+# 60秒・竹・1本・AI で サイト ¥504,000 のところ ¥384,000 と出ていた（12万円の過少見積り）。
+# 9/24 に「サイトより25,000円高い」を直したのと同じ事故の逆向き。
+# ⚠️ ここを触るときは assets/pricing.js の PRICE / TIERS と突き合わせること。サイトが正。
+#   PRICE = { base: 180000, perExtra: 100000, narrationHuman: 70000,
+#             noNarration: 25000, matsuToAi: 25000 }
+#   TIERS  perSec = 梅 4000 / 竹 5400 / 松 8000
+#   合計 = base + perSec×合計秒数 + perExtra×(本数−1) + narFee
+# 見積書の表示は base を2行に割る（サイトの内訳表示と同じ）：
+#   企画・構成費 = base − perExtra = 80,000（1案件に1回）
+#   制作費       = perExtra × 本数 = 100,000×本数
+# 足すと base + perExtra×(本数−1) になり、合計は変わらない。
+PRICE_BASE = 180000                 # サイトの PRICE.base
+PLAN_FEE = 80000                    # 企画・構成費（= base − perExtra）。表示用
+PER_SEC = {"梅": 4000, "竹": 5400, "松": 8000}
+EXTRA_CUT = 100000                  # サイトの PRICE.perExtra。制作費1本ぶんでもある
 NARRATION_HUMAN = 70000
 NO_NARRATION = 25000
 MATSU_TO_AI = 25000                 # 松に込みの「ナレーター手配1回ぶん」を返す額
@@ -89,15 +102,18 @@ def lead_time(tier, sec, count, nar):
 def calc(tier, sec, count, nar):
     """内訳の行と合計を返す。nar は ai / human / none。"""
     rows, total = [], 0
-    rows.append(("基本料金", "ヒアリング・構成案・絵コンテ・編集・書き出し", PRICE_BASE))
-    total += PRICE_BASE
+    # サイトの内訳表示に合わせて、base を「企画・構成費」と「制作費」に割る。
+    # 企画・構成費は1案件に1回、制作費は本数ぶん。足すと base + perExtra×(本数−1)。
+    rows.append(("企画・構成費", "ヒアリング・企画・進行管理（1案件に1回）", PLAN_FEE))
+    total += PLAN_FEE
+    make = EXTRA_CUT * count
+    rows.append(("制作費",
+                 f"{count}本 × ¥{yen(EXTRA_CUT)}"
+                 f"（1本ごとの構成案・絵コンテ・ご確認・書き出し）", make))
+    total += make
     body = PER_SEC[tier] * sec * count
     rows.append(("尺", f"{sec}秒 × {count}本 × ¥{yen(PER_SEC[tier])}（{tier}）", body))
     total += body
-    if count > 1:
-        extra = EXTRA_CUT * (count - 1)
-        rows.append(("本数", f"2本目以降 {count - 1}本 × ¥{yen(EXTRA_CUT)}", extra))
-        total += extra
     # ナレーション調整。サイトの計算機（assets/pricing.js の narFee）と同じ形にする。
     # 「段による手配ぶん」と「入れない本のぶん」は別勘定で、両方乗ることがある。
     if tier == "松":
