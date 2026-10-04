@@ -80,6 +80,7 @@ import ai_group_chat as bot  # noqa: E402
 # 汚さないよう、読み込み直後に書き込み先を一時ディレクトリへ移す。
 # 事故（2026-08-21）：再起動のたびに走る自己テストが本物のエラーログへ
 # 偽のエラーを注入し、デバッグログを見た開発側が存在しない不具合を追いかけた。
+import inspect  # noqa: E402
 import _testenv  # noqa: E402
 _TMP_STATE, _REAL_STATE = _testenv.isolate(bot)
 _REAL_BEFORE = _testenv.snapshot(_REAL_STATE)
@@ -496,6 +497,35 @@ def run():
          "message": "静けさ", "cta": "今すぐ", "risk": "地味に見える"}, "案1: ")
     check("企画書にリスク欄がある", "外した時のリスク" in _blk, True)
     check("企画書に案の番号が入る", "案1:" in _blk, True)
+
+    print("■ 「2人でディベートして」で自動トークに入る（2026-10-04）")
+    # !talk は残したうえで、自然文の入口を足した（本人の指示）。
+    # ⚠️ 語だけで動かさない。【2人】＋【討論の語】＋【依頼の形】の3つが
+    # 揃った時だけ拾う（CLAUDE.md「語が当たったら動く、と書いてはいけない」）。
+    for _t, _want in (("2人でディベートして", ""),
+                      ("２人で議論して", ""),
+                      ("二人で討論してほしい", ""),
+                      ("ふたりで話し合ってお願い", ""),
+                      ("2人で雑談して", ""),
+                      ("AIの著作権について2人でディベートして", "AIの著作権"),
+                      ("開業資金についてふたりで議論して", "開業資金")):
+        check(f"拾う: {_t[:22]}", bot._match_debate(_t), _want)
+    # 話題に出しただけ・質問・過去形では始めない
+    for _t in ("2人で話してるの？", "二人の意見を教えて", "ディベートって何？",
+               "2人でディベートするのって面白いよね", "昨日2人で議論した",
+               "ディベートして"):   # ← 人数が無いものは拾わない
+        check(f"始めない: {_t[:22]}", bot._match_debate(_t), None)
+    # ディベートは【必ず2人】。普段の雑談の担当設定に引きずられない
+    # ⚠️ docstring を含めて探すと、経緯を書いた自分のコメントに当たる
+    # （2026-10-04 に実際にやった）。本文（docstring を除いた部分）で見る。
+    _srcD = inspect.getsource(bot.run_auto)
+    _bodyD = _srcD.split('"""')[-1]        # docstring のあとだけ
+    check("ディベートの話者を設定で切り替えない",
+          "_gemini_replies_on" in _bodyD, False)
+    check("話者の並びが条件分岐になっていない", " if " in _bodyD.split("try:")[0], False)
+    check("2人ぶんの話者が並んでいる",
+          '("Claude", claude_bot, ask_claude)' in _srcD
+          and '("Gemini", gemini_bot, ask_gemini)' in _srcD, True)
 
     print("■ 名指し以外は全部オーケストレーターが喋る（融合版として見せる）")
     # 2026-10-04：ボットのアカウントは3つある（orch / claude_bot / gemini_bot）が、

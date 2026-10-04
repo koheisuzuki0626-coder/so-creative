@@ -8258,6 +8258,33 @@ def _gemini_replies_on():
     return _casual_lead() == "gemini"
 
 
+# 「2人でディベートして」のように、2人で話させる依頼。
+# 2026-10-04：本人の指示で `!talk` の自然文の入口を足した。
+# ⚠️ 語だけで動かさない（CLAUDE.md「語が当たったら動く、と書いてはいけない」）。
+#   【2人・ふたり・両者】＋【討論・ディベート・議論・話し合い・雑談・対談】＋
+#   依頼の形（〜して／〜してほしい／お願い）の3つが揃った時だけ拾う。
+#   「2人で話してるの？」のような質問は _looks_like_question が会話に戻す。
+# 分類（_plan）側にも talk の説明を置いてあるので、こちらは取りこぼしの保険。
+_DEBATE_RE = re.compile(
+    r"(?:(?:2|２|二)\s*(?:人|にん)|ふたり|フタリ)\s*(?:で|が)?\s*"
+    r"[^。\n]{0,12}?"
+    r"(?:ディベート|でぃべーと|討論|議論|話し合|対談|雑談|会話|語り合)",
+)
+
+
+def _match_debate(text):
+    """2人で話させる依頼か。お題（あれば）を返す。依頼でなければ None。"""
+    t = text or ""
+    if not _DEBATE_RE.search(t):
+        return None
+    if not _wants_action(t) or _looks_like_question(t):
+        return None
+    # 「〜について2人でディベートして」のお題を拾う
+    m = re.search(r"(.+?)(?:について|を巡って|に関して)\s*[^。\n]{0,8}?"
+                  r"(?:(?:2|２|二)\s*(?:人|にん)|ふたり|フタリ)", t)
+    return (m.group(1).strip() if m else "") or ""
+
+
 # 「返事はクロードにして」のように、雑談の担当を名指しで変える言い方。
 _LEAD_SWITCH_RE = re.compile(
     r"(?:返事|返答|回答|受け答え|雑談|会話)\S{0,4}(?:は|を)?\s*"
@@ -9859,7 +9886,10 @@ async def _plan(history):
         "trend=既存のYouTube動画の調査・分析・人気動画のリサーチ依頼"
         "（例:『トレンド調べて』『fatboyslimのMVリサーチして』『人気の動画10本』"
         "『〜系の動画を調べて』。直前の会話がリサーチの流れならその続きもtrend）。"
-        "talk=ClaudeとGeminiだけで自動会話させる依頼（例:『二人で雑談して』）。"
+        "talk=ClaudeとGeminiの2人で自動会話・討論させる依頼"
+        "（例:『二人で雑談して』『2人でディベートして』『2人で議論して』"
+        "『〜について討論して』。**2人で**と言われたらこれ。"
+        "1人の意見を求めているだけなら chat）。"
         "profile=学習済みの人物プロファイルを見たい（例:『プロフィール見せて』）。"
         "sheet=会話の内容をExcel・表・一覧にまとめてほしい依頼"
         "（例:『構成案エクセルで』『さっきの表をExcelにして』『一覧で出して』）。"
@@ -12912,7 +12942,7 @@ async def _handle_orchestrator(message, cid):
             await message.channel.send("自動トークが進行中です。「止めて」で停止できます。")
             return
         await message.channel.send(
-            f"🎙️ ClaudeとGeminiで話します（最大 {MAX_TURNS} 発言。「止めて」で停止）"
+            f"🎙️ 2人で話します（最大 {MAX_TURNS} 発言。「止めて」で停止）"
         )
         _spawn(run_auto(cid, _latest_user_msg(history)), cid, "自動トーク")
         return
@@ -13486,12 +13516,17 @@ def decide_targets(message, content):
 
 
 async def run_auto(cid, topic):
-    """Claude と Gemini だけで自動的に会話（!talk 用）。"""
+    """Claude と Gemini の2人で自動的に会話（ディベート／自動トーク）。
+
+    2026-10-04：話者は【必ず2人】にした。それまでは _gemini_replies_on() で
+    Geminiを外していたが、あれは【普段の雑談を誰が書くか】の設定で、
+    既定がクロードなので実質いつも1人になっていた——
+    「2人でディベート」と頼んで1人が喋り続ける状態だった。
+    ここは本人が名指しで2人を呼んでいる場面なので、普段の設定とは別に扱う
+    （融合版として1人で喋るのは【普段の返事】の話）。"""
     state["running"], state["stop"] = True, False
-    # Geminiの返信を止めている間は、!talk でもGeminiに喋らせない
-    speakers = ([("Claude", claude_bot, ask_claude),
-                 ("Gemini", gemini_bot, ask_gemini)] if _gemini_replies_on()
-                else [("Claude", claude_bot, ask_claude)])
+    speakers = [("Claude", claude_bot, ask_claude),
+                ("Gemini", gemini_bot, ask_gemini)]
     try:
         for i in range(MAX_TURNS):
             if state["stop"]:
@@ -15353,7 +15388,7 @@ async def _cmd_talk(message, cid, arg):
     topic = arg or "自由なテーマで雑談"
     add_history(cid, message.author.display_name, f"（お題）{topic} について話して")
     await message.channel.send(
-        f"🎙️ お題「{topic}」で ClaudeとGemini が最大 {MAX_TURNS} 発言 話します"
+        f"🎙️ お題「{topic}」で2人が最大 {MAX_TURNS} 発言 話します"
     )
     _spawn(run_auto(cid, topic), cid, "自動トーク")
 
@@ -15815,6 +15850,23 @@ async def _dispatch_message(message):
                "「ヒッグスフィールドは使わないで」と送ってください。")
         )
         return
+    # 「2人でディベートして」→ 自動トーク（!talk と同じ中身）。
+    # AI の分類（_plan の talk）に任せきりにせず、コード側でも拾う。
+    _deb = _match_debate(content)
+    if _deb is not None:
+        _fired(cid, "2人で自動トーク", content)
+        if state["running"]:
+            await message.channel.send(
+                "自動トークが進行中です。「止めて」で停止できます。")
+            return
+        _topic = _deb or _latest_user_msg(get_history(cid)) or "自由なテーマ"
+        add_history(cid, message.author.display_name, content)
+        await message.channel.send(
+            f"🎙️ お題「{_topic}」で2人が最大 {MAX_TURNS} 発言 話します"
+            "（「止めて」で停止）")
+        _spawn(run_auto(cid, _topic), cid, "自動トーク")
+        return
+
     _lead = _match_casual_lead(content)
     if _lead is not None:
         _fired(cid, "雑談担当の切替", content)
