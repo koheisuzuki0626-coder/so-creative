@@ -497,15 +497,23 @@ async def run():
     finally:
         bot.gen_settings["casual_lead"] = _kl2
 
-    # 雑談の担当をDiscordから切り替えられること
+    # 2026-10-04：1つのAIとして動かすので、返事を書くAIは選べなくなった。
+    # 言われたら【選べない旨】を返し、設定は保存しない
+    #（無い機能を「設定しました」と言わない）。
     _keep_lead = bot.gen_settings.get("casual_lead")
     try:
         install_stubs()
-        r = await drive("返事はクロードにして")
-        check("雑談の担当が変わる", bot.gen_settings.get("casual_lead") == "claude",
-              f"実際={bot.gen_settings.get('casual_lead')}")
-        check("担当変更を伝える",
-              any("クロード" in s2 for s2 in r["sent"]), f"sent={r['sent']}")
+        bot.gen_settings["casual_lead"] = ""
+        r = await drive("返事はgeminiにして")
+        # ⚠️ simulate の check は (説明, 条件, 詳細)。test_routing の
+        #   (名前, 実際, 期待) と形が違うので、ここは条件式で書く
+        check("担当は保存しない", bot.gen_settings.get("casual_lead") == "",
+              f"実際={bot.gen_settings.get('casual_lead')!r}")
+        check("選べない旨を返す",
+              any("選べません" in s2 for s2 in r["sent"]), f"sent={r['sent']}")
+        check("内部の分担を漏らさない",
+              not any(("校閲" in s2) or ("クロードが書" in s2) for s2 in r["sent"]),
+              f"sent={r['sent']}")
         check("担当変更はAI応答に流さない",
               "orchestrator" not in r["fired"], f"実際={r['fired']}")
     finally:
