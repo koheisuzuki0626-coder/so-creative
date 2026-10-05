@@ -1985,6 +1985,34 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     check('source の type にコーデックまで書いてある',
         /type="video\/webm; codecs=vp9"/.test(idx) && /type="video\/mp4; codecs=avc1\./.test(idx));
 
+    /* スマホでは映像を横幅に合わせ、空いた上下を【同じ映像のぼかし】で埋める。
+       16:9 を縦長画面に cover で敷くと横の26%しか見えず、被写体が分からなかった。
+       ⚠️ ぼかしは静止画ではなく canvas への描き写し。静止画にすると10カットのうち
+       9カットで色が合わない。本当に動いているかは描いた枚数が増えることで確かめる
+       （枚数を数えずに作ったとき、描けているつもりで一度も更新されていなかった）。 */
+    {
+        const sp = await open(browser, { page: 'index.html', width: 390, height: 844, mobile: true });
+        await sp.waitForTimeout(1500);
+        const fit = await sp.locator('#hero-video').evaluate((e) => getComputedStyle(e).objectFit);
+        check('スマホでは映像を横幅に合わせる', fit === 'contain', fit);
+        const shown = await sp.locator('.hero-blur').evaluate((e) => getComputedStyle(e).display);
+        check('スマホでは空いた上下をぼかしで埋める', shown === 'block', shown);
+        /* 映像がぼかしより前に描かれること（どちらも重なり順の指定が無いと canvas が上に来る） */
+        const order = await sp.evaluate(() => {
+            const v = getComputedStyle(document.querySelector('.hero-video'));
+            return { pos: v.position, z: v.zIndex };
+        });
+        check('映像がぼかしより前に出る', order.pos !== 'static' && order.z !== 'auto', JSON.stringify(order));
+        const a = Number(await sp.locator('.hero-blur').evaluate((e) => e.dataset.frames || 0));
+        await sp.waitForTimeout(1200);
+        const b2 = Number(await sp.locator('.hero-blur').evaluate((e) => e.dataset.frames || 0));
+        check('ぼかしが本編と連動して描き変わる', b2 > a, `${a} → ${b2} 枚`);
+        await sp.close();
+    }
+    /* PC では画面いっぱいに敷く（横長なので切り取りが浅い） */
+    check('PC では映像を画面いっぱいに敷く',
+        await v.evaluate((e) => getComputedStyle(e).objectFit) === 'cover');
+
     /* 「動きを減らす」設定のときは再生しない（ポスターのまま止める） */
     {
         const still = await open(browser, { page: 'index.html' });

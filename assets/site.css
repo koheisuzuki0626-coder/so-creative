@@ -526,7 +526,22 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     -webkit-mask-image: radial-gradient(ellipse 78% 74% at 50% 50%, #000 34%, rgba(0,0,0, calc(1 - var(--hero-r, 1) * 0.65)) 100%);
     mask-image: radial-gradient(ellipse 78% 74% at 50% 50%, #000 34%, rgba(0,0,0, calc(1 - var(--hero-r, 1) * 0.65)) 100%);
 }
+/* ぼかしの下地。既定では出さない（PCは画面いっぱいに敷くので要らない） */
+.hero-blur {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    object-fit: cover;
+    filter: blur(14px) brightness(0.52) saturate(0.85);
+    transform: scale(1.18);   /* ぼかしの端が地と擦れないよう少し広げる */
+}
 .hero-video {
+    /* ぼかしの canvas が position:absolute なので、位置指定の無い映像より【上】に
+       描かれてしまう。映像側にも位置を与えて重なり順を逆転させる */
+    position: relative;
+    z-index: 1;
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -2156,4 +2171,14 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
     @media (forced-colors: active) {
         .display, .headline { background: none; -webkit-text-fill-color: currentColor; }
     }
+}
+
+/* ---------- スマホのヒーロー：映像を横幅に合わせる（2026-10-05） ---------- */
+/* 16:9 を縦長の画面に cover で敷くと、横の26%しか見えない（390x844 で実測）。
+   餃子が「茶色い質感」にしか見えなかったので、横を合わせて全部見せる。
+   空いた上下は .hero-blur（同じ映像を描き写してぼかしたもの）で埋める。
+   ⚠️ PC は変えない。横長の画面では cover のほうが画面を広く使える。 */
+@media (max-width: 760px) {
+    .hero-video { object-fit: contain; }
+    .hero-blur { display: block; }
 }

@@ -281,6 +281,12 @@
              reduced-motion のときは再生せず、ポスター画像のまま止める -->
         <div class="hero-pin">
         <div class="hero-media" aria-hidden="true">
+            <!-- スマホでは映像を画面の横幅に合わせる（縦長画面に 16:9 を敷くと
+                 横の26%しか見えず、何が映っているか分からないため）。
+                 空いた上下は、この canvas に【同じ映像を描き写してぼかしたもの】で
+                 埋める。2本目の <video> を置かないのは、iOS が同時に再生できる
+                 動画の本数に制限があり、本編が止まる原因になりうるため。 -->
+            <canvas class="hero-blur" width="40" height="23"></canvas>
             <video class="hero-video" id="hero-video" muted loop playsinline preload="metadata"
                    poster="assets/works/hero-reel.jpg">
                 <!-- type にコーデックまで書く。"video/webm" だけだと iOS Safari が
@@ -1043,6 +1049,30 @@
             document.addEventListener('visibilitychange', () => { if (!document.hidden) play(); });
             window.addEventListener('pageshow', () => play());
             setInterval(() => { if (visible && v.paused) play(); }, 1000);
+
+            /* スマホで空いた上下を埋めるぼかし。本編と同じ映像を canvas に描き写すので
+               【常に本編と連動する】。静止画で埋めると、10カットのうち9カットで色が
+               合わない（1カット目の餃子の茶色が、夜のMVの裏でも出てしまう）。
+               canvas は 40x23 しかなく、CSS の blur で伸ばして使うので負荷は小さい。
+               描き写しは【ぼかしが実際に出ているスマホ幅のときだけ】走らせる。 */
+            const bg = document.querySelector('.hero-blur');
+            if (bg && bg.getContext) {
+                const g = bg.getContext('2d');
+                /* 何枚描いたかを残す。テストがここを見て「本当に連動しているか」を確かめる。
+                   数えずに作ったら、描けているつもりで一度も更新されていなかった */
+                let drawn = 0;
+                const paint = () => {
+                    if (v.readyState < 2) return;
+                    if (window.innerWidth > 760) return;   // PCでは出さないので描かない
+                    try {
+                        g.drawImage(v, 0, 0, bg.width, bg.height);
+                        drawn += 1;
+                        bg.dataset.frames = String(drawn);
+                    } catch (e) { /* 描けない環境では静かに諦める */ }
+                };
+                paint();
+                setInterval(paint, 160);
+            }
         })();
 
         /* ---------- ステージのビジュアル ---------- */
