@@ -2584,5 +2584,34 @@ for (const f of ['assets/logo-word.svg', 'assets/logo-word-dark.svg']) {
        site.css の --accent（濃地用の明るい緑）ではなく濃いほうの深緑のままでよい */
     check(`${f} にブランド色の区切りがある`, /<rect[^>]*#1c5c45/.test(t));
 }
+/* ジャンル一覧は「容器の地を 1px の隙間から覗かせて罫線にする」作りなので、
+   カードの地が無い所には罫線の色が【面として】出る。実際に2か所出ていた
+   （2026-10-06 本人の指摘）：説明が1行の項目の下に出た帯と、9個を2列に
+   並べたときの10個目の空セル。どの幅でも面が出ないことを見る。
+   ⚠️ 項目を9個から増減すると割り切れ方が崩れてここで落ちる。それが狙い。 */
+for (const w of [390, 800, 1280]) {
+    const pg = await open(browser, { page: 'index.html', width: w });
+    await pg.waitForTimeout(700);
+    const r = await pg.evaluate(() => {
+        const ul = document.querySelector('.genre-index');
+        if (!ul) return null;
+        const li = [...ul.children];
+        const gaps = li.map((x) => {
+            const a = x.querySelector('a');
+            return a ? Math.round(x.getBoundingClientRect().height - a.getBoundingClientRect().height) : 999;
+        });
+        const box = ul.getBoundingClientRect();
+        const bw = parseFloat(getComputedStyle(ul).borderRightWidth) || 0;
+        const last = li[li.length - 1].getBoundingClientRect();
+        return { n: li.length, gap: Math.max(...gaps), tail: Math.round(box.right - bw - last.right) };
+    });
+    check(`ジャンル一覧 ${w}px：カードがセルを埋めている（罫線の色が帯で出ない）`,
+        r && r.gap === 0, r && `すき間 ${r.gap}px`);
+    check(`ジャンル一覧 ${w}px：最後の行に空セルが残らない`,
+        r && Math.abs(r.tail) <= 2, r && `右端のずれ ${r.tail}px（${r.n}項目）`);
+    await pg.close();
+}
+
 await browser.close();
+
 report();

@@ -2022,9 +2022,27 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
 .genre-index { list-style: none; margin: 28px 0 0; padding: 0;
     display: grid; gap: 1px; background: var(--line);
     border: 1px solid var(--line); border-radius: 20px; overflow: hidden; }
-@media (min-width: 720px) { .genre-index { grid-template-columns: 1fr 1fr; } }
-.genre-index a { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px;
-    background: var(--card); padding: 22px 24px; transition: background .25s ease; }
+@media (min-width: 720px) {
+    .genre-index { grid-template-columns: 1fr 1fr; }
+    /* 9個は2列で割り切れない。最後の1つを2列ぶんに広げて空セルを無くす */
+    .genre-index > li:last-child { grid-column: 1 / -1; }
+}
+/* 9個は3列でちょうど3行に収まる。説明もすべて2行で揃うので、ここが一番整う。
+   ⚠️ 項目を9個から増減するなら、この割り切れ方が崩れる。
+   10個なら2列（5行）、12個なら3列（4行）に合わせ直すこと。 */
+@media (min-width: 900px) {
+    .genre-index { grid-template-columns: repeat(3, 1fr); }
+    .genre-index > li:last-child { grid-column: auto; }
+}
+/* ⚠️ 2026-10-06：容器の地（--line）を 1px の隙間から覗かせて罫線にしている作りなので、
+   カードの地が無い所には【罫線の色がそのまま面として出る】。実際に2か所出ていた。
+   ① 説明が1行の項目（会社紹介）の下に帯が出た
+      → <a> が中身の高さしか無く、行の高さまで伸びていなかった。height:100% で埋める。
+   ② 9個を2列に並べると10個目のセルが空いて、そこが面で出た
+      → 最後の項目を2列ぶんに広げる（下の :last-child）。
+   項目を増減するときは、この2つが崩れないか必ず見ること。 */
+.genre-index a { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; align-content: start;
+    background: var(--card); padding: 22px 24px; height: 100%; transition: background .25s ease; }
 .genre-index a:hover { background: var(--bg-alt); }
 .genre-index .g-no { grid-row: 1 / 3; font-size: .78rem; letter-spacing: .08em;
     /* 文字なので --accent ではなく --accent-ink。文字用のほうが地との差が大きい */
