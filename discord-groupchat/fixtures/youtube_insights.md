@@ -7181,3 +7181,6 @@ Excel UI風の静止画1枚を生成し、数式バーの座標をプロンプ�
 
 ## 2026-10-06 04:53
 https://www.youtube.com/watch?v=3hPI3xjsNKE
+
+## 2026-10-06 04:54
+https://www.youtube.com/watch?v=7i_SmaFmM90
