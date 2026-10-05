@@ -1980,6 +1980,28 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     check('末尾まで行っても先頭から流し直す',
         await v.evaluate((e) => !e.paused && e.currentTime < 2),
         JSON.stringify(await v.evaluate((e) => ({ paused: e.paused, t: +e.currentTime.toFixed(2) }))));
+    /* 2026-10-05：iPhone の本命の故障は【paused が false のまま時間だけ止まる】形。
+       iOS がページを suspend すると m_pausedInternal が立ち、復帰時に下りないことが
+       ある。このとき pause も ended も発火せず play() も拒否されないので、
+       paused を見る保険は1つも引っかからない（実際それで2度直し損ねた）。
+       見回りは currentTime が進んだかだけを見て、効かなければ要素ごと作り直す。
+       ⚠️ 上の「止まったら再生に戻る」検査（paused で止まる種類）は【消さないこと】。
+       故障の型が2つあるので、両方を別々に検査する。 */
+    {
+        const sp = await open(browser, { page: 'index.html' });
+        await sp.waitForTimeout(2200);
+        await sp.evaluate(() => {
+            const e = document.getElementById('hero-video');
+            e.__orig = true;
+            Object.defineProperty(e, 'currentTime', { get: () => 5, set: () => {}, configurable: true });
+            Object.defineProperty(e, 'paused', { get: () => false, configurable: true });
+        });
+        await sp.waitForTimeout(6500);
+        const rebuilt = await sp.evaluate(() => !document.getElementById('hero-video').__orig);
+        check('時間が止まったら（paused が false でも）要素ごと作り直して復帰する',
+            rebuilt, rebuilt ? '作り直した' : '作り直していない');
+        await sp.close();
+    }
     /* 焼き直すたびに確かめる。-level を指定し忘れると x264 が 5.0 を選び、
        古い iPhone（4.2まで）で黙って再生されなくなる */
     check('source の type にコーデックまで書いてある',

@@ -980,7 +980,7 @@
         /* 自動再生は「動きを減らす」設定のときは行わない。画面から外れたら止めて、
            スクロールして戻ってきたら再開する（ずっと再生し続けない） */
         (() => {
-            const v = document.getElementById('hero-video');
+            let v = document.getElementById('hero-video');   // 作り直すので let
             if (!v) return;
             const still = window.matchMedia('(prefers-reduced-motion: reduce)');
             /* 背景の映像は 1MB ある。9/26 までは opacity 0.16 の質感でしかなかったので、
@@ -995,60 +995,127 @@
                 v.load();
                 return;
             }
+            /* ────────────────────────────────────────────────────────────
+               2026-10-05：iPhone で「数周で止まり、以後ずっと止まったまま」。
+               WebKit のソースを当たって原因が分かった。iOS はページを suspend する
+               （タブ切替・アプリ切替・画面の暗転・メモリ圧）と
+               HTMLMediaElement::stopWithoutDestroyingMediaPlayer() で
+               m_pausedInternal を立てる。復帰時に page->canStartMedia() が false だと
+               m_pausedInternal は立ったままで、updatePlayState() が毎回冒頭で return し、
+               以後 play() を何度呼んでも二度と再生しない。
+
+               ⚠️ このとき v.paused は【false のまま】で、pause も ended も発火せず、
+               play() も拒否されない。つまり paused を見る保険は1つも引っかからない。
+               前の版が「3周目で止まる」まま直らなかったのはこれが理由。
+
+               なので判定を paused から【currentTime が進んでいるか】へ移す。
+               m_pausedInternal は JS から見えないので、これが唯一信用できる指標。
+               ──────────────────────────────────────────────────────────── */
             let visible = true;
-            /* play() の失敗を握り潰さない。iOS は自動再生の許可を途中で取り消すことが
-               あり、その時 play() は NotAllowedError で拒否される。握り潰すと
-               「止まったのに誰も直せない」になる。拒否されたら読み直して再試行し、
-               それでも駄目ならユーザーが画面に触れた瞬間に取り直す（ジェスチャーが
-               あれば iOS は再生を許す）。最後に拒否された理由は後で読めるよう残す */
-            let armed = false;
+            let armed = null;
+
+            /* ジェスチャー待ち。iOS は画面に触られた瞬間だけ再生を許す。
+               ⚠️ ハンドラの中では play() を【同期で】呼ぶこと。setTimeout を挟むと
+               WebKit のユーザージェスチャーが失効して意味が無くなる。
+               ⚠️ once を4種類に付けると、発火した1種類しか外れず残りが溜まり続ける。
+               1つの関数を自分で外す形にしてある。 */
+            const GESTURES = ['touchstart', 'pointerdown', 'click', 'keydown'];
             const arm = () => {
                 if (armed) return;
-                armed = true;
-                const go = () => { armed = false; play(); };
-                ['touchstart', 'pointerdown', 'click', 'keydown'].forEach((e) =>
-                    document.addEventListener(e, go, { once: true, passive: true }));
+                armed = () => {
+                    GESTURES.forEach((e) => document.removeEventListener(e, armed));
+                    armed = null;
+                    v.play().catch((err) => { v.dataset.lastError = err && err.name; arm(); });
+                };
+                GESTURES.forEach((e) => document.addEventListener(e, armed, { passive: true }));
             };
-            /* 読み直しは3回まで。見回りが1秒ごとに走るので、上限が無いと
-               失敗し続ける端末で毎秒 load() を呼び、通信量と電池を食う */
-            let reloads = 0;
-            const play = (retried) => {
-                if (still.matches || !visible) return;
-                const r = v.play();
-                if (!r || !r.catch) return;
-                r.catch((err) => {
-                    v.dataset.lastError = (err && err.name) || 'unknown';
-                    if (!retried && reloads < 3) {
-                        reloads += 1;
-                        try { v.load(); } catch (e) { /* 読み直せない環境 */ }
-                        play(true);
-                        return;
-                    }
-                    arm();
-                });
+
+            /* 再試行は1本の経路にまとめ、間隔を倍々にして上限を付ける。
+               pause を拾って即 play() を呼ぶ作りは、WebKit の新しい非同期の許可判定と
+               組み合わさると pause↔play が無限に往復して電池だけ食うので採らない。
+               ⚠️ v.load() は呼ばない。失敗が続く端末で毎分メガバイト単位を取り直すため
+               （いまのファイルは 2.1MB ある）。 */
+            let tries = 0, timer = 0;
+            const onScreen = () => visible && document.visibilityState === 'visible' && !still.matches;
+            const play = () => {
+                if (!onScreen() || timer) return;
+                timer = setTimeout(() => {
+                    timer = 0;
+                    if (!onScreen()) return;
+                    v.play().then(() => { tries = 0; }).catch((err) => {
+                        v.dataset.lastError = (err && err.name) || 'unknown';
+                        /* ジェスチャーが要る種類は、叩き直しても永久に通らない */
+                        if (err && err.name === 'NotAllowedError') { arm(); return; }
+                        if (++tries < 6) play(); else arm();
+                    });
+                }, Math.min(200 * Math.pow(2, tries), 6000));
             };
-            play();
-            if ('IntersectionObserver' in window) {
-                new IntersectionObserver(([e]) => {
-                    visible = e.isIntersecting;
-                    visible ? play() : v.pause();
-                }, { threshold: 0.01 }).observe(v);
+
+            /* 要素ごと作り直す。m_pausedInternal を下ろせる唯一の手段で、
+               新しい <video> は新しい HTMLMediaElement になる。
+               副作用が大きいので 60秒に1回まで。 */
+            let rebuiltAt = 0;
+            const rebuild = (now) => {
+                if (now - rebuiltAt < 60000) return false;
+                rebuiltAt = now;
+                const at = v.currentTime;
+                const n = v.cloneNode(true);
+                n.muted = true;
+                n.style.opacity = '0';          // ポスターが一瞬出るちらつきを隠す
+                v.replaceWith(n);
+                v = n;
+                v.addEventListener('loadeddata', () => {
+                    try { v.currentTime = at; } catch (e) { /* 戻せなければ先頭から */ }
+                    v.style.opacity = '';
+                }, { once: true });
+                bindWatchers();
+                v.play().catch((err) => { v.dataset.lastError = err && err.name; arm(); });
+                return true;
+            };
+
+            let io = null;
+            function bindWatchers() {
+                if (io) io.disconnect();
+                if ('IntersectionObserver' in window) {
+                    io = new IntersectionObserver(([e]) => {
+                        visible = e.isIntersecting;
+                        visible ? play() : v.pause();
+                    }, { threshold: 0.01 });
+                    io.observe(v);
+                }
+                /* loop が効かなかった場合の保険。主役ではない（下の巻き戻しが先に走る） */
+                v.addEventListener('ended', () => { try { v.currentTime = 0; } catch (e) {} play(); });
+                v.addEventListener('pause', play);
             }
-            /* 2026-10-05：iPhone で「2周目の最後で止まる」と報告された。
-               Chromium でも WebKit でも45秒・3周まわして再現しなかったので、
-               原因を特定せずに【止まったら戻す】側で保証する。
-               画面に映っているのに止まっているのは、どんな理由であれ直したい状態。
-               ・loop が効かず ended が出た場合 → 先頭へ戻して再生
-               ・OSや省電力が黙って止めた場合 → pause を拾って再生
-               ・どちらのイベントも出さずに止まった場合 → 3秒ごとの見回りで拾う
-               画面外の pause は observer が意図してやっているので、visible の時だけ戻す。
-               controls を出していないので、本人が止めたのと取り違える心配はない。 */
-            v.addEventListener('ended', () => { v.currentTime = 0; play(); });
-            v.addEventListener('pause', () => { if (visible) play(); });
-            /* タブを戻したとき・bfcache から戻ったときも再開する */
+            bindWatchers();
+            play();
+
             document.addEventListener('visibilitychange', () => { if (!document.hidden) play(); });
-            window.addEventListener('pageshow', () => play());
-            setInterval(() => { if (visible && v.paused) play(); }, 1000);
+            window.addEventListener('pageshow', play);
+
+            /* 見回り：1秒ごとに currentTime が進んだかだけを見る。
+               ・末尾の手前で自分から巻き戻す。ネイティブの終端処理（loop）を通らないので、
+                 尺の宣言が 0.3ms 過大なこと・edit list の境界・ended が出ないことを
+                 まとめて迂回できる。loop 属性は残してある（JSが動かない端末用）。
+               ・2回続けて進んでいなければ、play() →（効かなければ）要素の作り直し。 */
+            let lastT = -1, stuck = 0;
+            setInterval(() => {
+                if (!onScreen()) { lastT = -1; stuck = 0; return; }
+                const d = v.duration;
+                if (d && v.currentTime > d - 0.3) {
+                    try { v.currentTime = 0; } catch (e) { /* 戻せない環境は loop に任せる */ }
+                }
+                const t = v.currentTime;
+                if (t === lastT) {
+                    stuck += 1;
+                    if (stuck === 2) play();
+                    else if (stuck >= 4 && rebuild(Date.now())) stuck = 0;
+                } else {
+                    stuck = 0;
+                }
+                lastT = t;
+                v.dataset.stuck = String(stuck);
+            }, 1000);
 
             /* スマホで空いた上下を埋めるぼかし。本編と同じ映像を canvas に描き写すので
                【常に本編と連動する】。静止画で埋めると、10カットのうち9カットで色が
