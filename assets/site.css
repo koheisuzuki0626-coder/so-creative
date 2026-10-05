@@ -564,7 +564,10 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     padding: 6px 16px;
     margin: 0 0 26px;
 }
-.hero h1 em { font-style: normal; color: var(--accent-ink); }
+/* 2026-10-05：本人の指示で「撮影しない、映像制作。」は白のベタに。
+   映像の上に大きく乗る1か所なので、色を足すと映像と喧嘩する。
+   em は意味づけのために残す（見た目だけ地の色に揃える） */
+.hero h1 em { font-style: normal; color: inherit; }
 .hero-lead { margin: 26px auto 0; max-width: 760px; }
 .hero-chips {
     list-style: none;
@@ -2139,7 +2142,9 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
      上の 11.0:1 の計算が成り立たないため。
    ・紙と forced-colors（ハイコントラスト）では打ち消す。            */
 @supports ((background-clip: text) or (-webkit-background-clip: text)) {
-    .display, .headline {
+    /* ヒーローの h1「撮影しない、映像制作。」だけは白のベタ（本人の指示・2026-10-05）。
+       映像の上に大きく乗る1か所なので、色を足すと映像と喧嘩する */
+    .display:not(.hero .display), .headline {
         background: var(--head-grad);
         -webkit-background-clip: text;
         background-clip: text;
