@@ -2026,9 +2026,15 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         });
         check('映像がぼかしより前に出る', order.pos !== 'static' && order.z !== 'auto', JSON.stringify(order));
         const a = Number(await sp.locator('.hero-blur').evaluate((e) => e.dataset.frames || 0));
-        await sp.waitForTimeout(1200);
+        await sp.waitForTimeout(2000);
         const b2 = Number(await sp.locator('.hero-blur').evaluate((e) => e.dataset.frames || 0));
         check('ぼかしが本編と連動して描き変わる', b2 > a, `${a} → ${b2} 枚`);
+        /* 2026-10-05：120ms の固定間隔（8fps）だと、40x23 を画面幅まで引き伸ばした
+           ぼかしが段差として明滅して見えた（本人の指摘）。映像のコマに1対1で
+           合わせる（requestVideoFrameCallback）ことで段差を無くしてある。
+           ⚠️ 固定間隔のタイマーに戻すとチラつきが再発する。 */
+        const fps = (b2 - a) / 2;
+        check('ぼかしが映像のコマに追従している（24fps 前後）', fps >= 18, `${fps.toFixed(1)} fps`);
         await sp.close();
     }
     /* PC では画面いっぱいに敷く（横長なので切り取りが浅い） */

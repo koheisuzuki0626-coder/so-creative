@@ -534,7 +534,9 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     height: 100%;
     display: none;
     object-fit: cover;
-    filter: blur(14px) brightness(0.52) saturate(0.85);
+    /* 40x23 を画面幅まで引き伸ばすので、その時点でかなりぼけている。
+       CSS 側を深くし過ぎると毎コマの掛け直しが重くなるため 10px に留める */
+    filter: blur(10px) brightness(0.52) saturate(0.85);
     transform: scale(1.18);   /* ぼかしの端が地と擦れないよう少し広げる */
 }
 .hero-video {

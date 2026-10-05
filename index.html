@@ -1013,6 +1013,7 @@
                ──────────────────────────────────────────────────────────── */
             let visible = true;
             let armed = null;
+            let startBlur = () => {};   // 下のぼかし処理が差し替える
 
             /* ジェスチャー待ち。iOS は画面に触られた瞬間だけ再生を許す。
                ⚠️ ハンドラの中では play() を【同期で】呼ぶこと。setTimeout を挟むと
@@ -1069,6 +1070,7 @@
                     v.style.opacity = '';
                 }, { once: true });
                 bindWatchers();
+                startBlur();     // 新しい要素にコマ通知を登録し直す
                 v.play().catch((err) => { v.dataset.lastError = err && err.name; arm(); });
                 return true;
             };
@@ -1129,16 +1131,33 @@
                    数えずに作ったら、描けているつもりで一度も更新されていなかった */
                 let drawn = 0;
                 const paint = () => {
-                    if (v.readyState < 2) return;
-                    if (window.innerWidth > 760) return;   // PCでは出さないので描かない
+                    if (window.innerWidth > 760 || v.readyState < 2) return;
                     try {
                         g.drawImage(v, 0, 0, bg.width, bg.height);
                         drawn += 1;
                         bg.dataset.frames = String(drawn);
                     } catch (e) { /* 描けない環境では静かに諦める */ }
                 };
-                paint();
-                setInterval(paint, 160);
+                /* 映像のコマに1対1で合わせる（24fps）。
+                   requestVideoFrameCallback は【デコードされたコマごと】に呼ばれるので、
+                   120ms の固定間隔のような段差が出ない（本人からチラつきの指摘）。
+                   止まっている間・画面外では呼ばれないので、電池も食わない。
+                   対応していない端末だけ rAF に落とし、そちらは 1/24 秒に間引く。
+                   ⚠️ 要素を作り直したら登録し直すこと（下の rebuild から呼んでいる）。 */
+                const onFrame = () => { paint(); if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(onFrame); };
+                /* rVFC が無い端末向け。rAF は 60Hz で回るので 1/24 秒に間引く。
+                   ループは1本だけ立てる（startBlur が何度呼ばれても増やさない） */
+                let rafOn = false, rafLast = 0;
+                const rafLoop = (now) => {
+                    if (now - rafLast >= 1000 / 24) { rafLast = now; paint(); }
+                    requestAnimationFrame(rafLoop);
+                };
+                startBlur = () => {
+                    paint();
+                    if (v.requestVideoFrameCallback) { v.requestVideoFrameCallback(onFrame); return; }
+                    if (!rafOn) { rafOn = true; requestAnimationFrame(rafLoop); }
+                };
+                startBlur();
             }
         })();
 
