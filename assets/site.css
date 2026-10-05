@@ -538,6 +538,10 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
        CSS 側を深くし過ぎると毎コマの掛け直しが重くなるため 10px に留める */
     filter: blur(10px) brightness(0.52) saturate(0.85);
     transform: scale(1.18);   /* ぼかしの端が地と擦れないよう少し広げる */
+    /* 地の色を主役にして、ぼかしはその上に色を乗せるだけにする（2026-10-06）。
+       100% だとカットの色がそのまま出て強い。6割にすると落ち着くうえ、
+       万一コマ送りの段差が残っていても、見える振幅がそのぶん小さくなる */
+    opacity: 0.6;
 }
 .hero-video {
     /* ぼかしの canvas が position:absolute なので、位置指定の無い映像より【上】に
