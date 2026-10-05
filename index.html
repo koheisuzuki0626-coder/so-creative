@@ -989,12 +989,27 @@
                 v.load();
                 return;
             }
-            const play = () => { if (!still.matches) v.play().catch(() => {}); };
+            let visible = true;
+            const play = () => { if (!still.matches && visible) v.play().catch(() => {}); };
             play();
             if ('IntersectionObserver' in window) {
-                new IntersectionObserver(([e]) => { e.isIntersecting ? play() : v.pause(); },
-                    { threshold: 0.01 }).observe(v);
+                new IntersectionObserver(([e]) => {
+                    visible = e.isIntersecting;
+                    visible ? play() : v.pause();
+                }, { threshold: 0.01 }).observe(v);
             }
+            /* 2026-10-05：iPhone で「2周目の最後で止まる」と報告された。
+               Chromium でも WebKit でも45秒・3周まわして再現しなかったので、
+               原因を特定せずに【止まったら戻す】側で保証する。
+               画面に映っているのに止まっているのは、どんな理由であれ直したい状態。
+               ・loop が効かず ended が出た場合 → 先頭へ戻して再生
+               ・OSや省電力が黙って止めた場合 → pause を拾って再生
+               ・どちらのイベントも出さずに止まった場合 → 3秒ごとの見回りで拾う
+               画面外の pause は observer が意図してやっているので、visible の時だけ戻す。
+               controls を出していないので、本人が止めたのと取り違える心配はない。 */
+            v.addEventListener('ended', () => { v.currentTime = 0; play(); });
+            v.addEventListener('pause', () => { if (visible) play(); });
+            setInterval(() => { if (visible && v.paused) play(); }, 3000);
         })();
 
         /* ---------- ステージのビジュアル ---------- */

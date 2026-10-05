@@ -1965,6 +1965,26 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     check('先頭に戻ると再生が再開する',
         await v.evaluate((e) => !e.paused && e.currentTime > 0),
         JSON.stringify(await v.evaluate((e) => ({ paused: e.paused, t: e.currentTime }))));
+    /* 2026-10-05：本人から「2周目の最後で止まる」。Chromium でも WebKit でも
+       45秒・3周まわして再現しなかったので、原因を特定せず【止まったら戻す】側で
+       保証することにした。画面に映っているのに止まっている状態を作らない。
+       ⚠️ この3つの戻し道を消すと、iPhone で止まったまま復帰しなくなる。 */
+    await v.evaluate((e) => e.pause());
+    await page.waitForTimeout(700);
+    check('映っているのに止まったら、再生に戻る',
+        await v.evaluate((e) => !e.paused),
+        JSON.stringify(await v.evaluate((e) => ({ paused: e.paused, t: +e.currentTime.toFixed(2) }))));
+    /* loop が効かず末尾で ended になった場合も先頭へ戻す */
+    await v.evaluate((e) => { e.currentTime = Math.max(0, e.duration - 0.15); });
+    await page.waitForTimeout(1800);
+    check('末尾まで行っても先頭から流し直す',
+        await v.evaluate((e) => !e.paused && e.currentTime < 2),
+        JSON.stringify(await v.evaluate((e) => ({ paused: e.paused, t: +e.currentTime.toFixed(2) }))));
+    /* 焼き直すたびに確かめる。-level を指定し忘れると x264 が 5.0 を選び、
+       古い iPhone（4.2まで）で黙って再生されなくなる */
+    check('source の type にコーデックまで書いてある',
+        /type="video\/webm; codecs=vp9"/.test(idx) && /type="video\/mp4; codecs=avc1\./.test(idx));
+
     /* 「動きを減らす」設定のときは再生しない（ポスターのまま止める） */
     {
         const still = await open(browser, { page: 'index.html' });
