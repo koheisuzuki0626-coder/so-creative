@@ -2139,20 +2139,16 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
      上の 11.0:1 の計算が成り立たないため。
    ・紙と forced-colors（ハイコントラスト）では打ち消す。            */
 @supports ((background-clip: text) or (-webkit-background-clip: text)) {
-    .headline {
+    .display, .headline {
         background: var(--head-grad);
         -webkit-background-clip: text;
         background-clip: text;
         -webkit-text-fill-color: transparent;
     }
-    .stage-copy .headline {
-        background: none;
-        -webkit-text-fill-color: var(--ink);
-    }
     @media print {
-        .headline { background: none; -webkit-text-fill-color: var(--ink); }
+        .display, .headline { background: none; -webkit-text-fill-color: var(--ink); }
     }
     @media (forced-colors: active) {
-        .headline { background: none; -webkit-text-fill-color: currentColor; }
+        .display, .headline { background: none; -webkit-text-fill-color: currentColor; }
     }
 }
