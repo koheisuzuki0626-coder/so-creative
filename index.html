@@ -990,7 +990,37 @@
                 return;
             }
             let visible = true;
-            const play = () => { if (!still.matches && visible) v.play().catch(() => {}); };
+            /* play() の失敗を握り潰さない。iOS は自動再生の許可を途中で取り消すことが
+               あり、その時 play() は NotAllowedError で拒否される。握り潰すと
+               「止まったのに誰も直せない」になる。拒否されたら読み直して再試行し、
+               それでも駄目ならユーザーが画面に触れた瞬間に取り直す（ジェスチャーが
+               あれば iOS は再生を許す）。最後に拒否された理由は後で読めるよう残す */
+            let armed = false;
+            const arm = () => {
+                if (armed) return;
+                armed = true;
+                const go = () => { armed = false; play(); };
+                ['touchstart', 'pointerdown', 'click', 'keydown'].forEach((e) =>
+                    document.addEventListener(e, go, { once: true, passive: true }));
+            };
+            /* 読み直しは3回まで。見回りが1秒ごとに走るので、上限が無いと
+               失敗し続ける端末で毎秒 load() を呼び、通信量と電池を食う */
+            let reloads = 0;
+            const play = (retried) => {
+                if (still.matches || !visible) return;
+                const r = v.play();
+                if (!r || !r.catch) return;
+                r.catch((err) => {
+                    v.dataset.lastError = (err && err.name) || 'unknown';
+                    if (!retried && reloads < 3) {
+                        reloads += 1;
+                        try { v.load(); } catch (e) { /* 読み直せない環境 */ }
+                        play(true);
+                        return;
+                    }
+                    arm();
+                });
+            };
             play();
             if ('IntersectionObserver' in window) {
                 new IntersectionObserver(([e]) => {
@@ -1009,7 +1039,10 @@
                controls を出していないので、本人が止めたのと取り違える心配はない。 */
             v.addEventListener('ended', () => { v.currentTime = 0; play(); });
             v.addEventListener('pause', () => { if (visible) play(); });
-            setInterval(() => { if (visible && v.paused) play(); }, 3000);
+            /* タブを戻したとき・bfcache から戻ったときも再開する */
+            document.addEventListener('visibilitychange', () => { if (!document.hidden) play(); });
+            window.addEventListener('pageshow', () => play());
+            setInterval(() => { if (visible && v.paused) play(); }, 1000);
         })();
 
         /* ---------- ステージのビジュアル ---------- */
