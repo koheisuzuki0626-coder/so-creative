@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@700&family=Zen+Kaku+Gothic+New:wght@700&display=swap");
 :root {
     /* 地の色。2026-09-25 に白 → ごく薄い緑 → 濃色（チャコール／緑みのグレー）へ。
        4案（墨・深緑寄りの黒・濃い緑そのもの・チャコール）を実ページに当てて見比べ、
@@ -21,7 +22,32 @@
     --accent: #79c2a1;                  /* 装飾用(罫線・グラデーション・ロゴの区切り) */
     --accent-ink: #8fd0b1;              /* 文字用。地の上で 9.25:1 */
     --accent-soft: rgba(121, 194, 161, 0.16);
-    --max: 1120px;
+    /* 2026-10-05：見た目の作り直し（①文字の三段 ＋ ④帯の余白と罫）。
+       色の変数（--bg 〜 --accent-soft）は1つも動かしていない——
+       roadmap/record/funnel の :root が同じ値を直書きしていて、
+       tests/content.mjs が1文字単位で照合しているため（動かすと3件落ちる）。 */
+    --max: 1200px;                      /* was 1120px。.wrap の内寸 1064→1144 */
+    /* 字の三段。「地味」の正体は大きさではなく【太さが平ら】だったこと——
+       .display 300 / .headline 300 / h3 400 / 本文 400 で、
+       大きさは5.1倍あるのに太さの差がほぼ無く、視線の入口ができていなかった。 */
+    --w-head: 700;
+    --w-mid: 500;
+    --step-display: clamp(2.45rem, 6.6vw, 5.9rem);
+    --step-hero: clamp(2.6rem, 8.4vw, 7.25rem);
+    --step-headline: clamp(1.95rem, 4.6vw, 3.6rem);
+    --step-deck: clamp(1.02rem, 1.35vw, 1.14rem);
+    --track-display: -0.04em;
+    --track-head: -0.025em;
+    --track-mid: -0.012em;               /* was +0.01em。和文に正の字間を足すのをやめる */
+    /* 帯の余白。上下対称（168/168）をやめ、上から下への向きを付ける */
+    --band-open: clamp(44px, 5.2vw, 78px);
+    --band: clamp(78px, 9.5vw, 142px);
+    --band-sm: clamp(52px, 6.4vw, 96px);
+    --band-xl: clamp(104px, 13vw, 196px);
+    --head-gap: clamp(34px, 3.8vw, 54px);
+    --head-gap-lead: clamp(44px, 5.4vw, 80px);
+    --measure: 40em;                     /* em なので字の大きさが違っても常に和文40字 */
+    --head-grad: linear-gradient(180deg, var(--ink) 0%, var(--ink) 28%, var(--accent-ink) 140%);
     --ease: cubic-bezier(0.28, 0.11, 0.32, 1);
     --nav-h: 52px;
     /* 欧文は Inter、和文は Zen Kaku Gothic New。どちらも細めのウェイトを使う */
@@ -43,7 +69,11 @@ body {
     background: var(--bg);
     color: var(--ink);
     line-height: 1.72;
-    letter-spacing: 0.005em;
+    /* 2026-10-05：和文に正の字間を足すのをやめた。全角グリフはもともと
+       間隔を持っているので、足すと本文が緩んで古く見える。ここが
+       「地味」の一因だった。文字が詰まる＝行幅が狭くなるので、
+       横溢れとヘッダーの検査には安全側に効く。 */
+    letter-spacing: 0;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     /* ヒーローのモザイクが画面幅をはみ出す設計なので横方向を切る。
@@ -77,31 +107,43 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     margin: 0 0 14px;
 }
 .display {
-    font-size: clamp(2.4rem, 6.4vw, 5.4rem);
-    font-weight: 300;
-    letter-spacing: -0.012em;
-    line-height: 1.15;
+    font-size: var(--step-display);
+    font-weight: var(--w-head);
+    letter-spacing: var(--track-display);
+    line-height: 1.08;
+    /* 和文の約物（、。）を詰める。「撮影しない、映像制作。」の読点の空きが締まる。
+       palt を持たない環境では黙って無視されるだけ */
+    font-feature-settings: "palt" 1;
     margin: 0;
 }
+/* 圧を一番必要とする1か所だけ極端に振る。ヒーローの h1 は
+   `撮影しない、<br>映像制作。` と <br> で2行に固定されていて行数が読めるので、
+   何行になるか分からない下層ページと違って安全に大きくできる */
+.hero .display {
+    font-size: var(--step-hero);
+    line-height: 1.0;
+    letter-spacing: -0.045em;
+}
 .headline {
-    font-size: clamp(1.9rem, 4.6vw, 3.4rem);
-    font-weight: 300;
-    letter-spacing: -0.008em;
-    line-height: 1.24;
-    margin: 0 0 22px;
+    font-size: var(--step-headline);
+    font-weight: var(--w-head);
+    letter-spacing: var(--track-head);
+    line-height: 1.16;
+    font-feature-settings: "palt" 1;
+    margin: 0 0 20px;
 }
 .subhead {
     font-size: clamp(1.05rem, 1.6vw, 1.32rem);
     font-weight: 400;
-    letter-spacing: 0.005em;
-    line-height: 1.68;
+    letter-spacing: 0;
+    line-height: 1.72;          /* 詰めた見出しとの対比を作る */
     color: var(--ink-dim);
     margin: 0;
 }
 .body-text {
     font-size: 1.0625rem;
     font-weight: 400;
-    line-height: 1.75;
+    line-height: 1.8;           /* was 1.75。字間0と組んで「緩い」を「整っている」に寄せる */
     color: var(--ink-2);
     margin: 0;
 }
@@ -112,12 +154,25 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
    足したとき気づいた。それまで本文リンク37か所が全部この状態だった）。
    色だけで区別すると色覚によっては分からないので、下線も一緒に引く。
    .clink（シェブロン付き）と .pill（ボタン）は自前の見た目を持つので外す */
-.body-text a:not(.clink):not(.pill), .faq-a a, .calc-why a, .plan-common a {
+/* 2026-10-05 新規。index.html で4箇所使われているのに CSS が1行も無く、
+   body を継いだただの段落になっていた。eyebrow → headline のあと、
+   次が本文サイズまで一段落ちるので、階層に段が欠けていた（圧が漏れる箇所）。
+   色は --ink-2（地 11.41 ／ 帯 10.00 ／ カード 9.09。AA 4.5 を満たす）。 */
+.section-lead {
+    max-width: var(--measure);
+    margin: 18px 0 0;
+    font-size: var(--step-deck);
+    font-weight: 400;
+    line-height: 1.8;
+    letter-spacing: 0;
+    color: var(--ink-2);
+}
+.body-text a:not(.clink):not(.pill), .faq-a a, .calc-why a, .plan-common a, .section-lead a {
     color: var(--accent-ink);
     border-bottom: 1px solid rgba(121, 194, 161, 0.45);
     transition: border-color 0.25s ease;
 }
-.body-text a:not(.clink):not(.pill):hover, .faq-a a:hover, .calc-why a:hover, .plan-common a:hover {
+.body-text a:not(.clink):not(.pill):hover, .faq-a a:hover, .calc-why a:hover, .plan-common a:hover, .section-lead a:hover {
     border-bottom-color: var(--accent-ink);
 }
 
@@ -554,10 +609,10 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
 /* ---------- Statement ---------- */
 .statement {
     background: var(--bg-alt);
-    padding: clamp(96px, 14vw, 190px) 0;
+    padding: var(--band-xl) 0;
 }
 .statement .display { max-width: 940px; }
-.statement .body-text { margin-top: 44px; }
+.statement .body-text { margin-top: clamp(40px, 4.6vw, 68px); }
 .lead-line {
     max-width: 760px;
     margin: 30px 0 0;
@@ -568,7 +623,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
 }
 .lead-line strong { font-weight: 500; color: var(--accent-ink); }
 .values-head {
-    margin: 54px 0 18px;
+    margin: clamp(44px, 5vw, 72px) 0 20px;
     font-size: 0.83rem;
     font-weight: 500;
     letter-spacing: 0.08em;
@@ -580,8 +635,9 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     margin: 0;
     padding: 0;
     display: grid;
-    /* 4項目なので2列固定。auto-fit だと3列になって空セルができる */
-    grid-template-columns: repeat(2, 1fr);
+    /* 4項目なので2列固定。auto-fit だと3列になって空セルができる。
+       2026-10-05：左右を 1.35:1 にして、均等割りの「表」っぽさを崩した */
+    grid-template-columns: 1.35fr 1fr;
     gap: 2px;
     background: var(--line);
     border: 1px solid var(--line);
@@ -594,8 +650,8 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     margin: 0 0 12px;
     padding-left: 26px;
     font-size: 1.26rem;
-    font-weight: 400;
-    letter-spacing: 0.01em;
+    font-weight: var(--w-mid);
+    letter-spacing: var(--track-mid);
 }
 .values h3::before {
     content: "";
@@ -732,18 +788,29 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     margin-top: 2px;
     /* 画面幅で縮めない。スマホでも PC と同じ札に見せる（9/19） */
     font-size: 2.3rem;
-    font-weight: 300;
+    font-weight: var(--w-mid);
     line-height: 1.1;
     letter-spacing: -0.01em;
 }
 .stage-mark i { font-style: normal; font-size: 0.44em; margin-left: 0.2em; }
 
 /* ---------- Section shell ---------- */
-.section { padding: clamp(96px, 12vw, 168px) 0; }
+/* 2026-10-05：上下対称（168/168）をやめ、帯に上から下への向きを付けた。
+   罫から見出しまでは近く、節の下は広く。主役の節と補足の節で差をつける。 */
+.section { padding: var(--band-open) 0 var(--band); }
+.section + .section, .page-head + .section, #why + .section { border-top: 1px solid var(--line); }
+.section:has(.faq)         { padding-bottom: var(--band-sm); }
+.section:has(.flow)        { padding-bottom: var(--band-sm); }
+.section:has(.genre-index) { padding-bottom: var(--band-sm); }
 /* 固定ヘッダーの下に潜らないよう、アンカーになりうる要素すべてに余白を取る */
 .section, .statement, .cta-band, .stage, #why { scroll-margin-top: calc(var(--nav-h) + 14px); }
 .section-alt { background: var(--bg-alt); }
-.section-head { margin-bottom: 56px; }
+.section-head { margin-bottom: var(--head-gap); }
+.section-head:has(.section-lead) { margin-bottom: var(--head-gap-lead); }
+.section-head:has(.body-text)    { margin-bottom: var(--head-gap-lead); }
+.section-head .headline { margin-bottom: 16px; }
+.wrap > .headline { margin-bottom: clamp(26px, 3vw, 42px); }
+.body-text:has(+ .body-text) { margin-bottom: 30px; }
 
 /* ---------- About ---------- */
 .about-lead { max-width: 780px; }
@@ -882,7 +949,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
 .genre:hover::after { opacity: 1; }
 .genre:target { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
 .genre-no { font-size: 0.72rem; font-weight: 500; letter-spacing: 0.2em; color: var(--accent-ink); }
-.genre h3 { margin: 12px 0 10px; font-size: 1.3rem; font-weight: 400; letter-spacing: 0.01em; }
+.genre h3 { margin: 12px 0 10px; font-size: 1.3rem; font-weight: var(--w-mid); letter-spacing: var(--track-mid); }
 .genre p { margin: 0; font-size: 0.985rem; color: var(--ink-dim); }
 /* サンプルがまだ無いカード用の注記。映像の代わりに、いまの状態と料金の扱いを書く */
 .genre-note { margin-top: 14px !important; padding-top: 14px; border-top: 1px solid var(--line);
@@ -897,7 +964,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
    端に影を出す。background-attachment: local の層が content と一緒に動くので、
    端まで送ると影が自然に消える。JS を使わないため、JS が動かない端末でも出る */
 .compare-wrap {
-    margin-top: 12px;
+    margin-top: clamp(22px, 2.4vw, 34px);  /* was 12px。見出しとの距離を取る */
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     border-radius: 20px;
@@ -956,7 +1023,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     display: grid;
     grid-template-columns: 60px 1fr;
     gap: 28px;
-    padding-bottom: 46px;
+    padding-bottom: clamp(40px, 4.2vw, 62px);
 }
 .flow-step:last-child { padding-bottom: 0; }
 .flow-dot {
@@ -972,7 +1039,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     transition: transform 0.45s var(--ease), border-color 0.4s ease, box-shadow 0.4s ease;
 }
 .flow-step:hover .flow-dot { transform: scale(1.07); border-color: var(--accent); box-shadow: 0 0 0 6px var(--accent-soft); }
-.flow-step h3 { margin: 14px 0 8px; font-size: 1.24rem; font-weight: 400; letter-spacing: 0.01em; }
+.flow-step h3 { margin: 14px 0 8px; font-size: 1.24rem; font-weight: var(--w-mid); letter-spacing: var(--track-mid); }
 .flow-step p { margin: 0; color: var(--ink-2); font-size: 1.02rem; max-width: 640px; }
 /* 各工程の所要日数。本文より先に目に入るよう見出しの直下に置く */
 .flow-step .step-days {
@@ -993,7 +1060,8 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
 }
 .who.human { color: var(--accent-ink); border-color: rgba(121,194,161,0.4); }
 .flow-note {
-    margin-top: 46px;
+    max-width: 700px;                      /* 新規。40.7字／行で止める */
+    margin-top: clamp(34px, 3.6vw, 54px);
     padding: 26px 28px;
     border-radius: 16px;
     background: var(--card);
@@ -1053,8 +1121,8 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
 .plan-price {
     margin: 0 0 24px;
     font-size: clamp(1.7rem, 3.2vw, 2.3rem);
-    font-weight: 300;
-    letter-spacing: -0.01em;
+    font-weight: var(--w-mid);
+    letter-spacing: var(--track-mid);
     line-height: 1.2;
 }
 .plan-price span { font-size: 0.5em; font-weight: 400; margin-left: 2px; color: var(--ink-dim); }
@@ -1241,7 +1309,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     border-left: 3px solid var(--ink-dim);
 }
 .plan-tax p { margin: 0; font-size: 0.94rem; color: var(--ink-dim); line-height: 1.85; }
-.plan-tax strong { color: var(--ink); font-weight: 600; }
+.plan-tax strong { color: var(--ink); font-weight: var(--w-mid); }
 
 /* ---------- 料金シミュレーター ---------- */
 .calc {
@@ -1368,7 +1436,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
 
 .calc-hint { margin: 11px 0 0; font-size: 0.86rem; color: var(--ink-dim); min-height: 1.4em; }
 /* 「松のほうが安い」の注意。色だけで伝えないよう、文言でも言い切っている */
-.calc-hint-warn { color: var(--ink); font-weight: 600; }
+.calc-hint-warn { color: var(--ink); font-weight: var(--w-mid); }
 
 .calc-presets {
     margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--line);
@@ -1451,7 +1519,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     cursor: pointer;
     display: flex; align-items: flex-start; gap: 16px;
     padding: 24px 0;
-    font-size: 1.06rem; font-weight: 500; line-height: 1.6;
+    font-size: 1.1rem; font-weight: var(--w-mid); line-height: 1.62; letter-spacing: -0.008em;
     transition: color 0.22s ease;
 }
 .faq-item summary::-webkit-details-marker { display: none; }
@@ -1472,7 +1540,7 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     transform: rotate(180deg);
 }
 .faq-a { padding: 0 40px 26px 0; }
-.faq-a p { margin: 0; font-size: 1rem; line-height: 1.85; color: var(--ink-2); }
+.faq-a p { margin: 0; font-size: 1rem; line-height: 1.85; color: var(--ink-2); max-width: var(--measure); }
 @media (prefers-reduced-motion: no-preference) {
     .faq-item[open] .faq-a { animation: faqOpen 0.32s var(--ease); }
     @keyframes faqOpen { from { opacity: 0; transform: translateY(-6px); } }
@@ -1605,7 +1673,8 @@ table.compare tr:last-child th, table.compare tr:last-child td { border-bottom: 
     background: var(--bg-deep);
     color: var(--ink);
     text-align: center;
-    padding: clamp(96px, 13vw, 170px) 0;
+    padding: var(--band-xl) 0;
+    border-top: 1px solid var(--line);
 }
 .cta-band .body-text { color: var(--ink-dim); margin-left: auto; margin-right: auto; }
 .cta-mail {
@@ -1791,7 +1860,7 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
     aspect-ratio: 16 / 9;
 }
 .sample-cap { margin-top: 14px; }
-.sample-title { font-weight: 600; margin: 0 0 4px; }
+.sample-title { font-weight: var(--w-mid); margin: 0 0 4px; }
 .sample-note { color: var(--ink-dim); margin: 0; max-width: 60ch; line-height: 1.8; font-size: .95rem; }
 @media (max-width: 700px) {
     .sample { margin-bottom: 26px; }
@@ -1812,7 +1881,7 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
     transition: border-color .2s ease, color .2s ease, background .2s ease;
 }
 .sample-sw:hover { border-color: var(--ink-dim); color: var(--ink); }
-.sample-sw.is-on { border-color: var(--accent); color: var(--ink); background: rgba(121,194,161,.12); font-weight: 600; }
+.sample-sw.is-on { border-color: var(--accent); color: var(--ink); background: rgba(121,194,161,.12); font-weight: var(--w-mid); }
 .sample-sw:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
 /* ジャンル01のカードに入れたサンプル映像。カードの余白に合わせる */
@@ -1849,7 +1918,7 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
 .ba-step {
     margin: 0 0 10px;
     font-size: .82rem;
-    font-weight: 600;
+    font-weight: var(--w-mid);
     letter-spacing: .12em;
     color: var(--accent-ink);
 }
@@ -2051,4 +2120,39 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
        背景で流しているだけのヒーロー映像には poster が無いので、こちらは消す */
     .hero-video { display: none; }
     video::-webkit-media-controls { display: none !important; }
+}
+
+/* ---------- 見出しのグラデーション（2026-10-05・S7） ---------- */
+/* 字の上端は地の色、下端へ向けて --accent-ink に寄せる。
+   --head-grad は :root に置いてある。
+
+   読みやすさについて：
+   ・color は var(--ink) のまま残し、【見た目だけ】-webkit-text-fill-color で
+     差し替えている。background-clip: text を解さないブラウザは、ベタ塗りの
+     --ink のままで何も変わらない（＝退化しない）。
+   ・a11y.mjs のコントラスト検査は color を読むので --ink として通るが、
+     これは検査をすり抜けているのではない。グラデの一番濃い所＝文字の下端
+     （28%→140% の 64% 地点）でも #bfe2d1 で、地 #1d201f に対して 11.7:1 ある
+     （スクショの画素で実測。一番下の1行だけ 4.5:1 だが、それは縁のアンチ
+     エイリアスで、55px の見出しに要る 3:1 は満たしている）。
+   ・写真に乗る .stage-copy の見出しだけは白に戻す。地が一定でないので、
+     上の 11.0:1 の計算が成り立たないため。
+   ・紙と forced-colors（ハイコントラスト）では打ち消す。            */
+@supports ((background-clip: text) or (-webkit-background-clip: text)) {
+    .headline {
+        background: var(--head-grad);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .stage-copy .headline {
+        background: none;
+        -webkit-text-fill-color: var(--ink);
+    }
+    @media print {
+        .headline { background: none; -webkit-text-fill-color: var(--ink); }
+    }
+    @media (forced-colors: active) {
+        .headline { background: none; -webkit-text-fill-color: currentColor; }
+    }
 }
