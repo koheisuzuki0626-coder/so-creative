@@ -283,8 +283,12 @@
         <div class="hero-media" aria-hidden="true">
             <video class="hero-video" id="hero-video" muted loop playsinline preload="metadata"
                    poster="assets/works/hero-reel.jpg">
-                <source src="assets/works/hero-reel.webm" type="video/webm">
-                <source src="assets/works/hero-reel.mp4" type="video/mp4">
+                <!-- type にコーデックまで書く。"video/webm" だけだと iOS Safari が
+                     「再生できる」と答えてから VP9 で失敗し、mp4 に落ちずにポスターで
+                     止まることがある（＝動画が流れていないように見える）。
+                     mp4 は High / Level 4.0。Level 5.0 だと古い iPhone が再生できない -->
+                <source src="assets/works/hero-reel.webm" type="video/webm; codecs=vp9">
+                <source src="assets/works/hero-reel.mp4" type="video/mp4; codecs=avc1.640028">
             </video>
         </div>
         <div class="hero-inner">
