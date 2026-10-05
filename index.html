@@ -288,13 +288,13 @@
                  動画の本数に制限があり、本編が止まる原因になりうるため。 -->
             <canvas class="hero-blur" width="40" height="23"></canvas>
             <video class="hero-video" id="hero-video" muted loop playsinline preload="metadata"
-                   poster="assets/works/hero-reel.jpg">
+                   poster="assets/works/hero-reel.jpg?v=c6b37dfd">
                 <!-- type にコーデックまで書く。"video/webm" だけだと iOS Safari が
                      「再生できる」と答えてから VP9 で失敗し、mp4 に落ちずにポスターで
                      止まることがある（＝動画が流れていないように見える）。
                      mp4 は High / Level 4.0。Level 5.0 だと古い iPhone が再生できない -->
-                <source src="assets/works/hero-reel.webm" type="video/webm; codecs=vp9">
-                <source src="assets/works/hero-reel.mp4" type="video/mp4; codecs=avc1.640028">
+                <source src="assets/works/hero-reel.webm?v=c1a78c4c" type="video/webm; codecs=vp9">
+                <source src="assets/works/hero-reel.mp4?v=b1dbd82e" type="video/mp4; codecs=avc1.640028">
             </video>
         </div>
         <div class="hero-inner">
@@ -504,7 +504,7 @@
             <div class="ba reveal">
                 <figure class="ba-item">
                     <p class="ba-step">これが</p>
-                    <img class="ba-media" src="assets/works/ugc-mamoriha-before.jpg"
+                    <img class="ba-media" src="assets/works/ugc-mamoriha-before.jpg?v=fb85c229"
                          width="720" height="1280" loading="lazy" decoding="async"
                          alt="架空のハンドクリーム「まもりば」の商品写真。洗面台に置かれたセージグリーンのチューブ">
                     <figcaption class="ba-cap">商品写真 1枚</figcaption>
@@ -513,8 +513,8 @@
                 <figure class="ba-item">
                     <p class="ba-step">こうなりました</p>
                     <video class="ba-media" controls preload="none" playsinline
-                           poster="assets/works/ugc-mamoriha-talk.jpg"
-                           src="assets/works/ugc-mamoriha-talk.mp4"
+                           poster="assets/works/ugc-mamoriha-talk.jpg?v=e3f35221"
+                           src="assets/works/ugc-mamoriha-talk.mp4?v=23f622c0"
                            aria-label="架空のハンドクリーム「まもりば」のUGC風サンプル映像 14秒">
                         お使いのブラウザでは再生できません。
                     </video>

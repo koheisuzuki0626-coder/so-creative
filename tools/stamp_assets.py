@@ -15,11 +15,15 @@ import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-# ⚠️ CSS だけを対象にする。JS に版を打つと、生成スクリプト
-# （scripts/make-genre-pages.py）が script タグを完全一致で書き換えている所と、
-# テスト6か所の正規表現が一斉に壊れる。実際に一度やって落ちた。
-# JS は中身が滅多に変わらないので、割に合わない。
-PAT = re.compile(r'((?:href)=")(assets/[\w./-]+\.css)(?:\?v=[0-9a-f]+)?(")')
+# 対象：CSS と、HTMLが直接参照している映像・ポスター。
+# ⚠️ JS には打たない。生成スクリプト（scripts/make-genre-pages.py）が
+# script タグを完全一致で書き換えている所と、テスト6か所の正規表現が
+# 一斉に壊れる。実際に一度やって落ちた。JS は中身が滅多に変わらない。
+# ※ assets/sample.js が実行時に差し替える動画は対象外（版を打てない）。
+PAT = re.compile(
+    r'((?:href|src|poster)=")'
+    r'(assets/[\w./-]+\.css|assets/works/[\w./-]+\.(?:mp4|webm|jpg|png))'
+    r'(?:\?v=[0-9a-f]+)?(")')
 
 
 def stamp(path: pathlib.Path) -> str:

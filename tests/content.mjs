@@ -299,9 +299,13 @@ check('金額の表示は税込で揃っている',
         /架空の冷凍餃子/.test(await wp.locator('#genre-ad').innerText()));
     check('追加した2本も自前で配信している',
         /assets\/works\/service-15s\.mp4/.test(worksSrc) && /assets\/works\/cm-15s-taste\.mp4/.test(worksSrc));
+    /* ⚠️ 2026-10-06：資産には中身から出した版（?v=）を打っている
+       （tools/stamp_assets.py）。版まで含めて完全一致で見ると、映像を
+       差し替えるたびにここが落ちる。版の有無は許して、「ポスターが
+       指定されていること」だけを見る。この形はこのファイル内に8か所ある。 */
     check('追加した2本にもポスター画像がある',
-        /poster="assets\/works\/service-15s\.jpg"/.test(worksSrc)
-        && /poster="assets\/works\/cm-15s-taste\.jpg"/.test(worksSrc));
+        /poster="assets\/works\/service-15s\.jpg(\?v=[0-9a-f]+)?"/.test(worksSrc)
+        && /poster="assets\/works\/cm-15s-taste\.jpg(\?v=[0-9a-f]+)?"/.test(worksSrc));
     /* 05 SNSショートと 07 社内向けのサンプル（2026-09-17 追加）。
        05 は最初から縦型で組んでいるので、16:9 のまま出していないことも見る */
     check('SNSショートのカードにサンプルがある',
@@ -320,8 +324,8 @@ check('金額の表示は税込で揃っている',
         /assets\/works\/sns-15s-vertical\.mp4/.test(worksSrc)
         && /assets\/works\/internal-15s\.mp4/.test(worksSrc));
     check('さらに追加した2本にもポスター画像がある',
-        /poster="assets\/works\/sns-15s-vertical\.jpg"/.test(worksSrc)
-        && /poster="assets\/works\/internal-15s\.jpg"/.test(worksSrc));
+        /poster="assets\/works\/sns-15s-vertical\.jpg(\?v=[0-9a-f]+)?"/.test(worksSrc)
+        && /poster="assets\/works\/internal-15s\.jpg(\?v=[0-9a-f]+)?"/.test(worksSrc));
     /* 03 採用の3分版（2026-09-17 追加）。他のサンプルが15秒〜60秒なので、
        尺が違うことが分かる書き方になっていること */
     check('採用のカードにサンプルがある',
@@ -333,7 +337,7 @@ check('金額の表示は税込で揃っている',
     check('採用のサンプルも自前で配信している',
         /assets\/works\/recruit-3min\.mp4/.test(worksSrc));
     check('採用のサンプルにもポスター画像がある',
-        /poster="assets\/works\/recruit-3min\.jpg"/.test(worksSrc));
+        /poster="assets\/works\/recruit-3min\.jpg(\?v=[0-9a-f]+)?"/.test(worksSrc));
     /* サンプルは「見せられないものは売らない」の裏づけなので、欠けたら落とす。
        9/19〜9/21 はミュージックビデオ（現09）だけクレジット残が足りず例外にしていたが、
        9/22 に30秒版を入れたので例外は無くなった。空のカードを増やさないため、
@@ -355,7 +359,7 @@ check('金額の表示は税込で揃っている',
     check('ミュージックビデオのサンプルも自前で配信している',
         /assets\/works\/mv-30s-dance\.mp4/.test(worksSrc));
     check('ミュージックビデオのサンプルにもポスター画像がある',
-        /poster="assets\/works\/mv-30s-dance\.jpg"/.test(worksSrc));
+        /poster="assets\/works\/mv-30s-dance\.jpg(\?v=[0-9a-f]+)?"/.test(worksSrc));
     /* 曲は鈴木さん自身のもの。権利の出所を書いていないと、
        既存曲を無断で使ったように見える */
     check('ミュージックビデオの曲の出所を書いている',
@@ -424,7 +428,7 @@ check('金額の表示は税込で揃っている',
     check('サンプルは自前で配信している（YouTube 埋め込みではない）',
         /assets\/works\/company-60s-telop\.mp4/.test(worksSrc) && !/youtube\.com\/embed/.test(idx));
     check('ポスター画像を指定している（読み込み前に真っ黒にしない）',
-        /poster="assets\/works\/company-60s\.jpg"/.test(worksSrc));
+        /poster="assets\/works\/company-60s\.jpg(\?v=[0-9a-f]+)?"/.test(worksSrc));
     check('サンプルだと分かる見出しになっている', /サンプル（60秒）/.test(works));
     /* 段の差（松はナレーション込み・梅竹は¥30,000で追加）を納品物そのもので確かめられる。
        同じ映像で音だけ差し替える。ナレーションは最終版（2026-09-17 差し替え） */
@@ -630,7 +634,7 @@ check('sameAs を出していない', !org.sameAs);
     check('動画を自前で配信している',
         /assets\/works\/ugc-mamoriha-talk\.mp4/.test(idx) && !/youtube\.com\/embed/.test(idx));
     check('ポスター画像を指定している',
-        /poster="assets\/works\/ugc-mamoriha-talk\.jpg"/.test(idx));
+        /poster="assets\/works\/ugc-mamoriha-talk\.jpg(\?v=[0-9a-f]+)?"/.test(idx));
     check('商品写真に代替テキストがある',
         ((await page.locator('#works .ba-item img.ba-media').getAttribute('alt')) || '').length > 10);
     check('videos.json をどのページも読んでいない', !/videos\.json/.test(idx + about + privacy));
@@ -2622,15 +2626,19 @@ for (const w of [390, 800, 1280]) {
 {
     const hash = (f) => createHash('sha1').update(readFileSync(`${ROOT}/${f}`)).digest('hex').slice(0, 8);
     const want = new Map();
-    /* ⚠️ CSS だけ。JS に版を打つと生成スクリプトとテスト6か所が壊れる（実際に落ちた） */
-    for (const a of ['assets/site.css']) {
+    /* CSS と、HTMLが直接参照している映像・ポスター。
+       ⚠️ JS には打たない（生成スクリプトとテスト6か所が壊れる。実際に落ちた）。
+       2026-10-06：動画に版が無かったため、30秒→60秒に差し替えても
+       ブラウザが古い30秒版を使い続けた。CSSだけ塞いでも足りなかった。 */
+    for (const a of ['assets/site.css', 'assets/works/hero-reel.mp4',
+                     'assets/works/hero-reel.webm', 'assets/works/hero-reel.jpg']) {
         if (existsSync(`${ROOT}/${a}`)) want.set(a, hash(a));
     }
     const bad = [];
     let seen = 0;
     for (const f of readdirSync(ROOT).filter((x) => x.endsWith('.html'))) {
         const html = readFileSync(`${ROOT}/${f}`, 'utf8');
-        for (const m of html.matchAll(/href="(assets\/[\w./-]+\.css)(?:\?v=([0-9a-f]+))?"/g)) {
+        for (const m of html.matchAll(/(?:href|src|poster)="(assets\/[\w./-]+\.(?:css|mp4|webm|jpg))(?:\?v=([0-9a-f]+))?"/g)) {
             if (!want.has(m[1])) continue;
             seen += 1;
             if (m[2] !== want.get(m[1])) bad.push(`${f}: ${m[1]} → ${m[2] || '版なし'}`);
