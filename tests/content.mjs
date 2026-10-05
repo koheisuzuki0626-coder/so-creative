@@ -2,7 +2,8 @@
    同じことを複数箇所に書いているので、片方だけ直すと嘘になる。
    ここはその突き合わせ専用。 */
 import { check, report, open, BASE, PW, TIERS, LENGTHS, leadWeeks, RATE, PRICE, price, hours } from './lib.mjs';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 const pwmod = (await import(PW)).default;
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
@@ -2610,6 +2611,34 @@ for (const w of [390, 800, 1280]) {
     check(`ジャンル一覧 ${w}px：最後の行に空セルが残らない`,
         r && Math.abs(r.tail) <= 2, r && `右端のずれ ${r.tail}px（${r.n}項目）`);
     await pg.close();
+}
+
+/* CSS・JS の参照に、中身から出した版（?v=ハッシュ）が打ってあること。
+   GitHub Pages は assets に cache-control: max-age=600 を付けるので、
+   版が無いとCSSを直しても最大10分は古いものが使われる。実際に
+   「3列に直したのに2列のまま」という報告が出た（2026-10-06）。
+   ⚠️ CSS や JS を直したら python3 tools/stamp_assets.py を実行すること。
+   忘れるとここで落ちる。それが狙い。 */
+{
+    const hash = (f) => createHash('sha1').update(readFileSync(`${ROOT}/${f}`)).digest('hex').slice(0, 8);
+    const want = new Map();
+    /* ⚠️ CSS だけ。JS に版を打つと生成スクリプトとテスト6か所が壊れる（実際に落ちた） */
+    for (const a of ['assets/site.css']) {
+        if (existsSync(`${ROOT}/${a}`)) want.set(a, hash(a));
+    }
+    const bad = [];
+    let seen = 0;
+    for (const f of readdirSync(ROOT).filter((x) => x.endsWith('.html'))) {
+        const html = readFileSync(`${ROOT}/${f}`, 'utf8');
+        for (const m of html.matchAll(/href="(assets\/[\w./-]+\.css)(?:\?v=([0-9a-f]+))?"/g)) {
+            if (!want.has(m[1])) continue;
+            seen += 1;
+            if (m[2] !== want.get(m[1])) bad.push(`${f}: ${m[1]} → ${m[2] || '版なし'}`);
+        }
+    }
+    check('CSS・JS の参照に中身どおりの版が打ってある（古い版を掴ませない）',
+        seen > 0 && bad.length === 0,
+        bad.length ? `${bad.length}件ずれ: ${bad.slice(0, 3).join(' / ')}` : `${seen}件を確認`);
 }
 
 await browser.close();
