@@ -4893,6 +4893,15 @@ _CORP_QUERY_RE = re.compile(
     r"制作(事例|実績)|VP|PR動画|プロモーション", re.I)
 
 
+# 作品そのものが世に出ているジャンル。企業VPの門を通してはいけない。
+# 事故（2026-10-06）：お題が「MV 制作実績」だったため _CORP_QUERY_RE の
+# 「制作実績」に当たり、企業VPの門が掛かっていた。本物のMVは
+# _corporate_score が0点なので全部落ち、残ったのは制作会社のポートフォリオ
+# （「MV【制作実績】」等）だけだった。実測：母数50のうち22本を門が落とし、
+# 残った23本はどれもMVではなかった。
+_WORKS_QUERY_RE = re.compile(r"MV|ミュージックビデオ|Music\s*Video|WebCM|Web\s*CM", re.I)
+
+
 def _corp_gate(videos, query):
     """企業VPのお題では、企業VPらしくないものを落とし、らしい順に並べ替える。
 
@@ -4902,6 +4911,9 @@ def _corp_gate(videos, query):
     呼ばれていなかった（死んだコード）。
     戻り値: (残った動画, 落とした本数)
     """
+    # MV・WebCM は作品そのものを探している。企業らしさで絞ると本物が消える。
+    if query and _WORKS_QUERY_RE.search(query):
+        return videos, 0
     if not (query and _CORP_QUERY_RE.search(query)):
         return videos, 0
     kept = [v for v in videos if _corporate_score(v) > 0]

@@ -4471,6 +4471,28 @@ def run():
     check("見たいものは残す", len(_kept), len(_good))
     check("MVのお題では門を使わない",
           bot._corp_gate(_junk, "ミュージックビデオ")[1], 0)
+    # ⚠️ 事故（2026-10-06）：お題が「MV 制作実績」だったため _CORP_QUERY_RE の
+    # 「制作実績」に当たり、企業VPの門が掛かっていた。本物のMVは
+    # _corporate_score が0点なので全部落ち、残ったのは制作会社の
+    # ポートフォリオ（「MV【制作実績】」等）だけだった。実測で母数50のうち
+    # 22本を門が落とし、残った23本はどれもMVではなかった。
+    # 上の「ミュージックビデオ」単体のテストでは、そもそも _CORP_QUERY_RE に
+    # 当たらないので、この壊れ方を捕まえられていなかった。
+    _mv = [_mk("Mrs. GREEN APPLE「ア・ポステリオリ」Official Music Video",
+               "Mrs. GREEN APPLE"),
+           _mk("SixTONES – Dance Forever", "SixTONES"),
+           _mk("＝LOVE / 18th Single『とくべチュ、して』【MV full】",
+               "＝LOVE（イコールラブ）公式チャンネル")]
+    for _q in ("MV 制作実績", "ミュージックビデオ 新曲", "MV 公式"):
+        check(f"「{_q}」でも本物のMVを落とさない",
+              bot._corp_gate(_mv, _q), (_mv, 0))
+    # WebCM も作品そのものが世に出ているジャンル。同じ壊れ方をしていた
+    # （実測：母数50のうち当たり27・ユニークch12 で、中身は制作会社の実績）。
+    _cm = [_mk("アサヒよわない贅沢 WEBCM「よわない日記」篇 20秒",
+               "アサヒグループ公式チャンネル"),
+           _mk("WEBCM｜iPhone 18 Pro「体幹」篇", "au")]
+    check("「WebCM 制作事例」でも実物のWebCMを落とさない",
+          bot._corp_gate(_cm, "WebCM 制作事例"), (_cm, 0))
     check("全部落ちる時は落とさない（0本で終わらせない）",
           bot._corp_gate(_junk, "会社紹介動画")[1], 0)
     check("歌詞の対訳は本編でない",
