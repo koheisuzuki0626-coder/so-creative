@@ -4493,6 +4493,23 @@ def run():
            _mk("WEBCM｜iPhone 18 Pro「体幹」篇", "au")]
     check("「WebCM 制作事例」でも実物のWebCMを落とさない",
           bot._corp_gate(_cm, "WebCM 制作事例"), (_cm, 0))
+    # ⚠️ 門を外すだけでは足りない（本人の指摘・2026-10-06）。
+    # _relevance_score が _corporate_score を足しているので、同点のときに
+    # 制作会社のポートフォリオが本物のMVより上に並ぶ。実測で
+    # 「MV【制作実績】」31点 対「SixTONES – Dance Forever」30点 の1点差。
+    # MV・WebCM では企業らしさを足さないこと。
+    _port = _mk("MV【制作実績】", "VIDEO PRODUCTION　ASU")
+    _real = _mk("SixTONES – Dance Forever MV", "SixTONES")
+    for _q in ("MV 公式", "MV 制作実績", "WebCM"):
+        check(f"「{_q}」では企業らしさを足さない",
+              bot._relevance_score(_port, _q), bot._relevance_score(_real, _q))
+    # 企業VPのお題では、これまでどおり企業らしさが効くこと（取り違えない）
+    check("会社紹介のお題では企業らしさが効く",
+          bot._relevance_score(_mk("ニッコーさま 会社紹介動画", "株式会社ニッコー"),
+                               "会社紹介動画 制作事例")
+          > bot._relevance_score(_mk("ニッコーさま 会社紹介動画", "個人のチャンネル"),
+                                 "会社紹介動画 制作事例"),
+          True)
     check("全部落ちる時は落とさない（0本で終わらせない）",
           bot._corp_gate(_junk, "会社紹介動画")[1], 0)
     check("歌詞の対訳は本編でない",

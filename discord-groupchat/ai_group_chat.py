@@ -5191,7 +5191,14 @@ def _relevance_score(v, query):
     逆にすると「社内報 動画」のお題で、_corporate_score が 2 を付ける
     採用動画が最上位に来て、社内報のレポートが採用動画で埋まる。
     知見ファイルに嘘の学びが入るので、主従は入れ替えないこと。
+
+    ⚠️ MV・WebCM では企業らしさを足さない（本人の指示・2026-10-06）。
+    門（_corp_gate）を外しただけでは足りなかった。同点のときに
+    _corporate_score が効いて、制作会社のポートフォリオが本物のMVより
+    上に並ぶ。作品そのものを探しているお題に企業らしさは要らない。
     """
+    if query and _WORKS_QUERY_RE.search(query):
+        return _query_match_score(v, query) * 10
     return _query_match_score(v, query) * 10 + _corporate_score(v)
 
 
