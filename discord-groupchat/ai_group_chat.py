@@ -5196,10 +5196,31 @@ def _relevance_score(v, query):
     門（_corp_gate）を外しただけでは足りなかった。同点のときに
     _corporate_score が効いて、制作会社のポートフォリオが本物のMVより
     上に並ぶ。作品そのものを探しているお題に企業らしさは要らない。
+
+    代わりに【再生回数の段】で同点を捌く（2026-10-07）。企業らしさを外したら
+    当たり49本が全部同じ点になり、選び方が無作為になった。MVは小規模な
+    チャンネルが母数の大半なので、無名ばかり当たる（実測：49本のうち
+    1000万回以上が17本、1万回未満が7本。142回のMVとSEVENTEENが同じ確率）。
+    ⚠️ これは【作品系のお題だけ】。企業VPは数百〜数千回が普通なので、
+    再生回数を混ぜると事例そのものが読めなくなる（2026-09-23 に外した理由）。
     """
     if query and _WORKS_QUERY_RE.search(query):
-        return _query_match_score(v, query) * 10
+        return _query_match_score(v, query) * 10 + _popularity_tier(v)
     return _query_match_score(v, query) * 10 + _corporate_score(v)
+
+
+def _popularity_tier(v):
+    """再生回数のおおまかな段（0〜4）。作品系のお題の同点を捌くためだけに使う。
+
+    段にするのは、1回ごとの差で順位を固定しないため。段の中は _daily_order が
+    混ぜるので、同じ格の中で日替わりに散る。
+      0: 1万回未満  1: 1万〜10万  2: 10万〜100万  3: 100万〜1000万  4: 1000万以上
+    ⚠️ 上限は 4。_query_match_score を 10倍しているので、語の一致に勝たせない。
+    """
+    n = int(v.get("views") or 0)
+    if n < 10000:
+        return 0
+    return min(4, len(str(n)) - 4)
 
 
 def _daily_order(candidates, score_fn, seed, need=None):
