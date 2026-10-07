@@ -5205,7 +5205,22 @@ def _relevance_score(v, query):
     再生回数を混ぜると事例そのものが読めなくなる（2026-09-23 に外した理由）。
     """
     if query and _WORKS_QUERY_RE.search(query):
-        return _query_match_score(v, query) * 10 + _popularity_tier(v)
+        # 作品系は【知名度が主・語の一致が従】（本人の指示・2026-10-07
+        # 「もっと大手のmvを検索して欲しい」）。
+        # 理由：お題「MV 公式」の "公式" が日本語表記のものだけを優遇していた。
+        #   SEVENTEEN 3.0億回   語一致3 → 34点
+        #   King & Prince 1.9億 語一致3 → 34点
+        #   SixTONES 3,780万     語一致1 → 14点
+        #   ＝LOVE 5,040万       語一致6 → 64点  ← 最上位8本のうち5本が ＝LOVE
+        # 「Official MV」と英語で書く大手ほど語一致が落ちる。関連はすでに
+        # 門と題名一致（224本中168本）で担保されているので、ここは知名度で並べる。
+        # ⚠️ 語が1つも当たらないものは0点のまま。ここを崩すと、お題と無関係な
+        # 有名動画が入る（2026-09-23 の事故）。
+        # ⚠️ 語の一致を点数に足さない。_daily_order は【点数が1でも違えば別の層】
+        # として扱うので、足すと SEVENTEEN（語一致3）と ＝LOVE（語一致6）が
+        # 別の層になり、同じ格の大手が混ざらない。関連は「当たったか否か」の
+        # 門としてだけ使い、順位は知名度だけで決める。
+        return 0 if _query_match_score(v, query) <= 0 else _popularity_tier(v) * 10
     return _query_match_score(v, query) * 10 + _corporate_score(v)
 
 
@@ -5215,7 +5230,8 @@ def _popularity_tier(v):
     段にするのは、1回ごとの差で順位を固定しないため。段の中は _daily_order が
     混ぜるので、同じ格の中で日替わりに散る。
       0: 1万回未満  1: 1万〜10万  2: 10万〜100万  3: 100万〜1000万  4: 1000万以上
-    ⚠️ 上限は 4。_query_match_score を 10倍しているので、語の一致に勝たせない。
+    ⚠️ 作品系ではこの段【だけ】で順位が決まる（_relevance_score 参照）。
+    刻みを細かくすると層が分かれて、同じ格の大手が混ざらなくなる。
     """
     n = int(v.get("views") or 0)
     if n < 10000:

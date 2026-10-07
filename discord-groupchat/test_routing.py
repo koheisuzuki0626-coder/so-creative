@@ -4518,6 +4518,21 @@ def run():
     check("MVのお題では再生回数の多い方が上に来る",
           bot._relevance_score(_v(305683462), "MV 公式")
           > bot._relevance_score(_v(142), "MV 公式"), True)
+    # ⚠️ 本人の指示「もっと大手のmvを検索して欲しい」（2026-10-07）。
+    # 作品系では語の一致を点数に足さない。_daily_order は点数が1でも違えば
+    # 別の層として扱うので、足すと「Official MV」と英語で書く大手（語一致3）と
+    # 「【MV full】…[公式]」と書く側（語一致6）が別の層になり、混ざらない。
+    # 実測で最上位8本のうち5本が同じグループ（＝LOVE）に偏っていた。
+    _eng = {"title": "SEVENTEEN (세븐틴) '손오공' Official MV", "channel": "HYBE LABELS",
+            "id": "e", "views": 305683462}
+    _jpn = {"title": "【MV full】365日の紙飛行機/ AKB48 [公式]", "channel": "AKB48",
+            "id": "j", "views": 24269642}
+    check("同じ格の大手は、題名の書き方が違っても同じ層に入る",
+          bot._relevance_score(_eng, "MV 公式"), bot._relevance_score(_jpn, "MV 公式"))
+    # 語が1つも当たらないものは0点のまま（お題と無関係な有名動画を入れない）
+    check("語が当たらなければ、再生回数がいくら多くても0点",
+          bot._relevance_score({"title": "料理のコツ", "channel": "c", "id": "x",
+                                "views": 999999999}, "MV 公式"), 0)
     # ⚠️ 企業VPのお題に再生回数を混ぜないこと。企業VPは数百〜数千回が普通なので、
     # 混ぜると事例そのものが読めなくなる（2026-09-23 に外した理由）。
     _c1 = {"title": "ニッコーさま 会社紹介動画", "channel": "株式会社ニッコー",
