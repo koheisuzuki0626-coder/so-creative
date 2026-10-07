@@ -193,6 +193,9 @@ def main(argv=None):
     ap.add_argument("--note", default="", help="備考に1行足す")
     ap.add_argument("--addr", default="〔住所〕", help="契約書：甲の住所")
     ap.add_argument("--rep", default="〔代表取締役 ◯◯ ◯◯〕", help="契約書：甲の代表者")
+    ap.add_argument("--blank", action="store_true",
+                    help="契約書：段・尺・本数・ナレーション・委託料を空欄にする"
+                         "（手で埋める用。条文は変わらない）")
     ap.add_argument("--music", action="store_true",
                     help="契約書：第13条（楽曲を扱う場合の特約）を差し込む。"
                          "MV・リリックビデオ・社歌など、甲が楽曲を用意する案件だけ")
@@ -229,6 +232,20 @@ def main(argv=None):
             "委託料": yen(total),
             "締結日": f"{day.year}年{day.month}月{day.day}日",
         }
+        # --blank：案件ごとに変わる所を空欄にした「手で埋める用」を出す。
+        # 条文は1字も変えない。変わるのは【埋まる値だけ】であることを
+        # 示すためのもので、相談に持っていく・紙で埋める用途を想定している。
+        # ⚠️ 空欄にするのはこの5つだけ。条文を空欄にしてはいけない。
+        if a.blank:
+            common |= {
+                "段": "〔　　　　　　　〕",
+                "尺本数": "〔　　〕秒 × 〔　〕本",
+                "ナレーション": "〔　　　　　　　〕",
+                "納期": "〔　〕",
+                "修正": "〔　〕",
+                "委託料": "　　　　　　",
+                "締結日": "〔　　年　　月　　日〕",
+            }
     else:
         due = day + datetime.timedelta(days=30)
         d = (datetime.date.fromisoformat(a.delivered) if a.delivered else day)
