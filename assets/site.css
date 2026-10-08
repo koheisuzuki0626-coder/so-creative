@@ -775,7 +775,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     position: absolute;
     z-index: 4;
     left: 50%; top: 50%;
-    padding: 16px 24px 18px;
+    padding: 34px 48px 38px;
     /* カードと同じ丸み。10px はサイトのどの寸法とも違っていた */
     border-radius: 16px;
     /* 2026-09-26：地を濃色にしたあとも、この札だけ白いまま残っていた。
@@ -797,26 +797,40 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
    焼き込みのテロップの位置もスタックごとに違う。中央（元の位置）だと、
    出演者は「現場で、その場で。」に重なり、撮影日は人物の顔に乗る。
    3か所 × 2スタックを実際に撮って決めた（2026-09-26） */
-.stack[data-stack="cast"] .stage-mark { left: 26%; top: 78%; }
-.stack[data-stack="schedule"] .stage-mark { left: 20%; top: 52%; }
+/* 2026-10-09：札を大きくしたので置き場所を取り直した。元の位置のままだと
+   出演者の札が「1年目でも、機械は触らせてもらえます」を、撮影日の札が
+   「羽根まで、ぱりっと。」を隠す。どちらも写真に焼き込まれていて動かせない。
+   候補を3か所ずつ実際に撮って、テロップにも人物の顔にもかからない所を選んだ
+   （撮影日の右下案は「夜11時」を隠し、右上案は写真から浮いたので却下）。 */
+.stack[data-stack="cast"] .stage-mark { left: 14%; top: 66%; }
+.stack[data-stack="schedule"] .stage-mark { left: 13%; top: 74%; }
 
 .stage-mark span {
     display: block;
-    font-size: 0.7rem;
-    font-weight: 500;
-    letter-spacing: 0.16em;
-    color: var(--accent);
+    /* 2026-10-09：0.7rem（11.2px）では読めないと指摘された。
+       数字の 0 だけが大きく、それを説明する「出演者」と単位の「人」が
+       小さすぎて、札として何を言っているか分からなくなっていた。
+       コントラストは測って問題なし（最悪の地でも 5.93:1）。寸法の話。 */
+    font-size: 1.65rem;
+    font-weight: 600;
+    /* 字が大きくなるぶん、字間は詰める（札の横幅が伸びすぎないように） */
+    letter-spacing: 0.12em;
+    /* --accent は罫線・グラデーション用。文字には --accent-ink を使う
+       （11 行目付近の定義のとおり。見た目の差は小さいが、札の中で
+       唯一の色文字なので、文字用の値に揃えておく） */
+    color: var(--accent-ink);
 }
 .stage-mark b {
     display: block;
-    margin-top: 2px;
+    margin-top: 8px;
     /* 画面幅で縮めない。スマホでも PC と同じ札に見せる（9/19） */
-    font-size: 2.3rem;
+    font-size: 6.5rem;
     font-weight: var(--w-mid);
     line-height: 1.1;
     letter-spacing: -0.01em;
 }
-.stage-mark i { font-style: normal; font-size: 0.44em; margin-left: 0.2em; }
+/* 単位（人・日）。数字に対する比で持つ。0.34em × 6.5rem ＝ 約 35px */
+.stage-mark i { font-style: normal; font-size: 0.34em; margin-left: 0.18em; }
 
 /* ---------- Section shell ---------- */
 /* 2026-10-05：上下対称（168/168）をやめ、帯に上から下への向きを付けた。

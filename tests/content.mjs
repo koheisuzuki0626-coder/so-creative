@@ -162,10 +162,27 @@ check('金額の表示は税込で揃っている',
             numCr: cr(lum(cs.backgroundColor), lum(cs.color)),
             labelCr: cr(lum(cs.backgroundColor), lum(label)),
             border: cs.borderTopWidth, borderColor: cs.borderTopColor,
+            labelSize: parseFloat(getComputedStyle(el.querySelector('span')).fontSize),
+            labelWeight: Number(getComputedStyle(el.querySelector('span')).fontWeight),
+            unitSize: parseFloat(getComputedStyle(el.querySelector('i')).fontSize),
+            numSize: parseFloat(getComputedStyle(el.querySelector('b')).fontSize),
         };
     });
     check('札の数字が読める', mk.numCr >= 4.5, `${mk.numCr.toFixed(2)}:1`);
     check('札のラベルが読める', mk.labelCr >= 4.5, `${mk.labelCr.toFixed(2)}:1`);
+    /* 2026-10-09：本人の指摘「出演者０人が小さくて読みにくい」。
+       コントラストは測って問題なかった（最悪の地でも 5.93:1）のに読めなかった。
+       原因は寸法で、ラベルが 11.2px・単位が 16.2px しかなかった。
+       一度 14px まで上げたが「まだ小さい」と再度指摘され、いまの値にした。
+       上のコントラストの検査だけでは、小さすぎて読めない状態を素通りする。 */
+    check('札のラベルが小さすぎない', mk.labelSize >= 20, `${mk.labelSize}px`);
+    check('札のラベルが細すぎない', mk.labelWeight >= 600, `${mk.labelWeight}`);
+    check('単位（人・日）が小さすぎない', mk.unitSize >= 28, `${mk.unitSize}px`);
+    /* ⚠️ ここに「ラベル/数字の比」の検査を置いたが外した（2026-10-09）。
+       「0 だけ巨大になるのを防ぐ」つもりだったが、守れていなかった。
+       ラベルが読めるかどうかは絶対値（px）で決まるので、上の 20px の下限が
+       あれば足りる。数字を大きくしたときに比だけが落ちて、デザインの方を
+       小さく戻したくなる——検査が設計を縛る向きが逆だったので、消した。 */
     check('札に輪郭がある（暗い背景に溶けない）',
         parseFloat(mk.border) > 0 && !/rgba\(0, 0, 0, 0\)|transparent/.test(mk.borderColor),
         `${mk.border} ${mk.borderColor}`);
