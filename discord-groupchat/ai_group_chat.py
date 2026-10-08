@@ -1133,6 +1133,35 @@ NOTES = {
     "insight": (NOTES_DIR / "youtube_insights.md", "YouTube知見"),
     "failed": (NOTES_DIR / "failed_patterns.md", "効かなかった表現"),
 }
+# 終わった月の追記ログの置き場（tools/rotate_insights.py が作る）。
+# 1ファイルが 725KB・7,624行まで育って読めなくなったので分けた（2026-10-08）。
+INSIGHTS_ARCHIVE = NOTES_DIR / "insights_archive"
+
+
+def _insight_corpus():
+    """知見の全文（いまのファイル＋書庫）。
+
+    ⚠️ 取り込み済みの判定と見出しの拾い読みは、必ずこれを使うこと。
+    いまのファイルだけを見ると、書庫へ送った過去の知見が
+    「まだ無い」と判定されて二重に取り込まれる。
+    追記（_append_note_sync）と読み返し（_read_note）は、
+    末尾を見るだけなので、いまのファイルのままでよい。
+    """
+    path = NOTES["insight"][0]
+    parts = [path.read_text(encoding="utf-8")] if path.exists() else []
+    # ⚠️ 書庫は【いまのノートの隣】から決める。固定の場所を見ると、
+    # テストがノートを一時ファイルへ差し替えても本物の書庫が混ざり、
+    # 件数の検査が壊れる（2026-10-08 に実際に3件落ちた）。
+    archive = path.parent / INSIGHTS_ARCHIVE.name
+    if archive.is_dir():
+        for f in sorted(archive.glob("*.md")):
+            try:
+                parts.append(f.read_text(encoding="utf-8"))
+            except Exception:  # noqa: BLE001
+                pass
+    return "\n".join(parts)
+
+
 # 読み返す言い方
 _NOTE_SHOW_RE = re.compile(
     r"^\s*(実験ログ|知見|失敗メモ|メモ|記録)\s*(を)?\s*"
@@ -1204,7 +1233,8 @@ def _backfill_insights_sync(cid):
     会話ログにより長い全文がある場合は、全文を足す（デバッグログ経由で
     復元したぶんは600字で切れているため）。"""
     path, _title = NOTES["insight"]
-    have = path.read_text(encoding="utf-8") if path.exists() else ""
+    # ⚠️ 書庫も見る。いまのファイルだけだと、過去の知見が二重に入る
+    have = _insight_corpus()
     known = {k: int(n) for k, n in _NOTE_MARK_RE.findall(have)}
     added = 0
     src = _hist_path(cid)
@@ -7086,7 +7116,7 @@ def _past_items(key, limit=25):
     1日4回のうち3回）。見出し単位で拾えば、少ない字数で多くを渡せる。
     """
     try:
-        lines = NOTES["insight"][0].read_text(encoding="utf-8").splitlines()
+        lines = _insight_corpus().splitlines()   # 書庫も含めて拾う
     except Exception:  # noqa: BLE001
         return []
     out = []

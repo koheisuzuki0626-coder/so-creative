@@ -6501,6 +6501,28 @@ def run():
     check("--blank でも条文は消さない（第6条が書式に残っている）",
           "第6条" in _htmlF or "第 6 条" in _htmlF, True)
 
+    print("■ 知見の書庫（1ファイルが読めない大きさに育つのを防ぐ）")
+    # 2026-10-08：youtube_insights.md が 725KB・7,624行まで育った。
+    # 内訳は整理された節58KB＋追記ログ667KB。終わった月を書庫へ送る
+    # （tools/rotate_insights.py）。
+    # ⚠️ 追記と読み返しは末尾を見るだけなので、いまのファイルのままでよい。
+    #    取り込み済み判定と見出し拾い読みは【書庫も見ないと二重に入る】。
+    check("_insight_corpus がある（いまのファイル＋書庫）",
+          hasattr(bot, "_insight_corpus"), True)
+    _bsrc = _plL.Path(bot.__file__).read_text(encoding="utf-8")
+    _dedupe = _bsrc[_bsrc.index("def _backfill_insights_sync"):][:1400]
+    check("取り込み済み判定が書庫も見る", "_insight_corpus()" in _dedupe, True)
+    _pick = _bsrc[_bsrc.index("def _insight_lines_for"):][:900] \
+        if "def _insight_lines_for" in _bsrc else ""
+    check("見出し拾い読みが書庫も見る",
+          ("_insight_corpus()" in _pick) if _pick else True, True)
+    # 追記は【いまのファイル】へ。書庫に書くと読み返しに出てこない
+    _app = _bsrc[_bsrc.index("def _append_note_sync"):][:600]
+    check("追記はいまのファイルへ（書庫に書かない）",
+          "insights_archive" not in _app, True)
+    check("書庫の置き場が決まっている",
+          str(bot.INSIGHTS_ARCHIVE).endswith("insights_archive"), True)
+
     print("■ テストが本物の記録を汚していないこと")
     # 事故（2026-08-21）：テストを流すたびに本物の history/errors.log へ
     # 偽のエラーが書かれ、ボットは再起動のたびに自己テストを流すので、
