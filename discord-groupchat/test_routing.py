@@ -3507,16 +3507,22 @@ def run():
     if _fix.exists():
         for _ln in _fix.read_text(encoding="utf-8").splitlines():
             if _ln.count("\t") >= 1 and not _ln.startswith("#"):
-                _kind, _text = _ln.split("\t")[0].strip(), _ln.split("\t")[1].strip()
+                _cells = _ln.split("\t")
+                _kind, _text = _cells[0].strip(), _cells[1].strip()
+                # 3列目は種別によって意味が変わる。topic では
+                # 「取り出すべき題材」そのものなので値として使う。
+                _want = _cells[2].strip() if len(_cells) > 2 else ""
                 if _kind and _text:
-                    _rows.append((_kind, _text))
+                    _rows.append((_kind, _text, _want))
     check("台帳に中身がある", len(_rows) >= 25, True)
+    check("題材の取り違えが台帳にある",
+          sum(1 for r in _rows if r[0] in ("no_topic", "topic")) >= 9, True)
     _keep_pa = dict(bot._pending_approvals)
     _keep_busy = bot._busy_tasks
     try:
         bot._pending_approvals.clear()
         bot._busy_tasks = lambda cid: []      # 何も動いていない状態にする
-        for _kind, _text in _rows:
+        for _kind, _text, _want in _rows:
             if _kind == "false_progress":
                 _out = bot._drop_false_progress(_text, 4242)
                 # 2026-08-25：注記「（これはまだ実際には動かしていない）」は
@@ -3570,6 +3576,15 @@ def run():
             elif _kind == "chat":
                 check(f"作業にしない: {_text[:16]}…",
                       bot.classify_route(_text, has_last_gen=True), None)
+            elif _kind == "no_topic":
+                # 事故（2026-10-08 23:12）：「過去分も遡ってリサーチしてほしい」の
+                # 『過去分も遡って』が検索語になった。範囲の指定は題材ではない。
+                check(f"題材を取り出さない: {_text[:20]}…／{bot._trend_topic(_text)!r}",
+                      bot._trend_topic(_text), "")
+            elif _kind == "topic":
+                # 守りすぎの確認。範囲の指定を削る処理が、題材まで
+                # 削っていないこと（例外が元のガードを無効化しないこと）。
+                check(f"題材を取り出す: {_text[:24]}…", bot._trend_topic(_text), _want)
     finally:
         bot._busy_tasks = _keep_busy
         bot._pending_approvals.clear()
