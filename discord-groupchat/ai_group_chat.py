@@ -12593,16 +12593,42 @@ def _limit_note(why):
 
 
 async def _orchestrate(mode, lead, search, history, recall=False):
-    # 必要ならWeb検索して文脈を用意（ボット自身が検索＝権限プロンプト不要）
-    ctx = await web_search_context(_latest_user_msg(history)) if search else ""
-
-    # 過去の会話が必要なら、全ログをGeminiに読ませて関連情報を抽出して文脈に足す
+    # 過去の会話の掘り起こしは、クロードも自力ではできないので両者に渡す。
+    recall_ctx = ""
     if recall:
         cid = _cid_of_history(history)
         if cid is not None:
-            rc = await _recall_context(cid, _latest_user_msg(history))
-            if rc:
-                ctx = (ctx + "\n\n" + rc).strip() if ctx else rc
+            recall_ctx = (await _recall_context(cid, _latest_user_msg(history))) or ""
+
+    # 【Web検索は、Geminiが書く時だけ引く】（2026-10-09・実測して変えた）
+    #
+    # クロードCLIは自分でWeb検索できる（.claude/settings.json で WebSearch /
+    # WebFetch を許可済み）。ここで先に DuckDuckGo を引いて渡していたため、
+    # クロードは渡された文脈を読んだうえで【さらに自分でも】検索しており、
+    # 検索が二度走っていた。12596行の元のコメント「ボット自身が検索＝権限
+    # プロンプト不要」は、CLIに検索を許可する前の名残り。
+    #
+    # 実測（各3回・交互）：「iPhone 15 の中古っていくらくらい？」
+    #   渡す（従来）30.95秒 ／ 渡さない 23.52秒（σ 3.77 / 1.62 ＝ 差は実在）
+    # 答えの質は同等（どちらも出典つきで価格帯を出した）。
+    #
+    # ⚠️ Geminiには検索機能が無いので、Geminiが書く時は従来どおり要る。
+    # 誰が書くかはクロードの枠切れ等で実行時に変わるため、
+    # 「使う直前に引く」形にしてある（引くのは1回だけ）。
+    _web = {"done": False, "val": ""}
+
+    async def gemini_ctx():
+        """Geminiに渡す文脈（Web検索＋掘り起こし）。呼ばれた時だけ検索する。"""
+        if search and not _web["done"]:
+            _web["done"] = True
+            try:
+                _web["val"] = await web_search_context(_latest_user_msg(history))
+            except Exception as e:  # noqa: BLE001
+                print(f"[orchestrate] 検索に失敗（文脈なしで続行）: {str(e)[:120]}")
+        return "\n\n".join(x for x in (_web["val"], recall_ctx) if x)
+
+    # クロードに渡すのは掘り起こしだけ。Web検索は本人がやる。
+    claude_ctx = recall_ctx
 
     # Geminiに返事を書かせない設定なら、ここで単発（クロード）に寄せる。
     # ディベートはGeminiが相方なので、オフのときは成立しない。
@@ -12618,7 +12644,8 @@ async def _orchestrate(mode, lead, search, history, recall=False):
     if mode == "single":
         if lead == "gemini":
             try:
-                ans = await _gemini_call(_answer_prompt(ORCH_PERSONA, history, ctx))
+                ans = await _gemini_call(
+                    _answer_prompt(ORCH_PERSONA, history, await gemini_ctx()))
                 if (ans or "").strip():
                     _wrote["name"] = "Gemini"
                     return ans
@@ -12627,14 +12654,16 @@ async def _orchestrate(mode, lead, search, history, recall=False):
             except Exception:  # noqa: BLE001
                 pass  # Gemini不可ならClaudeへ
         try:
-            return await run_claude_cli(_answer_prompt(ORCH_PERSONA, history, ctx))
+            return await run_claude_cli(
+                _answer_prompt(ORCH_PERSONA, history, claude_ctx))
         except Exception as e:  # noqa: BLE001
             # Claudeがタイムアウト・上限などで落ちたらGeminiで応答（無応答を防ぐ）
             print(f"[orchestrate] Claude失敗 → Geminiへ: {str(e)[:150]}")
             _wrote["name"] = GEMINI_STANDIN
             _wrote["why"] = str(e)[:200]
             try:
-                return await _gemini_call(_answer_prompt(ORCH_PERSONA, history, ctx))
+                return await _gemini_call(
+                    _answer_prompt(ORCH_PERSONA, history, await gemini_ctx()))
             except Exception as e2:  # noqa: BLE001
                 # 両方ダウン：本当の原因（Claude側）を隠さず両方報告する
                 raise RuntimeError(
@@ -12643,9 +12672,10 @@ async def _orchestrate(mode, lead, search, history, recall=False):
                 )
 
     # ② ディベートモード：まず両者が独立に回答（検索結果があれば共有）
+    _gctx = await gemini_ctx()          # ディベートはGeminiが必ず書くので先に引く
     results = await asyncio.gather(
-        run_claude_cli(_answer_prompt("Claude", history, ctx)),
-        _gemini_call(_answer_prompt("Gemini", history, ctx)),
+        run_claude_cli(_answer_prompt("Claude", history, claude_ctx)),
+        _gemini_call(_answer_prompt("Gemini", history, _gctx)),
         return_exceptions=True,
     )
     claude_ans = results[0] if not isinstance(results[0], Exception) else ""
@@ -12653,7 +12683,8 @@ async def _orchestrate(mode, lead, search, history, recall=False):
 
     # Geminiが使えない場合はClaude単独に縮退
     if not gemini_ans.strip():
-        return claude_ans or await run_claude_cli(_answer_prompt(ORCH_PERSONA, history, ctx))
+        return claude_ans or await run_claude_cli(
+            _answer_prompt(ORCH_PERSONA, history, claude_ctx))
     if not claude_ans.strip():
         return gemini_ans
 
@@ -12667,7 +12698,7 @@ async def _orchestrate(mode, lead, search, history, recall=False):
     gemini_rev = revised[1] if not isinstance(revised[1], Exception) else gemini_ans
 
     # ③ 統合
-    return await _synthesize(claude_rev, gemini_rev, history, ctx)
+    return await _synthesize(claude_rev, gemini_rev, history, _gctx)
 
 
 async def _report_gen_status(channel, cid, author_name=None, said=None):

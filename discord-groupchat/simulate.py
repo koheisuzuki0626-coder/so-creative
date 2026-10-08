@@ -2887,6 +2887,80 @@ async def run():
     # ※呼ばれている場所の検査は test_routing.py 側（ここでは
     # _handle_orchestrator をスタブ化しているのでソースを見られない）。
 
+    print("■ Web検索は【Geminiが書く時だけ】引く（検索を二度やらない）")
+    # 2026-10-09：クロードCLIは自分でWeb検索できるのに、ボットも先に
+    # DuckDuckGoを引いて渡していたため、検索が二度走っていた。
+    # 実測「iPhone 15 の中古っていくら？」30.95秒 → 23.52秒。
+    # ⚠️ Geminiには検索が無いので、Geminiが書く時は引かないといけない。
+    # 「速くするために消した」が「Geminiの答えから根拠が消えた」に化けるのを防ぐ。
+    _hist_w = [("kohei", "iPhone 15 の中古っていくらくらい？")]
+    _keepW, _keepC, _keepG = (bot.web_search_context, bot.run_claude_cli,
+                              bot._gemini_call)
+    try:
+        _searched = []
+
+        async def _spy_web(q, *a, **k):
+            _searched.append(q)
+            return "検索結果ctx"
+        bot.web_search_context = _spy_web
+
+        _given = {}
+
+        async def _spy_claude(prompt, *a, **k):
+            _given["claude"] = prompt
+            return "claude回答"
+
+        async def _spy_gem(prompt, *a, **k):
+            _given["gemini"] = prompt
+            return "gemini回答"
+        bot.run_claude_cli = _spy_claude
+        bot._gemini_call = _spy_gem
+
+        # ① クロードが書く：検索しない（本人が自分で調べる）
+        _searched.clear(); _given.clear()
+        await bot._orchestrate("single", "claude", True, _hist_w)
+        check("クロードが書く時はボット側で検索しない",
+              _searched == [], f"{len(_searched)}回引いた")
+        check("クロードに検索結果を渡していない",
+              "検索結果ctx" not in _given.get("claude", ""), "渡してしまった")
+
+        # ② Geminiが書く：検索する（Geminiは自分で調べられない）
+        # 既定では Gemini は雑談を書かない（casual_lead がクロード）。
+        # _orchestrate はそれを見て lead をクロードへ寄せるので、
+        # ここだけ設定を立ててから呼ぶ。立て忘れると②は【検索しない方】が
+        # 正解になり、Geminiの根拠が消える不具合を検査が見逃す。
+        _keepLead = bot.gen_settings.get("casual_lead")
+        bot.gen_settings["casual_lead"] = "gemini"
+        _searched.clear(); _given.clear()
+        await bot._orchestrate("single", "gemini", True, _hist_w)
+        check("Geminiが書く時はボット側で検索する",
+              len(_searched) == 1, f"{len(_searched)}回")
+        check("Geminiには検索結果を渡している",
+              "検索結果ctx" in _given.get("gemini", ""), "渡っていない")
+        if _keepLead is None:
+            bot.gen_settings.pop("casual_lead", None)
+        else:
+            bot.gen_settings["casual_lead"] = _keepLead
+
+        # ③ クロードが落ちてGeminiに回る時も、そこで検索してから渡す
+        async def _ng(*a, **k):
+            raise RuntimeError("claude落ち")
+        bot.run_claude_cli = _ng
+        _searched.clear(); _given.clear()
+        await bot._orchestrate("single", "claude", True, _hist_w)
+        check("クロードが落ちてGeminiに回った時も検索して渡す",
+              len(_searched) == 1 and "検索結果ctx" in _given.get("gemini", ""),
+              f"引いた{len(_searched)}回")
+        bot.run_claude_cli = _spy_claude
+
+        # ④ search=False なら誰が書いても引かない（無駄打ちの防止）
+        _searched.clear()
+        await bot._orchestrate("single", "gemini", False, _hist_w)
+        check("検索が要らない時は引かない", _searched == [], f"{len(_searched)}回")
+    finally:
+        bot.web_search_context, bot.run_claude_cli, bot._gemini_call = (
+            _keepW, _keepC, _keepG)
+
     # 事故（2026-08-21）：テストが本物の history/ へ書き込み、デバッグログの
     # 「直近のエラー」が偽物で埋まっていた。書き込み先を増やしたときに
     # 隔離し忘れても、ここで気づけるようにする。
