@@ -6305,6 +6305,25 @@ def run():
     check("ログに記録された", tmp.exists() and "テスト例外です" in tmp.read_text(), True)
     check("直近エラー取得", "test-context" in bot._recent_errors(), True)
 
+    print("■ リサーチは確認ゲートを通さない（通し方が戻っていないか）")
+    # 2026-10-12：本人の判断でゲートから外した。無料・副作用なしで、
+    # 毎朝8時の自動実行はもともと無確認だった（手動だけ確認は不揃い）。
+    # 事故：確認待ちのまま承認が通らず、深夜3時間で1回も走らなかった。
+    # ⚠️ simulate 側では非同期の都合でゲートの有無を区別できなかったので、
+    #    ここはソースを直接見る。戻したら必ず落ちる。
+    import pathlib as _pl3
+    _src3 = (_pl3.Path(__file__).parent / "ai_group_chat.py").read_text(encoding="utf-8")
+    _trend_branch = _src3.split('if kind == "trend":', 1)
+    check("trend の分岐がある", len(_trend_branch) == 2, True)
+    if len(_trend_branch) == 2:
+        _body = _trend_branch[1].split('if kind == "talk":', 1)[0]
+        check("リサーチを _gate に通していない", "_gate(" not in _body, True)
+        check("リサーチを直接起動している",
+              "_spawn(_run_trend_study" in _body, True)
+        check("開始を告げている",
+              "リサーチを始めます" in _body, True)
+        check("止め方を添えている", "やめて" in _body, True)
+
     print("■ 402（残高切れ）を 429（枠切れ）と混同しない")
     # 事故（2026-10-12）：Gemini のプリペイド残高が尽きた。402 の本文にも
     # RESOURCE_EXHAUSTED が入るため _is_quota_error が拾い、「時間をおいて

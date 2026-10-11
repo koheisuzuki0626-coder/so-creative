@@ -13126,10 +13126,31 @@ async def _handle_orchestrator(message, cid):
                       "（YouTubeの検索はその時点の結果だけを返すため）。"
                       "今日の分として回します。"
                       "これまでのレポートは insights/ に全部残っています。")
-        _gate(message, cid, f"YouTubeのリサーチ（{topic or '急上昇'}）",
-              _desc,
-              lambda: _run_trend_study(cid, topic or None), "YouTubeリサーチ",
-              "無料（YouTube APIとGeminiの無料枠）")
+        # 【確認を取らずに始める】（2026-10-12・本人の判断で変更）
+        #
+        # CLAUDE.md のゲート基準は「クレジットを使う・コードを書き換える・
+        # 時間がかかる」。リサーチは3つ目だけで、無料・副作用なし
+        # （insights/ にファイルが増えるだけ。消しも送りもしない）。
+        # そもそも毎朝8時の自動実行はゲートを通っていないので、
+        # 同じ処理を自動なら無確認・手動なら確認、という不揃いだった。
+        #
+        # ⚠️ 他の作業（生成・コード修正）のゲートは外していない。
+        # ここを前例にして ACT_ROUTES から外す判断を広げないこと。
+        #
+        # 事故（2026-10-12 深夜）：確認待ちのまま承認が通らず、
+        # 3時間かけても1回もリサーチが走らなかった。詰まりの全部が
+        # この門で起きていた。
+        _eta = ""
+        _st = _task_stats("YouTubeリサーチ")
+        if _st:
+            _eta = f"（実測 {_fmt_dur(_st[1])}〜{_fmt_dur(_st[2])}）"
+        await message.channel.send(
+            f"📊 リサーチを始めます{_eta}。"
+            f"お題は「{topic or '急上昇'}」。終わったらここに結果を出します。\n"
+            f"止めるなら「**やめて**」と送ってください。"
+            + (f"\n{_desc.split(chr(10), 1)[1]}" if "\n" in _desc else "")
+        )
+        _spawn(_run_trend_study(cid, topic or None), cid, "YouTubeリサーチ")
         return
     if kind == "talk":
         if state["running"]:

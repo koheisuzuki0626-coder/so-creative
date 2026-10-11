@@ -2887,6 +2887,37 @@ async def run():
     # ※呼ばれている場所の検査は test_routing.py 側（ここでは
     # _handle_orchestrator をスタブ化しているのでソースを見られない）。
 
+    print("■ リサーチは確認を取らずに始める（ただし開始を告げる）")
+    # 2026-10-12：本人の判断でゲートから外した。無料・副作用なしで、
+    # 毎朝8時の自動実行はもともと無確認だったのに、手動だけ確認を求めていた。
+    # 事故：確認待ちのまま承認が通らず、深夜3時間で1回も走らなかった。
+    # ⚠️ 確認を外したぶん【始まったことが必ず分かる】ことが代わりの保証。
+    #    開始の合図が消えると「動いているのか分からない」が復活する。
+    _keepPA = dict(bot._pending_approvals)
+    try:
+        install_stubs()          # 直前の節が壊したスタブを戻してから測る
+        bot._handle_orchestrator = _HANDLE_ORCH   # 本物の会話ハンドラで通す
+
+        async def _plan_trend(history):
+            # 行き先の判定はここの検査対象ではない（test_routing.py が見る）。
+            # ここで見たいのは【trend に来たあとゲートを通さないこと】。
+            return "trend", "single", "claude", False, False, ""
+        bot._plan = _plan_trend
+        bot._pending_approvals.clear()
+        FIRED.clear()
+        _r = await drive("リサーチして")
+        _sent = "\n".join(_r["sent"])
+        check("確認を出さずに始める",
+              "確認させてください" not in _sent, _sent[:80])
+        check("リサーチが起動した", "trend" in _r["fired"], _r["fired"])
+        check("開始を告げる", "リサーチを始めます" in _sent, _sent[:80])
+        check("止め方を添える", "やめて" in _sent, _sent[:80])
+        check("確認待ちを作らない",
+              not bot._pending_approvals, dict(bot._pending_approvals))
+    finally:
+        bot._pending_approvals.clear()
+        bot._pending_approvals.update(_keepPA)
+
     print("■ Web検索は【Geminiが書く時だけ】引く（検索を二度やらない）")
     # 2026-10-09：クロードCLIは自分でWeb検索できるのに、ボットも先に
     # DuckDuckGoを引いて渡していたため、検索が二度走っていた。
