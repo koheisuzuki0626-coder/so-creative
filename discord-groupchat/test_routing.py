@@ -6305,6 +6305,23 @@ def run():
     check("ログに記録された", tmp.exists() and "テスト例外です" in tmp.read_text(), True)
     check("直近エラー取得", "test-context" in bot._recent_errors(), True)
 
+    print("■ .env の書き換えが再起動で反映される（load_dotenv の override）")
+    # 事故（2026-10-12）：Gemini の残高が尽きてAPIキーを差し替え、Discordで
+    # 「再起動して」と送って「✅ 再起動完了」も出たのに、プロセスは【古いキー】の
+    # まま動き続け、リサーチが止まったままだった。
+    # 再起動は os.execv なので環境変数は古いプロセスから引き継がれる。
+    # load_dotenv() は既定 override=False ＝ 引き継いだ値を上書きしないため、
+    # .env をいくら直しても永久に反映されない。
+    # ⚠️ ここを override なしに戻すと、鍵の差し替えが効かなくなる。
+    import pathlib as _pl2
+    _src = (_pl2.Path(__file__).parent / "ai_group_chat.py").read_text(encoding="utf-8")
+    check("load_dotenv が override=True", "load_dotenv(override=True)" in _src, True)
+    check("素の load_dotenv() が残っていない",
+          "\nload_dotenv()\n" not in _src, True)
+    # 再起動が execv である前提が崩れたら、この守りの理由も変わる
+    check("再起動は os.execv（環境を引き継ぐ前提）",
+          "os.execv(sys.executable" in _src, True)
+
     print("■ 鍵の受け取り口（値をログにもGitHubにも残さない）")
     # 事故のもと：このボットは会話ログを10分おきにGitHubへpushする。
     # 「鍵登録 …」を普通の発言として通すと、シークレットが公開リポジトリに載る。

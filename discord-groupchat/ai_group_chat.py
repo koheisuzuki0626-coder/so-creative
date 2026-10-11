@@ -90,7 +90,14 @@ from google import genai
 # 「依頼の形か」「作り直しか」「質問か」の判定は phrasing.py だけ読めば追える。
 from phrasing import *  # noqa: F401,F403
 
-load_dotenv()
+# override=True は必須。再起動は os.execv（14894行）で、環境変数は
+# 【古いプロセスから引き継がれる】。load_dotenv は既定 override=False なので、
+# 引き継いだ古い値が残り、.env を書き換えても「再起動して」では永久に
+# 反映されない。事故（2026-10-12）：Gemini の残高切れでAPIキーを差し替え、
+# 再起動したのに古いキーのまま動き続け、リサーチが止まったままだった。
+# （.env に入っているのは資格情報とIDだけ。BOT_MODE 等の起動時トグルは
+#   入っていないので、override で一時指定を潰す心配はない）
+load_dotenv(override=True)
 
 # Higgsfield（映像パイプライン用）。未設定でもチャット機能は動くように保護。
 try:
