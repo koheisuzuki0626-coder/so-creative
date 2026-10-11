@@ -6305,6 +6305,36 @@ def run():
     check("ログに記録された", tmp.exists() and "テスト例外です" in tmp.read_text(), True)
     check("直近エラー取得", "test-context" in bot._recent_errors(), True)
 
+    print("■ 402（残高切れ）を 429（枠切れ）と混同しない")
+    # 事故（2026-10-12）：Gemini のプリペイド残高が尽きた。402 の本文にも
+    # RESOURCE_EXHAUSTED が入るため _is_quota_error が拾い、「時間をおいて
+    # 再度お試しください」と案内しながら1日7回リトライした。待っても戻らない
+    # ので全部無駄で、しかも2日間リサーチが死んでいるのに気づけなかった。
+    _e402 = ("402 RESOURCE_EXHAUSTED. {'error': {'code': 402, 'message': "
+             "'Your prepayment credits are depleted. Please go to AI Studio'}}")
+    _e429 = ("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': "
+             "'You exceeded your current quota'}}")
+    check("402 を残高切れと判定", bot._is_billing_error(_e402), True)
+    check("429 は残高切れではない", bot._is_billing_error(_e429), False)
+    # 守りすぎの確認：従来の枠切れ判定は両方で True のまま（経路を壊さない）
+    check("402 も枠切れ判定には当たる（既存経路を壊さない）",
+          bot._is_quota_error(_e402), True)
+    check("429 も枠切れ判定に当たる", bot._is_quota_error(_e429), True)
+    # 残高切れの間はリサーチを回さない（空振りとスパムを止める）
+    _keepB = dict(bot._gemini_billing)
+    try:
+        bot._gemini_billing.update(at=0.0, detail="", told=False)
+        _can_before = bot._trend_can_run()
+        bot._gemini_billing.update(at=_tm_only.time(), detail="402", told=False)
+        check("残高切れの間はリサーチを回さない",
+              bot._trend_can_run(), False)
+        # 印が消えれば元に戻る（キーを直したら自動で再開する）
+        bot._gemini_billing.update(at=0.0, detail="", told=False)
+        check("印を消せば元の判定に戻る",
+              bot._trend_can_run(), _can_before)
+    finally:
+        bot._gemini_billing.clear(); bot._gemini_billing.update(_keepB)
+
     print("■ .env の書き換えが再起動で反映される（load_dotenv の override）")
     # 事故（2026-10-12）：Gemini の残高が尽きてAPIキーを差し替え、Discordで
     # 「再起動して」と送って「✅ 再起動完了」も出たのに、プロセスは【古いキー】の

@@ -2171,6 +2171,23 @@ def _is_quota_error(e):
     return "429" in m or "RESOURCE_EXHAUSTED" in m or "quota" in m.lower()
 
 
+# 402＝お金の問題。待っても戻らない。
+# 事故（2026-10-12）：Gemini のプリペイド残高が尽きた。本文に
+# RESOURCE_EXHAUSTED が入っているため _is_quota_error が拾ってしまい、
+# 「時間をおいて再度お試しください」と案内しながら1日7回リトライし、
+# 2日間リサーチが死んでいることに誰も気づけなかった。
+# CLAUDE.md の設計意図「枠切れ（時間で戻る）／戻らないもの を区別する」の
+# 戻らない側。_is_quota_error より【先に】見ること。
+def _is_billing_error(e):
+    m = str(e).lower()
+    return ("402" in m or "prepayment" in m or "depleted" in m
+            or "billing" in m or "payment required" in m)
+
+
+# 残高切れを見た記録。復活は人がお金を足すまで起きないので、時刻で消さない。
+_gemini_billing = {"at": 0.0, "detail": "", "told": False}
+
+
 class GeminiQuotaExceeded(RuntimeError):
     """Gemini の無料枠が全モデルで（一時的に）使い切られたことを表す。"""
 
@@ -2314,6 +2331,11 @@ def _trend_can_run():
     # 30分のクールダウンが明けるたび再挑戦し、1時間おきに4回失敗した。
     # 枠が日単位で切れている時に叩き続けても意味がないので、
     # 連続で失敗するほど間隔を伸ばす（30分→1h→2h→4h で頭打ち）。
+    # 残高切れ（402）は待っても戻らない。間隔を伸ばしても無駄なので回さない。
+    # 事故（2026-10-12）：10-11 に 7回試して7回失敗し、同じ文面を7回投げた。
+    # 印は Gemini の呼び出しが1本でも通れば自動で解除される。
+    if _gemini_billing["at"]:
+        return False
     fails = _trend_stat("fails")
     if fails:
         wait = min(4 * 3600, GEMINI_COOLDOWN_SEC * (2 ** (fails - 1)))
@@ -4060,6 +4082,9 @@ def _gemini_generate_image_sync(prompt, ref_bytes=None, ref_mime="image/png",
                         if _new not in order:
                             order.append(_new)
                     break
+                if _is_billing_error(e):
+                    # 残高切れ。どのモデルに替えても同じなので印を残す
+                    _gemini_billing.update(at=time.time(), detail=str(e)[:200])
                 per_day = "PerDay" in str(e) or "PerProjectPerModel" in str(e)
                 if _is_quota_error(e) and not per_day and attempt == 0:
                     _img_stat(model)["last"] = "分あたり制限（待って再挑戦）"
@@ -4165,6 +4190,10 @@ def _gemini_contents_sync(contents, tag, purpose=PURPOSE_TEXT):
                 if text:
                     REGISTRY.mark_ok(model)
                     print(f"[{tag}] 成功: {model}")
+                    # 1本でも通れば残高の問題は解消している（キー差し替え等）
+                    if _gemini_billing["at"]:
+                        _gemini_billing.update(at=0.0, detail="", told=False)
+                        print("[gemini] 残高切れの印を解除（呼び出しが成功した）")
                     return text
                 break  # 本文が空 → 次のモデルへ
             except Exception as e:
@@ -4195,6 +4224,12 @@ def _gemini_contents_sync(contents, tag, purpose=PURPOSE_TEXT):
                         else f"失敗: {str(e)[:60]}")
                 break
 
+    if last_err and _is_billing_error(last_err):
+        # 待っても直らない。「時間をおいて」と言ってはいけない。
+        raise GeminiQuotaExceeded(
+            "Gemini の残高が尽きています（402）。AI Studio で請求を確認するか、"
+            "APIキーを差し替えてください。時間をおいても戻りません。"
+        )
     if last_err and _is_quota_error(last_err):
         raise GeminiQuotaExceeded(
             "Gemini の無料枠が全モデルで上限に達しています。時間をおいて再度お試しください。"
@@ -8051,7 +8086,14 @@ async def _run_trend_all(cid, genres):
         # 「枠が戻ったらやり直します」と言う——それ以外では復活の仕掛け
         # （_gemini_recovery_loop）が動かないので、言えば嘘になる。
         _why = _trend_fail_why.pop(cid, None)
-        if _why == "quota":
+        if _why == "quota" and _gemini_billing["at"]:
+            # 待っても戻らない。一度だけ言って、以後は黙る（スパムにしない）
+            _msg = ("🔴 **Gemini の残高が尽きています**（402）。待っても戻りません。\n"
+                    "AI Studio で請求を確認するか、APIキーを差し替えてください。\n"
+                    "直るまで毎朝のリサーチは止めておきます"
+                    "（キーが通れば自動で再開します）。")
+            _gemini_billing["told"] = True
+        elif _why == "quota":
             _msg = ("📭 今回は Gemini の枠が戻らず、動画を見て分析できませんでした。"
                     "タイトルだけの分析はしません（映像のヒントが取れないため）。"
                     "枠が戻ったらやり直します。")
