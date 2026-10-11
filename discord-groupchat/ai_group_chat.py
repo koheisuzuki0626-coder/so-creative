@@ -14360,10 +14360,19 @@ def _try_text_approval(cid, user_id, content):
     """承認待ちがあるとき、テキストの「許可/拒否」でも解決する。
     承認=True / 却下=False / 対象外=None を返す。"""
     entry = _pending_approvals.get(cid)
+    _looks_yes = _APPROVE_RE.match(_norm_reply(content) or "x")
     if not entry:
+        if _looks_yes:
+            # 承認のつもりの返事が、確認が消えているせいで会話に流れる。
+            # 2026-10-12：これが起きていることに気づくのに3時間かかった。
+            print(f"[approve] ⚠️ 承認の返事だが確認待ちが無い cid={cid}"
+                  f" content={content[:20]!r}")
         return None
     fut, owner_id = entry
     if fut.done() or (owner_id and user_id != owner_id):
+        if _looks_yes:
+            print(f"[approve] ⚠️ 承認の返事を使えない cid={cid}"
+                  f" done={fut.done()} owner={owner_id} user={user_id}")
         return None
     norm = _norm_reply(content)
     if not norm or len(norm) > 24:
@@ -14492,6 +14501,11 @@ async def _confirm(message, cid, summary, plan, cost="", engine="", eta=""):
     fut = asyncio.get_running_loop().create_future()
     owner_id = getattr(message.author, "id", None)
     _set_pending(cid, fut, owner_id)
+    # 2026-10-12：確認が【ボタンでも文字でも時間切れでも】通らない事象が起きた。
+    # 手元で _confirm 単体を動かすと正常に通るので、原因は実行中の環境側にある。
+    # どこで消えたのか後から分かるよう、一生を記録する。
+    _fid = id(fut)
+    print(f"[confirm] 確認を出した cid={cid} fut={_fid} owner={owner_id}")
     try:
         view = PermissionView(fut, owner_id)
     except Exception as e:  # noqa: BLE001
@@ -14513,11 +14527,21 @@ async def _confirm(message, cid, summary, plan, cost="", engine="", eta=""):
     )
     try:
         approved = await asyncio.wait_for(fut, timeout=310)
+        print(f"[confirm] 返事が来た cid={cid} fut={_fid} → {approved!r}")
     except asyncio.TimeoutError:
         approved = False
+        print(f"[confirm] 時間切れ cid={cid} fut={_fid}")
+    except asyncio.CancelledError:
+        # ここに来るのは、再起動などで待っているタスクごと消される時。
+        # 黙って消えると、本人は確認が生きていると思って返事をし、
+        # その返事が【承認ではなく会話】に流れる（2026-10-12 の事象）。
+        print(f"[confirm] ⚠️ 待機が中断された cid={cid} fut={_fid}")
+        _remember_expired(cid, summary)
+        raise
     finally:
         _clear_pending(cid, fut)
     if approved is SUPERSEDED:
+        print(f"[confirm] 言い直しで置き換わった cid={cid} fut={_fid}")
         return False        # 言い直された分の確認。黙って退く
     if not approved:
         await send_as(orch, cid, "🛑 やめました。言い直してもらえれば作り直します。")

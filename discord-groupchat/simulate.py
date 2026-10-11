@@ -2887,6 +2887,52 @@ async def run():
     # ※呼ばれている場所の検査は test_routing.py 側（ここでは
     # _handle_orchestrator をスタブ化しているのでソースを見られない）。
 
+    print("■ 確認が中断されても、遅れて届いた承認を拾える")
+    # 事故（2026-10-12 深夜）：確認を出したあと、ボタンでも文字でも時間切れでも
+    # 通らない状態になった。_confirm 単体は手元で正常に動くので、原因は
+    # 待っているタスクごと消される（再起動など）側にある。
+    # 黙って消えると、本人は確認が生きていると思って返事をし、その返事が
+    # 【承認ではなく会話】に流れる。3時間気づけなかった。
+    # ⚠️ CancelledError を握りつぶして raise を外さないこと（上位が止まらなくなる）。
+    import types as _ty2
+    _keepSend, _keepView = bot.send_as, bot.PermissionView
+    _keepCBW = bot.CONFIRM_BEFORE_WORK
+    try:
+        bot.CONFIRM_BEFORE_WORK = True    # 既定は False（243行）。ここは確認そのものの検査
+        async def _fake_send(c, cid, text, view=None, **kw):
+            return _ty2.SimpleNamespace(id=1)
+        bot.send_as = _fake_send
+        bot.PermissionView = lambda fut, owner: None
+        _m2 = _ty2.SimpleNamespace(author=_ty2.SimpleNamespace(id=7),
+                                   channel=_ty2.SimpleNamespace(id=55))
+        bot._expired_approvals.pop(55, None)
+        _t2 = asyncio.create_task(bot._confirm(_m2, 55, "テスト", "やること"))
+        await asyncio.sleep(0.05)      # wait_for に入るまで待つ
+        _t2.cancel()
+        try:
+            await _t2
+        except asyncio.CancelledError:
+            pass
+        check("中断されたら期限切れとして控える",
+              bool(bot._recent_expired(55)), True)
+        check("遅れて届いた承認を拾える",
+              bot._try_approve_expired(55, 7, "ok"), True)
+        # 守りすぎの確認：拒否は拾わない（止めたものを動かさない）
+        bot._expired_approvals.pop(55, None)
+        _t3 = asyncio.create_task(bot._confirm(_m2, 55, "テスト", "やること"))
+        await asyncio.sleep(0.05)
+        _t3.cancel()
+        try:
+            await _t3
+        except asyncio.CancelledError:
+            pass
+        check("遅れて届いた拒否では動かさない",
+              bot._try_approve_expired(55, 7, "やめて") is None, True)
+    finally:
+        bot.send_as, bot.PermissionView = _keepSend, _keepView
+        bot.CONFIRM_BEFORE_WORK = _keepCBW
+        bot._expired_approvals.pop(55, None)
+
     print("■ リサーチは確認を取らずに始める（ただし開始を告げる）")
     # 2026-10-12：本人の判断でゲートから外した。無料・副作用なしで、
     # 毎朝8時の自動実行はもともと無確認だったのに、手動だけ確認を求めていた。
