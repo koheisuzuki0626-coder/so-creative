@@ -178,7 +178,8 @@ def render(html, out_pdf):
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("kind",
-                    choices=["見積書", "請求書", "業務委託契約書", "秘密保持契約書"])
+                    choices=["見積書", "請求書", "納品書",
+                             "業務委託契約書", "秘密保持契約書"])
     ap.add_argument("--to", required=True, help="宛先（御中は自動で付きます）")
     ap.add_argument("--title", default="", help="件名")
     ap.add_argument("--tier", default="竹", choices=list(PER_SEC))
@@ -194,6 +195,8 @@ def main(argv=None):
     ap.add_argument("--note", default="", help="備考に1行足す")
     ap.add_argument("--addr", default="〔住所〕", help="契約書：甲の住所")
     ap.add_argument("--rep", default="〔代表取締役 ◯◯ ◯◯〕", help="契約書：甲の代表者")
+    ap.add_argument("--handover", default="Google ドライブの共有リンクにてお渡ししました（ダウンロード期限はございません）",
+                    help="納品書の『お渡し方法』")
     ap.add_argument("--blank", action="store_true",
                     help="契約書：段・尺・本数・ナレーション・委託料を空欄にする"
                          "（手で埋める用。条文は変わらない）")
@@ -208,7 +211,7 @@ def main(argv=None):
     common = {
         "件名": a.title,
     }
-    if a.kind in ("見積書", "請求書"):
+    if a.kind in ("見積書", "請求書", "納品書"):
         common |= {"宛先": a.to,
                    "発行日": f"{day.year}年{day.month}月{day.day}日",
                    "合計": yen(total), "内訳": rows_html(rows)}
@@ -219,6 +222,17 @@ def main(argv=None):
             "納期": lead_time(a.tier, a.sec, a.count, a.nar),
             "修正": REVISIONS[a.tier],
             "備考": f"<li>{a.note}</li>" if a.note else "",
+        }
+    elif a.kind == "納品書":
+        # 支払の起算は納品日（契約書 第5条2項）。この書面が日付の記録になる。
+        # 金額は書かない（請求書の役目）。検収書は作らない（契約書に定めが無い）。
+        d = (datetime.date.fromisoformat(a.delivered) if a.delivered else day)
+        common |= {
+            "番号": a.no or f"D-{day:%Y%m%d}-01",
+            "納品日": f"{d.year}年{d.month}月{d.day}日",
+            "尺": a.sec, "本数": a.count,
+            "修正": REVISIONS[a.tier],
+            "渡し方": a.handover,
         }
     elif a.kind == "秘密保持契約書":
         # 契約前（商談段階）に結ぶもの。尺・本数・金額はまだ決まっていないので
@@ -276,6 +290,7 @@ def main(argv=None):
     OUT.mkdir(parents=True, exist_ok=True)
     stem = common.get("番号") or (
         f"N-{day:%Y%m%d}-01" if a.kind == "秘密保持契約書" else f"C-{day:%Y%m%d}-01")
+    # 納品書は件名が要る（品目名になる）。他は従来どおり。
     out = pathlib.Path(a.out) if a.out else OUT / f"{stem}_{a.kind}_{a.to}.pdf"
     render(html, out)
     print(f"✅ {out}")
