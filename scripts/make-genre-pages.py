@@ -21,6 +21,14 @@ head_top = src[:src.index('    <title>')]
 head_mid = src[src.index('    <link rel="icon"'):src.index('    <script type="application/ld+json">')]
 head_rest = src[src.index('    <script>document.documentElement.classList.add'):src.index('        <section class="page-head">')]
 tail = src[src.index('        </section>\n    </main>') + len('        </section>\n'):]
+# sample.js は「AIナレーションあり／なし」の切り替え用で、#sample-video が
+# 無ければ即 return する。生成ページにその UI は無いので読み込まない
+# （骨組み元の company-video.html には在るため、そのままだと混入する）。
+tail = tail.replace('    <script src="assets/sample.js" defer></script>\n', '')
+# sample.js は「AIナレーションあり／なし」の切り替え用で、#sample-video が
+# 無ければ即 return する。生成ページにその UI は無いので読み込まない
+# （骨組み元の company-video.html には在るため、そのままだと混入する）。
+tail = tail.replace('    <script src="assets/sample.js" defer></script>\n', '')
 
 PRICE_NOTE = ('<p class="body-text measure" style="margin-top:14px">'
               '<b>この表はナレーション込みの額です。</b>梅・竹は<b>AIナレーション</b>が、'
@@ -65,6 +73,8 @@ def compare_table(rows):
 
 
 def build(g):
+    measured_section = measured(g)
+    measured_section = measured(g)
     url = f'{BASE}/{g["file"]}'
     ld_offers = '' if g.get('no_price') else f''',
         "offers": {{
@@ -128,7 +138,7 @@ def build(g):
                 <p class="body-text measure">尺と本数で決まります。表示はすべて税込で、<b>消費税は申し受けません</b>（適格請求書発行事業者の登録なし）。出演者の手配費・撮影費は一切かかりません。</p>
 {price_table(g['secs'], g['tier_heads'])}
                 <p class="body-text measure" style="margin-top:18px">{g['price_note']}</p>
-                <p class="body-text measure"><b>2本目以降は ¥65,000 です。</b>{g['second_note']}</p>
+                <p class="body-text measure"><b>2本目以降は、制作費 ¥100,000 とその本の尺ぶんだけが乗ります（企画・構成費は1案件に1回なので、2本目にはかかりません）。</b>{g['second_note']}</p>
                 <div class="genre-calc">
                     <p class="genre-calc-head">条件を変えて、いくらになるか</p>
                     <div class="calc" data-calc-len="{g['sample_sec']}" data-calc-id="{g['uid']}" data-calc-where="page-{g['uid']}"></div>
@@ -187,6 +197,8 @@ def build(g):
                 </ul>
             </div>
         </section>
+{measured_section}
+{measured_section}
 
         <section class="section">
             <div class="wrap reveal">
@@ -245,6 +257,44 @@ def build(g):
 
 
 from genre_data import GENRES  # noqa: E402
+
+def measured(g):
+    """実測の節。measured_items を持つジャンルだけ出す。
+    ⚠️ 母数が少ないジャンルには付けないこと（社内向けは12〜18本しか無い）。
+    数字を載せるのは、実際に数えた範囲に限る。"""
+    if not g.get('measured_items'):
+        return ''
+    return f"""
+        <section class="section">
+            <div class="wrap reveal">
+                <h2 class="headline">{g['measured_head']}</h2>
+                <p class="body-text measure">{g['measured_lead']}</p>
+                <ul class="calc-why">
+{g['measured_items']}
+                </ul>
+            </div>
+        </section>
+"""
+
+
+def measured(g):
+    """実測の節。measured_items を持つジャンルだけ出す。
+    ⚠️ 母数が少ないジャンルには付けないこと。社内向け（社内報12本・研修18本）は
+    公開する数字としては弱く、載せると他ページの信頼まで下げる。"""
+    if not g.get('measured_items'):
+        return ''
+    return f"""
+        <section class="section">
+            <div class="wrap reveal">
+                <h2 class="headline">{g['measured_head']}</h2>
+                <p class="body-text measure">{g['measured_lead']}</p>
+                <ul class="calc-why">
+{g['measured_items']}
+                </ul>
+            </div>
+        </section>
+"""
+
 
 for g in GENRES:
     (ROOT / g['file']).write_text(build(g), encoding='utf-8')
