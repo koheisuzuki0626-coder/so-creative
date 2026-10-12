@@ -1,0 +1,51 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<title>納品書</title><link rel="stylesheet" href="base.css"></head><body>
+<div class="head">
+  <div><div class="doc-title">納品書</div></div>
+  <div class="issuer">
+    <img class="logo" src="logo-lockup.png" alt="so-creative">
+    <b>so-creative</b>　鈴木 宏平<br>
+    愛知県名古屋市<br>bonvoyage.ti@icloud.com
+  </div>
+</div>
+
+<div class="to">{{宛先}} 御中</div>
+
+<table class="meta"><tbody>
+  <tr><td>納品番号</td><td>{{番号}}</td></tr>
+  <tr><td>納品日</td><td>{{納品日}}</td></tr>
+  <tr><td>件名</td><td>{{件名}}</td></tr>
+</tbody></table>
+
+<p class="lead">下記のとおり納品いたしました。</p>
+
+<table class="grid">
+  <thead><tr><th>品目</th><th>仕様</th><th class="num">数量</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>{{件名}}</td>
+      <td>MP4（1920×1080 / 30fps / H.264 / 音声 AAC）／{{尺}}秒</td>
+      <td class="num">{{本数}}本</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 class="sec">お渡し方法</h2>
+<ul class="notes">
+  <li>{{渡し方}}</li>
+</ul>
+
+<h2 class="sec">ご確認のお願い</h2>
+<ul class="notes">
+  <li>内容をご確認ください。<b>修正のご依頼は業務委託契約書 第4条の編集チェックの範囲で承ります</b>（{{修正}}回まで無料）</li>
+  <li>本納品物の著作権の取り扱いは、業務委託契約書 第6条のとおりです</li>
+  <li><b>生成AIの性質上、意図しない類似が生じる可能性を完全には排除できません。</b>公開前に、用途に照らして問題がないかをご確認ください（同 第6条6項）</li>
+</ul>
+
+<h2 class="sec">お支払いについて</h2>
+<ul class="notes">
+  <li>別途、請求書をお送りします。お支払い期限は<b>納品日から30日以内</b>です（業務委託契約書 第5条2項）</li>
+</ul>
+
+<p class="fine">本書は納品の事実を記録するものです。検収書の取り交わしは行っておりません（業務委託契約書に検収の定めはなく、お支払いの起算は納品日です）。</p>
+</body></html>
