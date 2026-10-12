@@ -177,9 +177,10 @@ def render(html, out_pdf):
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("kind", choices=["見積書", "請求書", "業務委託契約書"])
+    ap.add_argument("kind",
+                    choices=["見積書", "請求書", "業務委託契約書", "秘密保持契約書"])
     ap.add_argument("--to", required=True, help="宛先（御中は自動で付きます）")
-    ap.add_argument("--title", required=True, help="件名")
+    ap.add_argument("--title", default="", help="件名")
     ap.add_argument("--tier", default="竹", choices=list(PER_SEC))
     ap.add_argument("--sec", type=int, default=60)
     ap.add_argument("--count", type=int, default=1)
@@ -218,6 +219,13 @@ def main(argv=None):
             "納期": lead_time(a.tier, a.sec, a.count, a.nar),
             "修正": REVISIONS[a.tier],
             "備考": f"<li>{a.note}</li>" if a.note else "",
+        }
+    elif a.kind == "秘密保持契約書":
+        # 契約前（商談段階）に結ぶもの。尺・本数・金額はまだ決まっていないので
+        # 差し込む値は相手方と日付だけ。条文は固定。
+        common |= {
+            "甲": a.to, "甲住所": a.addr, "甲代表": a.rep,
+            "締結日": f"{day.year}年{day.month}月{day.day}日",
         }
     elif a.kind == "業務委託契約書":
         NAR = {"ai": "AIナレーションあり（料金に含む）",
@@ -266,7 +274,8 @@ def main(argv=None):
                             if a.music else "")
     html = fill((FMT / f"{a.kind}.html").read_text(encoding="utf-8"), common)
     OUT.mkdir(parents=True, exist_ok=True)
-    stem = common.get("番号") or f"C-{day:%Y%m%d}-01"
+    stem = common.get("番号") or (
+        f"N-{day:%Y%m%d}-01" if a.kind == "秘密保持契約書" else f"C-{day:%Y%m%d}-01")
     out = pathlib.Path(a.out) if a.out else OUT / f"{stem}_{a.kind}_{a.to}.pdf"
     render(html, out)
     print(f"✅ {out}")
