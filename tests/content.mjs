@@ -1,7 +1,7 @@
 /* 文言と実装がズレていないか。
    同じことを複数箇所に書いているので、片方だけ直すと嘘になる。
    ここはその突き合わせ専用。 */
-import { check, report, open, BASE, PW, TIERS, LENGTHS, leadWeeks, RATE, PRICE, price, hours } from './lib.mjs';
+import { check, report, open, BASE, PW, TIERS, LENGTHS, leadWeeks, RATE, PRICE, price, hours, listPrice, secFee } from './lib.mjs';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -517,7 +517,7 @@ check('金額の表示は税込で揃っている',
             check(`${g.where} がサンプルの実尺で始まる`, g.len === SEC[g.where], `${g.len}/${SEC[g.where]}`);
             /* 初期は梅・1本・AIナレーション。表と同じ 基本料金＋秒単価×尺 */
             check(`${g.where} の初期の額がモデルと合っている`,
-                g.total === PRICE.base + TIERS[0].perSec * g.len, String(g.total));
+                g.total === listPrice(TIERS[0], g.len), String(g.total));
             check(`${g.where} のラジオが他の台と混ざらない`,
                 g.names.length === 2 && g.names.every((n) => n.endsWith(`-${g.where.replace('genre-', '')}`)),
                 g.names.join());
@@ -535,7 +535,7 @@ check('金額の表示は税込で揃っている',
             .slice(0, 2).map((c) => c.querySelector('[data-c="total"]').textContent));
         check('1台を変えてもほかの台は動かない', after[1] === before, `${before} → ${after[1]}`);
         check('変えた台だけが動く',
-            after[0] === `¥${(PRICE.base + TIERS[2].perSec * 60).toLocaleString('ja-JP')}`, after[0]);
+            after[0] === `¥${listPrice(TIERS[2], 60).toLocaleString('ja-JP')}`, after[0]);
         /* どの計算機で触ったのかがファネルに残ること */
         const ev = await wp.evaluate(() => window.soFunnel.raw()
             .filter((r) => r.name === 'calc_use').map((r) => r.where));
@@ -582,7 +582,7 @@ check('金額の表示は税込で揃っている',
 
         check('トップの料金表の金額がモデルと合っている',
             idxRows.every(([lab, cells]) => TIERS.every((t, i) =>
-                cells[i] === y(PRICE.base + t.perSec * SECS[lab]))),
+                cells[i] === y(listPrice(t, SECS[lab])))),
             JSON.stringify(idxRows));
     }
     check('AIナレーションが込みだと実績にも書いてある', /全段とも料金に含まれます/.test(works));
@@ -847,7 +847,7 @@ check('タイトルの「最短2週間」が実態と合う',
     check('所在地が名古屋市になっている', org.address.addressLocality === '名古屋市');
     check('営業時間を出している', !!org.openingHoursSpecification, JSON.stringify(org.openingHoursSpecification || null));
     check('価格帯が料金表の下限・上限と合っている', (() => {
-        const all = TIERS.flatMap((t) => LENGTHS.filter((s) => s <= 180).map((s) => PRICE.base + t.perSec * s));
+        const all = TIERS.flatMap((t) => LENGTHS.filter((s) => s <= 180).map((s) => listPrice(t, s)));
         const lo = Math.min(...all), hi = Math.max(...all);
         return org.priceRange === `¥${lo.toLocaleString('en-US')}〜¥${hi.toLocaleString('en-US')}`;
     })(), org.priceRange);
@@ -975,6 +975,42 @@ check('タイトルの「最短2週間」が実態と合う',
     }
 }
 
+/* ---- 秒単価の実数を本文に書いている所が、全部モデルと合っているか（2026-10-13） ----
+   逓減（最初の30秒／31〜90秒／91秒以降）に変えたとき、表と計算機は直したのに
+   index.html の FAQ（JSON-LD）とリード文、pricing.html の秒単価の行と
+   計算機の静的な初期表示に【旧価格 梅4,000／竹5,400／松8,000】が残った。
+   どのテストもそこを読んでいなかったので、1,603件が全部通ったまま
+   公開ページに古い式が残る状態になっていた。
+   「表の金額」だけでなく「文章に書いた秒単価」も突き合わせる。 */
+{
+    for (const f of ['index.html', 'pricing.html']) {
+        const h = readFileSync(`${ROOT}/${f}`, 'utf8');
+        /* 旧モデルの秒単価（1つの段に1つの単価）が残っていないか。
+           逓減後は 4,000／5,400／8,000 はどの段のどの段階にも無い数字 */
+        /* ¥8,000 は【松の31〜90秒】として今も使う額なので、
+           旧単価の一覧から現役の額を引いてから探す。
+           ここを素の3つで見ると、正しいページを古いと誤判定する */
+        const live = new Set(TIERS.flatMap((x) => x.rates));
+        const stale = [4000, 5400, 8000].filter((n) => !live.has(n))
+            .map((n) => `¥${n.toLocaleString('en-US')}`)
+            .filter((x) => h.replace(/<!--[\s\S]*?-->/g, '').includes(x));
+        check(`${f} に旧モデルの秒単価が残っていない`, stale.length === 0, stale.join());
+        /* いまの秒単価が3段ぶんそろって書いてあること */
+        for (const t of TIERS) {
+            const want = t.rates.map((r) => `¥${r.toLocaleString('en-US')}`);
+            check(`${f} に${t.label}の秒単価3段が書いてある`,
+                want.every((w) => h.includes(w)), want.join('/'));
+        }
+    }
+    /* FAQ の例示額が式と合っているか（30秒・梅／90秒・竹／3分・松） */
+    const idxH = readFileSync(`${ROOT}/index.html`, 'utf8');
+    for (const [sec, ti] of [[30, 0], [90, 1], [180, 2]]) {
+        const want = `¥${listPrice(TIERS[ti], sec).toLocaleString('en-US')}`;
+        check(`index.html の例示額（${sec}秒・${TIERS[ti].label}）が式と一致`,
+            idxH.includes(want), want);
+    }
+}
+
 /* ---- 定額の部分は「企画・構成費」と呼ぶ（2026-09-29） ----
    「基本料金 ¥180,000」だと、動画の前にまず18万かかるように読める。
    中身（ヒアリング・構成案・絵コンテ・進行）が名前で分かるようにした。
@@ -986,8 +1022,8 @@ check('タイトルの「最短2週間」が実態と合う',
     }
     const pr = readFileSync(`${ROOT}/pricing.html`, 'utf8');
     check('料金ページに企画・構成費の額と中身が書いてある',
-        pr.includes(`企画・構成費 ¥${(PRICE.base - PRICE.perExtra).toLocaleString('en-US')}（1案件に1回）`)
-        && pr.includes(`制作費 1本につき ¥${PRICE.perExtra.toLocaleString('en-US')}`) && /ヒアリング・企画・進行管理/.test(pr));
+        pr.includes(`企画・構成費 ¥${PRICE.base.toLocaleString('en-US')}（1案件に1回）`)
+        && pr.includes(`2本目以降 1本につき ¥${PRICE.perExtra.toLocaleString('en-US')}`) && /ヒアリング・企画・進行管理/.test(pr));
 }
 
 /* ---- 2本目の値段を ¥65,000 と言い切らない（2026-09-26） ----
@@ -1017,36 +1053,56 @@ check('タイトルの「最短2週間」が実態と合う',
         check(`${f} は2本目の値段を ¥65,000 と言い切っていない`, !hit, hit ? hit[0] : '');
     }
     /* 本文に出した「＋¥N」が、式から計算し直した額と合っているか */
-    const add = (perSec, sec) => PRICE.perExtra + perSec * sec;
-    const P = Object.fromEntries(TIERS.map((t) => [t.label, t.perSec]));
+/* 2026-10-13：秒単価が逓減になったので「本数加算 ＋ 秒単価 × 尺」では出せない。
+       同じ尺をもう1本足したときの増分（合計が2倍になるぶん）で計算する。
+       逓減があるので、この増分は1本目の値段より安い */
+    /* 足す尺の増分は「どこに足すか」で変わる（逓減なので、すでに長い案件に
+       足すほど安い）。段・1本目の尺・足す尺を、本文の文章と同じ組で持つ。
+       2026-10-13 まで add(段, 尺) の2引数で「同じ尺を2本」として計算していたが、
+       旧モデルは linear で増分が1本目の尺によらなかったので偶然合っていただけ。
+       逓減にしたら service（60秒＋15秒）が ¥162,500 と ¥147,500 でずれた。
+       exhibition は旧モデルのとき竹の案件に梅の秒単価で ¥160,000 と書いてあり、
+       ¥21,000 少なかった（2026-10-13 に竹の額へ訂正）。 */
+    const add = (label, baseSec, addSec) => {
+        const t = TIERS.find((x) => x.label === label);
+        return PRICE.perExtra + secFee(t, baseSec + addSec) - secFee(t, baseSec);
+    };
     const WANT = [
-        ['index.html', add(P['梅'], 30)],
-        ['company-video.html', add(P['竹'], 15)],
-        ['recruit-video.html', add(P['竹'], 30)],
-        ['service-video.html', add(P['梅'], 15)],
-        ['ad-video.html', add(P['梅'], 15)],
-        ['sns-video.html', add(P['梅'], 15)],
-        ['exhibition-video.html', add(P['梅'], 15)],
-        ['internal-video.html', add(P['梅'], 30)],
-        ['animation-video.html', add(P['梅'], 15)],
+        ['index.html', add('梅', 30, 30)],
+        ['company-video.html', add('竹', 60, 15)],
+        ['recruit-video.html', add('竹', 90, 30)],
+        ['service-video.html', add('梅', 60, 15)],
+        ['ad-video.html', add('梅', 15, 15)],
+        ['sns-video.html', add('梅', 15, 15)],
+        ['exhibition-video.html', add('竹', 60, 15)],
+        ['internal-video.html', add('梅', 60, 30)],
+        ['animation-video.html', add('梅', 60, 15)],
     ];
     const yen = (n) => `¥${n.toLocaleString('en-US')}`;
     for (const [f, want] of WANT) {
         const html = readFileSync(`${ROOT}/${f}`, 'utf8');
         check(`${f} の2本目の実額が式と一致`, html.includes(`＋${yen(want)}`), yen(want));
     }
-    /* まとめたときの差は、段にも尺にもよらず常に base − perExtra
-       （9/29 に ¥25,000 → ¥80,000。基本料金 ¥180,000・本数加算 ¥100,000） */
-    const bundle = PRICE.base - PRICE.perExtra;
-    check('まとめ買いの差が base − perExtra と一致', bundle === 80000, String(bundle));
-    for (const t of TIERS) for (const sec of LENGTHS) {
-        const together = PRICE.base + t.perSec * sec * 2 + PRICE.perExtra;
-        const apart = (PRICE.base + t.perSec * sec) * 2;
-        if (apart - together !== bundle) {
-            check(`まとめ買いの差が一定（${t.label}${sec}秒）`, false, String(apart - together));
+/* まとめたときの差。2026-10-13 までは段にも尺にもよらず常に base − perExtra
+       （¥80,000）の固定だった。秒単価を逓減にしたので**合計の尺が長いほど大きく**なる。
+       固定でなくなった代わりに、次の2つは必ず成り立つ：
+         ① まとめた方が必ず安い（最低でも base − perExtra ぶん）
+         ② 合計の尺が長くなるほど差は縮まらない（逓減が効くため）
+       ここを「一定」に戻さないこと。戻すと逓減を外したことになる */
+    const floorGap = PRICE.base - PRICE.perExtra;
+    const gap = (t, sec) => listPrice(t, sec) * 2 - (listPrice(t, sec * 2) + PRICE.perExtra);
+    let bad = null, prev = null, nonMono = null;
+    for (const t of TIERS) {
+        prev = null;
+        for (const sec of LENGTHS) {
+            const g = gap(t, sec);
+            if (g < floorGap) bad = `${t.label}${sec}秒 ¥${g}`;
+            if (prev !== null && g < prev) nonMono = `${t.label}${sec}秒 ¥${g} < ¥${prev}`;
+            prev = g;
         }
     }
-    check('まとめ買いの差は段と尺によらず一定', true, `¥${bundle.toLocaleString('en-US')}`);
+    check('まとめ買いは必ず安い（最低 base − perExtra）', !bad, bad || `最低 ¥${floorGap.toLocaleString('en-US')}`);
+    check('まとめ買いの差は尺が長いほど縮まらない', !nonMono, nonMono || `梅15秒 ¥${gap(TIERS[0], 15).toLocaleString('en-US')} → 梅90秒 ¥${gap(TIERS[0], 90).toLocaleString('en-US')}`);
 }
 
 /* ---- 「3日」を納期と読ませない（2026-09-26） ----
@@ -1076,7 +1132,7 @@ check('タイトルの「最短2週間」が実態と合う',
    段で秒単価が変わるのに「1秒あたり ¥3,500」と書いてあると嘘になる */
 const why = await (await open(browser, { page: 'pricing.html' })).locator('.calc-why').innerText();
 check('内訳の秒単価が段の幅で書いてある',
-    why.includes(`¥${TIERS[0].perSec.toLocaleString('en-US')}〜${TIERS[2].perSec.toLocaleString('en-US')}`) && /仕上げの段階/.test(why), why.split('\n').find(l => l.includes('1秒')) || '');
+    why.includes(`¥${Math.min(...TIERS.flatMap((t) => t.rates)).toLocaleString('en-US')}〜${Math.max(...TIERS.flatMap((t) => t.rates)).toLocaleString('en-US')}`) && /仕上げの段階/.test(why), why.split('\n').find(l => l.includes('1秒')) || '');
 check('制作にかかる日数が何で変わるか書いてある',
     /尺と仕上げの段階によって前後します/.test(await page.locator('#process').innerText()));
 
@@ -1382,7 +1438,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
                 rows.length >= 3 && rows.every((m) => {
                     const cells = [...m[2].matchAll(/<td>([^<]*)<\/td>/g)].map((x) => x[1]);
                     return TIERS.every((t, i) => cells[i]
-                        === `¥${(PRICE.base + t.perSec * S[m[1]]).toLocaleString('ja-JP')}`);
+                        === `¥${listPrice(t, S[m[1]]).toLocaleString('ja-JP')}`);
                 }), `${rows.length}段`);
             check(`works の ${gid} がナレーション込みだと書いている`,
                 /梅・竹はAIナレーション、松は人に読んでもらうぶん1名が含まれた額です/.test(body));
@@ -1442,7 +1498,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
                     rows.length >= 3 && rows.every((m) => {
                         const cells = [...m[2].matchAll(/<td>([^<]*)<\/td>/g)].map((x) => x[1]);
                         return TIERS.every((t, i) => cells[i]
-                            === `¥${(PRICE.base + t.perSec * S[m[1]]).toLocaleString('ja-JP')}`);
+                            === `¥${listPrice(t, S[m[1]]).toLocaleString('ja-JP')}`);
                     }), `${rows.length}段`);
             }
         }
@@ -1604,11 +1660,16 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     for (let m = 0; m <= 11; m++) {
         check(`収支の表に M+${m} がある（毎月ぶん）`, new RegExp(`M\\+${m}\\b`).test(t));
     }
-    check('84万固定が保守側だと明記している',
-        /84\.0万（P1のペース）で固定した【保守側】/.test(t)
-        && /年商 ¥14,760,000 の半分以下/.test(t));
+    check('保守側の固定ペースが P1 と一致している',
+        new RegExp(`${(PLAN.P1 / 10000).toFixed(1)}万（P1のペース）で固定した【保守側】`).test(t)
+        && t.includes(`年商 ${yj(PLAN.sales)} の半分以下`),
+        `${(PLAN.P1 / 10000).toFixed(1)}万 / ${yj(PLAN.sales)}`);
+    /* 段階どおり（P1→P2→P3 で尺を伸ばす）に置き直した手元。
+       制作の翌月に入金・P1 が M+3〜5 の制作、という前提で積んだ別系列で、
+       上の cash（M+4 以降を P1 で固定した保守側）とは違う。
+       2026-10-13 の料金改定で 695.5／959.0 → 646.4／893.5 */
     check('段階どおりに置き直した値も書いてある',
-        /695.5万/.test(t) && /959.0万/.test(t));
+        /646.4万/.test(t) && /893.5万/.test(t));
     check('どちらの表をいつ見るかを書いている',
         /計画の達成度を見るときは下の段階の表、資金が尽きないかを見るときはこの表/.test(t));
 
@@ -1666,8 +1727,8 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         /−28\.2万から始まる/.test(t) && /完済してから開業する/.test(t));
     check('開業できる額が図にある', /完済して開業 41\.9万/.test(t));
     check('底が図にある', /底 21.9万/.test(t));
-    check('12ヶ月目の実額が図にある', /731.0万/.test(t));
-    check('年金が通った場合の12ヶ月目も出ている', /1028.3万/.test(t));
+    check('12ヶ月目の実額が図にある', /695.5万/.test(t));
+    check('年金が通った場合の12ヶ月目も出ている', /992.8万/.test(t));
     /* 再就職手当がいつ入るかで底が変わる。保守側に置いたことを明記する */
     /* 2026-10-02：振込時期は人によって違うので聞いても分からない、と本人から。
        1点で置かず【範囲】で書く。M+4 以降にずれても底は下がらない
@@ -1757,9 +1818,9 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         await rm.mouse.move(box.x + box.width * 0.9, box.y + box.height * 0.4);
         const after = await tip.innerText();
         check('なぞると数字が出る', after !== before && /実額/.test(after), after.slice(0, 40));
-        /* ラベルと値がずれていないこと。右はしは M+11＝731.0万 */
+        /* ラベルと値がずれていないこと。右はしは M+11＝695.5万（2026-10-13 の改定後） */
         check('なぞり読みのラベルと値が合っている',
-            /M\+11/.test(after) && /731\.0万/.test(after), after.slice(0, 50));
+            /M\+11/.test(after) && /695\.5万/.test(after), after.slice(0, 50));
     }
     /* ラベルは月末基準。index1 は 2026-10末（前は 2026-11 と1ヶ月ずれていた） */
     check('なぞり読みのラベルが月末基準',
@@ -2246,8 +2307,10 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     const t2 = await rc2.locator('body').innerText();
     check('時間単価が結果の数字だと書いてある',
         /目標ではなく、結果の数字/.test(t2) && /割り算/.test(t2), t2.slice(0, 40));
+    /* 年収1,000万＋ツール代・クレジット（¥702,315）を時間単価で割った時間。
+       ¥20,000/h なら535h、¥15,000/h なら713h（2026-10-13 に下限を ¥23,000→¥20,000） */
     check('値下げの判断軸が年収と時間だと書いてある',
-        /465h/.test(t2) && /713h/.test(t2));
+        /535h/.test(t2) && /713h/.test(t2));
     check('いま値下げの根拠がないと書いてある',
         /問い合わせが来ない/.test(t2) && /見積0件/.test(t2));
     await rc2.close();
@@ -2429,7 +2492,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         check('下げていい限界がモデルと合っている',
             cases.every(([id, sec]) => rec.includes(y(limit(id, sec)))),
             cases.map(([i, sc]) => limit(i, sc)).join());
-        check('尺を縮めたときの差額が合っている', rec.includes(y(TIERS[1].perSec * 30)));
+        check('尺を縮めたときの差額が合っている', rec.includes(y(secFee(TIERS[1], 90) - secFee(TIERS[1], 60))));
         check('値引きではなく構成で答える方針が書いてある',
             /値引きで答えない。構成で答える/.test(rec) && /最初の3社に限って/.test(rec));
         check('引く基準が書いてある', /引くとき/.test(rec) && /当て馬/.test(rec));
@@ -2462,8 +2525,8 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     check('ひな形に消費税の上乗せが残っていない',
         [mitsu, seikyu].every(x => !/小計（税別）/.test(x) && !/消費税（10%）/.test(x)));
     check('見積書の例がサイトの式と合っている',
-        mitsu.includes(`¥〔${(PRICE.base + TIERS[1].perSec * 60).toLocaleString('ja-JP')}〕（税込`),
-        String(PRICE.base + TIERS[1].perSec * 60));
+        mitsu.includes(`¥〔${listPrice(TIERS[1], 60).toLocaleString('ja-JP')}〕（税込`),
+        String(listPrice(TIERS[1], 60)));
     /* ひな形は1か所だけ。2か所に置いて片方だけ直すと、高いほうで出てしまう */
     check('ひな形が2か所に無い',
         !existsSync(`${ROOT}/${T}/見積書.md`) && !existsSync(`${ROOT}/${T}/請求書.md`)
@@ -2476,8 +2539,8 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         /梅2回・竹3回・松3回/.test(keiyaku) && /梅2回・竹3回・松3回/.test(mitsu));
     check('ナレーションの条件が見積書にある',
         /−¥25,000/.test(mitsu) && /¥70,000/.test(mitsu));
-    check('料金の単位がサイトと揃っている(基本料金と追加本数)',
-        mitsu.includes(`¥${(PRICE.base - PRICE.perExtra).toLocaleString('en-US')}`) && mitsu.includes(`¥${PRICE.perExtra.toLocaleString('en-US')}`));
+    check('料金の単位がサイトと揃っている(企画・構成費と追加本数)',
+        mitsu.includes(`¥${PRICE.base.toLocaleString('en-US')}`) && mitsu.includes(`¥${PRICE.perExtra.toLocaleString('en-US')}`));
     check('契約書にAI特有の免責がある',
         /著作権による保護を\s*受けない場合がある/.test(keiyaku) && /意図しない類似/.test(keiyaku));
     check('契約書に権利の帰属がある',
@@ -2517,8 +2580,14 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     check('楽曲の特約に権利・差替え・出演者・クレジットが入っている',
         ['著作隣接権', '差し替わった場合', '実在の出演者', 'クレジット']
             .every((w) => keiyaku.includes(w)));
+    /* 2026-10-07：「作成しない」は結果の約束で、守れないので
+       「似せることを指示して生成しない」に直した。生成モデルは実在の人物の
+       画像で学習しているので、指示しなくても偶然似る。似ていないことを
+       確かめる方法も無い（全人類と照合できない）。
+       ⚠️ 「作成しない」に戻さないこと。discord-groupchat/test_routing.py 側にも
+       同じ守り手がある（2026-10-13：main のこの検査だけ古い文言のままだった）。 */
     check('楽曲の特約でもAIで実在の人に似せない',
-        /実在の人物に似せた映像を生成AIで作成しない/.test(keiyaku)
+        /実在の人物に似せることを指示して映像を生成しない/.test(keiyaku)
         && /甲が実写の素材/.test(keiyaku));
     /* 条番号を繰り下げたので、重複や飛びが出ていないこと。
        10/03：枝番（第6条の2・第6条の3）を足したら、ここが「飛び」として

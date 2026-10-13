@@ -1,7 +1,7 @@
 /* 料金シミュレーター。
    「お客様にどの組み合わせを選ばせても採算が崩れない」ことの担保がここ。
    金額・工数のどれかを動かしたら必ずこれを通すこと。 */
-import { check, report, PW, open, pick, setLens, splitSec, setNar, setNarAll, narOf, matsuToNone, priceModes, hoursModes, narFee, reachableNar, reachable, maxPieces, PRICE, HOURS, TIERS, LENGTHS, price, hours, leadWeeks, RATE, MEASURED, REVISION_HOURS, CREDITS_PER_SEC } from './lib.mjs';
+import { check, report, PW, open, pick, setLens, splitSec, setNar, setNarAll, narOf, matsuToNone, priceModes, hoursModes, narFee, reachableNar, reachable, maxPieces, PRICE, HOURS, TIERS, LENGTHS, price, hours, leadWeeks, RATE, MEASURED, REVISION_HOURS, CREDITS_PER_SEC, secFee, listPrice } from './lib.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
@@ -257,8 +257,10 @@ for (const m of MEASURED) {
 }
 
 /* クレジット原価は秒単価に対して小さいこと（超えるなら秒単価に原価項を足す） */
-check('クレジット原価が梅の秒単価の 10% 未満',
-    CREDITS_PER_SEC * 7.7 < TIERS[0].perSec * 0.10, `¥${Math.round(CREDITS_PER_SEC * 7.7)}/秒 vs ¥${TIERS[0].perSec}`);
+/* 2026-10-13：秒単価が逓減になったので、いちばん安い段（梅の91秒以降）で見る */
+const CHEAPEST_SEC = Math.min(...TIERS[0].rates);
+check('クレジット原価が梅のいちばん安い秒単価の 10% 未満',
+    CREDITS_PER_SEC * 7.7 < CHEAPEST_SEC * 0.10, `¥${Math.round(CREDITS_PER_SEC * 7.7)}/秒 vs ¥${CHEAPEST_SEC}`);
 
 /* 実測できた唯一の係数。段の差（修正2/3/3回）はこれを根拠にしている */
 check('修正1往復の係数が実測と合っている', Math.abs(REVISION_HOURS - 0.62) < 0.05,
@@ -311,7 +313,7 @@ check('ナレーションの工数は1本 1.0h（AI・人で同じ）', HOURS_NA
     const expectInv = [];
     for (const sec of LENGTHS) for (let n = 1; n <= 6; n++) {
         if (sec / n < 15) continue;
-        if ((matsu.perSec - take.perSec) * sec < PRICE.narrationHuman) expectInv.push(`${sec}秒×${n}本`);
+        if (secFee(matsu, sec) - secFee(take, sec) < PRICE.narrationHuman) expectInv.push(`${sec}秒×${n}本`);
     }
     check(`竹＋人物が松を上回るのは ${expectInv.join('・') || 'なし'} だけ`,
         inverted.join(',') === expectInv.join(','), inverted.join(',') || 'なし');
@@ -524,7 +526,7 @@ for (const [t, sec] of Object.entries(presetLens)) {
         `${on} ${nar} ¥${shown}`);
     /* 公開している表の額（基本料金＋秒単価×尺）と一致すること */
     check(`プリセット(${t})が料金表と同じ額`,
-        shown === PRICE.base + tier.perSec * sec, `¥${shown}`);
+        shown === listPrice(tier, sec), `¥${shown}`);
 }
 
 /* 会社紹介のプリセットは、company-video.html に載せているサンプル
@@ -559,10 +561,10 @@ check('本文に選んだ内容が入る',
     && new RegExp(`・納品目安：約${leadWeeks(TIERS[1], 90)}週間`).test(body));
 /* 本ごとの尺は本数の行に「30/60秒」と詰めて書く。
    全角で並べると1文字9バイトになり、mailto の上限に触るため */
-check('本文に内訳も入る', body.includes(`・企画・構成費：¥${(PRICE.base - PRICE.perExtra).toLocaleString('en-US')}`)
-    && body.includes(`・制作費 2本（`)
-    && body.includes(`・尺 合計90秒 × ¥${TIERS[1].perSec.toLocaleString('en-US')}：`)
-    && /・制作費 2本（30\/60秒）：/.test(body));
+check('本文に内訳も入る', body.includes(`・企画・構成費：¥${PRICE.base.toLocaleString('en-US')}`)
+    && body.includes(`・追加の本数 1本（`)
+    && body.includes(`・尺 合計90秒：¥${secFee(TIERS[1], 90).toLocaleString('en-US')}`)
+    && /・追加の本数 1本（30\/60秒）：/.test(body));
 /* 内訳の見せ方を「企画・構成費（1案件に1回）＋ 制作費×本数」に変えた（9/29）。
    表示した内訳を足すと合計になること。内訳だけ変えて合計の式を直し忘れると、
    1本ぶん ¥100,000 高く出る（実際に一度そう書きかけた） */
@@ -573,8 +575,9 @@ for (const [t, sec, n] of [['ume', 30, 1], ['take', 90, 2], ['matsu', 180, 3]]) 
     const parts = await Promise.all(['base', 'cntfee', 'lenfee', 'narfee'].map(num));
     const total = await num('total');
     check(`内訳を足すと合計になる（${t} ${sec}秒×${n}本）`, parts.reduce((a, b) => a + b, 0) === total, `${parts.join('+')} / ${total}`);
-    check(`企画・構成費は本数によらず1回（${t} ${n}本）`, parts[0] === PRICE.base - PRICE.perExtra, String(parts[0]));
-    check(`制作費は本数ぶん（${t} ${n}本）`, parts[1] === PRICE.perExtra * n, String(parts[1]));
+    check(`企画・構成費は本数によらず1回（${t} ${n}本）`, parts[0] === PRICE.base, String(parts[0]));
+    /* 1本なら行ごと隠すので innerText が空＝0。2本目以降だけ数える */
+    check(`本数の加算は2本目以降（${t} ${n}本）`, parts[1] === PRICE.perExtra * (n - 1), String(parts[1]));
 }
 /* 尺と本数は件名と内訳にあるので、選んだ内容では繰り返さない（mailto の長さ対策） */
 check('選んだ内容で尺と本数を繰り返していない', !/・合計の尺：/.test(body) && !/・本数：2本/.test(body));

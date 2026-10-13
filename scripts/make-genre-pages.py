@@ -37,7 +37,27 @@ PRICE_NOTE = ('<p class="body-text measure" style="margin-top:14px">'
               '松で人ではなくAIにする場合も ¥25,000 引きです。'
               '<a href="pricing.html#plans">料金ページの計算機</a>で、その組み合わせの実額が出ます。</p>')
 
-BASEP, PER = 180000, {'ume': 4000, 'take': 5400, 'matsu': 8000}
+# 料金モデル。tests/lib.mjs の PRICE.base / TIERS[].rates と同じ値にすること。
+# 秒単価は「合計の尺が長いほど下がる」（2026-10-13）。
+# RATES は [最初の30秒, 31〜90秒, 91秒以降] の1秒あたり。境目は BRACKETS。
+# ⚠️ 段の倍率（梅1.0/竹1.35/松2.0）を3段すべてにかけると松の中尺が値上がりする。
+#    段ごとに個別の数字を持たせてある。
+BASEP = 100000
+BRACKETS = (30, 90)
+RATES = {'ume': (5500, 4500, 3200), 'take': (7400, 5700, 4300), 'matsu': (10500, 8000, 6400)}
+
+
+def sec_fee(t, sec):
+    """尺ぶんの料金。本ごとではなく合計秒数にかかる"""
+    segs = (min(sec, BRACKETS[0]),
+            max(0, min(sec, BRACKETS[1]) - BRACKETS[0]),
+            max(0, sec - BRACKETS[1]))
+    return sum(x * r for x, r in zip(segs, RATES[t]))
+
+
+def list_price(t, sec):
+    """表に載せる「1本・ナレーションの増減なし」の値段"""
+    return BASEP + sec_fee(t, sec)
 LAB = {15: '15秒', 30: '30秒', 60: '60秒', 90: '90秒', 180: '3分'}
 yen = lambda n: '¥' + format(n, ',')
 
@@ -45,7 +65,7 @@ yen = lambda n: '¥' + format(n, ',')
 def price_table(secs, heads):
     rows = ''.join(
         f'\n                        <tr><th scope="row">{LAB[s]}</th>'
-        + ''.join(f'<td>{yen(BASEP + PER[t] * s)}</td>' for t in ('ume', 'take', 'matsu'))
+        + ''.join(f'<td>{yen(list_price(t, s))}</td>' for t in ('ume', 'take', 'matsu'))
         + '</tr>' for s in secs)
     return f'''                <div class="compare-wrap" tabindex="0" role="region" aria-label="尺ごとの料金の表（横にスクロールできます）">
                 <table class="compare">
@@ -80,8 +100,8 @@ def build(g):
         "offers": {{
           "@type": "AggregateOffer",
           "priceCurrency": "JPY",
-          "lowPrice": "{BASEP + PER['ume'] * g['secs'][0]}",
-          "highPrice": "{BASEP + PER['matsu'] * g['secs'][-1]}",
+          "lowPrice": "{list_price('ume', g['secs'][0])}",
+          "highPrice": "{list_price('matsu', g['secs'][-1])}",
           "offerCount": "{len(g['secs']) * 3}"
         }}'''
     ld = f'''    <script type="application/ld+json">
