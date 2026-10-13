@@ -38,18 +38,24 @@ OUT = BASE / "成果物" / "書類ひな形" / "_発行済み"
 # 60秒・竹・1本・AI で サイト ¥504,000 のところ ¥384,000 と出ていた（12万円の過少見積り）。
 # 9/24 に「サイトより25,000円高い」を直したのと同じ事故の逆向き。
 # ⚠️ ここを触るときは assets/pricing.js の PRICE / TIERS と突き合わせること。サイトが正。
-#   PRICE = { base: 180000, perExtra: 100000, narrationHuman: 70000,
+#   PRICE = { base: 100000, perExtra: 80000, narrationHuman: 70000,
 #             noNarration: 25000, matsuToAi: 25000 }
-#   TIERS  perSec = 梅 4000 / 竹 5400 / 松 8000
-#   合計 = base + perSec×合計秒数 + perExtra×(本数−1) + narFee
-# 見積書の表示は base を2行に割る（サイトの内訳表示と同じ）：
-#   企画・構成費 = base − perExtra = 80,000（1案件に1回）
-#   制作費       = perExtra × 本数 = 100,000×本数
-# 足すと base + perExtra×(本数−1) になり、合計は変わらない。
-PRICE_BASE = 180000                 # サイトの PRICE.base
-PLAN_FEE = 80000                    # 企画・構成費（= base − perExtra）。表示用
-PER_SEC = {"梅": 4000, "竹": 5400, "松": 8000}
-EXTRA_CUT = 100000                  # サイトの PRICE.perExtra。制作費1本ぶんでもある
+#   TIERS  rates = [最初の30秒, 31〜90秒, 91秒以降] の1秒あたり
+#   合計 = base + 尺ぶん(合計秒数) + perExtra×(本数−1) + narFee
+#
+# 2026-10-13：秒単価を「合計の尺が長いほど下がる」形にした。
+#   ⚠️ 逓減は **合計秒数**（1本の尺 × 本数）にかかる。1本ごとに区切ってはいけない。
+#   ⚠️ 段の倍率を3段すべてにかけると松の中尺が値上がりする。段ごとに個別の数字。
+#   見積書の内訳は、該当する段だけを行に分けて見せる（数量割引の形）。
+# 見積書の表示（サイトの内訳表示と同じ）：
+#   企画・構成費 = base = 100,000（1案件に1回）
+#   追加の本数   = perExtra × (本数−1) = 80,000×(本数−1)。1本なら行を出さない
+PRICE_BASE = 100000                 # サイトの PRICE.base
+PLAN_FEE = PRICE_BASE               # 企画・構成費（＝ base そのもの）。表示用
+BRACKETS = (30, 90)                 # 逓減の境目（合計秒数）
+BR_LABEL = ("最初の30秒", "31〜90秒", "91秒以降")
+RATES = {"梅": (5500, 4500, 3200), "竹": (7400, 5700, 4300), "松": (10500, 8000, 6400)}
+EXTRA_CUT = 80000                   # サイトの PRICE.perExtra。2本目以降の1本ぶん
 NARRATION_HUMAN = 70000
 NO_NARRATION = 25000
 MATSU_TO_AI = 25000                 # 松に込みの「ナレーター手配1回ぶん」を返す額
@@ -99,6 +105,13 @@ def lead_time(tier, sec, count, nar):
     return f"約{weeks}週間"
 
 
+def segments(sec):
+    """合計 sec 秒を3段に割った秒数。[最初の30秒, 31〜90秒, 91秒以降]"""
+    return (min(sec, BRACKETS[0]),
+            max(0, min(sec, BRACKETS[1]) - BRACKETS[0]),
+            max(0, sec - BRACKETS[1]))
+
+
 def calc(tier, sec, count, nar):
     """内訳の行と合計を返す。nar は ai / human / none。"""
     rows, total = [], 0
@@ -106,14 +119,22 @@ def calc(tier, sec, count, nar):
     # 企画・構成費は1案件に1回、制作費は本数ぶん。足すと base + perExtra×(本数−1)。
     rows.append(("企画・構成費", "ヒアリング・企画・進行管理（1案件に1回）", PLAN_FEE))
     total += PLAN_FEE
-    make = EXTRA_CUT * count
-    rows.append(("制作費",
-                 f"{count}本 × ¥{yen(EXTRA_CUT)}"
-                 f"（1本ごとの構成案・絵コンテ・ご確認・書き出し）", make))
-    total += make
-    body = PER_SEC[tier] * sec * count
-    rows.append(("尺", f"{sec}秒 × {count}本 × ¥{yen(PER_SEC[tier])}（{tier}）", body))
-    total += body
+    if count > 1:
+        make = EXTRA_CUT * (count - 1)
+        rows.append(("追加の本数",
+                     f"{count - 1}本 × ¥{yen(EXTRA_CUT)}"
+                     f"（2本目以降。その本の構成案・絵コンテ・ご確認・書き出し）", make))
+        total += make
+    # 尺は合計秒数に対して逓減する。該当した段だけを行に分けて出す
+    # （「60秒 × ¥5,400」と1つの単価で書くと嘘になる）
+    for n_sec, label, rate in zip(segments(sec * count), BR_LABEL, RATES[tier]):
+        if n_sec <= 0:
+            continue
+        fee = n_sec * rate
+        rows.append((f"尺（{label}）",
+                     f"{n_sec}秒 × ¥{yen(rate)}（{tier}）"
+                     + (f"／合計 {sec}秒 × {count}本" if count > 1 else ""), fee))
+        total += fee
     # ナレーション調整。サイトの計算機（assets/pricing.js の narFee）と同じ形にする。
     # 「段による手配ぶん」と「入れない本のぶん」は別勘定で、両方乗ることがある。
     if tier == "松":
@@ -182,7 +203,7 @@ def main(argv=None):
                              "業務委託契約書", "秘密保持契約書"])
     ap.add_argument("--to", required=True, help="宛先（御中は自動で付きます）")
     ap.add_argument("--title", default="", help="件名")
-    ap.add_argument("--tier", default="竹", choices=list(PER_SEC))
+    ap.add_argument("--tier", default="竹", choices=list(RATES))
     ap.add_argument("--sec", type=int, default=60)
     ap.add_argument("--count", type=int, default=1)
     ap.add_argument("--nar", default="ai", choices=["ai", "human", "none"])
