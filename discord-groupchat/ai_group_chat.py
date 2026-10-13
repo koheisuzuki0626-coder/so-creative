@@ -7011,9 +7011,67 @@ _LEAD_GEN_MIN_SEC = int(os.getenv("TREND_LEAD_GEN_MIN_SEC", "120"))
 #  なっていた）。15秒のCMを見たい時は、検索語のほうで指定する。
 TREND_MIN_SECONDS = int(os.getenv("TREND_MIN_SECONDS", "30"))
 
+# ジャンルによっては「短い」が正しい姿（2026-10-13）。
+# 30秒の線は企業VP・MVのために入れたもので、SNS広告（縦型）は
+# **納品物そのものが6〜15秒**なので、同じ線で切ると本物だけが消える。
+#
+# 実測（2026-10-13・同じ検索語で線だけ変えた）：
+#   30秒 → 候補21本／題名が当たり18本
+#    8秒 → 候補40本／題名が当たり34本
+# 落ちていた27本は「SNS用縦型広告 制作実績」「【制作事例】SNS用縦型動画告知型広告」
+# のような**ど真ん中の制作事例**で、しかも 分析済みID に入らないので
+# 毎回まるごと捨てられていた（候補が 29→23→21→19→16→13 と枯れ、
+# 2026-10-13 に当たり0本になった原因）。
+#
+# ⚠️ 全体のしきい値を下げてはいけない。2026-09-23 に #shorts の切り抜きが
+#    企業VPのお題で選ばれ、分析が当たり障りのないものになった事故が戻る。
+_GENRE_SHORT_RE = re.compile(
+    r"SNS|縦型|ショート|shorts?|tiktok|リール|reels?|インスタ|instagram", re.I)
+_GENRE_MIN_SEC = ((_GENRE_SHORT_RE, 8),)
 
-def _not_promo_reason(v):
+
+def _min_seconds(query):
+    """このお題で「短すぎる」と見なす秒数。既定は TREND_MIN_SECONDS。"""
+    for pat, sec in _GENRE_MIN_SEC:
+        if pat.search(query or ""):
+            return sec
+    return TREND_MIN_SECONDS
+
+
+# 同じジャンルでは「制作サンプル」「#shorts」が実物そのもの（2026-10-13）。
+# 縦型広告は shorts として上がるのが普通で、制作会社は「制作サンプル」
+# 「サンプル動画」という題名で出す。他のジャンルでは落として正しいので、
+# 免除はお題で切り替える。
+# ⚠️ 免除していいのは【どのジャンルの実物か】で決まるラベルだけ。
+#    「集客のノウハウ解説」は**どのお題でも免除しない**。
+#    2026-10-01（C6）に「題名にお題の語があればノウハウ解説として落とさない」
+#    という免除を入れかけて、実測で有害だった（免除で助かる4本が全部 off で、
+#    実物は1本も救っていない。制作会社の集客動画は、お題の語を題名に
+#    入れてくるのが普通だった）。上の【お題の語での免除は入れない】がそれ。
+#    ここで入れているのは別物で、**お題の語を題名と照合しない**。
+#    「このジャンルでは #shorts と『制作サンプル』が実物そのもの」という、
+#    ジャンルの性質だけで決まる固定のラベルを外しているだけ。
+_PROMO_NEVER_EXEMPT = frozenset({"集客のノウハウ解説"})
+_GENRE_PROMO_EXEMPT = ((_GENRE_SHORT_RE,
+                        frozenset({"サンプル・見本そのもの", "ショート動画"})),)
+
+
+def _promo_exempt(query):
+    """このお題では「制作事例でない」と見なさないラベル。
+
+    _PROMO_NEVER_EXEMPT は必ず落とす（表に書き足しても効かない）。
+    """
+    for pat, labels in _GENRE_PROMO_EXEMPT:
+        if pat.search(query or ""):
+            return frozenset(labels) - _PROMO_NEVER_EXEMPT
+    return frozenset()
+
+
+def _not_promo_reason(v, exempt=frozenset()):
     """プロモーションビデオでないと判断できる場合、その理由を返す。
+
+    exempt … そのお題では落とさないラベル（_promo_exempt）。
+    既定は空なので、引数を省いた呼び出しの挙動は変わらない。
 
     タイトルだけを見る。説明文まで見ると、本物の企業VPの概要欄にある
     「制作：〇〇（お仕事のご依頼はこちら）」で誤爆する（説明文を見る
@@ -7021,6 +7079,8 @@ def _not_promo_reason(v):
     """
     title = str(v.get("title") or "")
     for label, pat in _NOT_PROMO_PATTERNS:
+        if label in exempt and label not in _PROMO_NEVER_EXEMPT:
+            continue
         if pat.search(title):
             return label
     # 集客のノウハウ解説は、語だけでは実物と分かれないので尺との∧で見る
@@ -7301,11 +7361,13 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
         skip_analyzed = True
     analyzed = _load_analyzed_ids() if skip_analyzed else set()
 
+    _min_sec = _min_seconds(query)
+
     def _pick(skip):
         seen = analyzed if skip else set()
         return [v for v in videos
                 if v["id"] not in seen
-                and TREND_MIN_SECONDS <= v["duration"] <= TREND_MAX_MINUTES * 60]
+                and _min_sec <= v["duration"] <= TREND_MAX_MINUTES * 60]
 
     candidates = _pick(skip_analyzed)
     # 2026-10-01（C0）：ここで落ちた本数がどこにも残っていなかった。
@@ -7315,7 +7377,7 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
     _pick_drop = {
         "既に見た": sum(1 for v in videos if skip_analyzed and v["id"] in analyzed),
         "尺が短い": sum(1 for v in videos
-                     if v["duration"] < TREND_MIN_SECONDS),
+                     if v["duration"] < _min_sec),
         "尺が長い": sum(1 for v in videos
                      if v["duration"] > TREND_MAX_MINUTES * 60),
     }
@@ -7335,7 +7397,8 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
     _drop_why = {}
     _kept = []
     for v in candidates:
-        why = "ボイスサンプル" if _is_voice_sample(v) else _not_promo_reason(v)
+        why = ("ボイスサンプル" if _is_voice_sample(v)
+               else _not_promo_reason(v, _promo_exempt(query)))
         if why:
             _drop_why[why] = _drop_why.get(why, 0) + 1
         else:
@@ -7687,13 +7750,18 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
     _ov_head = ("## 検索結果一覧の傾向"
                 f"（未視聴・題名とチャンネル名のみ・{len(_ov_pool)}本）"
                 if query else "## トレンド概観")
+    # 既定と違う線で切ったときは、そう書く（黙って変えない。
+    # 当たり数だけ見ていると「急に増えた」理由が追えなくなる）
+    _min_note = (f"・最低尺 {_min_sec}秒（このお題は短尺が実物）"
+                 if _min_sec != TREND_MIN_SECONDS else "")
     _supply = (f"母数 {len(videos)}本 → 候補 {len(candidates)}本"
                + ("（" + " / ".join(f"{k} {n}本"
                                    for k, n in _pick_drop.items() if n) + "）"
                   if any(_pick_drop.values()) else "")
                + ("／制作事例でない: "
                   + " / ".join(f"{k} {n}本" for k, n in sorted(_drop_why.items()))
-                  if _drop_why else ""))
+                  if _drop_why else "")
+               + _min_note)
     full = [f"# YouTube{label}リサーチ {today}", "", f"視聴 {_note}", "",
             _supply, "", _ov_head, overview or "（取得失敗）"]
     if meta_analysis:
