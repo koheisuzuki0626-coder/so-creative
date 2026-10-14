@@ -13,3 +13,4 @@ STOP
 
 # APIキーの退避・バックアップ（絶対にコミットしない）
 .env.*
+.outreach_tel
