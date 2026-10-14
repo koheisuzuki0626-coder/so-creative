@@ -37,12 +37,15 @@ def run(ttf, text, fs, tracking, x0, y0=0.0):
 # ヘッダーと同じ組み方（assets/site.css）。1em = 100 で組んで、あとで viewBox に収める
 EM = 100.0
 MAIN_FS, MAIN_TRACK = EM, 0.01 * EM          # .logo font-weight 500 / letter-spacing .01em
-TAIL_FS = 0.82 * EM                          # .logo-tail font-size .82em / weight 300
+# 2026-10-14：社名「so-creative」をひとつとして組むため、大きさも太さも「so」と揃えた。
+# それまでは 0.82倍・w300 で、「so.」＋「creative」という当時の社名の関係を表していた。
+TAIL_FS = EM                                 # .logo-tail は font-size を書かず .logo から継ぐ
 TAIL_TRACK = 0.005 * TAIL_FS                 # letter-spacing は自身の font-size 基準
 TAIL_GAP = 0.04 * TAIL_FS                    # margin-left .04em（自身の font-size 基準）
 DASH_W, DASH_H = 0.30 * EM, 0.075 * EM       # .logo-dash
 DASH_MARGIN = 0.06 * EM
-DASH_LIFT = 0.30 * EM                        # transform: translateY(-.30em)
+# 2026-10-14：文字の墨の中心に合わせて -0.30em から変更（6倍で測って9px上だった）
+DASH_LIFT = 0.20 * EM                        # transform: translateY(-.20em)
 
 INK, ACCENT = '#1d1d1f', '#1c5c45'   # 2026-09-24：金から深緑へ
 
@@ -53,7 +56,7 @@ def build(ink):
     # 空の inline-flex 要素のベースラインは下マージン辺。そこから lift ぶん持ち上がる
     dash_y = -DASH_LIFT - DASH_H
     x = dash_x + DASH_W + DASH_MARGIN + TAIL_GAP
-    d_tail, x = run('inter300.ttf', 'creative', TAIL_FS, TAIL_TRACK, x)
+    d_tail, x = run('inter500.ttf', 'creative', TAIL_FS, TAIL_TRACK, x)
     x -= TAIL_TRACK
     # 上下は「so」の上端（Inter の cap height）から下端（o のオーバーシュート）まで見る
     f = TTFont('inter500.ttf'); upm = f['head'].unitsPerEm
@@ -66,9 +69,11 @@ def build(ink):
   <title>so-creative</title>
   <!-- 社名のワードマーク（2026-09-24 に so. から作り直した）。
        ヘッダー（assets/site.css の .logo / .logo-dash / .logo-tail）と同じ組み方で、
-       Inter 500 の「so」＋金色の区切り＋Inter 300 の「creative」。
+       Inter 500 の「so」＋区切り＋Inter 500 の「creative」（2026-10-14 に揃えた）。
        文字はアウトライン化してあるので、フォントが無くても同じ形で出る。
-       作り直すときは、ヘッダー側の数値（.82em / .30em / .075em / .06em / .04em）と合わせること。 -->
+       作り直すときは、ヘッダー側の数値（.30em / .075em / .06em / .04em / -.20em）と合わせること。
+       ⚠️ 動画・書類用の PNG は scripts/export-logo-png.py（ブラウザで撮る）。
+          あちらは site.css から数値を読むので、CSS を直せば自動で付いてくる。 -->
   <path fill="{ink}" d="{d_so}"/>
   <rect x="{dash_x:.2f}" y="{dash_y:.2f}" width="{DASH_W:.2f}" height="{DASH_H:.2f}" rx="1" fill="{ACCENT}"/>
   <path fill="{ink}" d="{d_tail}"/>
