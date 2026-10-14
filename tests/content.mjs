@@ -1013,6 +1013,22 @@ check('タイトルの「最短2週間」が実態と合う',
     }
 }
 
+/* ---- 実測の節（つくれる動画の説明欄）---- 
+   2026-10-13 に足したとき、生成スクリプトの2行が重複していて
+   【同じ節が2回出る】状態のまま公開されていた（翌日に発見）。
+   出力を見れば分かるのに、テストが節の有無しか見ていなかった。
+   ⚠️ 「ある」ではなく「1回だけある」を見ること。 */
+{
+    const GEN = ['service-video.html', 'ad-video.html', 'sns-video.html',
+        'exhibition-video.html', 'internal-video.html', 'animation-video.html',
+        'music-video.html'];
+    for (const f of GEN) {
+        const h = readFileSync(`${ROOT}/${f}`, 'utf8');
+        const n = (h.match(/class="section measured"/g) || []).length;
+        check(`${f} に実測の節が1つだけある`, n === 1, String(n));
+    }
+}
+
 /* ---- 定額の部分は「企画・構成費」と呼ぶ（2026-09-29） ----
    「基本料金 ¥180,000」だと、動画の前にまず18万かかるように読める。
    中身（ヒアリング・構成案・絵コンテ・進行）が名前で分かるようにした。

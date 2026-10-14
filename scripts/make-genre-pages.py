@@ -84,7 +84,6 @@ def compare_table(rows):
 
 def build(g):
     measured_section = measured(g)
-    measured_section = measured(g)
     url = f'{BASE}/{g["file"]}'
     ld_offers = '' if g.get('no_price') else f''',
         "offers": {{
@@ -208,7 +207,6 @@ def build(g):
             </div>
         </section>
 {measured_section}
-{measured_section}
 
         <section class="section">
             <div class="wrap reveal">
@@ -270,31 +268,17 @@ from genre_data import GENRES  # noqa: E402
 
 def measured(g):
     """実測の節。measured_items を持つジャンルだけ出す。
-    ⚠️ 母数が少ないジャンルには付けないこと（社内向けは12〜18本しか無い）。
-    数字を載せるのは、実際に数えた範囲に限る。"""
+    ⚠️ 母数が少ないジャンルには数字を出さないこと。公開する数字としては弱く、
+    載せると他ページの信頼まで下げる。
+
+    2026-10-13：社内向けは「社内報12本・研修18本」しか見ておらず、付けなかった。
+    2026-10-14：マニュアル動画85本が別のお題で貯まっていたので、
+    合計115本（マニュアル85・研修18・社内広報12）として付けた。本人の判断。
+    内訳をリード文に書いてあるので、聞かれても答えられる。"""
     if not g.get('measured_items'):
         return ''
     return f"""
-        <section class="section">
-            <div class="wrap reveal">
-                <h2 class="headline">{g['measured_head']}</h2>
-                <p class="body-text measure">{g['measured_lead']}</p>
-                <ul class="calc-why">
-{g['measured_items']}
-                </ul>
-            </div>
-        </section>
-"""
-
-
-def measured(g):
-    """実測の節。measured_items を持つジャンルだけ出す。
-    ⚠️ 母数が少ないジャンルには付けないこと。社内向け（社内報12本・研修18本）は
-    公開する数字としては弱く、載せると他ページの信頼まで下げる。"""
-    if not g.get('measured_items'):
-        return ''
-    return f"""
-        <section class="section">
+        <section class="section measured">
             <div class="wrap reveal">
                 <h2 class="headline">{g['measured_head']}</h2>
                 <p class="body-text measure">{g['measured_lead']}</p>
