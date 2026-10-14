@@ -54,14 +54,18 @@ JOB_LABEL_RE = re.compile(
 # 二段目。職種である必要はないが、営業文面Dの決めごとは
 # 「相手の求人を読んだ**証拠**を1行」であって「本当のこと」ではない。
 #
-# ⚠️ 2026-10-14：募集区分（新卒採用／中途採用）を一度入れて外した。本当だが、
-#   採用ページがある会社なら全部に当てはまるので【見ずに書ける】＝証拠にならない。
-#   実際に24社へ同じ1文が行く形になっていた（本人の指摘で気づいた）。
-#   判定の基準は「本当か」ではなく「相手のサイトを見ずに書けるか」。
+# 基準は本人が決めた：「見ずに書いても、拾った1語があるならいい」（2026-10-14）。
+#   ＝相手のページから実際に拾った語が入っていること。これだと募集区分は通り、
+#   何も拾っていない「採用ページを拝見しました」だけが落ちる。
+#   ⚠️ 強い順に落とすこと。同じ会社に弱い1行を当ててはいけない。
+#      ①募集職種（見ないと書けない・1社専用になりやすい）
+#      ②社員インタビューの見出し（載せていない会社も多い・商品に直結する）
+#      ③募集区分（拾った語ではあるが、採用ページがある会社なら全部に当てはまる）
 #
 # 社員インタビューは、載せていない会社も多いので見ないと書けない。
 # しかも商品に直結する（撮影せずに、ある文章を映像の構成にできる）。
 # 相手の見出しの言葉をそのまま使うので、文も1通りにならない。
+KUBUN_RE = re.compile(r"(新卒採用|中途採用|キャリア採用|第二新卒|通年採用)")
 VOICE_RE = re.compile(
     r">\s*((?:社員|先輩|スタッフ|職員|若手)(?:インタビュー|の声|紹介|を知る)|"
     r"働く(?:人|仲間|社員)|インタビュー)\s*<")
@@ -218,16 +222,22 @@ def draft(c, pages):
             jobs.append(j)
     if not jobs:
         # 二段目：社員インタビュー。トップを除いた＝採用ページ以降だけを見る
+        has_rec = len(c.get("checked_urls") or []) > 1
         voice = VOICE_RE.findall(" ".join(pages[1:]))
-        if voice and len(c.get("checked_urls") or []) > 1:
+        if voice and has_rec:
             line = f"採用ページの{voice[0]}を拝見しました。"
-            return {"insert": line, "jobs": [], "voice": voice[0],
+            return {"insert": line, "jobs": [], "voice": voice[0], "kubun": "",
                     "mail": c.get("mail_found", "")}, None
-        return None, "読んだ証拠になる1行が抜けない"
+        kubun = KUBUN_RE.findall(joined)
+        if kubun and has_rec:
+            line = f"採用ページで{kubun[0]}の募集を拝見しました。"
+            return {"insert": line, "jobs": [], "voice": "", "kubun": kubun[0],
+                    "mail": c.get("mail_found", "")}, None
+        return None, "拾える語が1つも無い"
     # 1行目：相手のページにある文字列だけで組む
     # 「正社員」「新卒採用」だけでは中身が無いので使わない。職種が抜けた会社だけ送る
     line = f"採用ページで{jobs[0]}の募集を拝見しました。"
-    return {"insert": line, "jobs": jobs[:3], "voice": "",
+    return {"insert": line, "jobs": jobs[:3], "voice": "", "kubun": "",
             "mail": mails[0] if mails else ""}, None
 
 

@@ -6,11 +6,20 @@
   ②フォームに貼る   … 差し込み文はできたが、メールを公開していない
   ③外した           … 読んだ証拠になる1行が抜けない（営業文面Dの決めごと）
 """
-import json, pathlib, sys, collections
+import json, pathlib, re, sys, collections
 
 BASE = pathlib.Path(__file__).resolve().parent.parent.parent
 OUT = BASE / "成果物" / "送り先リスト"
 RAW = OUT / "_収集"
+
+
+def atena(name):
+    """宛名を整える。読まずに送るので、崩れた社名のまま出さない。
+    実例：「(株)永誠会」「社会福祉法人石垣福祉会やしの実保育園/やしの実リトル」。"""
+    n = name.replace("(株)", "株式会社").replace("（株）", "株式会社")
+    n = n.replace("(有)", "有限会社").replace("（有）", "有限会社")
+    n = re.split(r"[/／]", n)[0].strip()      # 施設名が並記されていたら法人名まで
+    return re.sub(r"\s+", "", n)
 
 
 def main():
@@ -28,13 +37,14 @@ def main():
           f"| 送り方 | 社数 |", "|---|---|",
           f"| ①メールで送れる（読まずに送れる） | {len(mail)} |",
           f"| ②問い合わせフォームに貼る | {len(form)} |",
-          f"| ③外した（読んだ証拠になる1行が無い） | {len(drop)} |", ""]
+          f"| ③外した（拾える語が1つも無い） | {len(drop)} |", ""]
     L += ["## ① メールで送れる", "",
           "営業文面Dの〔　〕にこの文を入れてそのまま送る。", "",
           "| 会社 | 都道府県 | 送り先 | 差し込み文 | 根拠 |", "|---|---|---|---|---|"]
     for c in mail:
-        b = "社員インタビュー" if c["draft"].get("voice") else "募集職種"
-        L.append(f"| {c['name']} | {c.get('pref','')} | {c['draft']['mail']} "
+        b = ("募集職種" if c["draft"]["jobs"] else
+             "社員インタビュー" if c["draft"].get("voice") else "募集区分")
+        L.append(f"| {atena(c['name'])} | {c.get('pref','')} | {c['draft']['mail']} "
                  f"| {c['draft']['insert']} | {b} |")
     L += ["", "## ② 問い合わせフォームに貼る", "",
           "メールを公開していない会社。フォームの本文欄に営業文面Dを貼り、",
@@ -42,7 +52,7 @@ def main():
           "| 会社 | 都道府県 | 差し込み文 | 採用ページ |", "|---|---|---|---|"]
     for c in form:
         u = (c.get("checked_urls") or [""])[-1]
-        L.append(f"| {c['name']} | {c.get('pref','')} | {c['draft']['insert']} | {u} |")
+        L.append(f"| {atena(c['name'])} | {c.get('pref','')} | {c['draft']['insert']} | {u} |")
     L += ["", "## ③ 外した", ""]
     for why, n in collections.Counter(c.get("skip") for c in drop).most_common():
         L.append(f"- {why}：{n}社")
