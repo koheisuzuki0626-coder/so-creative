@@ -51,6 +51,11 @@ JOB_WORDS = re.compile(
 JOB_LABEL_RE = re.compile(
     r"(?:募集職種|募集ポジション|職種名|職\s*種|募集区分)[\s：:｜|】\]]{1,3}"
     r"([^\n<>｜|、。]{2,28})")
+# 職種が抜けない会社向けの二段目。職種である必要はなく、
+# 【相手のページに実際にある・具体的で・本当のこと】であればいい（2026-10-14 本人の指摘）。
+#   ・募集区分なら48社ぶん増え、文も崩れない（実測）
+#   ・事業内容は7社しか増えないうえ「年の水栓メーカー」のように壊れたので使わない
+KUBUN_RE = re.compile(r"(新卒採用|中途採用|キャリア採用|第二新卒|通年採用)")
 JOB_NG = re.compile(r"です|ます|ください|ご希望|方は|について|こちら|される|以下|下記|"
                     r"募集|採用|応募|ページ|内容|詳細|未定|なし")
 # ⚠️ 2026-10-14：`[\w.+-]+@[\w-]+\.[\w.-]+` だと Googleフォントの
@@ -75,12 +80,23 @@ MAIL_GENERIC = re.compile(r"^(info|inquiry|contact|mail|office|soumu|somu|jinji|
 #   それ以外の会社ドメインは、誰か別の会社のものなので採らない。
 MAIL_ISP = re.compile(
     r"@(?:[\w-]+\.)?(?:ocn\.ne\.jp|nifty\.com|plala\.or\.jp|biglobe\.ne\.jp|"
-    r"so-net\.ne\.jp|wakwak\.com|ybb\.ne\.jp|yahoo\.co\.jp|gmail\.com|"
-    r"outlook\.jp|icloud\.com|dion\.ne\.jp|cometweb\.ne\.jp|canvas\.ne\.jp|"
+    r"so-net\.ne\.jp|wakwak\.com|ybb\.ne\.jp|"
+    r"dion\.ne\.jp|cometweb\.ne\.jp|canvas\.ne\.jp|"
     r"enjoy\.ne\.jp|topaz\.ne\.jp|themis\.ocn\.ne\.jp|gaea\.ocn\.ne\.jp)$", re.I)
 # 本人でないと分かっているもの
-MAIL_NEVER = re.compile(r"@(?:test\.|example\.)|\.lg\.jp$|\.go\.jp$|"
-                        r"@(?:pref|city)\.", re.I)
+# ⚠️ 2026-10-14・47社を目で見て足した。どれも「ページに在った」が送り先ではない。
+#   taro@／tarou@ はフォームの記入例（山田太郎）。1〜2文字は切れ残り。
+#   security@・webmaster@ は技術担当で、営業を送る先ではない。
+#   gmail・yahoo は、独自ドメインを持つ会社のページに在っても他人のものの疑いが強い
+#   （実例：clbdemisodo02@gmail.com）。プロバイダのアドレス（ocn等）は中小企業の
+#   自社用なので残す。
+MAIL_NEVER = re.compile(
+    r"@(?:test\.|example\.)|\.lg\.jp$|\.go\.jp$|@(?:pref|city)\.|"
+    r"^(?:taro|tarou|tarow|yamada|hanako|sample|dummy|aaa+|xxx+|abc)[._\d-]*@|"
+    r"[._-](?:taro|tarou|yamada|hanako)[._\d-]*@|"
+    r"^(?:security|webmaster|postmaster|abuse|admin|root|hostmaster|noc)@|"
+    r"^.{1,2}@|"
+    r"@(?:gmail|yahoo|outlook|hotmail|icloud|aol|protonmail)\.", re.I)
 
 
 def site_host(url):
@@ -192,11 +208,17 @@ def draft(c, pages):
         if j not in jobs:
             jobs.append(j)
     if not jobs:
-        return None, "募集職種が抜けない"
+        # 二段目：募集区分。「採用ページで」と書くので、採用ページを実際に見た会社だけ
+        kubun = KUBUN_RE.findall(joined)
+        if kubun and len(c.get("checked_urls") or []) > 1:
+            line = f"採用ページで{kubun[0]}の募集を拝見しました。"
+            return {"insert": line, "jobs": [], "kubun": kubun[0],
+                    "mail": c.get("mail_found", "")}, None
+        return None, "募集職種も募集区分も抜けない"
     # 1行目：相手のページにある文字列だけで組む
     # 「正社員」「新卒採用」だけでは中身が無いので使わない。職種が抜けた会社だけ送る
     line = f"採用ページで{jobs[0]}の募集を拝見しました。"
-    return {"insert": line, "jobs": jobs[:3],
+    return {"insert": line, "jobs": jobs[:3], "kubun": "",
             "mail": mails[0] if mails else ""}, None
 
 
