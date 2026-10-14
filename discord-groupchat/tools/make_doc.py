@@ -43,18 +43,12 @@ OUT = BASE / "成果物" / "書類ひな形" / "_発行済み"
 #   TIERS  rates = [最初の30秒, 31〜90秒, 91秒以降] の1秒あたり
 #   合計 = base + 尺ぶん(合計秒数) + perExtra×(本数−1) + narFee
 #
-# 2026-10-13：秒単価を「合計の尺が長いほど下がる」形にした。
-#   ⚠️ 逓減は **合計秒数**（1本の尺 × 本数）にかかる。1本ごとに区切ってはいけない。
-#   ⚠️ 段の倍率を3段すべてにかけると松の中尺が値上がりする。段ごとに個別の数字。
-#   見積書の内訳は、該当する段だけを行に分けて見せる（数量割引の形）。
-# 見積書の表示（サイトの内訳表示と同じ）：
-#   企画・構成費 = base = 100,000（1案件に1回）
-#   追加の本数   = perExtra × (本数−1) = 80,000×(本数−1)。1本なら行を出さない
-PRICE_BASE = 100000                 # サイトの PRICE.base
+# 2026-10-14：秒単価は段ごとに1つ（2026-10-13 の3段の逓減は、お客様から見て
+#   分かりにくかったので戻した）。短尺を下げるのは定額の部分で達成している。
+#   ⚠️ 秒単価を上げて定額を下げる形にしないこと。複数本×長尺で値上がりする。
+PRICE_BASE = 120000                 # サイトの PRICE.base
 PLAN_FEE = PRICE_BASE               # 企画・構成費（＝ base そのもの）。表示用
-BRACKETS = (30, 90)                 # 逓減の境目（合計秒数）
-BR_LABEL = ("最初の30秒", "31〜90秒", "91秒以降")
-RATES = {"梅": (5500, 4500, 3200), "竹": (7400, 5700, 4300), "松": (10500, 8000, 6400)}
+PER_SEC = {"梅": 4000, "竹": 5400, "松": 8000}
 EXTRA_CUT = 80000                   # サイトの PRICE.perExtra。2本目以降の1本ぶん
 NARRATION_HUMAN = 70000
 NO_NARRATION = 25000
@@ -105,13 +99,6 @@ def lead_time(tier, sec, count, nar):
     return f"約{weeks}週間"
 
 
-def segments(sec):
-    """合計 sec 秒を3段に割った秒数。[最初の30秒, 31〜90秒, 91秒以降]"""
-    return (min(sec, BRACKETS[0]),
-            max(0, min(sec, BRACKETS[1]) - BRACKETS[0]),
-            max(0, sec - BRACKETS[1]))
-
-
 def calc(tier, sec, count, nar):
     """内訳の行と合計を返す。nar は ai / human / none。"""
     rows, total = [], 0
@@ -125,25 +112,11 @@ def calc(tier, sec, count, nar):
                      f"{count - 1}本 × ¥{yen(EXTRA_CUT)}"
                      f"（2本目以降。その本の構成案・絵コンテ・ご確認・書き出し）", make))
         total += make
-    # 尺は合計秒数に対して逓減する。
-    # 2026-10-14：段ごとに【金額の行を分けて】出していたが、お客様から見ると
-    # 「なんで尺が2行あるのか」が分からない（本人の指摘）。金額は1行にまとめ、
-    # 段の内訳は小さく添える。合計は変わらない。
-    # ⚠️ 「60秒 × ¥5,400」のように1つの単価では書かないこと。嘘になる。
-    segs = [(n, lab, r) for n, lab, r
-            in zip(segments(sec * count), BR_LABEL, RATES[tier]) if n > 0]
-    len_fee = sum(n * r for n, _, r in segs)
+    # 尺は合計秒数にかかる（本ごとではない）。秒単価は段ごとに1つ
     total_sec = sec * count
     head = f"{sec}秒" if count == 1 else f"合計{total_sec}秒（{sec}秒 × {count}本）"
-    if len(segs) == 1:
-        # 1段だけなら、分ける意味が無いので単価をそのまま書く
-        detail = f"{head} × ¥{yen(segs[0][2])}（{tier}）"
-    else:
-        inner = " ／ ".join(f"{lab} ¥{yen(r)}" for _, lab, r in segs)
-        detail = (f"{head}（{tier}）"
-                  f'<br><span class="sub">{inner}'
-                  "　／　長くなるほど1秒あたりは下がります</span>")
-    rows.append(("尺", detail, len_fee))
+    len_fee = PER_SEC[tier] * total_sec
+    rows.append(("尺", f"{head} × ¥{yen(PER_SEC[tier])}（{tier}）", len_fee))
     total += len_fee
     # ナレーション調整。サイトの計算機（assets/pricing.js の narFee）と同じ形にする。
     # 「段による手配ぶん」と「入れない本のぶん」は別勘定で、両方乗ることがある。

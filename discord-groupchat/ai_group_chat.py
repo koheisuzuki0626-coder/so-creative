@@ -7111,15 +7111,11 @@ def _is_voice_sample(v):
 # 全部【安いまま】出ていた（60秒・竹・AI でサイト ¥504,000 のところ ¥384,000）。
 # 同日に tools/make_doc.py も同じズレが見つかって直している。
 # ⚠️ 触るときは assets/pricing.js の PRICE / TIERS が正。写し元は1か所だけにする。
-# 2026-10-13：秒単価を「合計の尺が長いほど下がる」形にした。
-# ⚠️ 逓減は **合計秒数**（1本の尺 × 本数）にかかる。1本ごとに区切ってはいけない。
-# ⚠️ 段の倍率を3段すべてにかけると松の中尺が値上がりする。段ごとに個別の数字。
-PRICE_BASE = 100000                 # サイトの PRICE.base
-PRICE_BRACKETS = (30, 90)           # 逓減の境目（合計秒数）
-PRICE_RATES = {"梅": (5500, 4500, 3200),   # [最初の30秒, 31〜90秒, 91秒以降]
-               "竹": (7400, 5700, 4300),
-               "松": (10500, 8000, 6400)}
-PRICE_PER_SEC = PRICE_RATES         # 段の名前の検査に使っている（互換）
+# 2026-10-14：秒単価は段ごとに1つ（2026-10-13 の3段の逓減は戻した）。
+# 短尺を下げるのは定額の部分で達成している（¥180,000 → ¥120,000）。
+# ⚠️ 秒単価を上げて定額を下げる形にしないこと。複数本×長尺で値上がりする。
+PRICE_BASE = 120000                 # サイトの PRICE.base
+PRICE_PER_SEC = {"梅": 4000, "竹": 5400, "松": 8000}
 PRICE_EXTRA_CUT = 80000             # サイトの PRICE.perExtra（2本目以降）
 PRICE_NARRATION_HUMAN = 70000       # 人物ナレーション（梅・竹。何本に入れても1名ぶん）
 PRICE_NO_NARRATION = 25000          # ナレーションを入れない本は1本につき引く
@@ -7143,9 +7139,8 @@ HOURS_MEASURED = 11.5 / 74          # 実測：本編59秒＋15秒版＝74秒で
 # _quote_text（計算）だけ 2026-10-04 に直して、こちらを直し忘れたため、
 # 金額の行は正しいのに、AI が文章で語る値段は古いという状態だった。
 MY_PRICING_NOTE = (
-    "【自分の値段】企画・構成費10万円（1案件に1回）、2本目以降＋8万円。"
-    "秒単価は合計の尺が長いほど下がり、最初の30秒／31〜90秒／91秒以降で "
-    "梅5,500／4,500／3,200円、竹7,400／5,700／4,300円、松10,500／8,000／6,400円。"
+    "【自分の値段】企画・構成費12万円（1案件に1回）、2本目以降＋8万円。"
+    "秒単価 梅4,000／竹5,400／松8,000円。"
     "人物ナレーション＋7万円（何本に入れても1名ぶん。"
     "松は秒単価に1名ぶんが込みで＋0円、使わないなら−2.5万円）、"
     "ナレーションを入れない本は1本につき−2.5万円、AIナレーションは料金に込み。"
@@ -7181,12 +7176,8 @@ def _quote_text(sec, tier, count=1, nar="ai"):
         nar_fee = PRICE_NARRATION_HUMAN if nar == "human" else 0
     if nar == "none":
         nar_fee -= PRICE_NO_NARRATION * count
-    total_sec = sec * count
-    segs = (min(total_sec, PRICE_BRACKETS[0]),
-            max(0, min(total_sec, PRICE_BRACKETS[1]) - PRICE_BRACKETS[0]),
-            max(0, total_sec - PRICE_BRACKETS[1]))
-    body = sum(n * r for n, r in zip(segs, PRICE_RATES[tier]))
-    yen = PRICE_BASE + body + PRICE_EXTRA_CUT * (count - 1) + nar_fee
+    yen = (PRICE_BASE + PRICE_PER_SEC[tier] * sec * count
+           + PRICE_EXTRA_CUT * (count - 1) + nar_fee)
     # ナレーションの工数は「入れた本の数」。松で人物を使う時だけ、
     # 秒単価に溶けている1本ぶんを引く（ここを引かないと 60秒松の 15.2h が動く）。
     tracks = 0 if nar == "none" else count - (1 if tier == "松" and nar == "human" else 0)
