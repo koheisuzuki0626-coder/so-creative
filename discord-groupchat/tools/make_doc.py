@@ -125,16 +125,26 @@ def calc(tier, sec, count, nar):
                      f"{count - 1}本 × ¥{yen(EXTRA_CUT)}"
                      f"（2本目以降。その本の構成案・絵コンテ・ご確認・書き出し）", make))
         total += make
-    # 尺は合計秒数に対して逓減する。該当した段だけを行に分けて出す
-    # （「60秒 × ¥5,400」と1つの単価で書くと嘘になる）
-    for n_sec, label, rate in zip(segments(sec * count), BR_LABEL, RATES[tier]):
-        if n_sec <= 0:
-            continue
-        fee = n_sec * rate
-        rows.append((f"尺（{label}）",
-                     f"{n_sec}秒 × ¥{yen(rate)}（{tier}）"
-                     + (f"／合計 {sec}秒 × {count}本" if count > 1 else ""), fee))
-        total += fee
+    # 尺は合計秒数に対して逓減する。
+    # 2026-10-14：段ごとに【金額の行を分けて】出していたが、お客様から見ると
+    # 「なんで尺が2行あるのか」が分からない（本人の指摘）。金額は1行にまとめ、
+    # 段の内訳は小さく添える。合計は変わらない。
+    # ⚠️ 「60秒 × ¥5,400」のように1つの単価では書かないこと。嘘になる。
+    segs = [(n, lab, r) for n, lab, r
+            in zip(segments(sec * count), BR_LABEL, RATES[tier]) if n > 0]
+    len_fee = sum(n * r for n, _, r in segs)
+    total_sec = sec * count
+    head = f"{sec}秒" if count == 1 else f"合計{total_sec}秒（{sec}秒 × {count}本）"
+    if len(segs) == 1:
+        # 1段だけなら、分ける意味が無いので単価をそのまま書く
+        detail = f"{head} × ¥{yen(segs[0][2])}（{tier}）"
+    else:
+        inner = " ／ ".join(f"{lab} ¥{yen(r)}" for _, lab, r in segs)
+        detail = (f"{head}（{tier}）"
+                  f'<br><span class="sub">{inner}'
+                  "　／　長くなるほど1秒あたりは下がります</span>")
+    rows.append(("尺", detail, len_fee))
+    total += len_fee
     # ナレーション調整。サイトの計算機（assets/pricing.js の narFee）と同じ形にする。
     # 「段による手配ぶん」と「入れない本のぶん」は別勘定で、両方乗ることがある。
     if tier == "松":

@@ -58,3 +58,8 @@ ul.notes li { margin-bottom: 4px; }
     color: #b0b0b5; margin-left: 10px; vertical-align: middle; }
 .sign .logo { width: 116px; display: block; margin: 4px 0 2px; }
 .checkbox { font-size: 9.6pt; letter-spacing: .04em; }
+
+/* 明細の中の小さな補足（尺の段の内訳など）。2026-10-14：
+   段ごとに金額の行を分けていたが、お客様には「なぜ2行あるか」が
+   分からない。金額は1行にして、内訳はここで小さく添える。 */
+.sub { font-size: 0.86em; color: #666; }
