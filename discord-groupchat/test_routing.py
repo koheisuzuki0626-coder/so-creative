@@ -6609,6 +6609,24 @@ def run():
     _music_p = _docs / "_書式" / "_楽曲特約.html"
     check("契約書のMarkdownと書式が両方ある",
           _md_p.exists() and _html_p.exists() and _music_p.exists(), True)
+
+    # 書類のレターヘッド。2026-10-14 にロゴを直したとき、サイトだけ直して
+    # ここを忘れると【お客様に出すPDFだけ古いロゴ】になる。実際に
+    # logo-lockup.png は 12ファイルから参照されていて、消そうとして気づいた。
+    # 成果物/ロゴ/ が配布用の置き場で、_書式/ はPDFが実際に読む場所。
+    # 作り直すのは scripts/export-logo-png.py（site.css から数値を読む）。
+    _logo_doc = _docs / "_書式" / "logo-lockup.png"
+    _logo_dist = _plL.Path(bot.BASE_DIR).parent / "成果物" / "ロゴ" / "logo-lockup.png"
+    check("書類のレターヘッドのロゴがある", _logo_doc.exists(), True)
+    if _logo_doc.exists() and _logo_dist.exists():
+        check("書類のロゴが配布用と同じ（片方だけ古くならない）",
+              _logo_doc.read_bytes() == _logo_dist.read_bytes(), True)
+    # 動画・印刷用の書き出しが揃っていること（明るい地・暗い地・深緑 × 横組み・マーク）
+    _vid = _plL.Path(bot.BASE_DIR).parent / "成果物" / "ロゴ"
+    for _n in ("logo-lockup-on-light.png", "logo-lockup-on-dark.png",
+               "logo-lockup-accent.png", "logo-mark-on-light.png",
+               "logo-mark-on-dark.png", "logo-mark-accent.png"):
+        check(f"動画用のロゴがある: {_n}", (_vid / _n).exists(), True)
     if _md_p.exists() and _html_p.exists() and _music_p.exists():
         _md = _md_p.read_text(encoding="utf-8")
         _html = _html_p.read_text(encoding="utf-8") + _music_p.read_text(encoding="utf-8")
