@@ -575,9 +575,12 @@ check('金額の表示は税込で揃っている',
                 && /1本につき ¥25,000 を引きます/.test(html));
         }
         /* 引く額はモデルと同じであること。ここを手で打つとズレる */
+        /* 2026-10-14：松の「人物→AI」の返し（¥70,000）と、ナレーションを
+           入れない本の引き（¥25,000）は別の額になった。本文も2つに分けてある。
+           ⚠️ 1つの数字で書き直さないこと（どちらかが嘘になる）。 */
         check('引く額がモデルと合っている',
             idx.includes(`¥${PRICE.noNarration.toLocaleString('ja-JP')} を引きます`)
-            && PRICE.noNarration === PRICE.matsuToAi,
+            && idx.includes(`¥${PRICE.matsuToAi.toLocaleString('ja-JP')}</b> 引きです`),
             `${PRICE.noNarration}/${PRICE.matsuToAi}`);
 
         check('トップの料金表の金額がモデルと合っている',

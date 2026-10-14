@@ -225,17 +225,31 @@ check('上の段ほど時間単価が実質的に下がらない',
    竹がどの尺でも梅を下回るので取らなかった。¥4,400 で両方の段差が正になる。
    人に読んでもらうナレーションは除く。足す ¥70,000 が段に関係なく同じなので、
    短い尺では段の差を薄める（15〜30秒で竹が梅を約 ¥500 下回る。record.html に記載） */
+/* 2026-10-14：松の「人物→AI」の返しを ¥25,000 → ¥70,000 にした（本人の判断）。
+   「人の声は1名 ¥70,000」で梅・竹の足す額とそろえるため。
+   代償として、短い尺で松が竹を下回る組み合わせが【7通り】出る。
+   消すのではなく【一覧で固定】する——増えたらここが落ちて気づける。
+   ⚠️ この一覧を黙って増やさないこと。増えるなら matsuToAi を下げるか、
+      段の中身（登場人物3人・修正3回）で差を作ること。 */
+const TIER_INVERSION_OK = new Set([
+    '15秒×1本・ai', '15秒×1本・none',
+    '30秒×1本・ai', '30秒×1本・none',
+    '30秒×2本・ai/ai', '30秒×2本・none/ai', '30秒×2本・none/none',
+]);
 for (let i = 1; i < TIERS.length; i += 1) {
     const [below, above] = [TIERS[i - 1], TIERS[i]];
     const r = (t, c) => priceModes(t, c.sec, c.modes) / hoursModes(t, c.sec, c.modes);
     let worst = { d: Infinity, c: '' };
+    const unexpected = [];
     for (const c of reachableNar()) {
         if (c.modes.includes('human')) continue;
+        const key = `${c.sec}秒×${c.n}本・${c.modes.join('/')}`;
         const d = r(above, c) - r(below, c);
-        if (d < worst.d) worst = { d, c: `${c.sec}秒×${c.n}本・${c.modes.join('/')}` };
+        if (d < 0 && !TIER_INVERSION_OK.has(key)) unexpected.push(`${key} ${Math.round(d)}/h`);
+        if (d < worst.d) worst = { d, c: key };
     }
-    check(`どの注文でも${above.label}の時間単価が${below.label}を下回らない（人のナレーションを除く）`,
-        worst.d >= 0, `最小差 ${Math.round(worst.d)}/h @ ${worst.c}`);
+    check(`${above.label}が${below.label}を下回るのは一覧にあるものだけ（人のナレーションを除く）`,
+        unexpected.length === 0, unexpected.slice(0, 3).join(' / ') || `最小差 ${Math.round(worst.d)}/h @ ${worst.c}`);
 }
 
 /* モデルが実測より短く見積もっていないこと。
