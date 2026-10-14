@@ -14,11 +14,15 @@ import os
 
 import higgsfield_client as _hf  # 公式SDK（pip install higgsfield_client）
 
-# Higgsfield のモデルID（公式SDK実例のパス形式）。.env で上書き可能。
-IMAGE_APP = os.getenv("HIGGSFIELD_IMAGE_APP", "flux-pro/kontext/max/text-to-image")
-VIDEO_APP = os.getenv("HIGGSFIELD_VIDEO_APP", "/v1/image2video/dop")
-# モーションコントロール（参照動画の動きをキャラ画像に転写）
-MOTION_APP = os.getenv("HIGGSFIELD_MOTION_APP", "kling-video/v2.6/pro/motion-control")
+# Higgsfield のモデルID。.env で上書き可能。
+# ⚠️ 2026-10-15：既定の3つとも model_not_found になっていた（提供側で消えた）。
+#   flux-pro/kontext/max/text-to-image ／ /v1/image2video/dop ／
+#   kling-video/v2.6/pro/motion-control。残高が入っても生成できない状態だった。
+#   いまのIDは `python3 tools/hf_models.py` でカタログから引ける（86件）。
+#   ここを決め打ちで直すだけだと同じことがまた起きるので、必ずカタログで確かめる。
+IMAGE_APP = os.getenv("HIGGSFIELD_IMAGE_APP", "alibaba/qwen-image-3/text-to-image")
+VIDEO_APP = os.getenv("HIGGSFIELD_VIDEO_APP", "kling-video/v3.0/pro/image-to-video")
+MOTION_APP = os.getenv("HIGGSFIELD_MOTION_APP", "kling-video/v3/motion-control/pro")
 
 
 def _ensure_env():

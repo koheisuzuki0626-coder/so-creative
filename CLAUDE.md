@@ -577,6 +577,9 @@ GitHubへ push まで済む**ようにしてある。
 原因は2つ。ボットの生成物は一時フォルダ（`CLIP_DIR/<時刻>`）に置かれるだけで
 残らない。Higgsfieldのweb UIで作った分は手元のダウンロードに埋もれて消える。
 
+**OKテイクだけ入れる**（本人の指示）。没テイクまで上げると、どれが採用版か
+分からなくなる。出来たものは先に確認し、通ったものだけ渡すこと。
+
 ```bash
 python3 discord-groupchat/tools/keep_source.py <素材.mp4> --案件 サンプル映像 --カット "04 C1 真俯瞰"
 python3 discord-groupchat/tools/keep_source.py --台帳   # 何がどこにあるか見る
