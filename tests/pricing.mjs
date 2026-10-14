@@ -257,10 +257,9 @@ for (const m of MEASURED) {
 }
 
 /* クレジット原価は秒単価に対して小さいこと（超えるなら秒単価に原価項を足す） */
-/* 2026-10-13：秒単価が逓減になったので、いちばん安い段（梅の91秒以降）で見る */
-const CHEAPEST_SEC = Math.min(...TIERS[0].rates);
-check('クレジット原価が梅のいちばん安い秒単価の 10% 未満',
-    CREDITS_PER_SEC * 7.7 < CHEAPEST_SEC * 0.10, `¥${Math.round(CREDITS_PER_SEC * 7.7)}/秒 vs ¥${CHEAPEST_SEC}`);
+check('クレジット原価が梅の秒単価の 10% 未満',
+    CREDITS_PER_SEC * 7.7 < TIERS[0].perSec * 0.10,
+    `¥${Math.round(CREDITS_PER_SEC * 7.7)}/秒 vs ¥${TIERS[0].perSec}`);
 
 /* 実測できた唯一の係数。段の差（修正2/3/3回）はこれを根拠にしている */
 check('修正1往復の係数が実測と合っている', Math.abs(REVISION_HOURS - 0.62) < 0.05,
@@ -313,7 +312,7 @@ check('ナレーションの工数は1本 1.0h（AI・人で同じ）', HOURS_NA
     const expectInv = [];
     for (const sec of LENGTHS) for (let n = 1; n <= 6; n++) {
         if (sec / n < 15) continue;
-        if (secFee(matsu, sec) - secFee(take, sec) < PRICE.narrationHuman) expectInv.push(`${sec}秒×${n}本`);
+        if ((matsu.perSec - take.perSec) * sec < PRICE.narrationHuman) expectInv.push(`${sec}秒×${n}本`);
     }
     check(`竹＋人物が松を上回るのは ${expectInv.join('・') || 'なし'} だけ`,
         inverted.join(',') === expectInv.join(','), inverted.join(',') || 'なし');
@@ -563,7 +562,7 @@ check('本文に選んだ内容が入る',
    全角で並べると1文字9バイトになり、mailto の上限に触るため */
 check('本文に内訳も入る', body.includes(`・企画・構成費：¥${PRICE.base.toLocaleString('en-US')}`)
     && body.includes(`・追加の本数 1本（`)
-    && body.includes(`・尺 合計90秒：¥${secFee(TIERS[1], 90).toLocaleString('en-US')}`)
+    && body.includes(`・尺 合計90秒 × ¥${TIERS[1].perSec.toLocaleString('en-US')}：`)
     && /・追加の本数 1本（30\/60秒）：/.test(body));
 /* 内訳の見せ方を「企画・構成費（1案件に1回）＋ 制作費×本数」に変えた（9/29）。
    表示した内訳を足すと合計になること。内訳だけ変えて合計の式を直し忘れると、

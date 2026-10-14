@@ -55,7 +55,7 @@ const track = window.soTrack || (() => {});
            クレジット原価は 41cr/秒 ≒ ¥310/秒（追加購入単価）で、松の秒単価の5%。
            実績は納品物 2,462cr ÷ 74秒（本編59秒＋展示会用15秒）＝ 33cr/秒。
            本編の尺だけで割った 41 を安全側として採っている。 */
-        const PRICE = { base: 100000, perExtra: 80000, narrationAi: 0, narrationHuman: 70000,
+        const PRICE = { base: 120000, perExtra: 80000, narrationAi: 0, narrationHuman: 70000,
             /* AIナレーションは料金に含まれているので、使わないなら返す。梅・竹だけ。
                松は人物ナレーションが込みで、これは秒単価に溶けているので対象外。
                3万にすると梅15秒×1本だけ ¥21,429/h（目標の93.2%）で下限を割るため 2.5万 */
@@ -79,28 +79,22 @@ const track = window.soTrack || (() => {});
            解像度や書き出し形式で差をつけるのはやめた。手間が増えないものに
            価格差をつけると、値付けの根拠ではなく口実になるため */
         const TIERS = [
-            { id: 'ume', label: '梅', sub: '標準', cast: '人物なし', rates: [5500, 4500, 3200], hours: 1.0, narration: false,
+            { id: 'ume', label: '梅', sub: '標準', cast: '人物なし', perSec: 4000, hours: 1.0, narration: false,
               detail: '登場人物なし（設備・製品・空間を中心に構成） ／ AIナレーションは料金に含まれます（本ごとに選べます。入れない本は1本につき −¥25,000／人物ナレーションは1名 ¥70,000〜で、何本に入れても1名ぶん） ／ 修正2回まで ／ 1080p（フルHD）で納品',
               use: 'SNS 投稿・社内共有・製品やサービスの紹介' },
-            { id: 'take', label: '竹', sub: '上', cast: '2人まで', rates: [7400, 5700, 4300], hours: 1.22, narration: false,
+            { id: 'take', label: '竹', sub: '上', cast: '2人まで', perSec: 5400, hours: 1.22, narration: false,
               detail: '登場人物2人まで（同じ人物を最後まで同じ顔で出せます） ／ AIナレーションは料金に含まれます（本ごとに選べます。入れない本は1本につき −¥25,000／人物ナレーションは1名 ¥70,000〜で、何本に入れても1名ぶん） ／ 修正3回まで ／ 1080p（フルHD）で納品',
               use: '採用サイト・会社紹介・サービス紹介' },
-            { id: 'matsu', label: '松', sub: '特上', cast: '3人まで', rates: [10500, 8000, 6400], hours: 1.36, narration: true,
+            { id: 'matsu', label: '松', sub: '特上', cast: '3人まで', perSec: 8000, hours: 1.36, narration: true,
               detail: '登場人物3人まで（4人以上は個別にお見積り） ／ 人物ナレーション込み（1名。声を選び、話す速さまで調整します。2人目は別途お見積り／ナレーションは本ごとに選べます。どの本にも人の声を入れないなら −¥25,000、ナレーションを入れない本は1本につきさらに −¥25,000） ／ 修正3回まで ／ 1080p（フルHD）で納品',
               use: '展示会での上映・ブランド映像・じっくり見せたい会社紹介' },
         ];
-        /* 秒単価は「合計の尺が長いほど下がる」（2026-10-13）。
-           rates は [最初の30秒, 31〜90秒, 91秒以降] の1秒あたり。tests/lib.mjs と同じ値。
-           ⚠️ 段の倍率を3段すべてにかけると松の中尺が値上がりする。段ごとに個別の数字 */
-        const BRACKETS = [30, 90];
-        const BR_LABEL = ['最初の30秒', '31〜90秒', '91秒以降'];
-        const segments = (sec) => [
-            Math.min(sec, BRACKETS[0]),
-            Math.max(0, Math.min(sec, BRACKETS[1]) - BRACKETS[0]),
-            Math.max(0, sec - BRACKETS[1]),
-        ];
-        /* 尺ぶんの料金。**本ごとではなく合計秒数**にかかる（＝まとめるほど安い） */
-        const secFee = (t, sec) => segments(sec).reduce((a, x, i) => a + x * t.rates[i], 0);
+        /* 秒単価は段ごとに1つ（2026-10-14）。
+           2026-10-13 の逓減（3段）は、お客様から見て分かりにくかったので戻した。
+           短尺を下げるのは定額の部分で達成している（¥180,000 → ¥120,000）。
+           ⚠️ 秒単価を上げて定額の部分を下げる形にしないこと。複数本×長尺で値上がりする。
+           tests/lib.mjs と同じ値にすること */
+        const secFee = (t, sec) => t.perSec * sec;
         const LENGTHS = [
             { sec: 15,  label: '15秒' },
             { sec: 30,  label: '30秒' },
@@ -179,9 +173,9 @@ const track = window.soTrack || (() => {});
             </div>
             <div class="calc-out">
                 <p class="calc-out-head">お見積り</p>
-                <p class="calc-total"><span data-c="total">¥265,000</span><small>税込</small></p>
+                <p class="calc-total"><span data-c="total">¥240,000</span><small>税込</small></p>
                 <dl class="calc-break">
-                    <div><dt>企画・構成費（1案件に1回）</dt><dd data-c="base">¥100,000</dd></div>
+                    <div><dt>企画・構成費（1案件に1回）</dt><dd data-c="base">¥120,000</dd></div>
                     <div hidden><dt data-c="cnt-dt">追加の本数 0本 × ¥80,000（2本目以降）</dt><dd data-c="cntfee">¥0</dd></div>
                     <div><dt data-c="len-dt">尺</dt><dd data-c="lenfee">¥0</dd></div>
                     <div><dt data-c="nar-dt">ナレーション</dt><dd data-c="narfee">¥0</dd></div>
@@ -526,17 +520,9 @@ const track = window.soTrack || (() => {});
 
                 q('total').textContent = yen(total) + (approx ? '〜' : '');
                 q('base').textContent = yen(planFee);
-                /* 秒単価が段で変わるので、使った段だけを並べて見せる。
-                   「60秒 × ¥5,500」と1つの単価で書くと嘘になる */
-                const rateText = segments(sec)
-                    .map((x, i) => (x > 0 ? `${BR_LABEL[i]} ${x}秒 × ${yen(tier.rates[i])}` : null))
-                    .filter(Boolean).join(' ／ ');
-                /* 本ごとの尺は（）の中、秒単価の段はそのうしろ。
-                   （）の中に混ぜると「合計2分15秒（30秒×1本、…）」を読んでいる
-                   検査が落ちる（＝お客様も本数と単価が混ざって読みにくい） */
                 q('len-dt').textContent = n === 1
-                    ? `尺 ${lenLabel}／${rateText}`
-                    : `尺 合計${lenLabel}（${lensText()}）／${rateText}`;
+                    ? `尺 ${lenLabel} × ${yen(tier.perSec)}（${tier.label}）`
+                    : `尺 合計${lenLabel}（${lensText()}） × ${yen(tier.perSec)}（${tier.label}）`;
                 q('lenfee').textContent = yen(lenFee);
                 /* 1本なら加算が無いので行ごと隠す。¥0 の行を見せない */
                 q('cnt-dt').textContent = `追加の本数 ${n - 1}本 × ${yen(PRICE.perExtra)}（2本目以降）`;
@@ -566,7 +552,7 @@ const track = window.soTrack || (() => {});
                     ...(n === 1 ? [] : [`・追加の本数 ${n - 1}本（${lensJoin()}）：${yen(cntFee)}`]),
                     /* 段の名前は上の「仕上げ」にあるので繰り返さない（9/29。制作費の行を足して mailto の上限に触ったため）。
                        秒単価は段で変わるので「× ¥N」は書かない（2026-10-13） */
-                    `・尺 ${n === 1 ? lenLabel : `合計${lenLabel}`}：${yen(lenFee)}`,
+                    `・尺 ${n === 1 ? lenLabel : `合計${lenLabel}`} × ${yen(tier.perSec)}：${yen(lenFee)}`,
                     ...(!tier.narration && hasHuman() ? [`・ナレーション 人物1名：${yen(PRICE.narrationHuman)}〜`] : []),
                     /* 引きは1行にまとめる。松の人物ぶんと「なし」の本数ぶんを別の行にすると、
                        6本ぜんぶ「なし」のときに mailto の上限に触る。内訳は画面に出ている */

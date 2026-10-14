@@ -20,7 +20,7 @@ export const PW = process.env.PW || '/opt/node22/lib/node_modules/playwright/ind
    ここを書き換えるときは index.html も必ず合わせること */
 /* narrationAi は 0。AIナレーションは料金に含める（2026-09-17）。
    工数（1本 1.0h）はかかるので、時間単価はそのぶん下がる。下限は下の検査で見ている */
-export const PRICE = { base: 100000, perExtra: 80000, narrationAi: 0, narrationHuman: 70000,
+export const PRICE = { base: 120000, perExtra: 80000, narrationAi: 0, narrationHuman: 70000,
     /* AIナレーションは料金に含まれている。使わない（テロップのみ）なら返す。
        梅・竹だけ。松は人物ナレーションが込みで、これは秒単価に溶けているので対象外。
        3万にすると梅15秒×1本だけが ¥21,429/h（目標の93.2%）で下限を割る。
@@ -32,39 +32,28 @@ export const PRICE = { base: 100000, perExtra: 80000, narrationAi: 0, narrationH
 /* 松で1本だけ、ナレーションも入れない場合の引き。手配ぶん＋その1本ぶんで、
    9/19 までの −¥50,000 と同じ額になる。別の定数にすると片方だけ動くので、出して使う */
 export const matsuToNone = () => PRICE.matsuToAi + PRICE.noNarration;
-/* 秒単価は「合計の尺が長いほど下がる」（2026-10-13）。
-   rates は [最初の30秒, 31〜90秒, 91秒以降] の1秒あたり。境目は BRACKETS。
+/* 秒単価は段ごとに1つ（2026-10-14）。
+   2026-10-13 に「合計の尺が長いほど下がる」3段の逓減を入れたが、
+   お客様から見て分かりにくかった（見積書に段が2行出る／「60秒いくら？」に
+   暗算が要る）。本人の判断で1つに戻した。
 
-   それまでは段ごとに1つの秒単価（梅4,000 / 竹5,400 / 松8,000）だった。
-   相場と並べたら弱いのは**両端だけ**で、15〜30秒は相場超え、3分も上限超え、
-   主力の60〜90秒はど真ん中だった（成果物/料金改定メモ_2026-10-13.md）。
-   そこで基本料金を ¥180,000 → ¥100,000 に下げて短尺を落とし、
-   91秒以降の秒単価を下げて長尺を落とし、60〜90秒はほぼ動かさない形にした。
+   相場に合わせるのに必要だった「短尺を下げる」は、**基本料金を下げる**ことで
+   達成している（¥180,000 → ¥120,000）。秒単価は改定前のまま動かしていない。
+   こうすると固定費が全体から引かれるので、短い尺ほど効き（15秒 −25%）、
+   長い尺ほど効かない（5分 −4%）。逓減を入れなくても、短尺だけを大きく
+   下げられる。
 
-   ⚠️ 段の倍率（梅1.0 / 竹1.35 / 松2.0）を3段すべてにかけてはいけない。
-   かけると松の中尺が**値上がりする**（30秒 +2% / 60秒 +3% / 90秒 +4%）。
-   旧価格は linear なので、基本料金を下げたぶんを秒単価で埋めると
-   松ほど埋め戻しが大きくなるため。段ごとに個別の数字を持たせてある
-   （松の実効倍率は 1.91 / 1.78 / 2.00）。
-   ここを触ったら必ず tests/pricing.mjs の
-   「どの組み合わせでも旧価格を超えない」「下限を割らない」を通すこと。 */
-export const BRACKETS = [30, 90];
+   ⚠️ 秒単価を上げて基本料金を下げる形にしてはいけない。1本では値上がりが
+   無くても、複数本×長尺で上がる（実測：秒単価+200・基本¥119,000 にすると
+   9,717通りのうち 4,374件が改定前より高くなった）。
+   秒単価は据え置き、下げるのは基本料金と本数加算だけ。 */
 export const TIERS = [
-    { id: 'ume',   label: '梅', rates: [5500, 4500, 3200],  hours: 1.0,  narration: false },
-    { id: 'take',  label: '竹', rates: [7400, 5700, 4300],  hours: 1.22, narration: false },
-    { id: 'matsu', label: '松', rates: [10500, 8000, 6400], hours: 1.36, narration: true },
+    { id: 'ume',   label: '梅', perSec: 4000, hours: 1.0,  narration: false },
+    { id: 'take',  label: '竹', perSec: 5400, hours: 1.22, narration: false },
+    { id: 'matsu', label: '松', perSec: 8000, hours: 1.36, narration: true },
 ];
-/* 合計 sec 秒を3段に割った内訳。[最初の30秒, 31〜90秒, 91秒以降] の秒数 */
-export const segments = (sec) => [
-    Math.min(sec, BRACKETS[0]),
-    Math.max(0, Math.min(sec, BRACKETS[1]) - BRACKETS[0]),
-    Math.max(0, sec - BRACKETS[1]),
-];
-/* 尺ぶんの料金。**本ごとではなく合計秒数**にかかる（＝まとめるほど安い）。
-   旧 t.perSec * sec の置き換え。perSec は消した——残すと
-   書き換え漏れが NaN にならず、静かに古い値段を出すため */
-export const secFee = (t, sec) =>
-    segments(sec).reduce((a, s, i) => a + s * t.rates[i], 0);
+/* 尺ぶんの料金。**本ごとではなく合計秒数**にかかる */
+export const secFee = (t, sec) => t.perSec * sec;
 /* 表に載せる「1本・ナレーションの増減なし」の値段。
    ジャンルページの料金表や index.html の表はこれ */
 export const listPrice = (t, sec) => PRICE.base + secFee(t, sec);

@@ -987,19 +987,18 @@ check('タイトルの「最短2週間」が実態と合う',
         const h = readFileSync(`${ROOT}/${f}`, 'utf8');
         /* 旧モデルの秒単価（1つの段に1つの単価）が残っていないか。
            逓減後は 4,000／5,400／8,000 はどの段のどの段階にも無い数字 */
-        /* ¥8,000 は【松の31〜90秒】として今も使う額なので、
-           旧単価の一覧から現役の額を引いてから探す。
-           ここを素の3つで見ると、正しいページを古いと誤判定する */
-        const live = new Set(TIERS.flatMap((x) => x.rates));
-        const stale = [4000, 5400, 8000].filter((n) => !live.has(n))
+/* 2026-10-13 に入れた逓減の単価が残っていないか（2026-10-14 に1つへ戻した）。
+           いまの秒単価に無い額だけを「古い」と見なす */
+        const live = new Set(TIERS.map((x) => x.perSec));
+        const stale = [5500, 4500, 3200, 7400, 5700, 4300, 10500, 6400]
+            .filter((n) => !live.has(n))
             .map((n) => `¥${n.toLocaleString('en-US')}`)
             .filter((x) => h.replace(/<!--[\s\S]*?-->/g, '').includes(x));
         check(`${f} に旧モデルの秒単価が残っていない`, stale.length === 0, stale.join());
-        /* いまの秒単価が3段ぶんそろって書いてあること */
+        /* いまの秒単価が書いてあること */
         for (const t of TIERS) {
-            const want = t.rates.map((r) => `¥${r.toLocaleString('en-US')}`);
-            check(`${f} に${t.label}の秒単価3段が書いてある`,
-                want.every((w) => h.includes(w)), want.join('/'));
+            const want = `¥${t.perSec.toLocaleString('en-US')}`;
+            check(`${f} に${t.label}の秒単価が書いてある`, h.includes(want), want);
         }
     }
     /* FAQ の例示額が式と合っているか（30秒・梅／90秒・竹／3分・松） */
@@ -1063,20 +1062,20 @@ check('タイトルの「最短2週間」が実態と合う',
        逓減にしたら service（60秒＋15秒）が ¥162,500 と ¥147,500 でずれた。
        exhibition は旧モデルのとき竹の案件に梅の秒単価で ¥160,000 と書いてあり、
        ¥21,000 少なかった（2026-10-13 に竹の額へ訂正）。 */
-    const add = (label, baseSec, addSec) => {
-        const t = TIERS.find((x) => x.label === label);
-        return PRICE.perExtra + secFee(t, baseSec + addSec) - secFee(t, baseSec);
-    };
+    /* 2026-10-14：秒単価を1つに戻したので、増分は「足す尺」だけで決まる
+       （逓減のときは、すでに何秒あるかで変わった）。段は本文の記述と合わせる */
+    const add = (label, addSec) =>
+        PRICE.perExtra + TIERS.find((x) => x.label === label).perSec * addSec;
     const WANT = [
-        ['index.html', add('梅', 30, 30)],
-        ['company-video.html', add('竹', 60, 15)],
-        ['recruit-video.html', add('竹', 90, 30)],
-        ['service-video.html', add('梅', 60, 15)],
-        ['ad-video.html', add('梅', 15, 15)],
-        ['sns-video.html', add('梅', 15, 15)],
-        ['exhibition-video.html', add('竹', 60, 15)],
-        ['internal-video.html', add('梅', 60, 30)],
-        ['animation-video.html', add('梅', 60, 15)],
+        ['index.html', add('梅', 30)],
+        ['company-video.html', add('竹', 15)],
+        ['recruit-video.html', add('竹', 30)],
+        ['service-video.html', add('梅', 15)],
+        ['ad-video.html', add('梅', 15)],
+        ['sns-video.html', add('梅', 15)],
+        ['exhibition-video.html', add('竹', 15)],
+        ['internal-video.html', add('梅', 30)],
+        ['animation-video.html', add('梅', 15)],
     ];
     const yen = (n) => `¥${n.toLocaleString('en-US')}`;
     for (const [f, want] of WANT) {
@@ -1132,7 +1131,7 @@ check('タイトルの「最短2週間」が実態と合う',
    段で秒単価が変わるのに「1秒あたり ¥3,500」と書いてあると嘘になる */
 const why = await (await open(browser, { page: 'pricing.html' })).locator('.calc-why').innerText();
 check('内訳の秒単価が段の幅で書いてある',
-    why.includes(`¥${Math.min(...TIERS.flatMap((t) => t.rates)).toLocaleString('en-US')}〜${Math.max(...TIERS.flatMap((t) => t.rates)).toLocaleString('en-US')}`) && /仕上げの段階/.test(why), why.split('\n').find(l => l.includes('1秒')) || '');
+    why.includes(`¥${Math.min(...TIERS.map((t) => t.perSec)).toLocaleString('en-US')}〜${Math.max(...TIERS.map((t) => t.perSec)).toLocaleString('en-US')}`) && /仕上げの段階/.test(why), why.split('\n').find(l => l.includes('1秒')) || '');
 check('制作にかかる日数が何で変わるか書いてある',
     /尺と仕上げの段階によって前後します/.test(await page.locator('#process').innerText()));
 
@@ -1667,9 +1666,9 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     /* 段階どおり（P1→P2→P3 で尺を伸ばす）に置き直した手元。
        制作の翌月に入金・P1 が M+3〜5 の制作、という前提で積んだ別系列で、
        上の cash（M+4 以降を P1 で固定した保守側）とは違う。
-       2026-10-13 の料金改定で 695.5／959.0 → 646.4／893.5 */
+       2026-10-14 の料金改定で 646.4／893.5 → 617.5／857.0 */
     check('段階どおりに置き直した値も書いてある',
-        /646.4万/.test(t) && /893.5万/.test(t));
+        /617.5万/.test(t) && /857.0万/.test(t));
     check('どちらの表をいつ見るかを書いている',
         /計画の達成度を見るときは下の段階の表、資金が尽きないかを見るときはこの表/.test(t));
 
@@ -1727,8 +1726,8 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         /−28\.2万から始まる/.test(t) && /完済してから開業する/.test(t));
     check('開業できる額が図にある', /完済して開業 41\.9万/.test(t));
     check('底が図にある', /底 21.9万/.test(t));
-    check('12ヶ月目の実額が図にある', /695.5万/.test(t));
-    check('年金が通った場合の12ヶ月目も出ている', /992.8万/.test(t));
+    check('12ヶ月目の実額が図にある', /629.0万/.test(t));
+    check('年金が通った場合の12ヶ月目も出ている', /926.3万/.test(t));
     /* 再就職手当がいつ入るかで底が変わる。保守側に置いたことを明記する */
     /* 2026-10-02：振込時期は人によって違うので聞いても分からない、と本人から。
        1点で置かず【範囲】で書く。M+4 以降にずれても底は下がらない
@@ -1820,7 +1819,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         check('なぞると数字が出る', after !== before && /実額/.test(after), after.slice(0, 40));
         /* ラベルと値がずれていないこと。右はしは M+11＝695.5万（2026-10-13 の改定後） */
         check('なぞり読みのラベルと値が合っている',
-            /M\+11/.test(after) && /695\.5万/.test(after), after.slice(0, 50));
+            /M\+11/.test(after) && /629\.0万/.test(after), after.slice(0, 50));
     }
     /* ラベルは月末基準。index1 は 2026-10末（前は 2026-11 と1ヶ月ずれていた） */
     check('なぞり読みのラベルが月末基準',
