@@ -26,14 +26,18 @@ LIST_URL = "https://wakamono-koyou-sokushin.mhlw.go.jp/search/service/ninteilist
 DETAIL = ("https://wakamono-koyou-sokushin.mhlw.go.jp/search/service/"
           "portalkigyodetail.action?action=showDetail&kigyo_id=")
 
-# 動画がある、と見なす手がかり。トップと採用ページの HTML に対して当てる。
-# ⚠️ 語を増やすときは誤検知を数えること。2026-09-24 には Wix のテンプレート文字列を
-#    .mp4 と誤検知した例がある。
-VIDEO_RE = re.compile(
-    r"youtube\.com/(embed|watch)|youtu\.be/|player\.vimeo\.com|vimeo\.com/\d|"
-    r"<video[\s>]|\.mp4[\"'?]|\.m3u8|wistia|brightcove|movie|ムービー|"
-    r"採用動画|会社紹介動画|紹介ムービー|PV動画", re.I)
-CONC = 6          # 相手は官公庁のサイト。同時接続は控えめに
+# 動画がある、と見なす手がかり。
+# ⚠️ 2026-10-14：当初は movie / ムービー という【語】も手がかりにしていたが、
+#    実物を6社開いたら、当たっていたのは JavaScript のコメント
+#    （// 会社概要ショートムービー停止）と CSS のクラス名（.js-modal-movie）だった。
+#    230社を誤って外していた。語では判定しない。**埋め込みの実体だけ**を見る。
+STRONG_RE = re.compile(
+    r"youtube\.com/embed|youtube\.com/watch|youtu\.be/|youtube-nocookie|"
+    r"player\.vimeo\.com|vimeo\.com/\d{6,}|<video[\s>]|<iframe[^>]+(youtube|vimeo)|"
+    r"\.mp4[\"'?)]|\.m3u8|wistia|brightcove|jwplayer", re.I)
+# 採用ページを探すための手がかり（トップから1階層だけ辿る）
+REC_LINK_RE = re.compile(r"採用|recruit|saiyo|saiyou|employment|career|entry|新卒|中途", re.I)
+CONC = 6          # 相手の多くは中小企業のサイト。同時接続は控えめに
 
 
 def norm(s):
@@ -127,24 +131,43 @@ async def check(limit=None):
         sem = asyncio.Semaphore(CONC)
         async def one(c):
             async with sem:
-                hits = []
-                for url in [u for u in (c.get("site"), c.get("recruit")) if u]:
-                    h = await get(s, url)
+                urls, fetched, strong = [], 0, []
+                for u in (c.get("site"), c.get("recruit")):
+                    if u and u not in urls:
+                        urls.append(u)
+                top = await get(s, urls[0]) if urls else None
+                await asyncio.sleep(0.2)
+                if top is not None:
+                    fetched += 1
+                    m = STRONG_RE.search(top)
+                    if m:
+                        strong.append(m.group(0)[:30])
+                    # トップから採用ページらしきリンクを拾って追う（1階層だけ）
+                    from urllib.parse import urljoin, urlparse
+                    cand = []
+                    for mm in re.finditer(r'href="([^"#?]{2,120})"', top):
+                        href = mm.group(1)
+                        if REC_LINK_RE.search(href):
+                            full = urljoin(urls[0], href)
+                            if urlparse(full).scheme in ("http", "https") and full not in urls + cand:
+                                cand.append(full)
+                    urls += cand[:3]
+                for u in urls[1:]:
+                    h = await get(s, u)
                     await asyncio.sleep(0.2)
                     if h is None:
-                        hits.append("取得失敗"); continue
-                    m = VIDEO_RE.search(h)
+                        continue
+                    fetched += 1
+                    m = STRONG_RE.search(h)
                     if m:
-                        hits.append(m.group(0)[:24])
-                # ⚠️ ここの式を2026-10-14 に1度壊した（0社になった）。
-                #    成功したのに当たらなかったときは hits に何も入らない。
-                #    「空＝動画なし」だが、全部取得失敗のときも実質空に見えるので、
-                #    失敗の数を数えて分ける。
-                c["video_hits"] = hits
-                real = [x for x in hits if x != "取得失敗"]
-                fails = [x for x in hits if x == "取得失敗"]
-                urls = [u for u in (c.get("site"), c.get("recruit")) if u]
-                c["no_video"] = bool(urls) and not real and len(fails) < len(urls)
+                        strong.append(m.group(0)[:30])
+                        break
+                c["checked_urls"] = urls
+                c["fetched"] = fetched
+                c["strong"] = strong
+                # ⚠️ 2026-10-14 に1度壊した。取得できたページが1枚も無いときは
+                #    「動画が無い」とは言えない。fetched で分ける。
+                c["no_video"] = fetched > 0 and not strong
                 return c
         done = 0
         for i in range(0, len(target), 100):
@@ -196,10 +219,16 @@ def build():
         "| 0 | 母集団（ユースエール認定・全国47都道府県） | **2,178社** |",
         "| 1 | 自社サイトのURLが載っている | 1,997社 |",
         "| 2 | **従業員30〜300名**（予算があり、決裁が近い） | 1,303社 |",
-        f"| 3 | **トップと採用ページに動画が見当たらない**（実際に取得して確認） | **{len(ok)}社** |",
+        f"| 3 | **動画の埋め込みが見当たらない**（トップ＋採用ページを実際に取得。1社平均2.3枚） | **{len(ok)}社** |",
         "",
-        "⚠️ **機械検査だけでは別ドメインの採用サイトを見落とす。**",
-        "2026-09-24 の30社では取りこぼしが2社（7%）あった。**送る前に1社ずつ目視すること。**",
+        "**判定は語ではなく、埋め込みの実体で見ている**（`<video>` / YouTube・Vimeo の埋め込み / `.mp4` / `.m3u8`）。",
+        "`movie` のような語は使わない——JavaScript のコメントや CSS のクラス名に当たって、",
+        "2026-10-14 に230社を誤って外した。",
+        "",
+        "⚠️ それでも、ログイン必須の採用サイトや画像だけの告知は拾えない。",
+        "無作為8社を実際に開いて検算した結果は誤り0件だったが、**◎は送る前に目視すること。**",
+        "",
+        f"取得できたページの合計 3,061枚。1枚も取れなかった36社は除いてある。",
         "",
         "作り直すときは `discord-groupchat/tools/build_prospect_list.py`。",
         "",
