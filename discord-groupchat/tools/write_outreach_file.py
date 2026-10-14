@@ -43,7 +43,8 @@ def main():
           "| 会社 | 都道府県 | 送り先 | 差し込み文 | 根拠 |", "|---|---|---|---|---|"]
     for c in mail:
         b = ("募集職種" if c["draft"]["jobs"] else
-             "社員インタビュー" if c["draft"].get("voice") else "募集区分")
+             "社員インタビュー" if c["draft"].get("voice") else
+             "募集区分" if c["draft"].get("kubun") else "採用ページのみ")
         L.append(f"| {atena(c['name'])} | {c.get('pref','')} | {c['draft']['mail']} "
                  f"| {c['draft']['insert']} | {b} |")
     L += ["", "## ② 問い合わせフォームに貼る", "",

@@ -65,6 +65,13 @@ JOB_LABEL_RE = re.compile(
 # 社員インタビューは、載せていない会社も多いので見ないと書けない。
 # しかも商品に直結する（撮影せずに、ある文章を映像の構成にできる）。
 # 相手の見出しの言葉をそのまま使うので、文も1通りにならない。
+# ⚠️ 2026-10-14：「◯◯の募集を拝見しました」と書く前に、相手が
+#   「現在募集しておりません」と書いていないかを見る。94社のうち8社が該当した。
+#   募集していない会社に「募集を拝見しました」は出せない。
+#   インタビュー基準の1行は募集を主張しないので、この除外は掛けない。
+NOHIRE_RE = re.compile(
+    r"現在[^。]{0,10}(?:募集|採用)[^。]{0,14}(?:ございません|ありません|しており?ません|"
+    r"行って?おりません|予定はありません)|募集(?:は)?(?:終了|停止|締切)")
 KUBUN_RE = re.compile(r"(新卒採用|中途採用|キャリア採用|第二新卒|通年採用)")
 VOICE_RE = re.compile(
     r">\s*((?:社員|先輩|スタッフ|職員|若手)(?:インタビュー|の声|紹介|を知る)|"
@@ -188,6 +195,7 @@ def draft(c, pages):
     joined = " ".join(text_of(h) for h in pages)
     if NG_RE.search(joined):
         return None, "営業お断りの表示あり"
+    nohire = bool(NOHIRE_RE.search(joined))
     raw = " ".join(pages)
     bad = re.compile(r"(example|sentry|sample|noreply|no-reply|\.png|\.jpg|\.gif|"
                      r"wixpress|cdn|googlegroups|googleapis|u003e|\.\.)", re.I)
@@ -229,12 +237,26 @@ def draft(c, pages):
             return {"insert": line, "jobs": [], "voice": voice[0], "kubun": "",
                     "mail": c.get("mail_found", "")}, None
         kubun = KUBUN_RE.findall(joined)
-        if kubun and has_rec:
+        if kubun and has_rec and not nohire:
             line = f"採用ページで{kubun[0]}の募集を拝見しました。"
             return {"insert": line, "jobs": [], "voice": "", "kubun": kubun[0],
                     "mail": c.get("mail_found", "")}, None
+        # 四段目：拾う語が無い会社。「採用ページを拝見しました」とだけ書く（本人の判断）。
+        # ⚠️ 2026-10-14 実測：ここに落ちる22社のうち7社は出してはいけない側だった。
+        #   「現在募集しておりません」1社／採用ページに文字がほとんど無い2社
+        #   （画像かJS。阿部土建は本文107字）／urlが /recruit/ なだけで採用の話が
+        #   出てこない4社。この層は【こちらの読み取りが効いていない会社】なので、
+        #   「動画が見当たらない」という元の判定自体も当てになりにくい。
+        rec = " ".join(text_of(h) for h in pages[1:])
+        if (has_rec and not nohire and len(rec) >= 800
+                and rec.count("採用") + rec.count("募集") >= 3):
+            return {"insert": "採用ページを拝見しました。", "jobs": [], "voice": "",
+                    "kubun": "", "plain": True,
+                    "mail": c.get("mail_found", "")}, None
         return None, "拾える語が1つも無い"
     # 1行目：相手のページにある文字列だけで組む
+    if nohire:
+        return None, "募集していないと書いてある"
     # 「正社員」「新卒採用」だけでは中身が無いので使わない。職種が抜けた会社だけ送る
     line = f"採用ページで{jobs[0]}の募集を拝見しました。"
     return {"insert": line, "jobs": jobs[:3], "voice": "", "kubun": "",
