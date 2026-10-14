@@ -22,6 +22,8 @@ from urllib.parse import urljoin
 BASE = pathlib.Path(__file__).resolve().parent.parent.parent
 OUT = BASE / "成果物" / "送り先リスト"
 RAW = OUT / "_収集"
+# 取得したページの控え。正規表現を直すたびに731社を取り直すと25分かかるので残す
+CACHE = pathlib.Path("/tmp/so-draft-pages")
 
 # 「営業お断り」。これがあるとオプトイン規制の例外に当たらない（総務省ガイドライン）
 NG_RE = re.compile(
@@ -48,19 +50,60 @@ JOB_WORDS = re.compile(
 #   数は減る。それでいい（営業文面Dの決めごと：埋められない会社はリストから外す）。
 JOB_LABEL_RE = re.compile(
     r"(?:募集職種|募集ポジション|職種名|職\s*種|募集区分)[\s：:｜|】\]]{1,3}"
-    r"([^\n<>｜|、。]{2,20})")
+    r"([^\n<>｜|、。]{2,28})")
 JOB_NG = re.compile(r"です|ます|ください|ご希望|方は|について|こちら|される|以下|下記|"
                     r"募集|採用|応募|ページ|内容|詳細|未定|なし")
 # ⚠️ 2026-10-14：`[\w.+-]+@[\w-]+\.[\w.-]+` だと Googleフォントの
 #   `wght@100..900` を宛先に採用した（存在しないアドレスに送るところだった）。
 #   末尾を本物のTLDに限り、連続ドットを弾く。
+# ⚠️ 末尾に \b を使ってはいけない。Pythonでは日本語も「語の文字」なので
+#   「info@example.co.jpまでお願いします」の `jp` と `ま` の間に境界が立たず、
+#   正規表現が戻って `.co` までで切った（実例：info@chuo-kensetsu.co）。
+#   存在しないアドレスに送るところだった。英数字とドットが続かないことで見る。
 MAIL_RE = re.compile(r"[A-Za-z0-9][\w.+-]{0,62}@(?:[A-Za-z0-9]"
-                     r"(?:[A-Za-z0-9-]*[A-Za-z0-9])?\.)+[A-Za-z]{2,24}\b")
+                     r"(?:[A-Za-z0-9-]*[A-Za-z0-9])?\.)+[A-Za-z]{2,24}"
+                     r"(?![A-Za-z0-9.-])")
+MAILTO_RE_STRICT = True
 # 代表アドレスを個人アドレスより先に使う
 MAIL_GENERIC = re.compile(r"^(info|inquiry|contact|mail|office|soumu|somu|jinji|"
                           r"saiyo|saiyou|recruit|jinzai|hr|honsha|post|support)\b", re.I)
+# ⚠️ 2026-10-14：49社を目で見たら5社が【別人の宛先】だった。読まずに送ったら事故。
+#   佐賀県庁(pref.saga.lg.jp)／制作会社(onceinteractive.com)／
+#   第三者の分析会社(infegy.com)／test@test.com／.co.jp の切れ残り(.co)。
+#   原因は「ページに在るメールを何でも採る」こと。相手の会社のものだと言える根拠が要る。
+#   採る条件：①相手のサイトと同じドメイン か ②プロバイダのアドレス（中小企業に多い）。
+#   それ以外の会社ドメインは、誰か別の会社のものなので採らない。
+MAIL_ISP = re.compile(
+    r"@(?:[\w-]+\.)?(?:ocn\.ne\.jp|nifty\.com|plala\.or\.jp|biglobe\.ne\.jp|"
+    r"so-net\.ne\.jp|wakwak\.com|ybb\.ne\.jp|yahoo\.co\.jp|gmail\.com|"
+    r"outlook\.jp|icloud\.com|dion\.ne\.jp|cometweb\.ne\.jp|canvas\.ne\.jp|"
+    r"enjoy\.ne\.jp|topaz\.ne\.jp|themis\.ocn\.ne\.jp|gaea\.ocn\.ne\.jp)$", re.I)
+# 本人でないと分かっているもの
+MAIL_NEVER = re.compile(r"@(?:test\.|example\.)|\.lg\.jp$|\.go\.jp$|"
+                        r"@(?:pref|city)\.", re.I)
+
+
+def site_host(url):
+    m = re.match(r"https?://([^/]+)", url or "")
+    return (m.group(1).lower().replace("www.", "") if m else "")
+
+
+def mail_is_theirs(mail, host):
+    """その会社のアドレスだと言える根拠があるか。無ければ採らない。"""
+    if MAIL_NEVER.search(mail):
+        return False
+    dom = mail.rsplit("@", 1)[-1].lower()
+    if host and (dom == host or host.endswith("." + dom) or dom.endswith("." + host)):
+        return True
+    # 会社名の部分が共通（example.co.jp ↔ mail.example.com）
+    core = host.split(".")[0] if host else ""
+    if core and len(core) >= 4 and core in dom:
+        return True
+    return bool(MAIL_ISP.search("@" + dom))
 # 送り先。mailto: のほうが本文中の文字列より確実なので先に見る
-MAILTO_RE = re.compile(r"mailto:([\w.+-]+@[\w-]+\.[\w.-]+)", re.I)
+MAILTO_RE = re.compile(r"mailto:([A-Za-z0-9][\w.+-]{0,62}@(?:[A-Za-z0-9]"
+                       r"(?:[A-Za-z0-9-]*[A-Za-z0-9])?\.)+[A-Za-z]{2,24})"
+                       r"(?![A-Za-z0-9.-])", re.I)
 # お問い合わせ・会社概要へのリンク（送り先はここに在ることが多い）
 CONTACT_LINK_RE = re.compile(
     r"<a[^>]+href=[\"']([^\"'#]+)[\"'][^>]*>(?:(?!</a>).){0,80}?"
@@ -122,6 +165,8 @@ def draft(c, pages):
     mails = [m for m in MAILTO_RE.findall(raw) if not bad.search(m)]
     mails += [m for m in MAIL_RE.findall(joined) if not bad.search(m) and m not in mails]
     # info@ のような代表アドレスを、個人名のアドレスより先に
+    host = site_host((c.get("checked_urls") or [""])[0])
+    mails = [m for m in mails if mail_is_theirs(m, host)]
     mails.sort(key=lambda m: 0 if MAIL_GENERIC.match(m) else 1)
     c["mail_found"] = mails[0] if mails else ""
     jobs = []
@@ -132,7 +177,17 @@ def draft(c, pages):
         j = j.replace("\u3000", " ").strip(" ・:：/／|｜-−—")
         j = j.split(" ")[0].strip("　 ・:：/／|｜-−—")
         j = re.sub(r"[【】〔〕《》\[\]]", "", j).strip()
-        if not (2 <= len(j) <= 20) or JOB_NG.search(j) or not JOB_WORDS.search(j):
+        # 「①土木技術者」「(1)製造」の番号を落とす
+        j = re.sub(r"^(?:[①-⑳]|\(\d\)|\d[.)]|[・･])\s*", "", j).strip()
+        # 「総合職：複数の職種を経験し…」のように説明が続くので手前で切る
+        j = re.split(r"[：:]", j)[0].strip()
+        # 括弧が閉じていないのは切れている（実例：「設計職（ハードウェア」）
+        if j.count("（") != j.count("）") or j.count("(") != j.count(")"):
+            j = re.split(r"[（(]", j)[0].strip()
+        # ⚠️ ここに「上限いっぱいなら捨てる」を置いてはいけない。上限を28字に広げた分
+        #    普通の職種まで上限に当たり、174社→63社まで落ちた（2026-10-14 実測）。
+        #    切れの検出は【括弧が閉じていない】と【：以降は説明】の2つで足りる。
+        if not (2 <= len(j) <= 24) or JOB_NG.search(j) or not JOB_WORDS.search(j):
             continue
         if j not in jobs:
             jobs.append(j)
@@ -156,6 +211,12 @@ async def main(limit):
         async def one(c):
             async with sem:
                 pages = []
+                cf = CACHE / (re.sub(r"\W+", "_", c["name"])[:60] + ".txt")
+                if cf.exists():
+                    pages = cf.read_text(encoding="utf-8").split("\x00")
+                    d, why = draft(c, pages)
+                    c["draft"], c["skip"] = d, why
+                    return c
                 urls = list((c.get("checked_urls") or [])[:3])
                 top = None
                 for u in urls:
@@ -183,6 +244,8 @@ async def main(limit):
                 if not pages:
                     c["draft"], c["skip"] = None, "ページが取れない"
                     return c
+                CACHE.mkdir(parents=True, exist_ok=True)
+                cf.write_text("\x00".join(pages), encoding="utf-8")
                 d, why = draft(c, pages)
                 c["draft"], c["skip"] = d, why
                 return c
