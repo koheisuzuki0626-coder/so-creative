@@ -33,6 +33,12 @@ if env.exists():
         k, v = line.split("=", 1)
         os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
 
+# ⚠️ os.chdir より先に、呼ばれた場所を控える。
+# 2026-10-14：chdir したあとで相対パスを解決していたため、
+# リポジトリ直下から `tools/drive_put.py 成果物/ロゴ/x.png` と叩くと
+# discord-groupchat/成果物/... を探して必ず「見つかりません」になっていた
+# （説明文はその叩き方を書いているのに、通らなかった）。
+ORIG_CWD = pathlib.Path.cwd()
 sys.path.insert(0, str(BASE))
 os.chdir(BASE)
 import ai_group_chat as bot  # noqa: E402
@@ -57,6 +63,8 @@ def main(argv):
     paths = []
     for a in args:
         p = pathlib.Path(a).expanduser()
+        if not p.is_absolute():
+            p = ORIG_CWD / p          # 呼ばれた場所からの相対で見る
         if not p.exists():
             print(f"⚠️ 見つかりません: {p}")
             return 1

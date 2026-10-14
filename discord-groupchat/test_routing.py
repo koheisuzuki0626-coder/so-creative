@@ -3844,6 +3844,19 @@ def run():
         check(f"{_t!r} は不具合の訴えにしない", bot._looks_trouble(_t), False)
     check("空文字で落ちない", bot._looks_trouble(""), False)
 
+    print("■ Driveへ入れる道具（tools/drive_put.py）")
+    # 2026-10-14：os.chdir(BASE) のあとで相対パスを解決していたため、
+    # リポジトリ直下から `tools/drive_put.py 成果物/ロゴ/x.png` と叩くと
+    # discord-groupchat/成果物/... を探して必ず「見つかりません」になっていた。
+    # 説明文はその叩き方を書いているのに通らず、気づくのに実際に失敗が要った。
+    # ⚠️ 引数の解決を os.chdir より後ろへ戻さないこと。
+    _dp = (_plL.Path(bot.BASE_DIR) / "tools" / "drive_put.py").read_text(encoding="utf-8")
+    _i_orig = _dp.find("ORIG_CWD = ")
+    _i_chdir = _dp.find("os.chdir(BASE)")
+    check("呼ばれた場所を控えてある", _i_orig > 0, True)
+    check("控えるのが os.chdir より先", 0 < _i_orig < _i_chdir, True)
+    check("相対パスは呼ばれた場所から見る", "ORIG_CWD / p" in _dp, True)
+
     print("■ Driveは案件ごとに仕切る（手元の 成果物/ と同じ名前で）")
     # GitHubとDriveを行き来しても迷わないよう、仕切りの名前を揃える。
     _root = str(bot.ARTIFACT_DIR)
