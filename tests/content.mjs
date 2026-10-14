@@ -2495,6 +2495,16 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
             cases.every(([id, sec]) => rec.includes(y(limit(id, sec)))),
             cases.map(([i, sc]) => limit(i, sc)).join());
         check('尺を縮めたときの差額が合っている', rec.includes(y(secFee(TIERS[1], 90) - secFee(TIERS[1], 60))));
+        /* 「構成で落とせる額」の表（2026-10-14 に足した守り手）。
+           段を1つ下げる額は AI ナレーション前提なので、松は matsuToAi に依存する。
+           ¥25,000 → ¥70,000 にしたとき、この表だけ −¥209,000 のまま取り残された。
+           本文は営業中にスマホで読むものなので、ここがずれると
+           お客様の前で違う額を言うことになる。 */
+        for (const [above, below] of [[2, 1], [1, 0]]) {
+            const d = price(TIERS[above], 90, 1, 'ai') - price(TIERS[below], 90, 1, 'ai');
+            check(`段を1つ下げる額が合っている（${TIERS[above].label}→${TIERS[below].label}）`,
+                rec.includes(`−${y(d)}`), `−${y(d)}`);
+        }
         check('値引きではなく構成で答える方針が書いてある',
             /値引きで答えない。構成で答える/.test(rec) && /最初の3社に限って/.test(rec));
         check('引く基準が書いてある', /引くとき/.test(rec) && /当て馬/.test(rec));
