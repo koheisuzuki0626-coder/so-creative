@@ -36,8 +36,8 @@ ME = {
                 encoding="utf-8").strip()
             if (pathlib.Path(__file__).resolve().parent.parent / ".outreach_tel").exists()
             else ""),
-    "zip": "461-0040",
-    "addr": "愛知県名古屋市東区砂田橋4-1-57",
+    "zip": "461-0045",
+    "addr": "愛知県名古屋市東区砂田橋4-1-57 メガシティテラス2-316",
     "url": "https://koheisuzuki0626-coder.github.io/so-creative/",
     "subject": "採用ページの動画について（so-creative／鈴木）",
 }
