@@ -57,7 +57,8 @@ GitHub Pages では対応できないため、別のホスティングが必要�
 
 ### 背景の映像を狭い画面で読まない（2026-09-26）
 
-`hero-reel.webm` は 1MB あって、`opacity: 0.16` の質感にしか使っていない。
+`hero-reel.webm` は 2.7MB あって（2026-10-17 に60秒20カット→69秒23カットへ。
+MVのカットを4本足したため）、狭い画面では `opacity: 0.16` の質感にしか使っていない。
 `max-width: 860px` と `navigator.connection.saveData` のときは `<source>` を外して
 `load()` し直す。`preload="metadata"` のままでも `play()` で全部落ちてしまうため。
 スマホ幅のトップは **1.55MB → 0.53MB** になった。
