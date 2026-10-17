@@ -17,11 +17,20 @@ ROOT = Path(__file__).resolve().parent.parent
 A = ROOT / "assets"
 # 書き出し先は配布用の置き場（成果物/ロゴ/）。assets/ には置かない
 # ——サイトから読む必要が無く、置くと同じものが2か所に増えるため。
-# ⚠️ 書類のレターヘッドは 成果物/書類ひな形/_書式/logo-lockup.png が実体。
-#    ここを更新したら、そちらにもコピーすること（test_routing.py が
-#    「書類のロゴが配布用と同じ」で突き合わせている）。
 OUT = ROOT / "成果物" / "ロゴ"
 OUT.mkdir(parents=True, exist_ok=True)
+# 書類のレターヘッドが実際に読む場所。ここへのコピーまでこの script がやる。
+# 手でコピーする運用にしていたら、2026-10-14 に片方だけ古いまま残りかけた
+# （test_routing.py の「書類のロゴが配布用と同じ」で気づいた）。
+DOC = ROOT / "成果物" / "書類ひな形" / "_書式" / "logo-lockup.png"
+# 無印（色の名前が付かないほう）は on-light を縮めたもの。書類と配布の既定。
+# 寸法は従来の書き出しに合わせてある（横幅で指定。高さは比率で決まる）。
+PLAIN_W = {"lockup": 1397, "mark": 512}
+# 配布用に渡すベクター。assets/ が master で、成果物/ロゴ/ はその写し。
+# 以前は写しを手で作っていたため、2026-09-23 版（金色・輪が枠からはみ出し）が
+# 1ヶ月近く配布用に残り、PNG とまったく違う形になっていた。写しは毎回ここで作る。
+SVG_KIT = ["logo-mark.svg", "logo-mark-light.svg", "logo-mark-accent.svg",
+           "logo-mark-small.svg", "logo-mark-small-accent.svg"]
 
 CSS = (A / "site.css").read_text(encoding="utf-8")
 
@@ -107,12 +116,33 @@ def main():
                 pg.close()
         b.close()
     from PIL import Image
+    # 無印の2枚は on-light を縮めて作る。別撮りにすると、同じ形のはずの
+    # ものが2通りでき、片方だけ古くなる余地が生まれる。
+    import shutil
+    for kind, w in PLAIN_W.items():
+        src = OUT / f"logo-{kind}-on-light.png"
+        im = Image.open(src)
+        h = round(im.height * w / im.width)
+        f = OUT / f"logo-{kind}.png"
+        im.resize((w, h), Image.LANCZOS).save(f)
+        made.append(f)
+    # ベクターの写しも毎回置き直す（手で写すと古いまま残る）
+    for n in SVG_KIT:
+        shutil.copyfile(A / n, OUT / n)
+    # 書類のレターヘッドへコピー（test_routing.py が同一かを見ている）。
+    # 書類のひな形は作業ブランチ側にしか無いので、在るときだけ写す
+    # （main のツリーで流したときに、空の _書式/ を作らないため）。
+    if DOC.parent.is_dir():
+        shutil.copyfile(OUT / "logo-lockup.png", DOC)
+        made.append(DOC)
     print(f"{'ファイル':34} {'寸法':>13}  透過")
     for f in made:
         im = Image.open(f)
         alpha = "あり" if im.mode in ("RGBA", "LA") else "なし"
         print(f"  {f.name:32} {f'{im.width}x{im.height}':>13}  {alpha}")
+    print("  ベクター: " + " / ".join(SVG_KIT))
     print(f"\n書き出し先: {OUT}")
+    print(f"書類のレターヘッド: {DOC}")
 
 
 if __name__ == "__main__":
