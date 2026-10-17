@@ -186,7 +186,7 @@ def main(argv=None):
                              "業務委託契約書", "秘密保持契約書"])
     ap.add_argument("--to", required=True, help="宛先（御中は自動で付きます）")
     ap.add_argument("--title", default="", help="件名")
-    ap.add_argument("--tier", default="竹", choices=list(RATES))
+    ap.add_argument("--tier", default="竹", choices=list(PER_SEC))
     ap.add_argument("--sec", type=int, default=60)
     ap.add_argument("--count", type=int, default=1)
     ap.add_argument("--nar", default="ai", choices=["ai", "human", "none"])

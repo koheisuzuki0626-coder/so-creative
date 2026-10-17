@@ -4142,6 +4142,26 @@ def run():
     # （時間単価の下限まで tests/pricing.mjs で検証しているのはあちら）。
     _md = _load_make_doc()
 
+    # 2026-10-18：料金改定（f9be501）で RATES → PER_SEC に変えたとき、
+    # argparse の choices=list(RATES) だけ直し忘れていた。main() を呼んだ
+    # 瞬間に NameError で落ちるので、【見積書も請求書も契約書も1通も
+    # 作れない】状態が4日間続いていた。モジュールを読み込むだけの検査では
+    # main() の中まで届かず、ここは素通りしていた。
+    # 引数なしで呼べば argparse が SystemExit(2) を出す＝そこまで到達した
+    # ＝パーサの組み立ては壊れていない、と分かる。PDFは作られない。
+    try:
+        import contextlib as _ctxMD
+        import io as _ioMD
+        with _ctxMD.redirect_stderr(_ioMD.StringIO()):
+            _md.main([])
+        _parser_ok = "引数なしなのに通ってしまった"
+    except SystemExit:
+        _parser_ok = "ok"
+    except Exception as _e:                       # noqa: BLE001
+        _parser_ok = f"{type(_e).__name__}: {_e}"
+    check("make_doc の引数パーサが組み立てられる（1通も作れない壊れ方の検出）",
+          _parser_ok, "ok")
+
     def _site_price(tier, sec, count, nar):
         """assets/pricing.js の narFee をそのまま写した参照実装。
 

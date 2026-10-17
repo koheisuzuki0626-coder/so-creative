@@ -37,6 +37,16 @@ ul.notes { margin: 10px 0 0; padding-left: 1.1em; font-size: 9.4pt; }
 ul.notes li { margin-bottom: 4px; }
 .fine { font-size: 8.6pt; color: #6e6e73; line-height: 1.8; margin-top: 8px; }
 .pagebreak { break-before: page; }
+/* 改ページが見出しと中身を割らないようにする。2026-10-18 に見積書へ工程表を
+   足して3ページになったとき、表が途中で切れる余地ができたため入れた。
+   1ページに収まらない表では break-inside はブラウザが無視するので、
+   契約書のような長い表が詰まることはない。 */
+h2.sec { break-after: avoid; }
+table.grid { break-inside: avoid; }
+ul.notes, .fine { break-inside: avoid; }
+/* ⚠️ ここに「表と注釈を離すな（table.grid + .fine { break-before: avoid }）」を
+   足さないこと。「途中で割るな」と両立できず、ブラウザが【割る方】を選ぶ。
+   実際に注釈の最後の1行だけが次ページへこぼれた（2026-10-18）。 */
 
 /* ---------- 契約書 ---------- */
 .contract h1 { font-size: 15pt; font-weight: 600; letter-spacing: .3em;
