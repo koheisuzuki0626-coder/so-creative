@@ -48,7 +48,17 @@ PER = {'ume': 4000, 'take': 5400, 'matsu': 8000}
 def list_price(t, sec):
     """表に載せる「1本・ナレーションの増減なし」の値段"""
     return BASEP + PER[t] * sec
-LAB = {15: '15秒', 30: '30秒', 60: '60秒', 90: '90秒', 180: '3分'}
+LAB = {15: '15秒', 30: '30秒', 60: '60秒', 90: '90秒', 180: '3分', 264: '4分24秒'}
+
+
+def iso_dur(sec):
+    """秒を ISO 8601 の duration にする。
+    ⚠️ "PT264S" も規格上は正しいが、検索エンジンの表示で分に直されない例が
+    あるので、60秒以上は分と秒に割る。"""
+    m, r = divmod(int(sec), 60)
+    if not m:
+        return f'PT{r}S'
+    return f'PT{m}M{r}S' if r else f'PT{m}M'
 yen = lambda n: '¥' + format(n, ',')
 
 
@@ -117,8 +127,8 @@ def build(g):
         "description": "{g['ld_video']}",
         "thumbnailUrl": "{BASE}/{g['poster']}",
         "contentUrl": "{BASE}/{g['video']}",
-        "duration": "PT{g['sample_sec']}S",
-        "uploadDate": "2026-09-20",
+        "duration": "{iso_dur(g['sample_sec'])}",
+        "uploadDate": "{g.get('upload_date', '2026-09-20')}",
         "publisher": {{ "@id": "{BASE}/#org" }}
       }},
       {{

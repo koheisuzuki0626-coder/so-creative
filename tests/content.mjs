@@ -371,12 +371,12 @@ check('金額の表示は税込で揃っている',
     check('ミュージックビデオのカードに料金の扱いが書いてある',
         /料金表ではなく個別にお見積り/.test(await wp.locator('#genre-mv').innerText()),
         await wp.locator('#genre-mv').innerText());
-    check('ミュージックビデオのサンプルは30秒だと書いてある',
-        /サンプル（30秒）/.test(await wp.locator('#genre-mv').innerText()));
+    check('ミュージックビデオのサンプルは4分24秒だと書いてある',
+        /サンプル（4分24秒）/.test(await wp.locator('#genre-mv').innerText()));
     check('ミュージックビデオのサンプルも自前で配信している',
-        /assets\/works\/mv-30s-dance\.mp4/.test(worksSrc));
+        /assets\/works\/mv-full-264s\.mp4/.test(worksSrc));
     check('ミュージックビデオのサンプルにもポスター画像がある',
-        /poster="assets\/works\/mv-30s-dance\.jpg(\?v=[0-9a-f]+)?"/.test(worksSrc));
+        /poster="assets\/works\/mv-full-264s\.jpg(\?v=[0-9a-f]+)?"/.test(worksSrc));
     /* 曲は鈴木さん自身のもの。権利の出所を書いていないと、
        既存曲を無断で使ったように見える */
     check('ミュージックビデオの曲の出所を書いている',
