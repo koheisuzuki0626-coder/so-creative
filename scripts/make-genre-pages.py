@@ -103,6 +103,43 @@ def build(g):
           "highPrice": "{list_price('matsu', g['secs'][-1])}",
           "offerCount": "{len(g['secs']) * 3}"
         }}'''
+    # 縦型は 16:9 の箱に入れると左右が黒帯になる。CSS の .is-vertical が
+    # 9:16 に直して幅を絞る。works.html では前から付いていたが、ジャンルページの
+    # 生成側には無く、SNSのサンプルがずっと黒帯のまま出ていた（2026-10-20 に気づいた）。
+    vcls = ' is-vertical' if g.get('vertical') else ''
+    # 2本目以降のサンプル（g['extra']）。構造化データにも1本ずつ VideoObject を出す。
+    # ⚠️ 1ジャンル1本という前提を 2026-10-20 に外した（SNSに2本目を足したため）。
+    #    「本数を重ねる運用に向く」と書いているジャンルの実例が1本しかないのは、
+    #    主張と中身が合っていなかった。extra が無いジャンルは今までどおり。
+    ld_extra = ''.join(f''',
+      {{
+        "@type": "VideoObject",
+        "name": "{g['label']}のサンプル（{LAB[x['sec']]}）{x['ld_suffix']}",
+        "description": "{x['ld']}",
+        "thumbnailUrl": "{BASE}/{x['poster']}",
+        "contentUrl": "{BASE}/{x['video']}",
+        "duration": "{iso_dur(x['sec'])}",
+        "uploadDate": "{x['upload_date']}",
+        "publisher": {{ "@id": "{BASE}/#org" }}
+      }}''' for x in g.get('extra', []))
+    # 実例の節に続けて出す2本目以降。
+    # ⚠️ 見出しは h3。p に見た目だけ付けると、読み上げで2本目の始まりが分からない。
+    #    .eyebrow は既にある小見出しの見た目なので、CSS は足さない。
+    # 1本目にも札を付ける（2本あるときだけ）。付けないと2本が地続きに見える。
+    first_label = (f'''
+                <h3 class="eyebrow">{g['first_head']}</h3>''' if g.get('extra') else '')
+    extra_html = ''.join(f'''
+                <h3 class="eyebrow" style="margin-top:38px">{x['head']}</h3>
+                <p class="body-text measure">{x['lead']}</p>
+                <figure class="sample reveal">
+                    <video class="sample-video{vcls}" controls preload="none" playsinline
+                           poster="{x['poster']}"
+                           src="{x['video']}"
+                           aria-label="{g['label']}のサンプル {LAB[x['sec']]}{x['ld_suffix']}">
+                        お使いのブラウザでは再生できません。
+                    </video>
+                </figure>
+                <p class="genre-note"><b>{x['specs']}</b>（書き出したファイルを実測した値）</p>''' for x in g.get('extra', []))
     ld = f'''    <script type="application/ld+json">
     {{
       "@context": "https://schema.org",
@@ -130,7 +167,7 @@ def build(g):
         "duration": "{iso_dur(g['sample_sec'])}",
         "uploadDate": "{g.get('upload_date', '2026-09-20')}",
         "publisher": {{ "@id": "{BASE}/#org" }}
-      }},
+      }}{ld_extra},
       {{
         "@type": "BreadcrumbList",
         "itemListElement": [
@@ -184,17 +221,17 @@ def build(g):
 
         <section class="section section-alt">
             <div class="wrap reveal">
-                <h2 class="headline">つくった実例（{LAB[g['sample_sec']]}）</h2>
+                <h2 class="headline">つくった実例（{LAB[g['sample_sec']]}）</h2>{first_label}
                 <p class="body-text measure">{g['sample_lead']}</p>
                 <figure class="sample reveal">
-                    <video class="sample-video" controls preload="none" playsinline
+                    <video class="sample-video{vcls}" controls preload="none" playsinline
                            poster="{g['poster']}"
                            src="{g['video']}"
                            aria-label="{g['label']}のサンプル {LAB[g['sample_sec']]}">
                         お使いのブラウザでは再生できません。
                     </video>
                 </figure>
-                <p class="genre-note"><b>{g['specs']}</b>（書き出したファイルを実測した値）</p>
+                <p class="genre-note"><b>{g['specs']}</b>（書き出したファイルを実測した値）</p>{extra_html}
                 <p class="body-text measure" style="margin-top:14px">ほかのジャンルのサンプルは<a href="works.html#{g['anchor']}">制作サンプルのページ</a>にまとめています。</p>
             </div>
         </section>

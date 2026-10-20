@@ -325,14 +325,19 @@ check('金額の表示は税込で揃っている',
         && /poster="assets\/works\/cm-15s-taste\.jpg(\?v=[0-9a-f]+)?"/.test(worksSrc));
     /* 05 SNSショートと 07 社内向けのサンプル（2026-09-17 追加）。
        05 は最初から縦型で組んでいるので、16:9 のまま出していないことも見る */
-    check('SNSショートのカードにサンプルがある',
-        (await wp.locator('#genre-sns .sample-video').count()) === 1);
+    /* ⚠️ 2026-10-20：SNSだけサンプルが2本になった（コインランドリー／コーヒースタンド）。
+       「本数を重ねる運用に向く」と書いているジャンルの実例が1本では裏づけが無いため。
+       ここを1本に戻すときは、genre_data の 'extra' と works.html も一緒に戻すこと。 */
+    check('SNSショートのカードにサンプルが2本ある',
+        (await wp.locator('#genre-sns .sample-video').count()) === 2);
     check('SNSショートのサンプルは架空の題材だと書いてある',
-        /架空のコインランドリー/.test(await wp.locator('#genre-sns').innerText()));
-    check('SNSショートのサンプルは縦型で表示している',
-        (await wp.locator('#genre-sns .sample-video.is-vertical').count()) === 1
-        && await wp.locator('#genre-sns .sample-video').evaluate(
-            (v) => v.clientHeight > v.clientWidth));
+        /架空のコインランドリー/.test(await wp.locator('#genre-sns').innerText())
+        && /架空のコーヒースタンド/.test(await wp.locator('#genre-sns').innerText()));
+    /* 縦型は【2本とも】見る。1本目だけ見ていると、足した側が 16:9 でも気づかない */
+    check('SNSショートのサンプルは2本とも縦型で表示している',
+        (await wp.locator('#genre-sns .sample-video.is-vertical').count()) === 2
+        && (await wp.locator('#genre-sns .sample-video').evaluateAll(
+            (vs) => vs.every((v) => v.clientHeight > v.clientWidth))));
     check('社内向けのカードにサンプルがある',
         (await wp.locator('#genre-internal .sample-video').count()) === 1);
     check('社内向けのサンプルは架空の題材だと書いてある',
