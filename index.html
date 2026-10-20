@@ -26,7 +26,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=Zen+Kaku+Gothic+New:wght@300;400;500&display=swap">
-    <link rel="stylesheet" href="assets/site.css?v=fef31280">
+    <link rel="stylesheet" href="assets/site.css?v=cb401edf">
     <!-- JSが動く端末にだけ出現アニメーションを掛ける。この1行が無いと、
          JSが届く前や動かないときにページが真っ白になる（2026-09-24） -->
     <script>document.documentElement.classList.add('js');</script>
@@ -986,15 +986,20 @@
             /* 背景の映像は 1MB ある。9/26 までは opacity 0.16 の質感でしかなかったので、
                狭い画面では取りに行かせていなかった。9/29 から開いた直後の画面は映像そのものに
                なったので、狭い画面でも流す。通信量を節約する設定の人にだけは取りに行かせない。
-               <source> を外してから load() を呼ばないと、指定済みの URL を
-               取りに行ってしまう（preload="metadata" でも play() で全部落ちる） */
+               preload="metadata" のままだと play() で全部落ちるので、
+               preload="none" に落としてから load() で取得を打ち切る。
+
+               ⚠️ ここで <source> を【消さないこと】。2026-10-20 まで消していたので、
+               この2つの設定を使っている人は、本人が見たいと思っても二度と再生できなかった
+               （「ヒーロー動画再生できなくなってる」の正体）。設定は尊重したまま
+               ——自動では流さない・勝手に落とさない——再生ボタンを出し、押されたら流す。
+               これで「どの環境でも、タップすれば必ず流せる」になる。
+               なお自動再生そのものは、iOS の低電力モードでは OS 側で止められるため、
+               こちらのコードでは覆せない。 */
             const heavy = navigator.connection && navigator.connection.saveData;
-            if (still.matches || heavy) {
-                v.querySelectorAll('source').forEach((el) => el.remove());
-                v.removeAttribute('src');
-                v.load();
-                return;
-            }
+            const manual = still.matches || heavy;
+            let userStarted = false;
+            if (manual) { v.preload = 'none'; v.load(); }
             /* ────────────────────────────────────────────────────────────
                2026-10-05：iPhone で「数周で止まり、以後ずっと止まったまま」。
                WebKit のソースを当たって原因が分かった。iOS はページを suspend する
@@ -1015,6 +1020,39 @@
             let armed = null;
             let startBlur = () => {};   // 下のぼかし処理が差し替える
 
+            /* 自動で流れない環境のための再生ボタン。これが「どんな環境でも再生できる」の実体で、
+               ①自動再生を止められている（iOSの低電力モード＝NotAllowedError）
+               ②「動きを減らす」③省データ の3つを、1つの出口でまとめて拾う。
+               ⚠️ .hero-media は pointer-events:none なので、この中には置けない。
+                  .hero-pin の直下に置く（紙では site.css の印刷指定で消している。
+                  絶対配置のまま紙に残すと、縮んだ hero の本文に重なる）。
+               ⚠️ JS が動かない端末には出さない。出しても押せる先が無いため。 */
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'hero-play';
+            btn.hidden = true;
+            /* ⚠️ hidden 属性だけに頼らない。CSS で display を与えた要素は、その CSS が
+               届いた時点で hidden の既定（display:none）が上書きされる。
+               CSS が落ちてくるまでの一瞬にボタンが見えるのを防ぐため、出し入れは
+               style.display でも持つ（hidden は読み上げから外すために残す）。 */
+            btn.style.display = 'none';
+            btn.setAttribute('aria-label', '背景の映像を再生する');
+            btn.innerHTML = '<span aria-hidden="true">▶</span>映像を再生';
+            (document.querySelector('.hero-pin') || document.body).append(btn);
+            const showBtn = () => { btn.hidden = false; btn.style.display = ''; };
+            const hideBtn = () => { btn.hidden = true; btn.style.display = 'none'; };
+            btn.addEventListener('click', () => {
+                /* 本人が押した＝設定より本人の意思が優先。以後は通常の再生に合流する */
+                userStarted = true;
+                v.preload = 'metadata';
+                v.play().then(hideBtn).catch((err) => { v.dataset.lastError = err && err.name; });
+                /* ⚠️ ここで startBlur() を呼ばないこと。下のぼかしは初期化時に
+                   この要素へ登録済みで、コマが出るまで眠っているだけ。呼び直すと
+                   同じ要素に requestVideoFrameCallback の鎖が2本立ち、毎コマ二度描く
+                   （要素を作り直す rebuild() では別物になるので、あちらは呼んで正しい）。 */
+            });
+            if (manual) showBtn();
+
             /* ジェスチャー待ち。iOS は画面に触られた瞬間だけ再生を許す。
                ⚠️ ハンドラの中では play() を【同期で】呼ぶこと。setTimeout を挟むと
                WebKit のユーザージェスチャーが失効して意味が無くなる。
@@ -1023,6 +1061,8 @@
             const GESTURES = ['touchstart', 'pointerdown', 'click', 'keydown'];
             const arm = () => {
                 if (armed) return;
+                /* 待っていることを見せる。黙って待つと、本人には「壊れている」としか見えない */
+                showBtn();
                 armed = () => {
                     GESTURES.forEach((e) => document.removeEventListener(e, armed));
                     armed = null;
@@ -1035,9 +1075,12 @@
                pause を拾って即 play() を呼ぶ作りは、WebKit の新しい非同期の許可判定と
                組み合わさると pause↔play が無限に往復して電池だけ食うので採らない。
                ⚠️ v.load() は呼ばない。失敗が続く端末で毎分メガバイト単位を取り直すため
-               （いまのファイルは 2.1MB ある）。 */
+               （いまのファイルは 2.9MB ある）。 */
             let tries = 0, timer = 0;
-            const onScreen = () => visible && document.visibilityState === 'visible' && !still.matches;
+            /* ⚠️ still.matches は毎回読む（起動時に固めない）。設定はページを開いたまま
+               変えられるため。本人がボタンを押したあと（userStarted）は、その意思を優先する */
+            const blocked = () => (still.matches || heavy) && !userStarted;
+            const onScreen = () => visible && document.visibilityState === 'visible' && !blocked();
             const play = () => {
                 if (!onScreen() || timer) return;
                 timer = setTimeout(() => {
@@ -1088,6 +1131,10 @@
                 /* loop が効かなかった場合の保険。主役ではない（下の巻き戻しが先に走る） */
                 v.addEventListener('ended', () => { try { v.currentTime = 0; } catch (e) {} play(); });
                 v.addEventListener('pause', play);
+                /* 実際にコマが出たらボタンを引っ込める。play() の成功だけで消すと、
+                   許可は下りたがデコードが始まっていない間、消えたまま止まって見える。
+                   ⚠️ rebuild() で要素を作り直すと消えるので、ここで付け直している */
+                v.addEventListener('playing', hideBtn);
             }
             bindWatchers();
             play();

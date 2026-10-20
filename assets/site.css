@@ -553,6 +553,35 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     display: block;
 }
 
+/* 自動で流れない環境（iOSの低電力モード・「動きを減らす」・省データ）で出す再生ボタン。
+   JS が .hero-pin の直下に作る。
+   ⚠️ .hero-media の中には置けない（pointer-events:none で押せないため）。
+   ⚠️ hidden 属性だけでは消えない。display を与えた時点で既定の display:none が
+      上書きされるので、[hidden] を明示すること。
+   位置は右下。真ん中下は .scroll-hint が使っている */
+.hero-play {
+    position: absolute;
+    right: 14px;
+    bottom: 18px;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    border-radius: 999px;
+    background: rgba(20, 23, 22, 0.62);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    font-size: 0.78rem;
+    line-height: 1;
+    cursor: pointer;
+}
+.hero-play[hidden] { display: none; }
+.hero-play:hover,
+.hero-play:focus-visible { background: rgba(20, 23, 22, 0.88); }
+
 /* 見出しが先に、説明とボタンがあとから出る */
 .hero-inner {
     position: relative;
@@ -2093,7 +2122,9 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
        SCROLL の案内は hero の下端に絶対配置してあるので、
        残すと、縮んだ hero のぶんだけチップスの上に重なって刷られる */
     #nav, .menu, .menu-scrim, .progress, .hero-media, .lightbox,
-    .swipe-hint, .cta-actions, .nav-uses, .scroll-hint { display: none !important; }
+    .swipe-hint, .cta-actions, .nav-uses, .scroll-hint,
+    /* 再生ボタンも絶対配置。残すと、縮んだ hero のぶんだけ本文に重なって刷られる */
+    .hero-play { display: none !important; }
     /* 100svh のままだと、見出しだけで1ページ使う */
     .hero, .js .hero { height: auto; --hero-r: 1; }
     .hero-pin, .js .hero .hero-pin { position: static; height: auto; min-height: auto; padding: 24pt 0; }

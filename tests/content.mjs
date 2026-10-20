@@ -2162,6 +2162,18 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         /* 動かさない人には、最初から見出しを出しておく（スクロールで出す演出をしない） */
         check('動きを減らす設定では、開いた直後から見出しが見える',
             Number(await still.locator('.hero h1').evaluate((e) => getComputedStyle(e).opacity)) === 1);
+        /* ⚠️ 2026-10-20：ここで <source> ごと消していたため、本人が見たいと思っても
+           二度と再生できなかった。自動で流さないことと、流せないことは別物。
+           指定を残したまま止め、本人が押せる出口を1つ用意する */
+        check('動きを減らす設定でも、映像の指定は消さない（本人が流せる）',
+            await still.locator('#hero-video source').count() === 2);
+        check('動きを減らす設定では、再生ボタンが出ている',
+            await still.locator('.hero-play').isVisible());
+        check('再生ボタンを押せば、動きを減らす設定でも再生が始まる', await (async () => {
+            await still.locator('.hero-play').click();
+            await still.waitForTimeout(1200);
+            return await still.locator('#hero-video').evaluate((e) => !e.paused);
+        })());
         await still.close();
     }
 }
