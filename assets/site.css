@@ -1977,12 +1977,25 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
     width: 100%;
     max-width: 280px;
 }
-@media (max-width: 700px) {
-    .sample-video.is-vertical { max-width: 240px; }
-}
 /* ジャンルのカードの中では、縦型だけが飛び抜けて高くなり、同じ行の
    ほかのカードの下に大きな余白ができる。カードの中だけ幅を絞る */
 .genre .sample-video.is-vertical { max-width: 196px; }
+
+/* スマホでは幅いっぱいに出す。画面そのものが縦長なので、9:16 の映像を
+   小さい箱に入れる理由が無い。2026-10-20 まで 240px（カードの中は 196px）に
+   絞っていて、390px の画面で左右に152pxが余っていた（本人から
+   「9:16の画面に合わせたプレイヤーにできないの？」）。
+   ⚠️ この指定は .genre の指定より【後ろ】に置くこと。
+      セレクタが同じ強さなので、前に置くと 196px に負ける。
+   高さは画面の7割まで。低い端末で、1本が画面に収まらなくなるため。
+   ⚠️ max-height では止めないこと。幅が 100% のままだと縦横の両方が決まり、
+      aspect-ratio が無視されて箱の比率が崩れる（実測で 9:16 → 0.70〜1.05 に
+      なり、中で黒帯が出た）。【高さの上限から幅を逆算して max-width に入れる】。
+      幅だけを縛れば、高さは aspect-ratio が決める。 */
+@media (max-width: 700px) {
+    .sample-video.is-vertical,
+    .genre .sample-video.is-vertical { max-width: min(100%, calc(70svh * 9 / 16)); }
+}
 
 /* 写真1枚 → 動画 の並び。9/20 に「制作サンプル」欄と入れ替えた。
    左右のカードは同じ 9:16 なので、高さが自然に揃う */

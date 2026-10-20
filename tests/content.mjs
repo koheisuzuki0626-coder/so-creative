@@ -2280,6 +2280,43 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     }
 }
 
+/* ---- 縦型サンプルのプレイヤーが 9:16 のまま、スマホでは幅を使う（2026-10-20） ----
+   ⚠️ ここは「比率」と「幅の使い方」を必ず両方見ること。片方だけだと直したつもりで壊れる。
+      ・比率だけ見る → 240px の小さい箱に入れたままでも通る（元の不具合）
+      ・幅だけ見る → max-height で高さを止めて幅100%にすると通ってしまうが、
+        縦横の両方が決まった時点で aspect-ratio が無視され、箱の比率が
+        0.70〜1.05 に崩れて中で黒帯が出る（実際にこれを書いて踏んだ）
+   直し方は「高さの上限から幅を逆算して max-width に入れる」。幅だけを縛る。 */
+{
+    for (const [page, w, h] of [
+        ['sns-video.html', 390, 844], ['sns-video.html', 375, 667],
+        ['sns-video.html', 430, 932], ['works.html', 390, 844],
+        ['works.html', 320, 568], ['sns-video.html', 1280, 900]]) {
+        const pg = await open(browser, { page, width: w, height: h, mobile: w < 700 });
+        const r = await pg.evaluate(() => [...document.querySelectorAll('.sample-video.is-vertical')]
+            .map((v) => {
+                const box = v.closest('figure').parentElement;
+                return {
+                    ratio: Number((v.clientWidth / v.clientHeight).toFixed(3)),
+                    share: Number((v.clientWidth / box.clientWidth).toFixed(2)),
+                    tall: Math.round(v.clientHeight),
+                };
+            }));
+        check(`${page} ${w}px：縦型プレイヤーの箱が 9:16 のまま`,
+            r.length > 0 && r.every((x) => Math.abs(x.ratio - 0.5625) < 0.02),
+            JSON.stringify(r.map((x) => x.ratio)));
+        /* スマホでは、入れ物の6割以上を使う（240pxの箱に戻ったら落ちる） */
+        if (w < 700) {
+            check(`${page} ${w}px：スマホでは幅を使っている`,
+                r.every((x) => x.share >= 0.6), JSON.stringify(r.map((x) => x.share)));
+            /* ただし画面からはみ出すほど高くしない（ヘッダーを引いた残りに収める） */
+            check(`${page} ${w}px：縦型でも画面の高さに収まる`,
+                r.every((x) => x.tall <= h * 0.75), JSON.stringify(r.map((x) => x.tall)));
+        }
+        await pg.close();
+    }
+}
+
 /* ---- 料金表と計算機に、出せる人数を出す（2026-09-30） ----
    ジャンルのページの表には前から「梅（人物なし）」とあったが、トップと料金ページの表、
    計算機の段の選択肢には「標準／上／特上」しかなく、何が違うのか人数で読めなかった */
