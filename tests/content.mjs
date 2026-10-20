@@ -876,10 +876,44 @@ check('タイトルの「最短2週間」が実態と合う',
     const future = mods.filter((d) => !/^\d{4}-\d{2}-\d{2}$/.test(d) || d > today);
     check('lastmod が日付として成立していて、未来になっていない', future.length === 0, future.join(' '));
 
-    /* 背景の映像は 1MB ある。9/29 から開いた直後の画面は映像そのものなので狭い画面でも流すが、
+    /* 背景の映像は 2.9MB ある。9/29 から開いた直後の画面は映像そのものなので狭い画面でも流すが、
        通信量を節約する設定の人には取りに行かせない */
-    check('通信量を節約する設定では背景の映像を読み込まない',
-        /saveData[\s\S]{0,300}removeAttribute\('src'\)/.test(idx) && !/max-width: 860px\)'\)\.matches\s*\|\|/.test(idx));
+    check('画面が狭いだけでは映像を諦めない',
+        !/max-width: 860px\)'\)\.matches\s*\|\|/.test(idx));
+}
+
+/* ---- 省データ設定では取りに行かない／それでも本人は流せる（2026-10-20） ----
+   ⚠️ ここは以前「ソースに removeAttribute('src') と書いてあるか」を正規表現で見ていた。
+      実装を preload="none" に変えた瞬間、振る舞いは正しいのにテストだけが落ちた。
+      書き方を見るテストは、書き方を変えるたびに嘘になる。
+      【実際にバイトを取りに行ったか】で見る。 */
+{
+    const { mockFonts, mockYtimg } = await import('./route.mjs');
+    const sd = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    await sd.addInitScript(() => {
+        Object.defineProperty(navigator, 'connection', {
+            configurable: true,
+            get: () => ({ saveData: true }),
+        });
+    });
+    await mockFonts(sd); await mockYtimg(sd);
+    const got = [];
+    sd.on('request', (r) => { if (/hero-reel\.(mp4|webm)/.test(r.url())) got.push(r.url()); });
+    /* ⚠️ networkidle では待てない。省データのときは映像を取りに行かないので、
+       「静まるのを待つ」条件が、待っている当のものと噛み合わない */
+    await sd.goto(`${BASE}/index.html`, { waitUntil: 'domcontentloaded' });
+    await sd.waitForTimeout(1200);
+    check('通信量を節約する設定では背景の映像を読み込まない', got.length === 0, got.join(' '));
+    /* 取りに行かないことと、流せないことは別物。本人が押せる出口を必ず残す */
+    check('通信量を節約する設定でも、再生ボタンは出ている',
+        await sd.locator('.hero-play').isVisible());
+    await sd.locator('.hero-play').click();
+    for (let i = 0; i < 40 && got.length === 0; i += 1) await sd.waitForTimeout(100);
+    check('押したときに初めて映像を取りに行く', got.length > 0, String(got.length));
+    await sd.waitForTimeout(1200);
+    check('押せば省データ設定でも再生が始まる',
+        await sd.locator('#hero-video').evaluate((e) => !e.paused));
+    await sd.close();
 }
 
 /* ---- タイトルの値段が、そのページが実際に薦める構成と合っているか（2026-09-28） ----

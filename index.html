@@ -287,7 +287,11 @@
                  埋める。2本目の <video> を置かないのは、iOS が同時に再生できる
                  動画の本数に制限があり、本編が止まる原因になりうるため。 -->
             <canvas class="hero-blur" width="40" height="23"></canvas>
-            <video class="hero-video" id="hero-video" muted loop playsinline preload="metadata"
+            <!-- ⚠️ preload は "none"。"metadata" にすると、JS が走る前にブラウザが
+                 取りに行ってしまい、省データ設定の人の通信を使ってから止めることになる
+                 （2026-10-20、実測で webm のリクエストが出ていた）。
+                 自動で流す環境では、下のスクリプトが即 "metadata" へ上げる。 -->
+            <video class="hero-video" id="hero-video" muted loop playsinline preload="none"
                    poster="assets/works/hero-reel.jpg?v=2cd2058d">
                 <!-- type にコーデックまで書く。"video/webm" だけだと iOS Safari が
                      「再生できる」と答えてから VP9 で失敗し、mp4 に落ちずにポスターで
@@ -986,8 +990,9 @@
             /* 背景の映像は 1MB ある。9/26 までは opacity 0.16 の質感でしかなかったので、
                狭い画面では取りに行かせていなかった。9/29 から開いた直後の画面は映像そのものに
                なったので、狭い画面でも流す。通信量を節約する設定の人にだけは取りに行かせない。
-               preload="metadata" のままだと play() で全部落ちるので、
-               preload="none" に落としてから load() で取得を打ち切る。
+               ⚠️ 取りに行かせない判断は【JS で下げる】のでは間に合わない。HTML 側を
+               preload="none" にしておき、自動で流す環境でだけここで上げる。
+               JS で下げる形にしていた間は、実測で webm のリクエストが出ていた。
 
                ⚠️ ここで <source> を【消さないこと】。2026-10-20 まで消していたので、
                この2つの設定を使っている人は、本人が見たいと思っても二度と再生できなかった
@@ -999,7 +1004,7 @@
             const heavy = navigator.connection && navigator.connection.saveData;
             const manual = still.matches || heavy;
             let userStarted = false;
-            if (manual) { v.preload = 'none'; v.load(); }
+            if (!manual) v.preload = 'metadata';
             /* ────────────────────────────────────────────────────────────
                2026-10-05：iPhone で「数周で止まり、以後ずっと止まったまま」。
                WebKit のソースを当たって原因が分かった。iOS はページを suspend する
