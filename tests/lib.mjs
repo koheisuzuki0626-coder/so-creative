@@ -13,8 +13,20 @@ export function report() {
     process.exit(state.fail ? 1 : 0);
 }
 export const BASE = process.env.BASE || 'http://127.0.0.1:8899';
-/* Playwright の場所。環境が違うときは PW=/path/to/playwright/index.js で差し替える */
-export const PW = process.env.PW || '/opt/node22/lib/node_modules/playwright/index.js';
+/* Playwright の場所。入っている場所は環境で違うので、在るものを探して使う。
+   どれでも無いときは PW=/path/to/playwright/index.js で差し替える。
+   ⚠️ 1か所に決め打ちしていた間（/opt/node22 だけ）、その環境が消えたあと
+   「テストが1件も走らない」状態が続いた。落ちていたのではなく、走っていなかった。
+   入れ直したときに自力で見つけられるよう、候補で持つ（先頭ほど優先）。
+   足りなければ末尾に足す。入れ直しは npm i -g playwright && npx playwright install chromium */
+import { existsSync } from 'node:fs';
+const PW_CANDIDATES = [
+    process.env.PW,
+    '/opt/node22/lib/node_modules/playwright/index.js',
+    '/opt/homebrew/lib/node_modules/playwright/index.js',   // mac・Homebrew の node
+    '/usr/local/lib/node_modules/playwright/index.js',
+].filter(Boolean);
+export const PW = PW_CANDIDATES.find((p) => existsSync(p)) || PW_CANDIDATES[0];
 
 /* 料金と工数のモデル。index.html のコメントと同じもの。
    ここを書き換えるときは index.html も必ず合わせること */

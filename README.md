@@ -179,6 +179,15 @@ node tests/run.mjs
 
 配信サーバーは `run.mjs` が自分で立てて、終わったら落とす（9/24）。
 
+**Playwright が要る。**無ければこれで入れる（2026-10-20 に導入。それまで
+`/opt/node22` 決め打ちで、その環境が消えたあと**テストが一度も走っていなかった**）。
+
+```
+npm install -g playwright && npx playwright install chromium
+```
+
+場所は `tests/lib.mjs` が候補から探す。別の場所なら `PW=.../playwright/index.js`。
+
 料金・工数・納期・文言・配色は複数箇所に散らばっているので、
 片方だけ直すとここが落ちる。数字や文言を動かしたら必ず通すこと。
 
