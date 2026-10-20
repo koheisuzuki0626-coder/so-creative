@@ -2239,6 +2239,42 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     }
 }
 
+/* ---- 札（出演者 0人／撮影日 0日）が本文に重ならない（2026-10-20） ----
+   1000px 以下では .stack を height:132px の枠にして、その中へ札を絶対配置で
+   中央寄せしていた。10-09 に札の「出演者」を 0.7rem → 1.65rem にしたとき
+   札は 242px に伸びたが、枠は 132px のままだったので 110px が外へ出て、
+   箇条書きの最終行に 10px 重なった（本人から「被ってる」の報告）。
+   ⚠️ 縦の重なりだけで判定しないこと。PC は2段組で、縦だけ見ると左右の
+      別々の列どうしが「重なっている」ことになる（実際に誤検知した）。
+      矩形として交わっているかで見る。
+   ⚠️ 札の文字を大きくするときは、枠の高さを決め打ちに戻さないこと。 */
+{
+    for (const w of [320, 375, 390, 430, 600, 820, 960, 1000, 1280, 1600]) {
+        const pg = await open(browser, { page: 'index.html', width: w, height: 900, mobile: w < 700 });
+        const hits = await pg.evaluate(() => [...document.querySelectorAll('.stack')].map((st) => {
+            const m = st.querySelector('.stage-mark').getBoundingClientRect();
+            let worst = 0;
+            for (const el of st.closest('.stage-grid')
+                .querySelectorAll('.stage-copy li, .stage-copy p, .stage-copy h2')) {
+                const r = el.getBoundingClientRect();
+                const ox = Math.min(m.right, r.right) - Math.max(m.left, r.left);
+                const oy = Math.min(m.bottom, r.bottom) - Math.max(m.top, r.top);
+                if (ox > 0 && oy > 0) worst = Math.max(worst, Math.round(Math.min(ox, oy)));
+            }
+            return { n: st.dataset.stack, worst };
+        }));
+        check(`${w}px：札が本文に重ならない`,
+            hits.every((x) => x.worst === 0),
+            hits.filter((x) => x.worst).map((x) => `${x.n} ${x.worst}px`).join(' '));
+        /* 札そのものが画面から出ていないこと（はみ出すと右に余白がスクロールする） */
+        const out = await pg.evaluate(() => [...document.querySelectorAll('.stage-mark')]
+            .map((e) => Math.round(e.getBoundingClientRect().right - document.documentElement.clientWidth))
+            .filter((n) => n > 0));
+        check(`${w}px：札が画面の外へはみ出さない`, out.length === 0, out.join(' '));
+        await pg.close();
+    }
+}
+
 /* ---- 料金表と計算機に、出せる人数を出す（2026-09-30） ----
    ジャンルのページの表には前から「梅（人物なし）」とあったが、トップと料金ページの表、
    計算機の段の選択肢には「標準／上／特上」しかなく、何が違うのか人数で読めなかった */

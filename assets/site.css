@@ -1821,13 +1821,26 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
     .stage-grid { grid-template-columns: 1fr; gap: 34px; }
     /* 写真の重なりは縦1列だと回転が効かず場所だけ取るので出さない。
        ただし中の札（出演者 0人／撮影日 0日）は PC と同じ見た目で出す。
-       札の指定はいっさい変えず、.stack を札を置くためだけの枠として残す */
-    .stack { aspect-ratio: auto; height: 132px; }
+
+       ⚠️ 枠の高さを決め打ちにしないこと。2026-10-20 まで height:132px で、
+       その中に札を絶対配置で中央寄せしていた。10-09 に札の「出演者」を
+       0.7rem → 1.65rem にしたとき札は 242px まで伸びたが、枠は 132px のままで、
+       110px が枠の外へ出て、上は箇条書きの最終行に 10px 重なっていた
+       （1000px 以下の全幅で発生。本人から「被ってる」の報告）。
+       札は中身で高さが決まるので、枠も中身で決める——普通に流す。 */
+    .stack { aspect-ratio: auto; height: auto; }
     .stack figure { display: none; }
     /* 写真を出さないので、顔もテロップも避ける相手がいない。
-       PC 側でスタックごとにずらした位置を、ここでは枠の中央に戻す */
+       PC 側でスタックごとにずらした絶対配置をやめ、流れの中で中央に置く */
     .stack[data-stack="cast"] .stage-mark,
-    .stack[data-stack="schedule"] .stage-mark { left: 50%; top: 50%; }
+    .stack[data-stack="schedule"] .stage-mark {
+        position: static;
+        left: auto; top: auto;
+        transform: none;
+        width: fit-content;
+        max-width: 100%;
+        margin: 0 auto;
+    }
     .stage-track { height: 190vh; }
 }
 @media (max-width: 860px) {
@@ -1839,7 +1852,9 @@ footer { background: var(--bg-alt); border-top: 1px solid var(--line); }
     .stage-track { height: auto; }
     .stage-pin { position: static; height: auto; padding: 72px 0 64px; }
     .stage-copy, .stack, .stage-mark { opacity: 1; transform: none; }
-    .stage-mark { transform: translate(-50%, -50%); }
+    /* ⚠️ ここで translate(-50%,-50%) を戻さないこと。1000px 以下では札を
+       絶対配置ではなく流れの中に置いている（上の指定）。戻すと半分ずれて、
+       また箇条書きに重なる */
     .stage-bg { opacity: 0.18; transform: none; }
     /* ヒーロー（9/30）：画面に留めているので、文字の塊が2段のヘッダーの下に収まらないと
        ボタンが下で切れ、小さい iPhone では見出しがヘッダーの下に潜っていた（631px ／ 使えるのは457px）。
