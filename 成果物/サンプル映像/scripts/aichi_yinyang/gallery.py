@@ -10,7 +10,7 @@ def ledger_link(cut, word):
     return None
 SITE = "https://koheisuzuki0626-coder.github.io/so-creative/works.html#original"
 LINK = {
- "hd": "https://drive.google.com/file/d/1slhhu_vsoYBIXGbT0EJGTPFWL6INsZI9/view",
+ "hd": "https://drive.google.com/file/d/1Tm5Q3CeCRbNt1XQdtvaleEo-4l5De-ns/view",
  "oil": "https://drive.google.com/file/d/1ijF0F2vJq1T7eeVfJ-PUIpDCtuAdWVcy/view",
  "yin1": "https://drive.google.com/file/d/1SciMm8-DVr4tV7dtBguIplpDM8gOTS_M/view",
  "yin2": "https://drive.google.com/file/d/1R7mhRDmIF_NqV8-m-g4tW9bPoomnDeyv/view",
@@ -27,6 +27,7 @@ LINK = {
  "fk": "https://drive.google.com/file/d/1TfL-7p68XsdW3ItJG3stDXLHNaRcYNov/view",
  "ezu": "https://drive.google.com/file/d/1h6A1mUU5E5QPWkRMBrkA1G3UfLjNvKT_/view",
  "fo": "https://drive.google.com/file/d/1dfl0e9FLHD2VCeoc6xWHTqVFWlechDDV/view",
+ "fkv": "https://drive.google.com/file/d/1wWYasgPsa66oUvLsaJ_DC-Xo8ZbfASMI/view",
 }
 def poster(video, name, t=2.0):
     out = T / f"{name}.jpg"
@@ -34,9 +35,10 @@ def poster(video, name, t=2.0):
     return out
 KL = [("C05", "雪の岡崎城（撮り直し版）"), ("C06", "輿の一行"), ("C09", "霧の境川"), ("C10", "豪雨の桶狭間"), ("C11", "扇の手元"),
       ("C13", "名古屋城の築城"), ("C14", "金鯱の陰陽図"), ("C17", "紡績工場"), ("C18", "自動車の組み立て")]
-posters = {"final": poster(D / "ふたつの目_完成版_HD.mp4", "p_final", 18.8)}
+posters = {"final": poster(D / "ふたつの目_完成版_v4.mp4", "p_final", 113.0)}
 for c, _ in KL: posters[c] = poster(D / "Kling素材/高画質版" / f"{c}.mp4", f"p_{c}", 2.5)
 posters["ng"] = poster(D / "Kling素材/C05_1回目_没.mp4", "p_C05ng", 6.0)
+posters["fkv"] = poster(D / "融合_金鯱×地図_動画.mp4", "p_fkv", 3.5)
 for k, f, t in (("v1", "ふたつの目_ビデオコンテ_仮.mp4", 9.0), ("v2", "ふたつの目_ビデオコンテ_v2_太郎.mp4", 47.0), ("v3", "ふたつの目_v3_Kling7カット.mp4", 59.0)):
     posters[k] = poster(D / f, f"p_{k}", t)
 
@@ -75,9 +77,9 @@ figure{margin:0} figcaption{font-size:13px;color:#333;margin-top:6px;line-height
 table{border-collapse:collapse;width:100%;font-size:14px} td,th{border:1px solid #bfb5a0;padding:6px 10px;text-align:left} th{background:#e9e1cf}
 @media print{.w{padding:14mm 12mm} h2{break-after:avoid} figure{break-inside:avoid} .g3{grid-template-columns:repeat(3,1fr)}}"""
     body = f'''<div class="w">
-<h1>ふたつの目 ― 愛知の陰陽図</h1><p class="sub">2026-10-27〜29 に作ったもの、ぜんぶ（{"スマホ用：画像を押すとDriveで開きます" if pdf else "Mac用：動画はその場で再生できます"}）</p>
+<h1>ふたつの目 ― 愛知の陰陽図</h1><p class="sub">2026-10-27〜30 に作ったもの、ぜんぶ（{"スマホ用：画像を押すとDriveで開きます" if pdf else "Mac用：動画はその場で再生できます"}）</p>
 <h2>1. 完成版（ホームページ掲載・高画質版）</h2>
-{vid(D / "ふたつの目_完成版_HD.mp4", "final", LINK["hd"], "1分54秒・1920×1080・24fps（114.0秒）")}
+{vid(D / "ふたつの目_完成版_v4.mp4", "final", LINK["hd"], "1分55秒・1920×1080・24fps（115.0秒）・新しい金鯱と絵地図の締めを入れた v4")}
 <p class="n">ホームページ：<a href="{SITE}">{SITE}</a></p>
 <h2>2. はじまり：AIで描いた絵画</h2>
 <div class="g3">{img(D / "A_古典.png", "油絵の人物（A 古典・Nano Banana Pro）", LINK["oil"])}{img(D / "陰陽_案1_金鯱.png", "陰陽図 案1 金鯱（日本画）", LINK["yin1"])}{img(D / "陰陽_案2_尾張と三河.png", "陰陽図 案2 尾張と三河（油絵・1回目）", LINK["yin2"])}</div>
@@ -87,7 +89,8 @@ table{border-collapse:collapse;width:100%;font-size:14px} td,th{border:1px solid
 <p class="n"><b>絵地図</b>：正確な地図に、尾張（夜）・三河（昼）の塗り分けと名所の位置の印を入れた下絵をAIに渡して描かせた。県の形は本当の輪郭と重なる。金の点が城の本当の位置。</p>
 <div class="v">{img(D / "絵地図_愛知の陰陽図.png", "絵地図：愛知の陰陽図（名所を本当の位置に）", LINK["ezu"])}</div>
 <p class="n" style="margin-top:18px">金鯱×地図：金の玉＝名古屋城、黒い玉＝岡崎城に合わせて重ねたもの。尾張と三河を流し込んだ版は、絵の中の城が本当の位置から約60km外れていたので没。</p>
-<div class="g2">{img(D / "融合_金鯱×地図.png", "融合：金鯱 × 地図", LINK["fk"])}</div>
+<div class="g2">{img(D / "融合_金鯱×地図.png", "融合：金鯱 × 地図", LINK["fk"])}{vid(D / "融合_金鯱×地図_動画.mp4", "fkv", LINK["fkv"], "動画：金鯱 × 地図（7秒・ループ）", small=True)}</div>
+<p class="n">動画（10/30）：玉を2つの城に合わせたまま、金鯱だけを動かした（カメラ固定の Kling → 1080p 高画質化）。Kling は 3.6秒目から黒い鯱の鱗に金が滲んだので、最初の 3.5秒を順に流してから逆に戻し、7秒の切れ目のないループにした。</p>
 <h2>3. 地図と仮説</h2>
 <p class="n">国土数値情報（行政区域・2021年）から正確な県の形を描き、名古屋城と岡崎城を目にした太極図を重ねた。「境はS字に沿う」という仮説は、測ると等距離の直線と同じ（89.5%／89.6%）で、支持されなかった。</p>
 <div class="g3">{img(D / "愛知の陰陽図_地図.png", "地図の上の陰陽図", LINK["map"])}{img(D / "愛知の陰陽図_仮説図.png", "仮説図（検証つき）", LINK["hyp"])}{img(D / "愛知の陰陽図_図面_A3.png", "A3の図面（1:400,000・PDFはDrive）", LINK["zumen"])}</div>
@@ -105,8 +108,8 @@ table{border-collapse:collapse;width:100%;font-size:14px} td,th{border:1px solid
 <h2>8. クレジット</h2>
 <table><tr><th>用途</th><th>クレジット</th></tr>
 <tr><td>陰陽図の絵 2枚</td><td>4</td></tr><tr><td>絵コンテのAI画 8枚</td><td>16</td></tr><tr><td>ナレーション（試し＋15本）</td><td>3.3</td></tr>
-<tr><td>Kling 8カット＋撮り直し1本</td><td>96</td></tr><tr><td>金鯱の動画化＋高画質化 9本</td><td>約20</td></tr><tr><td>陰陽図 案2の作り直し・金鯱の本物の形</td><td>4</td></tr><tr><td>絵地図（生成と印消し）</td><td>4</td></tr>
-<tr><th>合計</th><th>約147（残り 78.33）</th></tr></table>
+<tr><td>Kling 8カット＋撮り直し1本</td><td>96</td></tr><tr><td>金鯱の動画化＋高画質化 9本</td><td>約20</td></tr><tr><td>陰陽図 案2の作り直し・金鯱の本物の形</td><td>4</td></tr><tr><td>絵地図（生成と印消し）</td><td>4</td></tr><tr><td>v4：新しい金鯱と絵地図の動画化＋高画質化</td><td>約17</td></tr><tr><td>金鯱×地図の動画（カメラ固定＋高画質化）</td><td>8.5</td></tr>
+<tr><th>合計</th><th>約173（残り 52.8）</th></tr></table>
 </div>'''
     return f"<html><head><meta charset='utf-8'><title>ふたつの目 一覧</title><style>{css}</style></head><body>{body}</body></html>"
 (D / "ふたつの目_一覧.html").write_text(build(False), encoding="utf-8")
