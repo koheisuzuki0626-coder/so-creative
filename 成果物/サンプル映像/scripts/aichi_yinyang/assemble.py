@@ -25,8 +25,17 @@ for cut, d in CUTS:
     tel_in = ["-loop", "1", "-framerate", "24", "-t", str(d), "-i", str(tel)] if tel.exists() else []
     tel_f = (f";[1]format=rgba,fade=in:st=0.5:d=0.5:alpha=1,fade=out:st={d - 0.9}:d=0.5:alpha=1[tl];[v][tl]overlay=0:0[v2]") if tel.exists() else ";[v]null[v2]"
     tail = f",fade=out:st={d - 0.8}:d=0.8" if cut == "C21" else ""
-    if (AN / f"{cut}.mp4").exists():
+    if (AN / f"{cut}.mp4").exists() and not (cut == "C21" and (KLING / "C21.mp4").exists()):   # 絵地図の締めがあれば、そちらを優先
         run(["-i", str(AN / f"{cut}.mp4"), *tel_in, "-filter_complex", f"[0]setpts=PTS-STARTPTS{tail}[v]{tel_f}", "-map", "[v2]", "-frames:v", str(n), *ENC, str(out)])
+    elif cut == "C21" and (KLING / "C21.mp4").exists():
+        # 最後：C20 の地図から絵地図へ溶けて替わる。縮尺をC20にそろえて（0.966倍）から、ゆっくり寄る
+        last20 = sorted((AN / "C20").glob("f*.jpg"))[-1]
+        title = pathlib.Path("/tmp/aichi_map/v4/title.png")
+        zf = f"[1]scale=1920:1080:force_original_aspect_ratio=increase:flags=lanczos,crop=1920:1080,fps=24,setsar=1,pad=1988:1118:34:19:color=0xe9e2d2,zoompan=z='1+0.0766*on/{n - 1}':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=1:s=1920x1080:fps=24,trim=duration={d},setpts=PTS-STARTPTS[k]"
+        run(["-loop", "1", "-framerate", "24", "-t", "1.2", "-i", str(last20), "-i", str(KLING / "C21.mp4"), "-loop", "1", "-framerate", "24", "-t", str(d), "-i", str(title),
+             "-filter_complex", f"[0]scale=1920:1080,setsar=1,format=yuv420p,fps=24,settb=AVTB[a];{zf};[k]format=yuv420p,fps=24,settb=AVTB[k2];[a][k2]xfade=transition=fade:duration=1.2:offset=0[v];"
+                                f"[2]format=rgba,fade=in:st=1.2:d=1.0:alpha=1[tl];[v][tl]overlay=0:0,fade=out:st={d - 0.8}:d=0.8[v2]",
+             "-map", "[v2]", "-frames:v", str(n), *ENC, str(out)])
     elif (KLING / f"{cut}.mp4").exists():
         kb = f"[0]scale=1920:1080:force_original_aspect_ratio=increase:flags=lanczos,crop=1920:1080,fps=24,setsar=1,setpts=PTS-STARTPTS"
         if cut == "C11":   # Kling の動画でも、後半は地図の勾玉に溶けて替わる
