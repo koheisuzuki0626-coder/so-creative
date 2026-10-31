@@ -31,6 +31,7 @@ LINK = {
  "ezv": "https://drive.google.com/file/d/1CAejETBO6fQ8DRneCUwDOEbux5pY6Qpp/view",
  "y2v": "https://drive.google.com/file/d/1Cke-yNRvP1MZ3JCSwPUFiQnuRr9cZuuM/view",
  "oilv": "https://drive.google.com/file/d/1c0UqiXxicFExobX5gHjgXhI9DhtT1was/view",
+ "four": "https://drive.google.com/file/d/1QIG-6ynwRpWUgcWLhk6mWiQjLzvjFd65/view",
 }
 def poster(video, name, t=2.0):
     out = T / f"{name}.jpg"
@@ -45,6 +46,7 @@ posters["fkv"] = poster(D / "融合_金鯱×地図_動画.mp4", "p_fkv", 3.5)
 posters["ezv"] = poster(D / "絵地図_動画.mp4", "p_ezv", 5.0)
 posters["y2v"] = poster(D / "尾張と三河_動画.mp4", "p_y2v", 5.0)
 posters["oilv"] = poster(D / "油絵の人物_動画.mp4", "p_oilv", 1.0)
+posters["four"] = poster(D / "ふたつの目_4本まとめ.mp4", "p_four", 14.0)
 for k, f, t in (("v1", "ふたつの目_ビデオコンテ_仮.mp4", 9.0), ("v2", "ふたつの目_ビデオコンテ_v2_太郎.mp4", 47.0), ("v3", "ふたつの目_v3_Kling7カット.mp4", 59.0)):
     posters[k] = poster(D / f, f"p_{k}", t)
 
@@ -83,10 +85,12 @@ figure{margin:0} figcaption{font-size:13px;color:#333;margin-top:6px;line-height
 table{border-collapse:collapse;width:100%;font-size:14px} td,th{border:1px solid #bfb5a0;padding:6px 10px;text-align:left} th{background:#e9e1cf}
 @media print{.w{padding:14mm 12mm} h2{break-after:avoid} figure{break-inside:avoid} .g3{grid-template-columns:repeat(3,1fr)}}"""
     body = f'''<div class="w">
-<h1>ふたつの目 ― 愛知の陰陽図</h1><p class="sub">2026-10-27〜31 に作ったもの、ぜんぶ（{"スマホ用：画像を押すとDriveで開きます" if pdf else "Mac用：動画はその場で再生できます"}）</p>
+<h1>ふたつの目 ― 愛知の陰陽図</h1><p class="sub">2026-10-27〜11-01 に作ったもの、ぜんぶ（{"スマホ用：画像を押すとDriveで開きます" if pdf else "Mac用：動画はその場で再生できます"}）</p>
 <h2>1. 完成版（ホームページ掲載・高画質版）</h2>
 {vid(D / "ふたつの目_完成版_v4.mp4", "final", LINK["hd"], "1分55秒・1920×1080・24fps（115.0秒）・新しい金鯱と絵地図の締めを入れた v4")}
 <p class="n">ホームページ：<a href="{SITE}">{SITE}</a></p>
+<h2>1.5 4本まとめ（34秒）</h2>
+{vid(D / "ふたつの目_4本まとめ.mp4", "four", LINK["four"], "油絵の人物 → 尾張と三河 → 金鯱×地図 → 絵地図。音は本編と同じ和の音階で合成")}
 <h2>2. はじまり：AIで描いた絵画</h2>
 <div class="g3">{img(D / "A_古典.png", "油絵の人物（A 古典・Nano Banana Pro）", LINK["oil"])}{img(D / "陰陽_案1_金鯱.png", "陰陽図 案1 金鯱（日本画）", LINK["yin1"])}{img(D / "陰陽_案2_尾張と三河.png", "陰陽図 案2 尾張と三河（油絵・1回目）", LINK["yin2"])}</div>
 <p class="n">10/29 の追加：太極図の型紙を参考画像として渡して作り直した案2と、名古屋城の金鯱どおりの姿（虎の頭・うろこ・反った尾）に寄せた案1。</p>

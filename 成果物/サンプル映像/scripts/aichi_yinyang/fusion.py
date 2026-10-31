@@ -28,6 +28,11 @@ ol = lambda col, w, op=1: "".join(f'<polyline points="{pl(l)}" fill="none" strok
 bd = lambda col, w, op=1: "".join(f'<polyline points="{pl(l)}" fill="none" stroke="{col}" stroke-width="{w}" stroke-opacity="{op}" stroke-dasharray="14 6 3 6" stroke-linejoin="round"/>' for l in BORDER)
 TITLE = (f'<text x="{W2 - 150}" y="150" style="writing-mode:vertical-rl;font-family:\'Hiragino Mincho ProN\',serif;font-weight:600" font-size="110" fill="{INK}" letter-spacing="16">ふたつの目</text>'
          f'<text x="{W2 - 285}" y="220" style="writing-mode:vertical-rl;font-family:\'Hiragino Mincho ProN\',serif;font-weight:600" font-size="50" fill="{GOLD}" letter-spacing="12">愛知の陰陽図</text>')
+def credit(y, t):
+    return (f'<text x="{W2 - 42}" y="{y}" text-anchor="end" font-family="Hiragino Sans" font-weight="400" font-size="20" fill="#5a5348" '
+            f'style="paint-order:stroke" stroke="#efe7d6" stroke-width="5.6" stroke-linejoin="round">{t}</text>')
+# 出典の表示は国土数値情報の利用条件。消さないこと
+TITLE += credit(H2 - 50, "地図：国土数値情報（行政区域データ・2021年）国土交通省 を加工して作成") + credit(H2 - 21, "金の玉＝名古屋城、黒い玉＝岡崎城の本当の位置　金鯱＝生成AI（Nano Banana Pro）")
 def label(p, txt, dx, dy, anchor="start", col=INK, halo=PAPER):
     return (f'<text x="{p[0] + dx:.1f}" y="{p[1] + dy:.1f}" text-anchor="{anchor}" font-family="Hiragino Sans" font-weight="700" font-size="30" '
             f'fill="{col}" style="paint-order:stroke" stroke="{halo}" stroke-width="8" stroke-linejoin="round">{txt}</text>')
