@@ -29,6 +29,8 @@ LINK = {
  "fo": "https://drive.google.com/file/d/1dfl0e9FLHD2VCeoc6xWHTqVFWlechDDV/view",
  "fkv": "https://drive.google.com/file/d/1wWYasgPsa66oUvLsaJ_DC-Xo8ZbfASMI/view",
  "ezv": "https://drive.google.com/file/d/1CAejETBO6fQ8DRneCUwDOEbux5pY6Qpp/view",
+ "y2v": "https://drive.google.com/file/d/1Cke-yNRvP1MZ3JCSwPUFiQnuRr9cZuuM/view",
+ "oilv": "https://drive.google.com/file/d/1c0UqiXxicFExobX5gHjgXhI9DhtT1was/view",
 }
 def poster(video, name, t=2.0):
     out = T / f"{name}.jpg"
@@ -41,6 +43,8 @@ for c, _ in KL: posters[c] = poster(D / "Kling素材/高画質版" / f"{c}.mp4",
 posters["ng"] = poster(D / "Kling素材/C05_1回目_没.mp4", "p_C05ng", 6.0)
 posters["fkv"] = poster(D / "融合_金鯱×地図_動画.mp4", "p_fkv", 3.5)
 posters["ezv"] = poster(D / "絵地図_動画.mp4", "p_ezv", 5.0)
+posters["y2v"] = poster(D / "尾張と三河_動画.mp4", "p_y2v", 5.0)
+posters["oilv"] = poster(D / "油絵の人物_動画.mp4", "p_oilv", 1.0)
 for k, f, t in (("v1", "ふたつの目_ビデオコンテ_仮.mp4", 9.0), ("v2", "ふたつの目_ビデオコンテ_v2_太郎.mp4", 47.0), ("v3", "ふたつの目_v3_Kling7カット.mp4", 59.0)):
     posters[k] = poster(D / f, f"p_{k}", t)
 
@@ -87,6 +91,8 @@ table{border-collapse:collapse;width:100%;font-size:14px} td,th{border:1px solid
 <div class="g3">{img(D / "A_古典.png", "油絵の人物（A 古典・Nano Banana Pro）", LINK["oil"])}{img(D / "陰陽_案1_金鯱.png", "陰陽図 案1 金鯱（日本画）", LINK["yin1"])}{img(D / "陰陽_案2_尾張と三河.png", "陰陽図 案2 尾張と三河（油絵・1回目）", LINK["yin2"])}</div>
 <p class="n">10/29 の追加：太極図の型紙を参考画像として渡して作り直した案2と、名古屋城の金鯱どおりの姿（虎の頭・うろこ・反った尾）に寄せた案1。</p>
 <div class="g3">{img(D / "陰陽_案2_尾張と三河_v2.png", "陰陽図 案2 尾張と三河（作り直し）", LINK["yin2b"])}{img(D / "陰陽_案1_金鯱_本物の形.png", "陰陽図 案1 金鯱（本物の形に寄せた版）", LINK["yin1b"])}</div>
+<p class="n">10/31 の追加：絵をそのまま動かしたもの（各10秒・ループ）。尾張と三河は雲と金の玉の光が動く。油絵の人物は瞬きと呼吸と窓の光だけ。</p>
+<div class="g2">{vid(D / "尾張と三河_動画.mp4", "y2v", LINK["y2v"], "動画：尾張と三河", small=True)}{vid(D / "油絵の人物_動画.mp4", "oilv", LINK["oilv"], "動画：油絵の人物", small=True)}</div>
 <h2>2.5 絵と地図の融合</h2>
 <p class="n"><b>絵地図</b>：正確な地図に、尾張（夜）・三河（昼）の塗り分けと名所の位置の印を入れた下絵をAIに渡して描かせた。県の形は本当の輪郭と重なる。金の点が城の本当の位置。</p>
 <div class="g2">{img(D / "絵地図_愛知の陰陽図.png", "絵地図：愛知の陰陽図（名所を本当の位置に）", LINK["ezu"])}{vid(D / "絵地図_動画.mp4", "ezv", LINK["ezv"], "動く絵地図（10秒・ループ）：街の灯りがまたたき、三河の山に雲が流れる", small=True)}</div>
@@ -110,8 +116,8 @@ table{border-collapse:collapse;width:100%;font-size:14px} td,th{border:1px solid
 <h2>8. クレジット</h2>
 <table><tr><th>用途</th><th>クレジット</th></tr>
 <tr><td>陰陽図の絵 2枚</td><td>4</td></tr><tr><td>絵コンテのAI画 8枚</td><td>16</td></tr><tr><td>ナレーション（試し＋15本）</td><td>3.3</td></tr>
-<tr><td>Kling 8カット＋撮り直し1本</td><td>96</td></tr><tr><td>金鯱の動画化＋高画質化 9本</td><td>約20</td></tr><tr><td>陰陽図 案2の作り直し・金鯱の本物の形</td><td>4</td></tr><tr><td>絵地図（生成と印消し）</td><td>4</td></tr><tr><td>v4：新しい金鯱と絵地図の動画化＋高画質化</td><td>約17</td></tr><tr><td>金鯱×地図の動画（カメラ固定＋高画質化）</td><td>8.5</td></tr>
-<tr><th>合計</th><th>約173（いまの残高 48.78）</th></tr></table>
+<tr><td>Kling 8カット＋撮り直し1本</td><td>96</td></tr><tr><td>金鯱の動画化＋高画質化 9本</td><td>約20</td></tr><tr><td>陰陽図 案2の作り直し・金鯱の本物の形</td><td>4</td></tr><tr><td>絵地図（生成と印消し）</td><td>4</td></tr><tr><td>v4：新しい金鯱と絵地図の動画化＋高画質化</td><td>約17</td></tr><tr><td>金鯱×地図の動画（カメラ固定＋高画質化）</td><td>8.5</td></tr><tr><td>尾張と三河・油絵の人物の動画（撮り直し1本を含む）＋高画質化</td><td>24.5</td></tr>
+<tr><th>合計</th><th>約198（いまの残高 24.26）</th></tr></table>
 </div>'''
     return f"<html><head><meta charset='utf-8'><title>ふたつの目 一覧</title><style>{css}</style></head><body>{body}</body></html>"
 (D / "ふたつの目_一覧.html").write_text(build(False), encoding="utf-8")
