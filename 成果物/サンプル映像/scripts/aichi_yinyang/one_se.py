@@ -4,6 +4,8 @@
 import json, subprocess, sys, wave
 import numpy as np
 tl_path, oil, yin, kin, ezu, bgm_path, out = sys.argv[1:8]
+NA_DIR = "/tmp/aichi_map/audio/na_taro"; NA = [("C07", 4.5), ("C03", 9.0), ("C20", 16.2)]   # 本編の声の録音から3行（行, 入る時刻）
+END = 22.6                                                            # 締めの太鼓と鐘（最後の行のあと・BGMの最後の音と同時）
 TL = json.load(open(tl_path)); TA, TB, TC, TD = TL["t0"]; T = TL["total"]
 SR = 48000; N = int(SR * T); FPS = 24; NF = int(T * FPS) + 2
 rng = np.random.default_rng(34)
@@ -139,19 +141,19 @@ pad = sum(np.sin(2 * np.pi * f * tt) + np.sin(2 * np.pi * (f + 0.7) * tt) for f 
 put(rms_to(pad * gc, -30.5, gc > gc.max() * 0.4), 0, -0.25, 0.5)      # 金の玉が光るぶんだけ鳴る
 yc = curve(c_ycl) ** 1.2; put(rms_to(band(pink(N), 500, 3000) * yc, -32, yc > yc.max() * 0.4), 0, 0.5, 0.3)   # 雲の風
 # ---- 金鯱×地図 ----
+PING1, PING2 = 5.10, 5.72                                             # 「二つの目は、ふたつの城の上に落ちる」の末尾
 put(peak_to(taiko(), -9), TC + 0.5, 0, 0.25)                          # 金鯱が現れる
 put(peak_to(suzu(), -19), TC + 0.55, -0.1, 0.8)
 for k_, g in ((1.55, -15), (4.47, -14)):                              # 泳ぎのいちばん大きい所で低い脈
     put(peak_to(taiko(1.4), g), TC + k_, 0, 0.2)
 kc = curve(c_kin) ** 1.2
 put(rms_to((band(pink(N), 150, 700) + 0.5 * band(pink(N), 800, 2600)) * kc, -28, kc > kc.max() * 0.4), 0, -0.05, 0.35)   # ひれの水音
-put(peak_to(ping(1174.66), -16), TC + 2.3, -0.33, 0.7)                # 金の玉＝名古屋城（画面の位置に合わせる）
-put(peak_to(ping(880.0), -16), TC + 3.0, -0.09, 0.7)                  # 黒い玉＝岡崎城
+put(peak_to(ping(1174.66), -16), NA[1][1] + PING1, -0.33, 0.7)                # 金の玉＝名古屋城（画面の位置に合わせる）
+put(peak_to(ping(880.0), -16), NA[1][1] + PING2, -0.09, 0.7)                  # 黒い玉＝岡崎城
 # ---- 絵地図 ----
 n = int(SR * (T - TD + 0.2)); put(rms_to(waves(n / SR, 5.2, 1.4) * swell(n, 1.8, 2.0), -31), TD - 0.1, 0.0, 0.2)   # 海は画面の下
 sparkle(smooth(c_cst, 0.2), 4.5, -0.7, -0.2, TD + 0.6, T - 1.6, -24)
 ec = curve(c_ecl) ** 1.2; put(rms_to(band(pink(N), 400, 2800) * ec, -32, ec > ec.max() * 0.4), 0, 0.45, 0.3)   # 山の雲の風
-END = T - 4.2                                                         # BGMの最後の音と同時
 put(peak_to(taiko(2.2), -10), END, 0, 0.3)
 put(peak_to(bonsho(), -11), END + 0.02, 0, 0.5)
 
@@ -165,7 +167,16 @@ se = dry + np.vstack([wetL, wetR]) * 0.6
 w = wave.open(bgm_path); b = np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float64).reshape(-1, 2).T / 32768; w.close()
 b = b[:, :N] if b.shape[1] >= N else np.pad(b, ((0, 0), (0, N - b.shape[1])))
 BG = db(-9.0)
-mix = b * BG + se
+# ---- ナレーション（声の間はBGMとSEを下げる）----
+voice = np.zeros(N)
+for name, at in NA:
+    raw_ = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", f"{NA_DIR}/{name}.wav", "-f", "f32le", "-ac", "1", "-ar", str(SR), "-"], capture_output=True, check=True).stdout
+    a = np.frombuffer(raw_, np.float32).astype(np.float64); a = rms_to(a, -19.5)
+    i = int(at * SR); j = min(N, i + len(a)); voice[i:j] += a[:j - i]
+env = (np.abs(voice) > 1e-4).astype(float); w_ = int(SR * 0.5); env = np.convolve(env, np.ones(w_) / w_, mode="same"); env = np.clip(env * 3, 0, 1)
+w2 = int(SR * 0.25); env = np.convolve(env, np.ones(w2) / w2, mode="same")
+duck_b, duck_s = 1 - 0.5 * env, 1 - 0.38 * env
+mix = b * BG * duck_b + se * duck_s + np.vstack([voice, voice])
 fade = np.clip(tt / 1.0, 0, 1) * np.clip((T - tt) / 1.8, 0, 1)
 mix *= fade
 print("区間ごとのRMS(dB) [全帯域 BGM / SE] [スマホで聞こえる帯域 200Hz〜 BGM / SE]")
