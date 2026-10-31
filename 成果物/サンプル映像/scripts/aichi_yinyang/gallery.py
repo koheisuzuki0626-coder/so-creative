@@ -92,7 +92,7 @@ table{border-collapse:collapse;width:100%;font-size:14px} td,th{border:1px solid
 {vid(D / "ふたつの目_完成版_v4.mp4", "final", LINK["hd"], "1分55秒・1920×1080・24fps（115.0秒）・新しい金鯱と絵地図の締めを入れた v4")}
 <p class="n">ホームページ：<a href="{SITE}">{SITE}</a></p>
 <h2>1.5 4本まとめ</h2>
-<div class="g2">{vid(D / "ふたつの目_4本まとめ_動きあり.mp4", "fourm", LINK["fourm"], "動きを増やした版（25秒）：カメラが動き、人物・雲と波・金鯱の動きも大きい")}{vid(D / "ふたつの目_4本まとめ.mp4", "four", LINK["four"], "静かな版（34秒）")}</div>
+<div class="g2">{vid(D / "ふたつの目_4本まとめ_動きあり.mp4", "fourm", LINK["fourm"], "動きを増やした版（25秒）：カメラが動き、人物・雲と波・金鯱の動きも大きい。本編の声でナレーション3行入り")}{vid(D / "ふたつの目_4本まとめ.mp4", "four", LINK["four"], "静かな版（34秒）")}</div>
 <p class="n">油絵の人物 → 尾張と三河 → 金鯱×地図 → 絵地図。音は本編と同じ和の音階に、映像の光や雲や動きを測って合わせたSEを重ねた。</p>
 <h2>2. はじまり：AIで描いた絵画</h2>
 <div class="g3">{img(D / "A_古典.png", "油絵の人物（A 古典・Nano Banana Pro）", LINK["oil"])}{img(D / "陰陽_案1_金鯱.png", "陰陽図 案1 金鯱（日本画）", LINK["yin1"])}{img(D / "陰陽_案2_尾張と三河.png", "陰陽図 案2 尾張と三河（油絵・1回目）", LINK["yin2"])}</div>

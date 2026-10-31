@@ -1,7 +1,8 @@
-"""4本まとめのBGM（34秒）。本編と同じ合成：持続音＋琴の爪弾き（都節）＋尺八の息。使い方: one_bgm.py <出力.wav> [尺] [尺八の入り1 入り2 入り3]"""
+"""4本まとめのBGM（34秒）。本編と同じ合成：持続音＋琴の爪弾き（都節）＋尺八の息。使い方: one_bgm.py <出力.wav> [尺] [尺八の入り1 入り2 入り3] [締めの音の時刻]"""
 import numpy as np, sys, wave
 SR = 48000; T = float(sys.argv[2]) if len(sys.argv) > 2 else 34.0; N = int(SR * (T + 0.5))
 BR = [float(x) for x in sys.argv[3:6]] if len(sys.argv) > 5 else [1.0, 18.6, 25.4]
+END = float(sys.argv[6]) if len(sys.argv) > 6 else T - 4.2
 rng = np.random.default_rng(29)
 def t_(n): return np.arange(n) / SR
 def place(buf, sig, at, gain=1.0, pan=0.0):
@@ -22,12 +23,12 @@ def pluck(f, dur=2.2):
     s = sum(a * np.sin(2 * np.pi * f * h * x) * np.exp(-x * (2.2 + 1.6 * h)) for h, a in ((1, 1.0), (2, 0.45), (3, 0.22), (4, 0.12)))
     return (s + np.exp(-x * 120) * rng.standard_normal(n) * 0.25) * np.clip(x / 0.004, 0, 1)
 t0 = 1.4
-while t0 < T - 5.0:
+while t0 < END - 0.8:
     place(bgm, pluck(SCALE[rng.integers(0, len(SCALE))]), t0, 0.14, pan=float(rng.uniform(-0.5, 0.5)))
     if rng.random() < 0.35:
         place(bgm, pluck(SCALE[rng.integers(0, 5)] / 2), t0 + 0.18, 0.10, pan=float(rng.uniform(-0.4, 0.4)))
     t0 += 2.3 * float(rng.uniform(0.7, 1.3))
-for at, f, g in ((T - 4.2, 293.66, 0.15), (T - 4.0, 440.0, 0.11), (T - 3.8, 587.33, 0.10)):   # 締めの1音（D・A・D）
+for at, f, g in ((END, 293.66, 0.15), (END + 0.2, 440.0, 0.11), (END + 0.4, 587.33, 0.10)):   # 締めの1音（D・A・D）
     place(bgm, pluck(f, 3.6), at, g, pan=0.0)
 def breath(f, dur):
     n = int(SR * dur); x = t_(n); vib = 1 + 0.006 * np.sin(2 * np.pi * 5.2 * x) * np.clip(x / 1.0, 0, 1)
