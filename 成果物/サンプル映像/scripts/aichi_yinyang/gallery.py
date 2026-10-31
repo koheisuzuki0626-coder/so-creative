@@ -32,6 +32,7 @@ LINK = {
  "y2v": "https://drive.google.com/file/d/1Cke-yNRvP1MZ3JCSwPUFiQnuRr9cZuuM/view",
  "oilv": "https://drive.google.com/file/d/1c0UqiXxicFExobX5gHjgXhI9DhtT1was/view",
  "four": "https://drive.google.com/file/d/1QIG-6ynwRpWUgcWLhk6mWiQjLzvjFd65/view",
+ "fourm": "https://drive.google.com/file/d/1rV2qa1Ky7VLahGlBC1gBa9u3XWnZuKuI/view",
 }
 def poster(video, name, t=2.0):
     out = T / f"{name}.jpg"
@@ -47,6 +48,7 @@ posters["ezv"] = poster(D / "絵地図_動画.mp4", "p_ezv", 5.0)
 posters["y2v"] = poster(D / "尾張と三河_動画.mp4", "p_y2v", 5.0)
 posters["oilv"] = poster(D / "油絵の人物_動画.mp4", "p_oilv", 1.0)
 posters["four"] = poster(D / "ふたつの目_4本まとめ.mp4", "p_four", 14.0)
+posters["fourm"] = poster(D / "ふたつの目_4本まとめ_動きあり.mp4", "p_fourm", 11.0)
 for k, f, t in (("v1", "ふたつの目_ビデオコンテ_仮.mp4", 9.0), ("v2", "ふたつの目_ビデオコンテ_v2_太郎.mp4", 47.0), ("v3", "ふたつの目_v3_Kling7カット.mp4", 59.0)):
     posters[k] = poster(D / f, f"p_{k}", t)
 
@@ -89,8 +91,9 @@ table{border-collapse:collapse;width:100%;font-size:14px} td,th{border:1px solid
 <h2>1. 完成版（ホームページ掲載・高画質版）</h2>
 {vid(D / "ふたつの目_完成版_v4.mp4", "final", LINK["hd"], "1分55秒・1920×1080・24fps（115.0秒）・新しい金鯱と絵地図の締めを入れた v4")}
 <p class="n">ホームページ：<a href="{SITE}">{SITE}</a></p>
-<h2>1.5 4本まとめ（34秒）</h2>
-{vid(D / "ふたつの目_4本まとめ.mp4", "four", LINK["four"], "油絵の人物 → 尾張と三河 → 金鯱×地図 → 絵地図。音は本編と同じ和の音階に、映像の光や雲に合わせたSEを重ねた")}
+<h2>1.5 4本まとめ</h2>
+<div class="g2">{vid(D / "ふたつの目_4本まとめ_動きあり.mp4", "fourm", LINK["fourm"], "動きを増やした版（25秒）：カメラが動き、人物・雲と波・金鯱の動きも大きい")}{vid(D / "ふたつの目_4本まとめ.mp4", "four", LINK["four"], "静かな版（34秒）")}</div>
+<p class="n">油絵の人物 → 尾張と三河 → 金鯱×地図 → 絵地図。音は本編と同じ和の音階に、映像の光や雲や動きを測って合わせたSEを重ねた。</p>
 <h2>2. はじまり：AIで描いた絵画</h2>
 <div class="g3">{img(D / "A_古典.png", "油絵の人物（A 古典・Nano Banana Pro）", LINK["oil"])}{img(D / "陰陽_案1_金鯱.png", "陰陽図 案1 金鯱（日本画）", LINK["yin1"])}{img(D / "陰陽_案2_尾張と三河.png", "陰陽図 案2 尾張と三河（油絵・1回目）", LINK["yin2"])}</div>
 <p class="n">10/29 の追加：太極図の型紙を参考画像として渡して作り直した案2と、名古屋城の金鯱どおりの姿（虎の頭・うろこ・反った尾）に寄せた案1。</p>
@@ -120,8 +123,8 @@ table{border-collapse:collapse;width:100%;font-size:14px} td,th{border:1px solid
 <h2>8. クレジット</h2>
 <table><tr><th>用途</th><th>クレジット</th></tr>
 <tr><td>陰陽図の絵 2枚</td><td>4</td></tr><tr><td>絵コンテのAI画 8枚</td><td>16</td></tr><tr><td>ナレーション（試し＋15本）</td><td>3.3</td></tr>
-<tr><td>Kling 8カット＋撮り直し1本</td><td>96</td></tr><tr><td>金鯱の動画化＋高画質化 9本</td><td>約20</td></tr><tr><td>陰陽図 案2の作り直し・金鯱の本物の形</td><td>4</td></tr><tr><td>絵地図（生成と印消し）</td><td>4</td></tr><tr><td>v4：新しい金鯱と絵地図の動画化＋高画質化</td><td>約17</td></tr><tr><td>金鯱×地図の動画（カメラ固定＋高画質化）</td><td>8.5</td></tr><tr><td>尾張と三河・油絵の人物の動画（撮り直し1本を含む）＋高画質化</td><td>24.5</td></tr>
-<tr><th>合計</th><th>約198（いまの残高 24.26）</th></tr></table>
+<tr><td>Kling 8カット＋撮り直し1本</td><td>96</td></tr><tr><td>金鯱の動画化＋高画質化 9本</td><td>約20</td></tr><tr><td>陰陽図 案2の作り直し・金鯱の本物の形</td><td>4</td></tr><tr><td>絵地図（生成と印消し）</td><td>4</td></tr><tr><td>v4：新しい金鯱と絵地図の動画化＋高画質化</td><td>約17</td></tr><tr><td>金鯱×地図の動画（カメラ固定＋高画質化）</td><td>8.5</td></tr><tr><td>尾張と三河・油絵の人物の動画（撮り直し1本を含む）＋高画質化</td><td>24.5</td></tr><tr><td>動きを増やした3本＋高画質化</td><td>23.8</td></tr>
+<tr><th>合計</th><th>約222（いまの残高 0.43）</th></tr></table>
 </div>'''
     return f"<html><head><meta charset='utf-8'><title>ふたつの目 一覧</title><style>{css}</style></head><body>{body}</body></html>"
 (D / "ふたつの目_一覧.html").write_text(build(False), encoding="utf-8")

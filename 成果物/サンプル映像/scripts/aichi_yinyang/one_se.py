@@ -1,9 +1,11 @@
-"""4本まとめの音：BGM＋SE。SEは映像の明るさ・雲・動きを測った値に合わせて鳴らす。使い方: one_se.py <映像.mp4> <BGM.wav> <出力.wav>
+"""4本まとめの音：BGM＋SE。SEは各場面の元の動画（カメラをかける前）を測った値に合わせて鳴らす。
+使い方: one_se.py <cam_timeline.json> <油絵> <尾張と三河> <金鯱×地図> <絵地図> <BGM.wav> <出力.wav>
 左＝尾張（夜）／右＝三河（昼）で音の位置も揃える。"""
-import subprocess, sys, wave
+import json, subprocess, sys, wave
 import numpy as np
-video, bgm_path, out = sys.argv[1:4]
-SR = 48000; T = 34.0; N = int(SR * T); FPS = 24
+tl_path, oil, yin, kin, ezu, bgm_path, out = sys.argv[1:8]
+TL = json.load(open(tl_path)); TA, TB, TC, TD = TL["t0"]; T = TL["total"]
+SR = 48000; N = int(SR * T); FPS = 24; NF = int(T * FPS) + 2
 rng = np.random.default_rng(34)
 def t_(n): return np.arange(n) / SR
 def db(x): return 10 ** (x / 20)
@@ -26,28 +28,39 @@ def put(sig, at=0.0, pan=0.0, wet=0.0):
     dry[0, i:j] += s * l; dry[1, i:j] += s * r
     send[0, i:j] += s * l * wet; send[1, i:j] += s * r * wet
 
-# ---- 映像を測る（1920x1080 を 1/4 にして）----
-raw = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", video, "-vf", "scale=480:270", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], capture_output=True, check=True).stdout
-fr = np.frombuffer(raw, np.uint8).reshape(-1, 270, 480, 3).astype(np.float32)
-sec = np.arange(len(fr)) / FPS
-def region(x0, x1, y0, y1): return fr[:, y0 // 4:y1 // 4, x0 // 4:x1 // 4]
-def norm_in(v, a, b):
-    m = (sec >= a) & (sec <= b); lo, hi = v[m].min(), v[m].max()
-    # 区間の端で急に鳴り出すと「プツッ」と出るので、0.8秒かけて出入りさせる
-    taper = np.clip((sec - a) / 0.8, 0, 1) * np.clip((b - sec) / 0.8, 0, 1)
-    return np.clip((v - lo) / (hi - lo + 1e-6), 0, 1) * taper
+# ---- 各場面の元の動画を測る（全体の時刻の配列にして返す）----
+def load(p, w=480):
+    W, H = map(int, subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=p=0", p], capture_output=True, text=True, check=True).stdout.strip().split(","))
+    h = int(round(H * w / W / 2) * 2)
+    raw = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", p, "-vf", f"scale={w}:{h}", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], capture_output=True, check=True).stdout
+    return np.frombuffer(raw, np.uint8).reshape(-1, h, w, 3).astype(np.float32), w / W
 def smooth(v, s):
     k = max(1, int(s * FPS)) | 1; return np.convolve(np.pad(v, k, mode="edge"), np.ones(k) / k, mode="same")[k:-k]
-def curve(v):  # 24fps → 音の時間軸
-    return np.interp(t_(N), sec, v)
-gold = norm_in(smooth(region(920, 1000, 707, 787).mean((1, 2, 3)), 0.25), 10.0, 18.0)   # 金の玉の明るさ
-ycl = norm_in(smooth(region(1130, 1370, 250, 400).mean((1, 2, 3)), 0.5), 10.0, 17.3)    # 三河の空の雲
-kin = region(440, 1120, 100, 880).mean(-1); km = np.r_[0, np.abs(np.diff(kin, axis=0)).mean((1, 2))]
-kmv = norm_in(smooth(km, 0.6), 19.2, 23.8)                                              # 金鯱の動き
-cst = norm_in(smooth(region(630, 750, 265, 385).mean((1, 2, 3)), 0.25), 25.0, 33.0)     # 名古屋城の光
-ecl = norm_in(smooth(region(1090, 1430, 280, 450).mean((1, 2, 3)), 0.5), 25.0, 33.0)    # 三河の山の雲
-print("各カーブの最大", [round(float(c.max()), 2) for c in (gold, ycl, kmv, cst, ecl)])
-print("金の玉のピーク %.2f秒 雲のピーク %.2f秒 名古屋城のピーク %.2f秒 山の雲のピーク %.2f秒" % (sec[gold.argmax()], sec[ycl.argmax()], sec[cst.argmax()], sec[ecl.argmax()]))
+def place(v, t_off, edge=0.5):              # 0〜1 に揃えて全体の時刻へ置く。端は edge 秒かけて出入りさせる（プツッを防ぐ）
+    v = np.asarray(v, float); v = (v - v.min()) / (v.max() - v.min() + 1e-6)
+    n = len(v); e = np.clip(np.arange(n) / (edge * FPS), 0, 1) * np.clip((n - 1 - np.arange(n)) / (edge * FPS), 0, 1)
+    o = np.zeros(NF); i = int(t_off * FPS); j = min(NF, i + n); o[i:j] = (v * e)[:j - i]; return o
+def reg(fr, k, x0, x1, y0, y1): return fr[:, int(y0 * k):int(y1 * k), int(x0 * k):int(x1 * k)]
+def motion(a):
+    g = a.mean(-1); return np.r_[0, np.abs(np.diff(g, axis=0)).mean((1, 2))]
+f_oil, k = load(oil)
+c_cloth = place(smooth(motion(reg(f_oil, k, 250, 950, 150, 1000)), 0.3), TA)          # 人物の動き
+c_win = place(smooth(reg(f_oil, k, 0, 230, 0, 1000).mean((1, 2, 3)), 0.4), TA)        # 窓の光
+f_y, k = load(yin)
+c_gold = place(smooth(reg(f_y, k, 490, 590, 718, 818).mean((1, 2, 3)), 0.25), TB)     # 金の玉の明るさ
+c_ycl = place(smooth(reg(f_y, k, 620, 1000, 170, 420).mean((1, 2, 3)), 0.4), TB)      # 雲
+bay = reg(f_y, k, 500, 900, 400, 520); c_bay = place(smooth(np.abs(bay - bay[0]).mean((1, 2, 3)), 0.4), TB)   # 湾の波
+win = reg(f_y, k, 120, 520, 500, 900); c_city = place(smooth(np.abs(win - win[0]).mean((1, 2, 3)), 0.4), TB)  # 城と街の灯り
+f_k, k = load(kin)
+c_kin = place(smooth(motion(reg(f_k, k, 300, 1200, 40, 880)), 0.35), TC)              # 金鯱の動き
+f_e, k = load(ezu)
+c_cst = place(smooth(reg(f_e, k, 630, 750, 265, 385).mean((1, 2, 3)), 0.25), TD)      # 名古屋城の光
+c_ecl = place(smooth(reg(f_e, k, 1090, 1430, 280, 450).mean((1, 2, 3)), 0.5), TD)     # 山の雲
+sec = np.arange(NF) / FPS
+for nm, c in (("人物", c_cloth), ("窓の光", c_win), ("金の玉", c_gold), ("雲", c_ycl), ("湾", c_bay), ("街", c_city), ("金鯱", c_kin), ("名古屋城", c_cst), ("山の雲", c_ecl)):
+    print(f"{nm} ピーク {sec[c.argmax()]:.2f}秒", end="  ")
+print()
+def curve(v): return np.interp(t_(N), sec, v)
 
 # ---- 音の部品 ----
 def swell(n, a, b):       # n サンプルのうち a 秒で入り b 秒で抜ける
@@ -103,36 +116,44 @@ def bonsho(f=146.83, dur=4.6):   # 梵鐘
         s += a * (np.sin(2 * np.pi * f * r * x) + 0.8 * np.sin(2 * np.pi * (f * r + 0.45) * x)) * np.exp(-x * d)
     return s * np.clip(x / 0.004, 0, 1) + band(rng.standard_normal(n), 80, 900) * np.exp(-x * 30) * 1.2
 
-# ---- 窓辺（油絵の人物 0〜9.8秒）----
-n = int(SR * 10.0); room = band(pink(n), 150, 1200) * swell(n, 1.5, 1.4) * (0.75 + 0.25 * np.sin(2 * np.pi * t_(n) / 5))
-for pan in (-0.5, 0.2): put(rms_to(band(pink(n), 150, 1200) * swell(n, 1.5, 1.4), -35) if pan > 0 else rms_to(room, -34), 0, pan)
-for at, pan in ((2.4, -0.62), (3.05, -0.55), (6.35, -0.6)):           # 窓は画面の左
+# ---- 窓辺（油絵の人物）----
+tt = t_(N)
+n = int(SR * (TB + 1.2)); room = band(pink(n), 150, 1200) * swell(n, 1.0, 1.0) * (0.75 + 0.25 * np.sin(2 * np.pi * t_(n) / 5))
+put(rms_to(room, -34), 0, -0.5); put(rms_to(band(pink(n), 150, 1200) * swell(n, 1.0, 1.0), -35), 0, 0.2)
+for at, pan in ((0.9, -0.62), (1.5, -0.55), (3.3, -0.6)):             # 窓は画面の左
     put(peak_to(sparrow(), -20), at, pan, 0.7)
+cc = curve(c_cloth) ** 1.2; put(rms_to(band(pink(N), 1200, 6000) * cc, -35, cc > cc.max() * 0.4), 0, 0.1, 0.25)   # 衣擦れ
+wc = curve(c_win) ** 1.2; put(rms_to(band(pink(N), 400, 2400) * wc, -34, wc > wc.max() * 0.4), 0, -0.6, 0.3)      # 窓の外の風
 # ---- 絵が替わる所の風 ----
-for at in (8.7, 17.7, 23.7):
+for at in (TB - 0.3, TC - 0.3, TD - 0.3):
     put(rms_to(air(1.7), -27), at, -0.15, 0.3); put(rms_to(air(1.7), -28), at, 0.15, 0.3)
-put(peak_to(fuurin(), -19), 9.3, 0.2, 0.7)                            # 尾張と三河の入り
-# ---- 尾張と三河（9〜19秒）----
-n = int(SR * 10.6); put(rms_to(waves(10.6, 4.6, 0.6) * swell(n, 1.6, 1.8), -31), 8.8, 0.45, 0.2)   # 湾は画面の右
-n2 = int(SR * 10.4); put(rms_to(band(pink(n2), 80, 420) * swell(n2, 1.5, 1.5), -36), 9.0, -0.5)   # 夜の街の低いうなり
-sparkle(smooth(gold, 0.2), 5.0, -0.85, -0.15, 9.8, 18.2, -23)
-tt = t_(N); gc = curve(gold) ** 1.6
+put(peak_to(fuurin(), -19), TB + 0.3, 0.2, 0.7)                       # 尾張と三河の入り
+# ---- 尾張と三河 ----
+n = int(SR * 5.6); bc = curve(c_bay) ** 0.8
+wv = np.zeros(N); w0 = waves(5.6, 2.6, 0.6); i = int((TB - 0.2) * SR); wv[i:i + n] = (w0 * swell(n, 0.8, 0.8))[:N - i] if i + n > N else w0 * swell(n, 0.8, 0.8)
+put(rms_to(wv * (0.45 + 0.55 * bc), -30, wv != 0), 0, 0.45, 0.2)      # 湾は画面の右。波が立つほど大きく
+n2 = int(SR * 5.6); put(rms_to(band(pink(n2), 80, 420) * swell(n2, 0.9, 0.9), -36), TB - 0.1, -0.5)   # 夜の街の低いうなり
+sparkle(smooth(c_city, 0.2), 8.0, -0.85, -0.15, TB + 0.5, TC + 0.6, -23)   # 灯りが増えるほど多く鳴る
+gc = curve(c_gold) ** 1.6
 pad = sum(np.sin(2 * np.pi * f * tt) + np.sin(2 * np.pi * (f + 0.7) * tt) for f in (293.66, 440.0, 587.33))
-put(rms_to(pad * gc, -30.5, gc > gc.max() * 0.4), 0, -0.25, 0.5)                   # 金の玉が光るぶんだけ鳴る
-yc = curve(ycl) ** 1.2; put(rms_to(band(pink(N), 500, 3000) * yc, -33, yc > yc.max() * 0.4), 0, 0.5, 0.3)   # 雲の風
-# ---- 金鯱×地図（18〜25秒）----
-put(peak_to(taiko(), -9), 18.5, 0, 0.25)                             # 金鯱が現れる
-put(peak_to(suzu(), -19), 18.55, -0.1, 0.8)
-kc = curve(kmv) ** 1.3 * np.clip((tt - 18.7) / 0.8, 0, 1) * np.clip((24.8 - tt) / 0.8, 0, 1)
-put(rms_to((band(pink(N), 150, 700) + 0.5 * band(pink(N), 800, 2600)) * kc, -30, kc > kc.max() * 0.4), 0, -0.05, 0.35)   # ひれの水音
-put(peak_to(ping(1174.66), -16), 20.0, -0.33, 0.7)                    # 金の玉＝名古屋城（画面の位置に合わせる）
-put(peak_to(ping(880.0), -16), 20.75, -0.09, 0.7)                     # 黒い玉＝岡崎城
-# ---- 絵地図（24〜34秒）----
-n = int(SR * 10.2); put(rms_to(waves(10.2, 5.2, 1.4) * swell(n, 1.8, 2.0), -31), 23.9, 0.0, 0.2)  # 海は画面の下
-sparkle(smooth(cst, 0.2), 4.5, -0.7, -0.2, 24.6, 32.4, -24)
-ec = curve(ecl) ** 1.2; put(rms_to(band(pink(N), 400, 2800) * ec, -32, ec > ec.max() * 0.4), 0, 0.45, 0.3)   # 山の雲の風
-put(peak_to(taiko(2.2), -10), 29.8, 0, 0.3)                           # 締め（BGMの最後の音と同時）
-put(peak_to(bonsho(), -11), 29.82, 0, 0.5)
+put(rms_to(pad * gc, -30.5, gc > gc.max() * 0.4), 0, -0.25, 0.5)      # 金の玉が光るぶんだけ鳴る
+yc = curve(c_ycl) ** 1.2; put(rms_to(band(pink(N), 500, 3000) * yc, -32, yc > yc.max() * 0.4), 0, 0.5, 0.3)   # 雲の風
+# ---- 金鯱×地図 ----
+put(peak_to(taiko(), -9), TC + 0.5, 0, 0.25)                          # 金鯱が現れる
+put(peak_to(suzu(), -19), TC + 0.55, -0.1, 0.8)
+for k_, g in ((1.55, -15), (4.47, -14)):                              # 泳ぎのいちばん大きい所で低い脈
+    put(peak_to(taiko(1.4), g), TC + k_, 0, 0.2)
+kc = curve(c_kin) ** 1.2
+put(rms_to((band(pink(N), 150, 700) + 0.5 * band(pink(N), 800, 2600)) * kc, -28, kc > kc.max() * 0.4), 0, -0.05, 0.35)   # ひれの水音
+put(peak_to(ping(1174.66), -16), TC + 2.3, -0.33, 0.7)                # 金の玉＝名古屋城（画面の位置に合わせる）
+put(peak_to(ping(880.0), -16), TC + 3.0, -0.09, 0.7)                  # 黒い玉＝岡崎城
+# ---- 絵地図 ----
+n = int(SR * (T - TD + 0.2)); put(rms_to(waves(n / SR, 5.2, 1.4) * swell(n, 1.8, 2.0), -31), TD - 0.1, 0.0, 0.2)   # 海は画面の下
+sparkle(smooth(c_cst, 0.2), 4.5, -0.7, -0.2, TD + 0.6, T - 1.6, -24)
+ec = curve(c_ecl) ** 1.2; put(rms_to(band(pink(N), 400, 2800) * ec, -32, ec > ec.max() * 0.4), 0, 0.45, 0.3)   # 山の雲の風
+END = T - 4.2                                                         # BGMの最後の音と同時
+put(peak_to(taiko(2.2), -10), END, 0, 0.3)
+put(peak_to(bonsho(), -11), END + 0.02, 0, 0.5)
 
 # ---- 響き ----
 def reverb(x, rt=1.7):
@@ -150,7 +171,7 @@ mix *= fade
 print("区間ごとのRMS(dB) [全帯域 BGM / SE] [スマホで聞こえる帯域 200Hz〜 BGM / SE]")
 hp = lambda v: np.vstack([fft_shape(c, lambda f: np.clip((f - 150) / 100, 0, 1)) for c in v])
 bh, sh = hp(b * BG), hp(se)
-for a, c, name in ((0, 9, "油絵"), (9, 18, "尾張と三河"), (18, 24, "金鯱"), (24, 29.5, "絵地図"), (29.5, 34, "締め")):
+for a, c, name in ((0, TB, "油絵"), (TB, TC, "尾張と三河"), (TC, TD, "金鯱"), (TD, END, "絵地図"), (END, T, "締め")):
     i, j = int(a * SR), int(c * SR); r = lambda v: 20 * np.log10(np.sqrt(np.mean(v[:, i:j] ** 2)) + 1e-12)
     print(f"  {name}: {r(b * BG):.1f} / {r(se):.1f}  ［{r(bh):.1f} / {r(sh):.1f}］")
 print("ピーク", round(float(np.abs(mix).max()), 3))

@@ -1,6 +1,7 @@
-"""4本まとめのBGM（34秒）。本編と同じ合成：持続音＋琴の爪弾き（都節）＋尺八の息。使い方: one_bgm.py <出力.wav>"""
+"""4本まとめのBGM（34秒）。本編と同じ合成：持続音＋琴の爪弾き（都節）＋尺八の息。使い方: one_bgm.py <出力.wav> [尺] [尺八の入り1 入り2 入り3]"""
 import numpy as np, sys, wave
-SR = 48000; T = 34.0; N = int(SR * (T + 0.5))
+SR = 48000; T = float(sys.argv[2]) if len(sys.argv) > 2 else 34.0; N = int(SR * (T + 0.5))
+BR = [float(x) for x in sys.argv[3:6]] if len(sys.argv) > 5 else [1.0, 18.6, 25.4]
 rng = np.random.default_rng(29)
 def t_(n): return np.arange(n) / SR
 def place(buf, sig, at, gain=1.0, pan=0.0):
@@ -33,7 +34,7 @@ def breath(f, dur):
     ph = 2 * np.pi * np.cumsum(f * vib) / SR
     tone = np.sin(ph) + 0.25 * np.sin(2 * ph); noise = bp(rng.standard_normal(n), f * 0.8, f * 3.5) * 0.6
     return (tone * 0.8 + noise) * np.clip(x / 0.6, 0, 1) * np.clip((dur - x) / 1.2, 0, 1)
-for at, f, d in ((1.0, 293.66, 5.0), (18.6, 392.0, 5.0), (25.4, 293.66, 5.6)):
+for at, f, d in ((BR[0], 293.66, 5.0), (BR[1], 392.0, 5.0), (BR[2], 293.66, 5.6)):
     place(bgm, breath(f, d), at, 0.10, pan=-0.1)
 x = bgm / max(1e-6, np.abs(bgm).max()) * 0.89
 w = wave.open(sys.argv[1], "wb"); w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)
