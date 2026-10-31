@@ -18,7 +18,7 @@ for (const w of [1440, 1280, 1000, 900]) {
                  toCta: Math.round(cta.left - its[its.length - 1].getBoundingClientRect().right),
                  rows: new Set(its.map(e => Math.round(e.getBoundingClientRect().top))).size, gaps };
     });
-    check(`幅${w} 項目が8つ`, g.n === 8, String(g.n));
+    check(`幅${w} 項目が9つ`, g.n === 9, String(g.n));
     // 中央に寄せると広い画面で左右に大きな空きができ、バーではなく「浮いた島」に見える
     check(`幅${w} 項目がロゴの隣`, g.fromLogo > 0 && g.fromLogo < 80, `${g.fromLogo}px`);
     check(`幅${w} 1行に収まる`, g.rows === 1);
@@ -42,7 +42,7 @@ for (const w of [1440, 1280, 1000, 900]) {
                  navVar: getComputedStyle(document.documentElement).getPropertyValue('--nav-h').trim(),
                  overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth };
     });
-    check('スマホでも項目を隠さない', m.n === 8 && m.below && m.rows === 1, JSON.stringify(m));
+    check('スマホでも項目を隠さない', m.n === 9 && m.below && m.rows === 1, JSON.stringify(m));
     /* 2026-09-24：420px 以下で社名の尾を落としていたため、iPhone（390px）では
        ヘッダーが「so-」としか出ず、so-creative に変えたことが見えなかった。
        ロゴの行は2段構成で空いているので、狭い画面でも最後まで出す */

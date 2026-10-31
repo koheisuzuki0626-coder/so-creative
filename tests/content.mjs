@@ -2421,6 +2421,28 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     }
 }
 
+/* ---- 導線の起点はビジョン（2026-10-30） ----
+   「AI があるからこの事業があるんじゃなくて、我々のビジョンがあるから HP になっている」。
+   AI を主語にした見出しに戻さない。AI は Vision の後で手段として出す */
+{
+    const pg = await open(browser, { page: 'index.html' });
+    const h1 = await pg.locator('.hero h1').innerText();
+    check('ヒーローの見出しがビジョンになっている', /思いついたら/.test(h1), h1);
+    const heroText = await pg.locator('.hero-badge, .hero h1, .hero-lead').allInnerTexts();
+    check('ヒーローの見出しと説明に AI を出していない', !/AI/.test(heroText.join(' ')), heroText.join(' '));
+    const order = await pg.evaluate(() => {
+        const y = (s) => document.querySelector(s).getBoundingClientRect().top;
+        return y('#vision') < y('#service') && y('#service') < y('#why');
+    });
+    check('ビジョン→事業内容→撮影しない理由の順に並んでいる', order);
+    const vision = await pg.locator('#vision').innerText();
+    check('ビジョンの節で AI を手段として位置づけている', /AI でつくっています/.test(vision), vision.slice(0, 60));
+    check('ビジョンの節で相手の制作頻度を決めつけていない',
+        !/年に1本|年1本|どこの会社も|みなさん/.test(vision), vision.slice(0, 60));
+    check('ヘッダーからビジョンへ行ける', await pg.locator('.nav-main a[href="#vision"]').count() === 1);
+    await pg.close();
+}
+
 /* ---- 社内2ページの「前提」に書いた目標時間単価 ----
    料金と工数のモデルを動かすとここがズレる。9/16 に工数モデルを実測へ
    合わせたとき、古い ¥14,900（重いモデルからの逆算）が残ったまま 9/19 まで

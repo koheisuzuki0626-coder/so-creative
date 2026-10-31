@@ -46,7 +46,7 @@ Mac では `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm i playwright@<venvのplaywrig
 
 | ページ | 中身 | テストの主担当 |
 |---|---|---|
-| `index.html` | 事業内容・撮影しない理由・ジャンルの索引・写真1枚から・制作の流れ・料金の要約・FAQ | `content` `header` |
+| `index.html` | ビジョン・事業内容・撮影しない理由・ジャンルの索引・写真1枚から・制作の流れ・料金の要約・FAQ | `content` `header` |
 | `pricing.html` | **料金の計算機**・尺ごとの実額の表・段の違い・支払条件 | `pricing` `funnel` |
 | `works.html` | **ジャンル9枚とサンプル動画**・実測した仕様 | `content` |
 | `about.html` `privacy.html` | 会社概要・プライバシーポリシー | `content` |

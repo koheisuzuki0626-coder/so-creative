@@ -117,7 +117,7 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
     margin: 0;
 }
 /* 圧を一番必要とする1か所だけ極端に振る。ヒーローの h1 は
-   `撮影しない、<br>映像制作。` と <br> で2行に固定されていて行数が読めるので、
+   `思いついたら、<br>映像にできる。` と <br> で2行に固定されていて行数が読めるので、
    何行になるか分からない下層ページと違って安全に大きくできる */
 .hero .display {
     font-size: var(--step-hero);
@@ -665,6 +665,8 @@ h1, h2, h3, .display, .headline, .subhead { text-wrap: balance; }
 }
 .statement .display { max-width: 940px; }
 .statement .body-text { margin-top: clamp(40px, 4.6vw, 68px); }
+.vision .lead-line + .body-text { margin-top: clamp(28px, 3vw, 44px); }
+.vision-name { white-space: nowrap; }
 .lead-line {
     max-width: 760px;
     margin: 30px 0 0;
