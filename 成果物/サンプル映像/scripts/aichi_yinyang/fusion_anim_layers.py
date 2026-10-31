@@ -29,13 +29,19 @@ bd = "".join(f'<polyline points="{pl(l)}" fill="none" stroke="{GOLD}" stroke-wid
 def label(p, t, dx, dy, anchor="start", size=24):
     return (f'<text x="{p[0]+dx:.1f}" y="{p[1]+dy:.1f}" text-anchor="{anchor}" font-family="Hiragino Sans" font-weight="700" font-size="{size}" fill="{INK}" '
             f'style="paint-order:stroke" stroke="{PAPER}" stroke-width="{size*0.28:.1f}" stroke-linejoin="round">{t}</text>')
-title = (f'<text x="{W2-120}" y="110" style="writing-mode:vertical-rl" font-family="Hiragino Mincho ProN" font-weight="600" font-size="86" fill="{INK}" letter-spacing="12">ふたつの目</text>'
-         f'<text x="{W2-225}" y="165" style="writing-mode:vertical-rl" font-family="Hiragino Mincho ProN" font-weight="600" font-size="40" fill="{GOLD}" letter-spacing="9">愛知の陰陽図</text>')
+# 題字は絵地図（ezu_anim_layer.py）と同じ位置・大きさ。4本まとめで溶けて替わる時に二重に見えないように
+title = (f'<text x="1808.5" y="112.5" style="writing-mode:vertical-rl" font-family="Hiragino Mincho ProN" font-weight="600" font-size="87.2" fill="#1b1b1b" letter-spacing="12.7">ふたつの目</text>'
+         f'<text x="1703" y="168.8" style="writing-mode:vertical-rl" font-family="Hiragino Mincho ProN" font-weight="600" font-size="39.4" fill="#b8892d" letter-spacing="8.4">愛知の陰陽図</text>')
+def credit(y, t):
+    return (f'<text x="{W2-34}" y="{y}" text-anchor="end" font-family="Hiragino Sans" font-weight="400" font-size="16" fill="#5a5348" '
+            f'style="paint-order:stroke" stroke="#efe7d6" stroke-width="4.5" stroke-linejoin="round">{t}</text>')
+# 出典の表示は国土数値情報の利用条件。消さないこと
+CREDIT = credit(H2 - 40, "地図：国土数値情報（行政区域データ・2021年）国土交通省 を加工して作成") + credit(H2 - 17, "金の玉＝名古屋城、黒い玉＝岡崎城の本当の位置　金鯱＝生成AI（Nano Banana Pro／Kling）")
 base = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{W2}" height="{H2}"><defs>{TEX}</defs><rect width="{W2}" height="{H2}" fill="{PAPER}"/>{nb}'
         f'<path d="{poly_d("owari")}" fill="#dcd4c3"/><path d="{poly_d("mikawa")}" fill="#f6f1e6"/>{ol(INK, 2.0)}<rect width="{W2}" height="{H2}" filter="url(#paper)"/></svg>')
 top = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{W2}" height="{H2}">{ol(INK, 1.3, 0.55)}{bd}'
        f'{label(P1, "名古屋城", -34, 8, "end")}{label(P2, "岡崎城", 34, 8)}'
-       f'{label(P(136.80, 35.31), "尾張", 0, 0, "middle", 30)}{label(P(137.62, 35.20), "三河", 0, 0, "middle", 30)}{title}</svg>')
+       f'{label(P(136.80, 35.31), "尾張", 0, 0, "middle", 30)}{label(P(137.62, 35.20), "三河", 0, 0, "middle", 30)}{title}{CREDIT}</svg>')
 with sync_playwright() as p:
     br = p.chromium.launch(); pg = br.new_page(viewport={"width": W2, "height": H2})
     pg.set_content(f"<html><body style='margin:0'>{base}</body></html>"); pg.wait_for_timeout(300); pg.screenshot(path=str(OUT / "base.png"))
