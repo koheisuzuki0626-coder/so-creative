@@ -1,12 +1,15 @@
 """4本まとめの音：BGM＋SE。SEは各場面の元の動画（カメラをかける前）を測った値に合わせて鳴らす。
 使い方: one_se.py <cam_timeline.json> <油絵> <尾張と三河> <金鯱×地図> <絵地図> <BGM.wav> <出力.wav>
 左＝尾張（夜）／右＝三河（昼）で音の位置も揃える。"""
-import json, subprocess, sys, wave
+import json, os, subprocess, sys, wave
 import numpy as np
 tl_path, oil, yin, kin, ezu, bgm_path, out = sys.argv[1:8]
-NA_DIR = "/tmp/aichi_map/audio/na_taro"; NA = [("C07", 4.5), ("C03", 9.0), ("C20", 16.2)]   # 本編の声の録音から3行（行, 入る時刻）
-END = 22.6                                                            # 締めの太鼓と鐘（最後の行のあと・BGMの最後の音と同時）
+NA_DIR = os.environ.get("NA_DIR", "/tmp/aichi_map/audio/na_taro")
 TL = json.load(open(tl_path)); TA, TB, TC, TD = TL["t0"]; T = TL["total"]
+# 以下3つは timeline に書けば上書きできる（11-04：場面を伸ばした版で、ナレーションを溶けきってから入れるため）
+NA = [tuple(x) for x in TL.get("na", [("C07", 4.5), ("C03", 9.0), ("C20", 16.2)])]   # 本編の声の録音から3行（行, 入る時刻）
+END = TL.get("end", 22.6)                                             # 締めの太鼓と鐘（最後の行のあと・BGMの最後の音と同時）
+KIN_HITS = TL.get("kin_hits", [1.55, 4.47])                           # 金鯱の泳ぎのいちばん大きい所（TC からの秒）
 SR = 48000; N = int(SR * T); FPS = 24; NF = int(T * FPS) + 2
 rng = np.random.default_rng(34)
 def t_(n): return np.arange(n) / SR
@@ -144,7 +147,7 @@ yc = curve(c_ycl) ** 1.2; put(rms_to(band(pink(N), 500, 3000) * yc, -32, yc > yc
 PING1, PING2 = 5.10, 5.72                                             # 「二つの目は、ふたつの城の上に落ちる」の末尾
 put(peak_to(taiko(), -9), TC + 0.5, 0, 0.25)                          # 金鯱が現れる
 put(peak_to(suzu(), -19), TC + 0.55, -0.1, 0.8)
-for k_, g in ((1.55, -15), (4.47, -14)):                              # 泳ぎのいちばん大きい所で低い脈
+for k_, g in zip(KIN_HITS, (-15, -14)):                              # 泳ぎのいちばん大きい所で低い脈
     put(peak_to(taiko(1.4), g), TC + k_, 0, 0.2)
 kc = curve(c_kin) ** 1.2
 put(rms_to((band(pink(N), 150, 700) + 0.5 * band(pink(N), 800, 2600)) * kc, -28, kc > kc.max() * 0.4), 0, -0.05, 0.35)   # ひれの水音
