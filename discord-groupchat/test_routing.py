@@ -6739,12 +6739,9 @@ def run():
     check("書庫の置き場が決まっている",
           str(bot.INSIGHTS_ARCHIVE).endswith("insights_archive"), True)
 
-    print("■ 本人にしか直せない故障はメールで知らせる（12時間に1回）")
+    print("■ 本人にしか直せない故障を共有ログに残す（12時間に1回）")
     # 事故（2026-11-16〜18）：claude CLI のログイン切れが38回、bot.log にだけ
-    # 残っていた。Discordの通知は本人に届かない。
-    _sent = []
-    _orig_send = bot._send_mail_sync
-    bot._send_mail_sync = lambda s, b: (_sent.append(s) or (True, "テスト"))
+    # 残っていて、共有ログの「直近のエラー」に出なかった。
     try:
         bot._alert_state.clear()
         bot._alert_loaded["v"] = True
@@ -6761,18 +6758,17 @@ def run():
         check("直ったら解除され、次の故障はすぐ知らせる",
               bot._alert_once_sync("claude_auth", *bot.CLAUDE_AUTH_ALERT,
                                    now=_t0 + bot.ALERT_COOLDOWN_SEC + 2), True)
-        check("メールの件名がログイン切れを言う",
-              "ログイン" in _sent[0], True)
+        check("errors.log に残る",
+              "本人にしか直せない故障:claude_auth" in bot.ERROR_LOG.read_text(encoding="utf-8"), True)
+        check("メールは送らない（本人の希望）",
+              hasattr(bot, "_send_mail_sync"), False)
     finally:
-        bot._send_mail_sync = _orig_send
         bot._alert_state.clear()
     _rc = bot_src()[bot_src().index("async def run_claude_cli"):]
     _rc = _rc[:_rc.index("# --- 応答ルールは")]
     check("ログイン失敗の分岐が知らせを呼ぶ（守り手）",
           '_alert_once_sync, "claude_auth"' in _rc, True)
     check("成功時に解除する", '_alert_clear("claude_auth")' in _rc, True)
-    _ok, _why = bot._send_mail_sync("x", "y")
-    check("宛先・トークンが無ければ送らずに理由を返す", _ok, False)
 
     print("■ テストが本物の記録を汚していないこと")
     # 事故（2026-08-21）：テストを流すたびに本物の history/errors.log へ

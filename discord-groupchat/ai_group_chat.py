@@ -1836,7 +1836,7 @@ async def _claude_cli_run(prompt, neutral=False, deep=False):
                 "時間をおいて再度お試しください。 / " + detail[:200]
             )
         if "log in" in low or "login" in low or "authent" in low or "api key" in low:
-            # 本人にしか直せない故障なのでメールで知らせる（12時間に1回）
+            # 本人にしか直せない故障なので共有ログに残す（12時間に1回）
             _track(asyncio.create_task(asyncio.to_thread(
                 _alert_once_sync, "claude_auth", *CLAUDE_AUTH_ALERT)))
             raise RuntimeError(
@@ -3080,75 +3080,20 @@ def _drive_creds():
     return creds if creds and creds.valid else None
 
 
-# --- 本人への知らせはメールで（2026-11-18）---
+# --- 本人にしか直せない故障を共有ログに残す（2026-11-18）---
 #
 # 事故：11-16〜18 に claude CLI のログインが切れ、38回失敗していた。
 # 返事は Gemini が黙って肩代わりしたので止まりはしなかったが、
-# 本人は「Discordの調子が悪い」としか分からず、原因は bot.log にしか無かった。
-# Discord の通知は本人のスマホに来ない（本人談）ので、Discordで言っても届かない。
+# 原因は bot.log にしか無く、共有ログ（discord_log.md）の「直近のエラー」に出なかった。
+# 本人は「Discordの調子が悪い」としか分からなかった。
 #
-# だから、本人の手でしか直せない故障（ログイン切れ）はメールで知らせる。
-# - トークンは Drive とは別に持つ（Drive の許可を巻き込んで壊さないため）
-# - 宛先は認証した本人のアドレス（tools/gmail_auth.py が保存する）。
-#   リポジトリにアドレスを書かない
-# - 同じ故障は ALERT_COOLDOWN_SEC に1回だけ。直ったら（成功したら）解除する
-GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.send",
-                "openid", "https://www.googleapis.com/auth/userinfo.email"]
-GMAIL_TOKEN_FILE = Path(HISTORY_DIR) / "gmail_token.json"
-GMAIL_TO_FILE = Path(HISTORY_DIR) / "gmail_to.txt"
+# errors.log に残せば共有ログに出る＝Claude Code 側の調査で必ず見える。
+# メール通知は本人の希望で入れない（2026-11-18「メールで送らなくていい」）。
+# 同じ故障は ALERT_COOLDOWN_SEC に1回だけ。直ったら（成功したら）解除する。
 ALERT_STATE_FILE = Path(HISTORY_DIR) / "alert_sent.json"
 ALERT_COOLDOWN_SEC = 12 * 3600
 _alert_state = {}          # ALERT_STATE_FILE の写し（毎回ファイルを読まない）
 _alert_loaded = {"v": False}
-
-
-def _gmail_creds():
-    """送信用トークン（期限切れは自動更新）。無ければ None。"""
-    if not GMAIL_TOKEN_FILE.exists():
-        return None
-    try:
-        from google.oauth2.credentials import Credentials
-        from google.auth.transport.requests import Request
-        creds = Credentials.from_authorized_user_file(str(GMAIL_TOKEN_FILE))
-    except Exception:  # noqa: BLE001
-        return None
-    if creds and creds.expired and creds.refresh_token:
-        try:
-            creds.refresh(Request())
-            GMAIL_TOKEN_FILE.write_text(creds.to_json(), encoding="utf-8")
-        except Exception:  # noqa: BLE001
-            return None
-    return creds if creds and creds.valid else None
-
-
-def _send_mail_sync(subject, body):
-    """本人宛てにメールを送る。戻り値 (成功したか, 理由)。"""
-    try:
-        to = GMAIL_TO_FILE.read_text(encoding="utf-8").strip()
-    except Exception:  # noqa: BLE001
-        to = ""
-    if not to:
-        return False, "宛先が未設定（tools/gmail_auth.py を一度流す）"
-    creds = _gmail_creds()
-    if creds is None:
-        return False, "Gmailのトークンが無い・切れている（tools/gmail_auth.py）"
-    import base64
-    from email.mime.text import MIMEText
-    from google.auth.transport.requests import AuthorizedSession
-    msg = MIMEText(body, "plain", "utf-8")
-    msg["To"] = to
-    msg["From"] = to
-    msg["Subject"] = subject
-    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
-    try:
-        r = AuthorizedSession(creds).post(
-            "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
-            json={"raw": raw}, timeout=30)
-    except Exception as e:  # noqa: BLE001
-        return False, f"{type(e).__name__}"
-    if r.status_code >= 300:
-        return False, f"HTTP {r.status_code}"
-    return True, "送信済み"
 
 
 def _alert_load():
@@ -3170,18 +3115,15 @@ def _alert_save():
 
 
 def _alert_once_sync(key, subject, body, now=None):
-    """同じ故障は ALERT_COOLDOWN_SEC に1回だけ、記録してメールする。
-    戻り値は「今回知らせに行ったか」。メールが送れなくても errors.log には残す
-    （共有ログの「直近のエラー」に出る＝こちらの調査で必ず見える）。"""
+    """同じ故障は ALERT_COOLDOWN_SEC に1回だけ errors.log に残す
+    （共有ログの「直近のエラー」に出る）。戻り値は「今回記録したか」。"""
     _alert_load()
     now = time.time() if now is None else now
     last = (_alert_state.get(key) or {}).get("t", 0)
     if now - last < ALERT_COOLDOWN_SEC:
         return False
-    _log_error(f"本人への知らせ:{key}", RuntimeError(f"{subject} / {body[:300]}"))
-    ok, why = _send_mail_sync(subject, body)
-    print(f"[alert] {key}: メール{'送信' if ok else '未送信'}（{why}）")
-    _alert_state[key] = {"t": now, "mailed": ok, "why": why}
+    _log_error(f"本人にしか直せない故障:{key}", RuntimeError(f"{subject} / {body[:300]}"))
+    _alert_state[key] = {"t": now}
     _alert_save()
     return True
 
@@ -3195,13 +3137,9 @@ def _alert_clear(key):
 
 
 CLAUDE_AUTH_ALERT = (
-    "【ボット】claude のログインが切れています",
-    "Discordボットの claude CLI がログインできなくなりました。\n"
-    "直るまで返事やリサーチは Gemini が代わりに書きます（中身や口調が変わります）。\n\n"
-    "直し方：Macで Claude Code を開くか、ターミナルで `claude` を一度実行して"
-    "ログインしてください（リモートデスクトップからでもできます）。\n"
-    "Claude Code のチャットに「ボットのclaudeのログイン切れた」と言っても対応できます。\n"
-    "再起動は要りません。直れば次の呼び出しから claude に戻ります。",
+    "claude のログインが切れています",
+    "直るまで返事やリサーチは Gemini が代わりに書く。"
+    "Macで `claude` を一度実行してログインすれば、再起動なしで戻る。",
 )
 
 
