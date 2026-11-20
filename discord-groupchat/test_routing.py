@@ -2293,8 +2293,14 @@ def run():
                         ("YouTubeで1本も見つからなかった", "次の巡で"),
                         ("動画の視聴に失敗した（枠切れではない）", "次の巡で")):
         check(f"理由ごとに言い分けている: {_why[:12]}", _want in _srcAll, True)
-    check("理由を控える口が4つある（0本・営業素材・枠切れ・視聴の例外）",
-          _srcS.count("_trend_fail_why[cid]"), 4)
+    check("理由を控える口が5つある（0本・営業素材・当たり0本・枠切れ・視聴の例外）",
+          _srcS.count("_trend_fail_why[cid]"), 5)
+    # 2026-11-21：当たり0本の回は視聴に進まない（任天堂の株・AI詐欺を
+    # 「コーポレートムービー」として書いていた）。視聴ループより前で戻ること。
+    _nh = _srcS.index("    if _no_hit:\n")
+    check("当たり0本なら視聴の前に戻る（守り手）",
+          _nh < _srcS.index("for v in targets:")
+          and "return False" in _srcS[_nh:_nh + 600], True)
     # 流れたお題は、書くだけで読まれていなかった（値を読む場所が1つも無かった）
     _srcR = _insp.getsource(bot._gemini_recovery_loop)
     check("枠が戻ったら、流れたお題を実際に使う",

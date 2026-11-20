@@ -7619,6 +7619,18 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
     _log_genre_supply(query, len(videos), len(candidates), len(_hits),
                       _title_hits, len(targets),
                       _used_queries if query else None)
+    # 当たり0本の回は【見ない】（2026-11-21・本人の判断）。
+    # 以前は「見るのはやめないが一般化させない」だったが、実際には
+    # 「コーポレートムービー」の回で任天堂の株・AI詐欺・仕事術のショートを
+    # 視聴してレポートにしていた。直近40回中9回がこの形で、本人から
+    # 「リサーチの精度がない」と言われた。外れを見て書くより、書かないほうが正しい。
+    if _no_hit:
+        _trend_fail_why[cid] = f"「{query}」に合う新しい動画が無かった"
+        await _trend_say(
+            channel,
+            f"🔎 {label}は、まだ見ていない動画の中にお題に合うものが"
+            "ありませんでした。関係ない動画で代わりに書くことはしません。")
+        return False
     await _trend_say(
         channel,
         f"🎬 {label}の動画{len(videos)}本を取得しました。"

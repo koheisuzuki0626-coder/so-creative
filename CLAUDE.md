@@ -221,7 +221,7 @@ Mac で動いているボットは読まない。「ここで決めたのに Dis
 | 「最新」はプロセスのコミットで測る | `_sync_to_origin` の `LOADED_COMMIT` 比較 |
 | 同じ制作会社でリサーチを埋めない | `_pick_diverse` ＋ `_channels_seen_today` |
 | お題の語は実物の書き方で当てる | `_query_core` / `_QUERY_ALIAS` |
-| 当たり0本をジャンルの「型」にしない | `_no_hit`（`_hits` は `_query_match_score` で数える） |
+| 当たり0本の回は見ない（代わりの動画で書かない） | `_no_hit` で視聴前に戻る（`_hits` は `_query_match_score` で数える） |
 | 見る層が1つに固まらない | `TREND_LAYERS` / `_todays_layer` |
 | 本人にしか直せない故障を共有ログに残す（メールは送らない） | `_alert_once_sync`（claude のログイン切れ・12時間に1回） |
 
