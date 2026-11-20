@@ -5569,6 +5569,92 @@ async def _search_videos(query, limit=50, days=None):
     return videos
 
 
+# 検索で事例が出てこないお題は、制作会社のチャンネルの投稿一覧から足す（2026-11-21）。
+# 実測（直近40回）：「コーポレートムービー」「アニメーション 説明動画」は
+# 検索の当たりが0本の回が続き、代わりに任天堂の株・AI詐欺・AIアニメを見ていた。
+# 一方、制作会社のチャンネルには事例が並んでいる（11-21 に投稿一覧を数えた：
+# CIRCLE 45本中15本・プルークス 直近200本中18本・アニメデ 10本中10本 など）。
+# キーはお題に含まれる語。取ってきた動画は検索の分と同じ門（分析済み・営業素材・
+# お題の語の照合・1チャンネル1本）を通るので、ここで質を判定しない。
+# クォータ：playlistItems/videos.list は1回1ユニット。1チャンネル最大8ユニット
+# ＝1お題40ユニット程度で、検索1ページ（100）より安い。
+TREND_CHANNEL_SOURCES = {
+    "アニメーション": [
+        "UCqnap6Jpav8cu4V86ajmVlw",   # アニメ動画制作のアニメデ
+        "UCLg9tlDmuRJPM1boIdPCB8A",   # ムビサク
+        "UC97_OEjioJM-hGgJ2JWJZ4g",   # プルークス
+        "UCDLe_iX8dWkR8U_bvajGD8Q",   # Crevo
+    ],
+    "コーポレート": [
+        "UCVKwVxrUCTe88zyA_mpM3pw",   # 株式会社CIRCLE
+        "UC97_OEjioJM-hGgJ2JWJZ4g",   # プルークス
+        "UCLrmVO4yWPZ-Hltnirgq8lQ",   # CINEMATO
+        "UCA9uhns3oT8vks71597Um1w",   # 月山映像
+        "UCDLe_iX8dWkR8U_bvajGD8Q",   # Crevo
+    ],
+}
+TREND_CHANNEL_PAGES = 4               # 1チャンネル最大200本（新しい順）
+
+
+def _channel_sources_for(query):
+    """お題に対応する制作会社のチャンネルID（重複なし・順序保持）。"""
+    out = []
+    for key, chs in TREND_CHANNEL_SOURCES.items():
+        if key in (query or ""):
+            out.extend(c for c in chs if c not in out)
+    return out
+
+
+async def _channel_uploads(channel_ids, pages=None):
+    """チャンネルの投稿一覧（新しい順）を _video_dict の形で返す。
+    1チャンネルが失敗しても残りは続ける。"""
+    if not YOUTUBE_API_KEY or not channel_ids:
+        return []
+    pages = pages or TREND_CHANNEL_PAGES
+    ids = []
+    async with aiohttp.ClientSession() as session:
+        for ch in channel_ids:
+            token = None
+            for _ in range(pages):
+                p = {"part": "contentDetails", "playlistId": "UU" + ch[2:],
+                     "maxResults": "50", "key": YOUTUBE_API_KEY}
+                if token:
+                    p["pageToken"] = token
+                try:
+                    async with session.get(
+                        "https://www.googleapis.com/youtube/v3/playlistItems",
+                        params=p) as resp:
+                        data = await resp.json()
+                        if resp.status != 200:
+                            print(f"[trend] 投稿一覧の取得に失敗 {ch}: {resp.status}")
+                            break
+                except Exception as e:  # noqa: BLE001
+                    print(f"[trend] 投稿一覧の取得に失敗 {ch}: {type(e).__name__}")
+                    break
+                for it in data.get("items", []):
+                    vid = (it.get("contentDetails") or {}).get("videoId")
+                    if vid and vid not in ids:
+                        ids.append(vid)
+                token = data.get("nextPageToken")
+                if not token:
+                    break
+        items = []
+        for i in range(0, len(ids), 50):
+            params2 = {"part": "snippet,statistics,contentDetails",
+                       "id": ",".join(ids[i:i + 50]), "key": YOUTUBE_API_KEY}
+            try:
+                async with session.get(
+                    "https://www.googleapis.com/youtube/v3/videos",
+                    params=params2) as resp:
+                    data2 = await resp.json()
+                    if resp.status != 200:
+                        break
+            except Exception:  # noqa: BLE001
+                break
+            items.extend(data2.get("items", []))
+    return [_video_dict(item) for item in items]
+
+
 # ---------- 投稿後の効果測定（自分のチャンネルの実績で勝ちパターンを更新） ----------
 # 「企画→生成→編集→予測」で止まっていた流れを、投稿後の実データまでつなぐ。
 # YouTube Data API（無料）＋ Gemini（無料枠）だけで回る。
@@ -7391,6 +7477,14 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
             _used_queries.append(_q)
             if len(videos) >= max(10, TREND_DEEP_COUNT * 3):
                 break
+        # 検索で事例が出てこないお題は、制作会社の投稿一覧も足す（TREND_CHANNEL_SOURCES）
+        _srcs = _channel_sources_for(query)
+        if _srcs:
+            _known = {v["id"] for v in videos}
+            _up = [v for v in await _channel_uploads(_srcs) if v["id"] not in _known]
+            print(f"[trend] 制作会社の投稿一覧から {len(_up)}本を足す"
+                  f"（{len(_srcs)}チャンネル）", flush=True)
+            videos.extend(_up)
         # ここで再生数順に並べ替えてはいけない（2026-09-23）。
         # APIから検索語との関連順で受け取ったものを、この1行が毎回
         # 再生数順に戻していた。企業VPは数百〜数千回が普通なので、

@@ -6745,6 +6745,19 @@ def run():
     check("書庫の置き場が決まっている",
           str(bot.INSIGHTS_ARCHIVE).endswith("insights_archive"), True)
 
+    print("■ 検索で事例が出ないお題は制作会社の投稿一覧から足す")
+    # 2026-11-21：「コーポレートムービー」「アニメーション 説明動画」は検索の当たりが
+    # 0本の回が続いていた。投稿一覧を足すと当たりが 0→78本／0→255本（実測）。
+    check("コーポレートのお題に投稿一覧がある",
+          len(bot._channel_sources_for("コーポレートムービー 制作事例")) >= 3, True)
+    check("アニメーションのお題に投稿一覧がある",
+          len(bot._channel_sources_for("アニメーション 説明動画 制作事例")) >= 3, True)
+    check("関係ないお題には足さない", bot._channel_sources_for("MV 公式"), [])
+    _srcT = _insp.getsource(bot._run_trend_study)
+    check("リサーチが投稿一覧を使う（守り手）",
+          "_channel_uploads(_srcs)" in _srcT
+          and _srcT.index("_channel_uploads(_srcs)") < _srcT.index("    if _no_hit:\n"), True)
+
     print("■ 本人にしか直せない故障を共有ログに残す（12時間に1回）")
     # 事故（2026-11-16〜18）：claude CLI のログイン切れが38回、bot.log にだけ
     # 残っていて、共有ログの「直近のエラー」に出なかった。
