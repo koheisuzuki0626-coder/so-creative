@@ -6752,7 +6752,17 @@ def run():
           len(bot._channel_sources_for("コーポレートムービー 制作事例")) >= 3, True)
     check("アニメーションのお題に投稿一覧がある",
           len(bot._channel_sources_for("アニメーション 説明動画 制作事例")) >= 3, True)
+    # 2026-11-21：検索で「公開事例が見つからず代替」になっていたお題にも足した
+    for _q in ("マニュアル動画 制作事例", "展示会 動画 制作事例",
+               "サービス紹介動画 制作事例", "企業紹介ムービー 制作実績", "WebCM"):
+        check(f"{_q} に投稿一覧がある", len(bot._channel_sources_for(_q)) >= 3, True)
+    # 1つのお題に1社で埋まらないこと（1レポート1チャンネルの門が効く母数）
+    check("各お題のチャンネルに重複が無い",
+          all(len(v) == len(set(v)) for v in bot.TREND_CHANNEL_SOURCES.values()), True)
     check("関係ないお題には足さない", bot._channel_sources_for("MV 公式"), [])
+    check("採用・SNSのお題は今まで通り（検索で足りている）",
+          (bot._channel_sources_for("採用動画 制作事例"),
+           bot._channel_sources_for("SNS広告 縦型 事例")), ([], []))
     _srcT = _insp.getsource(bot._run_trend_study)
     check("リサーチが投稿一覧を使う（守り手）",
           "_channel_uploads(_srcs)" in _srcT

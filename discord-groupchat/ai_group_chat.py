@@ -5592,6 +5592,44 @@ TREND_CHANNEL_SOURCES = {
         "UCA9uhns3oT8vks71597Um1w",   # 月山映像
         "UCDLe_iX8dWkR8U_bvajGD8Q",   # Crevo
     ],
+    # 2026-11-21 追加。検索では「公開事例が見つからず代替」になっていたお題。
+    # 各社の投稿一覧（最大200本）の【題名】にお題の語が出た本数を実測して、
+    # 多い順に選んだ（括弧内が題名の当たり本数）。説明文の定型文は数えていない。
+    "マニュアル": [
+        "UCQoV8g1sL8Y13D2sc5b6ZZA",   # LOCUS（8）
+        "UCDLe_iX8dWkR8U_bvajGD8Q",   # Crevo（5）
+        "UC97_OEjioJM-hGgJ2JWJZ4g",   # プルークス（5）
+        "UCLg9tlDmuRJPM1boIdPCB8A",   # ムビサク（5）
+        "UCLrmVO4yWPZ-Hltnirgq8lQ",   # CINEMATO（5）
+    ],
+    "展示会": [
+        "UCDLe_iX8dWkR8U_bvajGD8Q",   # Crevo（14）
+        "UCLg9tlDmuRJPM1boIdPCB8A",   # ムビサク（14）
+        "UC97_OEjioJM-hGgJ2JWJZ4g",   # プルークス（12）
+        "UC1aNLywjvysiuQRWg_hZ07A",   # TAO（7）
+        "UCYlxqTxfoyLP1ruQ7MOPjAQ",   # SIORU（6）
+    ],
+    "サービス紹介": [
+        "UCDLe_iX8dWkR8U_bvajGD8Q",   # Crevo（80）
+        "UCxz1yc3Lc4r9rxzrejJbAUQ",   # Lumii（78）
+        "UCQoV8g1sL8Y13D2sc5b6ZZA",   # LOCUS（66）
+        "UCLrmVO4yWPZ-Hltnirgq8lQ",   # CINEMATO（63）
+        "UCQAkpslikHS5eLDBmUJ1Ydg",   # Movie Stage（36）
+    ],
+    "企業紹介": [
+        "UCQoV8g1sL8Y13D2sc5b6ZZA",   # LOCUS（22）
+        "UC97_OEjioJM-hGgJ2JWJZ4g",   # プルークス（19）
+        "UC1aNLywjvysiuQRWg_hZ07A",   # TAO（19）
+        "UCxz1yc3Lc4r9rxzrejJbAUQ",   # Lumii（16）
+        "UC7lxdsauw9H7zo8qPfj48Qw",   # rubi（9）
+    ],
+    "WebCM": [
+        "UC7lxdsauw9H7zo8qPfj48Qw",   # rubi（29）
+        "UC97_OEjioJM-hGgJ2JWJZ4g",   # プルークス（29）
+        "UCQoV8g1sL8Y13D2sc5b6ZZA",   # LOCUS（21）
+        "UCLrmVO4yWPZ-Hltnirgq8lQ",   # CINEMATO（20）
+        "UCxz1yc3Lc4r9rxzrejJbAUQ",   # Lumii（18）
+    ],
 }
 TREND_CHANNEL_PAGES = 4               # 1チャンネル最大200本（新しい順）
 
