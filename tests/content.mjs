@@ -2174,16 +2174,69 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
             return { pos: v.position, z: v.zIndex };
         });
         check('映像がぼかしより前に出る', order.pos !== 'static' && order.z !== 'auto', JSON.stringify(order));
-        const a = Number(await sp.locator('.hero-blur').evaluate((e) => e.dataset.frames || 0));
+        /* ぼかしを描いた枚数と、本編が実際に映したコマ数を同じ2秒で数える */
+        const count = () => sp.evaluate(() => {
+            const q = document.getElementById('hero-video').getVideoPlaybackQuality();
+            return { blur: Number(document.querySelector('.hero-blur').dataset.frames || 0),
+                     shown: q.totalVideoFrames - q.droppedVideoFrames };
+        });
+        const a = await count();
         await sp.waitForTimeout(2000);
-        const b2 = Number(await sp.locator('.hero-blur').evaluate((e) => e.dataset.frames || 0));
-        check('ぼかしが本編と連動して描き変わる', b2 > a, `${a} → ${b2} 枚`);
+        const b2 = await count();
+        check('ぼかしが本編と連動して描き変わる', b2.blur > a.blur, `${a.blur} → ${b2.blur} 枚`);
         /* 2026-10-05：120ms の固定間隔（8fps）だと、40x23 を画面幅まで引き伸ばした
            ぼかしが段差として明滅して見えた（本人の指摘）。映像のコマに1対1で
            合わせる（requestVideoFrameCallback）ことで段差を無くしてある。
-           ⚠️ 固定間隔のタイマーに戻すとチラつきが再発する。 */
-        const fps = (b2 - a) / 2;
-        check('ぼかしが映像のコマに追従している（24fps 前後）', fps >= 18, `${fps.toFixed(1)} fps`);
+           ⚠️ 固定間隔のタイマーに戻すとチラつきが再発する。
+           2026-11-23：前は「2秒で36枚（18fps）以上」と絶対値で見ていたが、
+           全スイートを通しで回すとブラウザが混んで映像そのものが12〜15fpsしか
+           映らず、毎回ここだけ落ちていた（単独なら21〜22fps で通る）。
+           本編が映したコマ数に対する割合で見る。タイマーに戻すと 8/24 ≒ 0.33 になるので
+           0.75 を割れば捕まる。 */
+        const rate = (b2.blur - a.blur) / Math.max(1, b2.shown - a.shown);
+        check('ぼかしが映像のコマに追従している（本編のコマ数の75%以上）', rate >= 0.75,
+            `ぼかし ${b2.blur - a.blur} 枚 / 本編 ${b2.shown - a.shown} コマ（${(rate * 100).toFixed(0)}%）`);
+        /* 枚数が合っていても、別のコマ（遅れたコマや、作り直す前の古い要素）を
+           描いていたら色がずれる。次のコマが出た瞬間に、本編を同じ 40x23 に
+           縮めたものとぼかしの色を比べる（0〜255 の平均差。一致すれば 0） */
+        const diff = () => sp.evaluate(() => new Promise((res) => {
+            const v = document.getElementById('hero-video'), bg = document.querySelector('.hero-blur');
+            /* 本編が止まって次のコマが来ないと永遠に待つので、3秒で「不一致」扱いにする */
+            setTimeout(() => res(999), 3000);
+            v.requestVideoFrameCallback(() => {
+                const c = document.createElement('canvas'); c.width = bg.width; c.height = bg.height;
+                const g = c.getContext('2d'); g.drawImage(v, 0, 0, c.width, c.height);
+                const A = bg.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+                const B = g.getImageData(0, 0, c.width, c.height).data;
+                let d = 0;
+                for (let i = 0; i < A.length; i += 4) {
+                    d += Math.abs(A[i] - B[i]) + Math.abs(A[i + 1] - B[i + 1]) + Math.abs(A[i + 2] - B[i + 2]);
+                }
+                res(d / (A.length / 4) / 3);
+            });
+        }));
+        const d1 = [];
+        for (let i = 0; i < 3; i += 1) { d1.push(await diff()); await sp.waitForTimeout(700); }
+        check('ぼかしは本編と同じコマを描いている', Math.max(...d1) < 4,
+            d1.map((d) => d.toFixed(1)).join(' / '));
+        /* 時間が止まって要素ごと作り直したあとも、新しい要素のコマを描き続けること。
+           古い要素を握ったままだと、手前は動くのに背景だけ止まる */
+        await sp.evaluate(() => {
+            const e = document.getElementById('hero-video');
+            e.__orig = true;
+            Object.defineProperty(e, 'currentTime', { get: () => 5, set: () => {}, configurable: true });
+            Object.defineProperty(e, 'paused', { get: () => false, configurable: true });
+        });
+        await sp.waitForTimeout(6500);
+        const rebuiltM = await sp.evaluate(() => !document.getElementById('hero-video').__orig);
+        check('スマホでも時間が止まったら要素ごと作り直す', rebuiltM, rebuiltM ? '作り直した' : '作り直していない');
+        if (rebuiltM) {
+            await sp.waitForTimeout(1500);
+            const d2 = [];
+            for (let i = 0; i < 3; i += 1) { d2.push(await diff()); await sp.waitForTimeout(700); }
+            check('作り直したあとも、ぼかしは新しい本編と同じコマを描いている', Math.max(...d2) < 4,
+                d2.map((d) => d.toFixed(1)).join(' / '));
+        }
         await sp.close();
     }
     /* PC では画面いっぱいに敷く（横長なので切り取りが浅い） */
