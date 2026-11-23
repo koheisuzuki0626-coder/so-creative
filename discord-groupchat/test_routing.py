@@ -6763,6 +6763,30 @@ def run():
     check("採用・SNSのお題は今まで通り（検索で足りている）",
           (bot._channel_sources_for("採用動画 制作事例"),
            bot._channel_sources_for("SNS広告 縦型 事例")), ([], []))
+
+    print("■ 制作の前に知見を読む（tools/insights_brief.py）")
+    # 本人の指示（2026-11-23）「貯めた知見ファイルは今後の制作の参考にして」
+    import importlib.util as _ilu
+    from pathlib import Path as _Pth
+    _bp = _Pth(bot.BASE_DIR) / "tools" / "insights_brief.py"
+    check("知見の抜き出しの道具がある", _bp.exists(), True)
+    _spec = _ilu.spec_from_file_location("insights_brief", _bp)
+    _ib = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_ib)
+    _dg, _ents = _ib.split(_ib.INSIGHTS.read_text(encoding="utf-8"))
+    check("畳んだ節（A・D・E）を全部出す",
+          all(h in _dg for h in ("# A. ", "# D. ", "# E. ")), True)
+    check("時系列（C）は畳んだ節に混ぜない", "# C. 時系列" in _dg, False)
+    check("時系列の回が切り出せる", len(_ents) > 10, True)
+    # お題の行で見る。本文に「採用動画」が出ただけの企業紹介の回を拾わない（11-23）
+    _fake = ["## 2026-11-22 11:25\n【自動・「企業紹介ムービー 制作実績」リサーチ】\n採用動画も…\n",
+             "## 2026-11-21 07:07\n【自動・「採用動画 制作事例」リサーチ】\n…\n"]
+    check("ジャンルはお題の行で当てる",
+          [e.split("\n")[0] for e in _ib.pick(_fake, "採用", 3)],
+          ["## 2026-11-21 07:07"])
+    check("CLAUDE.md に制作前の手順がある",
+          "insights_brief.py" in (_Pth(bot.BASE_DIR).parent / "CLAUDE.md").read_text(
+              encoding="utf-8"), True)
     _srcT = _insp.getsource(bot._run_trend_study)
     check("リサーチが投稿一覧を使う（守り手）",
           "_channel_uploads(_srcs)" in _srcT
