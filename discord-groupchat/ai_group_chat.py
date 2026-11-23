@@ -1283,14 +1283,8 @@ async def _run_backfill_insights(cid):
         return ("📓 過去のリサーチは、すでに全部 **YouTube知見** に入っています"
                 "（新しく足すものはありませんでした）。\n"
                 "これからのぶんも毎日8時に自動で追記されます。")
-    try:
-        rel = str(path.relative_to(Path(_BASE)))
-    except ValueError:
-        rel = ""
-    why = ""
-    if rel:
-        ok, why = await _push_paths([rel], f"過去のリサーチ{n}件を知見に取り込み")
-        why = "" if ok else f"\n（GitHubへの反映は失敗: {why[:80]}）"
+    ok, why = await _sync_note(path)
+    why = "" if ok else f"\n（Googleドライブへの反映は失敗: {why[:80]}／手元には保存済み）"
     return (f"📓 過去のリサーチ **{n}件** を **YouTube知見** に取り込みました。\n"
             "これからのぶんも毎日8時に自動で追記されます。\n"
             "読み返すときは「**知見見せて**」。" + why)
@@ -1326,18 +1320,13 @@ def _asks_backfill(text):
 
 
 async def _run_note(cid, kind, body, who="kohei"):
-    """記録して、GitHubへ push まで済ませる（スマホだけで完結させる）。"""
+    """記録して、Googleドライブへの同期まで済ませる（スマホだけで完結させる）。
+    公開リポジトリなので GitHub には上げない（2026-11-24・本人の指示）。"""
     path = await asyncio.to_thread(_append_note_sync, kind, body, who)
     title = NOTES[kind][1]
-    note = ""
-    try:
-        rel = str(path.relative_to(Path(_BASE)))
-    except ValueError:
-        rel = ""                       # リポジトリ外（テスト等）は push しない
-    if rel:
-        ok, why = await _push_paths([rel], f"{title}に追記（{body[:40]}）")
-        note = ("" if ok else
-                f"\n（GitHubへの反映は失敗: {why[:80]}／内容は手元に保存済み）")
+    ok, why = await _sync_note(path)
+    note = ("" if ok else
+            f"\n（Googleドライブへの反映は失敗: {why[:80]}／内容は手元に保存済み）")
     return (f"📝 **{title}** に記録しました。\n"
             f"> {body[:200]}\n"
             f"（読み返すときは「**{'知見' if kind == 'insight' else '失敗メモ' if kind == 'failed' else '実験ログ'}見せて**」）"
@@ -3380,6 +3369,57 @@ def _drive_subfolder(name, parent=None):
         return parent
     _drive_folders[key] = fid
     return fid
+
+
+# 知見ファイルの置き場（2026-11-24・本人の指示）。リポジトリは公開なので
+# GitHub には上げず、Google ドライブの so-creative/知見/ に同期する。
+# 手元（fixtures/）が正で、ドライブはその写し。同じ名前のファイルは
+# 作り足さずに中身を差し替える（毎日の追記で同名ファイルが増えないように）。
+DRIVE_NOTES_FOLDER = "知見"
+
+
+def _drive_put_note(path, sub=""):
+    """知見ファイルを1つ、ドライブの 知見/[sub/] に上書きで置く。
+    戻り値: (成功したか, 理由)。"""
+    svc = _drive_service()
+    if svc is None:
+        return False, "Googleドライブに繋がっていません"
+    p = Path(path)
+    if not p.is_file():
+        return False, f"ファイルがありません: {p.name}"
+    try:
+        folder = _drive_subfolder(DRIVE_NOTES_FOLDER)
+        if sub:
+            folder = _drive_subfolder(sub, parent=folder)
+        if not folder:
+            return False, "ドライブの置き場を作れませんでした"
+        from googleapiclient.http import MediaFileUpload
+        media = MediaFileUpload(str(p), mimetype="text/markdown",
+                                resumable=p.stat().st_size > 5 * 1024 * 1024)
+        r = svc.files().list(
+            q=(f"'{folder}' in parents and trashed=false "
+               f"and name='{_drive_q_esc(p.name)}'"),
+            fields="files(id)", pageSize=1).execute()
+        got = r.get("files") or []
+        if got:
+            svc.files().update(fileId=got[0]["id"], media_body=media).execute()
+        else:
+            svc.files().create(body={"name": p.name, "parents": [folder]},
+                               media_body=media, fields="id").execute()
+        return True, ""
+    except Exception as e:  # noqa: BLE001
+        _log_error("知見のドライブ同期", e)
+        return False, str(e)[:120]
+
+
+async def _sync_note(path):
+    """記録したら、ドライブへ写す（GitHub には上げない）。
+    リポジトリの外（テストの一時ファイル）は写さない。"""
+    try:
+        Path(path).resolve().relative_to(Path(_BASE).resolve())
+    except ValueError:
+        return True, ""
+    return await asyncio.to_thread(_drive_put_note, path)
 
 
 def _drive_kind_of(path):
@@ -15804,7 +15844,7 @@ def _hdd_deliverables_text():
              f"・書誌・編集データ（ffprobe / Premiere / 書類）: **{a['meta']:,}件**",
              f"・映像の読み取り: **{a['vision']:,}リクエスト＝{a['files']:,}ファイル**",
              "",
-             "**置き場（GitHubの Codeタブ の中）**"]
+             "**置き場（Macの so-portfolio の中・GitHubには上げていない）**"]
     for rel, what in (
             ("成果物/事例素材一覧/事例素材一覧.xlsx", "事例動画の一覧（表）"),
             ("成果物/事例素材一覧/映像分析まとめ.md", "傾向のまとめ"),

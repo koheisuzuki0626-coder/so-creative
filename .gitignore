@@ -11,3 +11,8 @@ discord-groupchat/debug/discord_log.md
 # 前職の資料（Google ドライブ「so-非公開」に同じものがある）
 成果物/NotebookLM用/
 成果物/事例素材一覧/
+# 知見ファイル（Google ドライブ so-creative/知見/ に同期。ボットは push しない）
+discord-groupchat/fixtures/youtube_insights.md
+discord-groupchat/fixtures/failed_patterns.md
+discord-groupchat/fixtures/prompt_experiments.md
+discord-groupchat/fixtures/insights_archive/

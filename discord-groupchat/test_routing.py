@@ -361,6 +361,13 @@ def run():
     _ign = _sp_log.run(["git", "check-ignore", "-q", "debug/discord_log.md"],
                        cwd=bot._BASE).returncode
     check("discord_log.md は .gitignore に入っている", _ign, 0)
+    for _fn in (bot._run_note, bot._run_backfill_insights):
+        check(f"{_fn.__name__} は push しない（ドライブへ写す）",
+              "_push_paths" in _insp_log.getsource(_fn), False)
+    for _nf in ("fixtures/youtube_insights.md", "fixtures/failed_patterns.md",
+                "fixtures/prompt_experiments.md", "fixtures/insights_archive/2026-09.md"):
+        check(f"{_nf} は .gitignore に入っている",
+              _sp_log.run(["git", "check-ignore", "-q", _nf], cwd=bot._BASE).returncode, 0)
 
     print("■ 承認/拒否の自然言語判定 _try_text_approval")
     import asyncio as _aio2
