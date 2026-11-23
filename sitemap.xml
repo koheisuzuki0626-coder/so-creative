@@ -11,7 +11,8 @@
        用途別（9） company-video / recruit-video / service-video / ad-video /
                   sns-video / exhibition-video / internal-video /
                   animation-video / music-video
-    2. funnel.html・roadmap.html・record.html は社内用。noindex のまま残す
+    2. funnel.html は社内用。noindex のまま残す
+       （roadmap.html・record.html は 2026-11-23 にリポジトリの外へ移した）
     3. robots.txt に Sitemap: の行を足す
     4. 下の <loc> が公開ページと合っているか確かめる（tests/content.mjs が見ている）
     5. python3 scripts/update-dates.py で <lastmod> を git の最終コミット日に入れ直す

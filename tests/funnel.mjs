@@ -157,7 +157,7 @@ await p.close();
         check(`${f} は計測している`, loads(html));
     }
     /* 内部用のページは数えない。自分で開いたぶんが通過率に混ざる */
-    for (const f of ['funnel.html', 'roadmap.html', 'record.html']) {
+    for (const f of ['funnel.html']) {
         const html = await (await q.request.get(`${BASE}/${f}`)).text();
         check(`${f} は計測しない(内部用)`, !loads(html));
     }
