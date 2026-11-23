@@ -54,6 +54,11 @@ NARRATION_HUMAN = 70000
 NO_NARRATION = 25000
 MATSU_TO_AI = 70000                 # 松に込みの「ナレーター手配1回ぶん」を返す額
 REVISIONS = {"梅": 2, "竹": 3, "松": 3}
+# 初回のご依頼の値引き（2026-11-23・本人の決定）。サイトの assets/pricing.js の PROMO と同じ。
+#   1社につき最初の1案件・合計から20%・2027年8月末までのご依頼。
+#   --first を付けた時だけ行が入る（付け忘れても定価のまま＝高く出る側に倒れる）。
+FIRST_RATE = 0.2
+FIRST_UNTIL = datetime.date(2027, 8, 31)
 TIER_NOTE = {"梅": "梅（標準）／人物は出ません",
              "竹": "竹（上）／登場人物2人まで",
              "松": "松（特上）／登場人物3人まで・人物ナレーション1名込み"}
@@ -99,8 +104,9 @@ def lead_time(tier, sec, count, nar):
     return f"約{weeks}週間"
 
 
-def calc(tier, sec, count, nar):
-    """内訳の行と合計を返す。nar は ai / human / none。"""
+def calc(tier, sec, count, nar, first=False):
+    """内訳の行と合計を返す。nar は ai / human / none。
+    first=True で初回のご依頼の値引き（合計の20%）を最後の行に足す。"""
     rows, total = [], 0
     # サイトの内訳表示に合わせて、base を「企画・構成費」と「制作費」に割る。
     # 企画・構成費は1案件に1回、制作費は本数ぶん。足すと base + perExtra×(本数−1)。
@@ -136,6 +142,12 @@ def calc(tier, sec, count, nar):
         back = -NO_NARRATION * count
         rows.append(("ナレーションなし", f"{count}本ぶん お引きします", back))
         total += back
+    if first:
+        off = -round(total * FIRST_RATE)
+        rows.append(("初回のご依頼の値引き",
+                     f"合計から{round(FIRST_RATE * 100)}%（{FIRST_UNTIL.year}年{FIRST_UNTIL.month}月末までのご依頼）",
+                     off))
+        total += off
     return rows, total
 
 
@@ -207,11 +219,15 @@ def main(argv=None):
     ap.add_argument("--music", action="store_true",
                     help="契約書：第13条（楽曲を扱う場合の特約）を差し込む。"
                          "MV・リリックビデオ・社歌など、甲が楽曲を用意する案件だけ")
+    ap.add_argument("--first", action="store_true",
+                    help="初回のご依頼の値引き（20%・2027年8月末までのご依頼）を入れる")
     ap.add_argument("--out", help="書き出し先のPDF")
     a = ap.parse_args(argv)
 
     day = (datetime.date.fromisoformat(a.date) if a.date else datetime.date.today())
-    rows, total = calc(a.tier, a.sec, a.count, a.nar)
+    if a.first and day > FIRST_UNTIL:
+        ap.error(f"初回の値引きは {FIRST_UNTIL} までのご依頼が対象です（発行日 {day}）")
+    rows, total = calc(a.tier, a.sec, a.count, a.nar, first=a.first)
     common = {
         "件名": a.title,
     }

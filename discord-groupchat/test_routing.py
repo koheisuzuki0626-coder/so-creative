@@ -4228,6 +4228,31 @@ def run():
 
     # 尺は合計秒数にかかること（1本ごとに区切っても同額になるが、式を取り違えない）
     check("梅30秒×3本・AI＝640,000", _md.calc("梅", 30, 3, "ai")[1], 640000)
+    # 初回のご依頼の値引き（2026-11-23・本人の決定）。サイトの assets/pricing.js の
+    # PROMO と同じく、定価の合計から20%。付けた時だけ最後の1行に入る。
+    check("初回割引：竹120秒・AI＝614,400（768,000の8割）",
+          _md.calc("竹", 120, 1, "ai", first=True)[1], 614400)
+    _ngF = []
+    for _tier in ("梅", "竹", "松"):
+        for _sec in (15, 60, 300):
+            for _cnt in (1, 3):
+                for _nar in ("ai", "human", "none"):
+                    _rows, _tot = _md.calc(_tier, _sec, _cnt, _nar, first=True)
+                    if (_tot != round(_site_price(_tier, _sec, _cnt, _nar) * 0.8)
+                            or _rows[-1][0] != "初回のご依頼の値引き"):
+                        _ngF.append(f"{_tier}{_sec}秒x{_cnt}本/{_nar}")
+    check("初回割引は全組み合わせで定価の8割・最後の行", _ngF[:3], [])
+    check("付けなければ割引の行は出ない",
+          any(r[0] == "初回のご依頼の値引き" for r in _md.calc("竹", 60, 1, "ai")[0]), False)
+    try:
+        import contextlib as _ctxF
+        import io as _ioF
+        with _ctxF.redirect_stderr(_ioF.StringIO()):
+            _md.main(["見積書", "--to", "x", "--first", "--date", "2027-09-01"])
+        _late = "期限後なのに通ってしまった"
+    except SystemExit:
+        _late = "ok"
+    check("期限（2027年8月末）を過ぎた発行日では初回割引を付けられない", _late, "ok")
     # リサーチのまとめに出す概算（_quote_text）も同じ式で出す。
     # 2026-09-24：ここだけ「ナレーション一律＋3万円」という、サイトにも
     # 見積書にも無い式が残っていた。松の既定が2.5万円高く出ていた。
