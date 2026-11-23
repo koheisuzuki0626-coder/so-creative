@@ -641,6 +641,28 @@ const over = mailLens.filter((x) => x.len >= 1800);
 check('最長の組み合わせでも mailto が収まる', over.length === 0,
     JSON.stringify(mailLens.sort((a, b) => b.len - a.len).slice(0, 3)));
 
+/* 2026-11-23：初回のご依頼は20%引き（2027年8月末まで）。定価の表示は変えず、
+   合計の下に割引後の額を1行添える。期限を過ぎたら行ごと消える */
+const promoOn = Date.now() <= new Date('2027-08-31T23:59:59+09:00').getTime();
+for (const [t, sec, n, nar] of [['ume', 15, 1, 'ai'], ['take', 120, 1, 'ai'], ['matsu', 60, 3, 'none']]) {
+    const ti = TIERS.find((x) => x.id === t);
+    await page.locator(`#calc-tier .calc-opt[data-tier="${t}"]`).click();
+    await page.locator(`#calc-cnt .calc-opt[data-count="${n}"]`).click();
+    await setLens(page, Array(n).fill(sec));
+    await setNarAll(page, nar);
+    await page.waitForTimeout(40);
+    const total = Number((await page.locator('#calc-total').innerText()).replace(/[^\d]/g, ''));
+    const promo = page.locator('#calc-promo');
+    if (promoOn) {
+        const shown = Number((await promo.locator('strong').innerText()).replace(/[^\d]/g, ''));
+        check(`初回割引の行が定価の80%（${ti.label}${sec}秒×${n}本）`,
+            shown === Math.round(total * 0.8) && await promo.isVisible(),
+            `定価 ${total} / 表示 ${shown}`);
+    } else {
+        check(`期限後は初回割引の行が出ない（${ti.label}${sec}秒×${n}本）`, !(await promo.isVisible()));
+    }
+}
+
 check('JS エラーなし', page.__errors.length === 0, JSON.stringify(page.__errors));
 await browser.close();
 report();

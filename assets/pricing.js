@@ -131,6 +131,16 @@ const track = window.soTrack || (() => {});
                 + HOURS.perExtra * (n - 1) + HOURS.narration * narN) / LEAD_WEEK_HOURS + LEAD_REVIEW));
         const leadTime = (sec, t, narN, n) => `約${leadWeeks(sec, t, narN, n)}週間`;
         const yen = (n) => `¥${n.toLocaleString('ja-JP')}`;
+        /* 初回のご依頼の値引き（2026-11-23・本人の決定）。定価と式はそのまま、
+           合計の下に「初回は20%引きでいくら」を1行添えるだけ。
+           受注ゼロのうちに定価を崩すと戻せないので、値引きは期間で区切る。
+           期限を過ぎたら行ごと消える（消し忘れても嘘の値引きを出さない）。
+           20%引くと式の工数で割った時給は下限の8割（最低 ¥16,382/h）になるが、
+           式の工数は実測の3〜4倍重いので、実際の時給はそれより高い。
+           pricing.html の告知と make_doc.py の --初回割引 も同じ額・同じ期限にすること */
+        const PROMO = { rate: 0.2, until: '2027-08-31', label: '2027年8月末までのご依頼' };
+        const promoOn = () => Date.now() <= new Date(`${PROMO.until}T23:59:59+09:00`).getTime();
+        const promoPrice = (total) => Math.round(total * (1 - PROMO.rate));
         /* 合計は選択肢に無い秒数になりうる（120+90=210秒など）ので、その場で組み立てる */
         const secLabel = (sec) => {
             const hit = LENGTHS.find((l) => l.sec === sec);
@@ -174,6 +184,7 @@ const track = window.soTrack || (() => {});
             <div class="calc-out">
                 <p class="calc-out-head">お見積り</p>
                 <p class="calc-total"><span data-c="total">¥240,000</span><small>税込</small></p>
+                <p class="calc-promo" data-c="promo" hidden></p>
                 <dl class="calc-break">
                     <div><dt>企画・構成費（1案件に1回）</dt><dd data-c="base">¥120,000</dd></div>
                     <div hidden><dt data-c="cnt-dt">追加の本数 0本 × ¥80,000（2本目以降）</dt><dd data-c="cntfee">¥0</dd></div>
@@ -533,6 +544,11 @@ const track = window.soTrack || (() => {});
                     narFeeNow < 0 ? `−${yen(-narFeeNow)}`
                     : approx ? `${yen(narFeeNow)}〜` : yen(narFeeNow);
                 q('lead-v').textContent = leadTime(sec, tier, narN, n);
+                const promo = q('promo');
+                if (promo) {
+                    promo.hidden = !promoOn();
+                    promo.innerHTML = `初回のご依頼は${PROMO.rate * 100}%引き <strong>${yen(promoPrice(total))}${approx ? '〜' : ''}</strong><span>（${PROMO.label}）</span>`;
+                }
                 settled(total);
 
                 /* 尺・本数は件名と内訳の両方に出るので、選んだ内容では繰り返さない。
@@ -544,6 +560,8 @@ const track = window.soTrack || (() => {});
                     '■ 選んだ内容',
                     `・仕上げ：${tier.label}（${tier.sub}）`,
                     `・ナレーション：${narJoin}`,
+                    /* 初回割引の額はメールに入れない（2026-11-23）。松・6本・尺ばらばらで
+                       もともと上限の手前（約1,795字）にあり、1行足すと超えた。割引は見積書で引く */
                     `・概算金額：${yen(total)}（税込）`,
                     `・納品目安：${leadTime(sec, tier, narN, n)}`,
                     '',
