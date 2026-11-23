@@ -1417,16 +1417,15 @@ async def _share_debug_log(cid, limit=80):
                 + "\n\n…（長すぎるのでここで切りました）")
     DEBUG_LOG.write_text(body, encoding="utf-8")
 
-    # _git_self は discord-groupchat/ で動くので、パスもそこからの相対にする
-    # （リポジトリroot基準にすると git add がファイルを見つけられない）
+    # GitHub には上げない（2026-11-24・本人の指示）。リポジトリは公開なので、
+    # 会話の中身が誰でも読める状態になっていた。手元に書き出すだけにする。
+    # Claude Code は同じ Mac で動くので、手元のファイルをそのまま読める。
+    # debug/discord_log.md は .gitignore に入れてあり、万一プッシュの関数に
+    # 渡しても git add で弾かれる（二重の守り）。
     rel = str(DEBUG_LOG.relative_to(Path(_BASE)))
-    ok, why = await _push_paths([rel], f"Discordログを共有（{now}）")
-    if not ok:
-        return (f"⚠️ ログを共有できませんでした: {why}\n"
-                "（書き出し自体は完了しているので、次回の共有で一緒に届きます）")
-    return (f"✅ 直近の会話・エラー・生成状態を共有しました（{rel}）。\n"
+    return (f"✅ 直近の会話・エラー・生成状態を手元に書き出しました（{rel}）。\n"
             "Claude Codeのチャットで「**ログ見て**」と言えば、そのまま読めます。\n"
-            "※会話の内容がGitHubのプライベートリポジトリに保存されます。")
+            "※GitHubには上げていません（公開リポジトリのため）。")
 
 
 async def _self_diagnose():

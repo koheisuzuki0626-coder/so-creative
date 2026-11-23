@@ -354,6 +354,14 @@ def run():
     check("gitに渡すパス", _rel.replace("\\", "/"), "debug/discord_log.md")
     check("_git_selfの実行位置と一致", bot.BASE_DIR == bot._BASE, True)
 
+    print("■ ログはGitHubに上げない（公開リポジトリ・2026-11-24）")
+    import inspect as _insp_log, subprocess as _sp_log
+    check("_share_debug_log は push しない",
+          "_push_paths" in _insp_log.getsource(bot._share_debug_log), False)
+    _ign = _sp_log.run(["git", "check-ignore", "-q", "debug/discord_log.md"],
+                       cwd=bot._BASE).returncode
+    check("discord_log.md は .gitignore に入っている", _ign, 0)
+
     print("■ 承認/拒否の自然言語判定 _try_text_approval")
     import asyncio as _aio2
 
