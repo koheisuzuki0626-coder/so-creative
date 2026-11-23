@@ -6,7 +6,7 @@ const pwmod = (await import(PW)).default;
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
 const browser = await pwmod.chromium.launch();
 for (const file of ['index.html', 'works.html', 'pricing.html', 'company-video.html', 'recruit-video.html', 'about.html', 'privacy.html', 'copyright.html', 'quality.html',
-                    'funnel.html', 'roadmap.html', 'record.html']) {
+                    'funnel.html']) {
     const page = await open(browser, { page: file });
     const bad = await page.evaluate(() => {
         const L = (c) => { const v = c.map(x => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); });
@@ -64,8 +64,6 @@ const revealCases = [
     ['index.html', 360, 640, 'index Android 小'],
     ['index.html', 1280, 900, 'index PC'],
     ['about.html', 375, 667, 'about iPhone SE'],
-    ['roadmap.html', 375, 667, 'roadmap iPhone SE'],
-    ['record.html', 375, 667, 'record iPhone SE'],
     ['funnel.html', 375, 667, 'funnel iPhone SE'],
 ];
 for (const [file, w, h, label] of revealCases) {
@@ -247,11 +245,11 @@ for (const [file, w, h, label] of revealCases) {
         await page.close();
     }
 
-    /* 社内用の3ページは site.css を読まず、<style> にトークンを複製している。
+    /* 社内用のページ（いまは funnel.html だけ）は site.css を読まず、<style> にトークンを複製している。
        つまり印刷の指定も複製が要る。2026-09-26 まで @media print が無く、
        紙では地が落ちて、ほぼ白の文字だけが残る状態だった
        （Chrome が薄い文字を勝手に濃くするので本文は読めたが、見出しは薄いまま） */
-    for (const file of ['roadmap.html', 'record.html', 'funnel.html']) {
+    for (const file of ['funnel.html']) {
         const page = await open(browser, { page: file, width: 1280 });
         await page.emulateMedia({ media: 'print' });
         await page.waitForTimeout(300);
