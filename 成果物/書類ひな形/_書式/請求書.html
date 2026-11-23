@@ -1,0 +1,50 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<title>請求書</title><link rel="stylesheet" href="base.css"></head><body>
+<div class="head">
+  <div><div class="doc-title">請求書</div></div>
+  <div class="issuer">
+    <img class="logo" src="logo-lockup.png" alt="so-creative">
+    <b>so-creative</b>　鈴木 宏平<br>
+    愛知県名古屋市<br>bonvoyage.ti@icloud.com
+  </div>
+</div>
+
+<div class="to">{{宛先}} 御中</div>
+
+<table class="meta"><tbody>
+  <tr><td>請求番号</td><td>{{番号}}</td></tr>
+  <tr><td>発行日</td><td>{{発行日}}</td></tr>
+  <tr><td>支払期限</td><td>{{支払期限}}</td></tr>
+  <tr><td>件名</td><td>{{件名}}</td></tr>
+</tbody></table>
+
+<p class="lead">下記のとおりご請求申し上げます。</p>
+
+<div class="total-band">
+  <span class="label">ご請求金額</span>
+  <span class="yen">¥{{合計}}</span>
+  <span class="note">消費税は申し受けません（適格請求書発行事業者の登録なし）。この金額がそのまま総額です。</span>
+</div>
+
+<table class="grid">
+  <thead><tr><th>項目</th><th>内容</th><th class="num">金額</th></tr></thead>
+  <tbody>{{内訳}}
+    <tr class="sum"><td colspan="2">合計</td><td class="num">¥{{合計}}</td></tr>
+  </tbody>
+</table>
+
+<h2 class="sec">お振込先</h2>
+<table class="grid"><tbody>
+  <tr><td style="width:30%">金融機関</td><td>{{金融機関}}</td></tr>
+  <tr><td>種別・口座番号</td><td>{{口座}}</td></tr>
+  <tr><td>口座名義</td><td>{{名義}}</td></tr>
+</tbody></table>
+<p class="fine">お振込手数料は御社にてご負担くださいますようお願いいたします。</p>
+
+<h2 class="sec">摘要</h2>
+<ul class="notes">
+  <li>{{摘要}}</li>
+</ul>
+
+<p class="fine">適格請求書発行事業者の登録はしておりません。そのため、御社側で仕入税額控除をお取りいただけない場合があります。経理のご担当者さまにご確認ください。</p>
+</body></html>
