@@ -5096,7 +5096,13 @@ def _corp_gate(videos, query):
         return videos, 0
     if not (query and _CORP_QUERY_RE.search(query)):
         return videos, 0
-    kept = [v for v in videos if _corporate_score(v) > 0]
+    # 2026-11-26：お題に指定した制作会社のチャンネル（TREND_CHANNEL_SOURCES）の動画は
+    # 落とさない。投稿そのものが制作実績なのに、「〇〇の研修動画｜動画制作・映像制作
+    # 会社なら【ムビサク】」のように株式会社・様が題名に無いと 0点で落ちていた。
+    # 実測：未見の実物（題名にお題の語）がマニュアル9本→門の後1本・展示会9本→2本。
+    trusted = set(_channel_sources_for(query))
+    kept = [v for v in videos
+            if _corporate_score(v) > 0 or v.get("channel_id") in trusted]
     if not kept:                 # 全部落ちる時は落とさない（0本で終わらせない）
         return videos, 0
     kept.sort(key=_corporate_score, reverse=True)
@@ -7733,10 +7739,23 @@ async def _run_trend_study(cid, query=None, skip_analyzed=None,
     # そこでは Gemini が実際に見た本文を使えるので、語の一致より強い信号になる。
     # ※語の一致は全体では有効な代理（当たり158本の exact 率61% 対 外れ21本の24%）。
     #   弱いのは【この帯だけ】。全体の代理精度と、門の損得を混ぜないこと。
-    if len(_hits) < min(TREND_DEEP_COUNT, 3):
-        _pool, _n = candidates, TREND_DEEP_COUNT
-    else:
+    #
+    # 【2026-11-26 に変えた（本人「関係の薄い動画を見ている」）】
+    # 上の見送りを覆した。11-15〜25 の自己判定で、マニュアル動画は実物 32%・
+    # 展示会は 34%。マニュアルは当たり2本の回が続き、残り3枠を候補全体（ほぼ
+    # 外れ）で埋めていた。展示会は当たり25本のうち題名に「展示会」があるのは
+    # 7〜11本だけで、残りは制作会社の概要欄の定型文（展示会・採用・マニュアル…）
+    # に当たっただけだった。本人の優先は【本数より関連】なので：
+    #   ・題名にお題の語がある動画が3本以上あれば、その中だけから選ぶ
+    #   ・当たりが3本未満でも、候補全体で枠を埋めない（見る本数が減ってよい）
+    #   ・当たり0本の回は今まで通り視聴せずに終える（_no_hit）
+    _title_pool = [v for v in _hits if _query_hit_title(v, query)]
+    if len(_title_pool) >= min(TREND_DEEP_COUNT, 3):
+        _pool, _n = _title_pool, min(TREND_DEEP_COUNT, len(_title_pool))
+    elif _hits:
         _pool, _n = _hits, min(TREND_DEEP_COUNT, len(_hits))
+    else:
+        _pool, _n = candidates, TREND_DEEP_COUNT
     # 同じチャンネルは1本まで・今日見た所は後回し（_pick_diverse）。
     # 選ぶ母集団は上と同じ（関連ありの時は _hits の中だけ）。裾には手を伸ばさない。
     # お題の語が1本も当たらなかった＝その語には公開事例がほぼ無い。
