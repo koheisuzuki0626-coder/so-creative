@@ -182,11 +182,27 @@ export const hoursModes = (t, sec, modes) =>
     HOURS.base + HOURS.perSec * t.hours * sec + HOURS.perExtra * (modes.length - 1)
     + HOURS.narration * narTracks(t, modes);
 export const hours = (t, sec, n, nar = 'ai') => hoursModes(t, sec, sameModes(n, nar));
-/* 納期 = 工数 ÷ 週25h ＋ 確認の往復1週（最低2週）。
-   2026-09-24：ここだけ hoursModes の 1.5h×(本数−1) を落としていて、
-   複数本のときに納期を短く見せていた。工数と別式にしない。 */
-export const leadWeeks = (t, sec, nar = 'ai', n = 1) =>
-    Math.max(2, Math.round(hoursModes(t, sec, sameModes(n, nar)) / 25 + 1));
+/* 納期（2026-11-25・本人と決めた式）。工程ごとに営業日を足して、5で割って週にする。
+     構成案     こちら1日 ＋ お客様のご確認3日
+     絵コンテ   こちら1日 ＋ お客様のご確認3日
+     制作       （工数 − 構成案ぶん1h）÷ 1日5h を切り上げ（最低1日）
+     編集チェック × 上限の回数（梅2・竹3・松3）
+                1回 ＝ お客様のご確認3日 ＋ 修正（合計90秒までは1日、それより長いと2日）
+     納品       1日
+   以前は「工数 ÷ 週25h ＋ 確認1週（最低2週）」で、お客様のご確認を待つ日数が
+   1週ぶんしか入っておらず、ほぼすべてが「約2週間」になっていた。
+   rounds を渡すと修正の回数を変えられる（「最短」は梅・15秒・修正1回で出す） */
+export const LEAD = { plan: 1, conte: 1, review: 3, dayHours: 5, deliver: 1, fixShort: 1, fixLong: 2, longOver: 90 };
+export const revisions = (t) => (t.id === 'ume' ? 2 : 3);
+export const leadDays = (t, sec, nar = 'ai', n = 1, rounds = revisions(t)) => {
+    const make = Math.max(1, Math.ceil((hoursModes(t, sec, sameModes(n, nar)) - 1) / LEAD.dayHours - 1e-9));
+    const fix = sec > LEAD.longOver ? LEAD.fixLong : LEAD.fixShort;
+    return LEAD.plan + LEAD.conte + make + rounds * fix + LEAD.deliver + LEAD.review * (2 + rounds);
+};
+export const leadWeeks = (t, sec, nar = 'ai', n = 1, rounds) =>
+    Math.round(leadDays(t, sec, nar, n, rounds) / 5);
+/* 「最短」：梅・15秒・修正1回で済んだ場合 */
+export const FASTEST_WEEKS = Math.round(leadDays(TIERS[0], 15, 'ai', 1, 1) / 5);
 /* 目標の時間単価。以前の ¥14,900 は「60秒の松が32h かかる」という重いモデルからの
    逆算だった。モデルを実測に合わせた結果 ¥23,000/h まで上がったが、
    2026-10-13 の料金改定（短尺と長尺の値下げ）に合わせて本人の判断で ¥20,000 にした。

@@ -109,26 +109,23 @@ const track = window.soTrack || (() => {});
            本数に上限を置いていた（countCap）。9/22 に本ごとに尺を選ぶ形へ変えたので、
            1本あたりは必ず15秒以上になり、上限そのものが要らなくなった */
 
-        /* 納期は工数から出す。固定の早見表にすると、尺が伸びたときに
-           実際の手間より長い数字を出してしまう(3分48hで5週間など)。
-
-             納期 = 工数 ÷ 週に充てられる時間 ＋ 確認の往復
-             LEAD_WEEK_HOURS … 1本に集中して充てられる週あたりの時間。
-                               年間の制作可能時間 1,373h ÷ 46週 ≒ 30h のうち、
-                               主軸の1本に充てるぶん
-             LEAD_REVIEW     … 構成案・絵コンテ・初稿チェックの往復ぶん
-             最低2週間        … どんなに短くてもこの往復は縮まらない
-
-           仕上げの段階で工数が変わるので、納期も段によって変わる。
-           修正を3回とも使う場合は、別途1回1週間ほど見てもらう(本文に明記) */
-        const LEAD_WEEK_HOURS = 25, LEAD_REVIEW = 1;
+        /* 納期（2026-11-25・本人と決めた式）。工程ごとに営業日を足して、5で割って週にする。
+             構成案 1日 ＋ ご確認3日 ／ 絵コンテ 1日 ＋ ご確認3日
+             制作 （工数 − 構成案ぶん1h）÷ 1日5h を切り上げ（最低1日）
+             編集チェック × 上限の回数（梅2・竹3・松3）。1回 ＝ ご確認3日 ＋ 修正（合計90秒まで1日、超えると2日）
+             納品 1日
+           以前の「工数 ÷ 週25h ＋ 確認1週（最低2週）」は、お客様のご確認を待つ日数が
+           ほとんど入っておらず、ほぼすべて「約2週間」になっていた。
+           tests/lib.mjs の leadDays と1対1で対応させること */
+        const LEAD = { plan: 1, conte: 1, review: 3, dayHours: 5, deliver: 1, fixShort: 1, fixLong: 2, longOver: 90 };
         const HOURS = { base: 3.0, perSec: 0.15, perExtra: 1.5, narration: 1.0 };   // 工数モデル（実測×約1.5）。tests/lib.mjs と同じ値
-        /* 2026-09-24：本数ぶんの 1.5h/本 を足し忘れていて、複数本のときだけ
-           納期を短く見せていた（工数モデルには入っているのに納期だけ落ちていた）。
-           この式は上の「工数」の定義と1対1で対応させること */
-        const leadWeeks = (sec, t, narN = 0, n = 1) =>
-            Math.max(2, Math.round((HOURS.base + HOURS.perSec * t.hours * sec
-                + HOURS.perExtra * (n - 1) + HOURS.narration * narN) / LEAD_WEEK_HOURS + LEAD_REVIEW));
+        const leadWeeks = (sec, t, narN = 0, n = 1) => {
+            const h = HOURS.base + HOURS.perSec * t.hours * sec + HOURS.perExtra * (n - 1) + HOURS.narration * narN;
+            const rounds = t.id === 'ume' ? 2 : 3;
+            const make = Math.max(1, Math.ceil((h - 1) / LEAD.dayHours - 1e-9));
+            const fix = sec > LEAD.longOver ? LEAD.fixLong : LEAD.fixShort;
+            return Math.round((LEAD.plan + LEAD.conte + make + rounds * fix + LEAD.deliver + LEAD.review * (2 + rounds)) / 5);
+        };
         const leadTime = (sec, t, narN, n) => `約${leadWeeks(sec, t, narN, n)}週間`;
         const yen = (n) => `¥${n.toLocaleString('ja-JP')}`;
         /* 初回のご依頼の値引き（2026-11-23・本人の決定）。定価と式はそのまま、
@@ -191,7 +188,7 @@ const track = window.soTrack || (() => {});
                     <div><dt data-c="len-dt">尺</dt><dd data-c="lenfee">¥0</dd></div>
                     <div><dt data-c="nar-dt">ナレーション</dt><dd data-c="narfee">¥0</dd></div>
                 </dl>
-                <p class="calc-lead">納品目安 <strong data-c="lead-v">約2週間</strong></p>
+                <p class="calc-lead">納品目安 <strong data-c="lead-v">約4週間</strong></p>
                 <div class="calc-actions">
                     <a href="mailto:" class="pill pill-solid calc-cta" data-c="mail">この内容で相談する</a>
                     <button type="button" class="calc-copy" data-c="copy">内容をコピー</button>
