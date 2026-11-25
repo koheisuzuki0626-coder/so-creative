@@ -24,6 +24,7 @@
     サイトの計算機より 25,000 円高い見積書が出ていた。サイトが正
     （tests/pricing.mjs で時間単価の下限まで検証しているのはあちら）。
 """
+import math
 import argparse
 import datetime
 import pathlib
@@ -63,13 +64,18 @@ TIER_NOTE = {"梅": "梅（標準）／人物は出ません",
              "竹": "竹（上）／登場人物2人まで",
              "松": "松（特上）／登場人物3人まで・人物ナレーション1名込み"}
 
-# 工数と納期（tests/lib.mjs の hoursModes / leadWeeks と同じ式）。
+# 工数と納期（tests/lib.mjs の hoursModes / leadDays と同じ式）。
 #   工数 = 3.0h ＋ 0.15h×倍率×合計秒数 ＋ 1.5h×(本数−1) ＋ 1.0h×ナレーション本数
-#   納期 = 工数 ÷ 週25h ＋ 確認の往復1週（最低2週）
+#   納期（2026-11-25・本人と決めた式）＝ 工程ごとの営業日を足して ÷5 を四捨五入
+#     構成案・絵コンテ：こちら各1日 ＋ お客様のご確認各3日
+#     制作：（工数 − 1h）÷ 1日5h を切り上げ（最低1日）
+#     編集チェック × 上限（梅2・竹3・松3）：1回 ＝ ご確認3日 ＋ 修正1日（合計90秒超は2日）
+#     納品：1日
 HOUR_MULT = {"梅": 1.0, "竹": 1.22, "松": 1.36}
 HOURS = {"base": 3.0, "per_sec": 0.15, "per_extra": 1.5, "narration": 1.0}
-LEAD_WEEK_HOURS = 25
-LEAD_REVIEW = 1
+LEAD = {"plan": 1, "conte": 1, "review": 3, "day_hours": 5, "deliver": 1,
+        "fix_short": 1, "fix_long": 2, "long_over": 90}
+REVISIONS = {"梅": 2, "竹": 3, "松": 3}
 
 
 def yen(n):
@@ -91,16 +97,25 @@ def work_hours(tier, sec, count, nar):
             + HOURS["narration"] * nar_tracks(tier, count, nar))
 
 
+def lead_days(tier, sec, count, nar, rounds=None):
+    """納期の営業日。tests/lib.mjs の leadDays と同じ式。sec は1本の秒数。"""
+    rounds = REVISIONS[tier] if rounds is None else rounds
+    total = sec * count
+    make = max(1, math.ceil((work_hours(tier, sec, count, nar) - 1) / LEAD["day_hours"] - 1e-9))
+    fix = LEAD["fix_long"] if total > LEAD["long_over"] else LEAD["fix_short"]
+    return (LEAD["plan"] + LEAD["conte"] + make + rounds * fix + LEAD["deliver"]
+            + LEAD["review"] * (2 + rounds))
+
+
 def lead_time(tier, sec, count, nar):
     """納期。サイトの計算機と同じ式で出す。
 
     2026-09-24 まで固定の早見表（300秒以下は一律「約2〜3週間」など）だった。
     63通り中33通りでサイトと食い違い、しかも**見積書の方が短い**という
     守れない約束になっていた（竹300秒×3本で 約3〜4週間 と サイト 約8週間）。
-    尺だけの表では、本数とナレーションで増える工数を数えられない。
+    2026-11-25 にお客様のご確認の日数を工程ごとに数える式へ変えた。
     """
-    weeks = max(2, round(work_hours(tier, sec, count, nar)
-                         / LEAD_WEEK_HOURS + LEAD_REVIEW))
+    weeks = int(lead_days(tier, sec, count, nar) / 5 + 0.5)   # JS の Math.round と同じ（四捨五入）
     return f"約{weeks}週間"
 
 
