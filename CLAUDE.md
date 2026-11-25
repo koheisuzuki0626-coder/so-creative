@@ -223,6 +223,8 @@ Mac で動いているボットは読まない。「ここで決めたのに Dis
 | お題の語は実物の書き方で当てる | `_query_core` / `_QUERY_ALIAS` |
 | 当たり0本の回は見ない（代わりの動画で書かない） | `_no_hit` で視聴前に戻る（`_hits` は `_query_match_score` で数える） |
 | 検索で事例が出ないお題は制作会社の投稿一覧から取る | `TREND_CHANNEL_SOURCES` / `_channel_uploads` |
+| 関係の薄い動画で枠を埋めない（題名の当たりから選ぶ・3本未満でも埋めない） | `_title_pool` / `elif _hits:`（2026-11-26） |
+| 指定した制作会社の投稿を「企業らしくない」で落とさない | `_corp_gate` の `trusted`（`_channel_sources_for`） |
 | 見る層が1つに固まらない | `TREND_LAYERS` / `_todays_layer` |
 | 本人にしか直せない故障を共有ログに残す（メールは送らない） | `_alert_once_sync`（claude のログイン切れ・12時間に1回） |
 | 制作の前に貯めた知見を【全部】読む（Claude Code 側） | `tools/insights_brief.py`（系統の回は全部・残りは `--chunks` で束にして読み手に） |
