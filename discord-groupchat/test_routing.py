@@ -3632,6 +3632,20 @@ def run():
         check(f"添付ありでも会話にする: {_t}",
               bot.classify_route(_t, has_image_att=True, has_attachments=True),
               None)
+    # 事故（2026-11-26）：「notebooklmに、渡す動画生成用のプロンプトテンプレ作って」が
+    # 動画生成（hf_auto）に流れ、9項目の聞き返し→Higgsfieldの確認まで進んだ。
+    # 文章の語のすぐ後に「テンプレ」が挟まると _WANTS_TEXT_RE が素通りしていた。
+    for _t in ("notebooklmに、渡す動画生成用のプロンプトテンプレ作って",
+               "lmに、渡す動画生成用のプロンプトテンプレ作って",
+               "動画用の台本テンプレを作って",
+               "動画生成のプロンプト案を出して",
+               "ショート動画のタイトル案を考えて"):
+        check(f"文章（テンプレ・案）の依頼は生成に流さない: {_t}",
+              bot.classify_route(_t), None)
+    # 守りすぎの確認：映像そのものの依頼は、今まで通り生成に通す
+    for _t in ("夕日の海の動画を作って", "猫が走る動画作って"):
+        check(f"映像そのものの依頼は生成のまま: {_t}",
+              bot.classify_route(_t) is not None, True)
     # 守りすぎの確認：添付して【絵や映像】を頼むのは、従来どおり生成に通す
     for _t, _want in (("この写真から動画にして", "slideshow"),
                       ("この画像をいい感じに加工して", "image")):
