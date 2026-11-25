@@ -5668,6 +5668,17 @@ TREND_CHANNEL_SOURCES = {
         "UCxz1yc3Lc4r9rxzrejJbAUQ",   # Lumii（16）
         "UC7lxdsauw9H7zo8qPfj48Qw",   # rubi（9）
     ],
+    # 2026-11-26 追加。検索の候補が1〜2本まで枯れていた（11-23・11-25）。
+    # 投稿一覧（最大200本）の題名に 採用|リクルート|求人|新卒|中途 が出た本数のうち、
+    # 【まだ見ていない】本数で選んだ（括弧内）。プルークス（30）は「採用動画の制作費用は
+    # いくら？」のような集客の解説が混ざるので入れていない。
+    "採用": [
+        "UCDLe_iX8dWkR8U_bvajGD8Q",   # Crevo（22）
+        "UCLrmVO4yWPZ-Hltnirgq8lQ",   # CINEMATO（18）
+        "UCA9uhns3oT8vks71597Um1w",   # 月山映像（18）
+        "UCQAkpslikHS5eLDBmUJ1Ydg",   # Movie Stage（14）
+        "UCQoV8g1sL8Y13D2sc5b6ZZA",   # LOCUS（11）
+    ],
     "WebCM": [
         "UC7lxdsauw9H7zo8qPfj48Qw",   # rubi（29）
         "UC97_OEjioJM-hGgJ2JWJZ4g",   # プルークス（29）
