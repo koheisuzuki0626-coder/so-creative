@@ -4309,9 +4309,15 @@ def run():
     # 63通り中33通りサイトと食い違い、しかも**見積書の方が短かった**。
     # 守れない納期を書類に書くのが一番まずい。
     def _site_lead(tier, sec, count, nar):
-        """tests/lib.mjs の leadWeeks をそのまま写した参照実装。
-        納期 = 工数 ÷ 週25h ＋ 確認の往復1週（最低2週）"""
-        return f"約{max(2, round(_site_hours(tier, sec, count, nar) / 25 + 1))}週間"
+        """tests/lib.mjs の leadDays / leadWeeks をそのまま写した参照実装（2026-11-25）。
+        構成案・絵コンテ 各1日＋ご確認各3日／制作（工数−1h）÷5h 切り上げ／
+        編集チェック×上限（梅2・竹松3）＝ご確認3日＋修正1日（合計90秒超は2日）／納品1日"""
+        import math as _m
+        rounds = {"梅": 2, "竹": 3, "松": 3}[tier]
+        make = max(1, _m.ceil((_site_hours(tier, sec, count, nar) - 1) / 5 - 1e-9))
+        fix = 2 if sec * count > 90 else 1
+        days = 1 + 1 + make + rounds * fix + 1 + 3 * (2 + rounds)
+        return f"約{int(days / 5 + 0.5)}週間"
 
     _ng4 = []
     for _tier in ("梅", "竹", "松"):
@@ -4322,9 +4328,10 @@ def run():
                         _ng4.append(f"{_tier}{_sec}秒x{_cnt}本/{_nar}")
     check("納期もサイトと同じ式", _ng4[:3], [])
     # 早見表に戻すと、本数とナレーションで増える工数を数えられなくなる
-    check("短い案件は最低2週間", _md.lead_time("梅", 15, 1, "none"), "約2週間")
+    check("短い案件でもご確認の日数ぶんかかる（梅15秒＝約4週間）", _md.lead_time("梅", 15, 1, "none"), "約4週間")
+    check("60秒竹は24営業日", _md.lead_days("竹", 60, 1, "ai"), 24)
     check("本数が増えれば納期も伸びる",
-          _md.lead_time("竹", 300, 3, "ai"), "約8週間")
+          _md.lead_time("竹", 300, 3, "ai"), "約12週間")
     check("見積書がサイトより短い納期を約束しない",
           all(_md.lead_time(t, s, c, n) == _site_lead(t, s, c, n)
               for t in ("梅", "竹", "松") for s in (180, 300)
