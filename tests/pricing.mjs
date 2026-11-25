@@ -1,7 +1,7 @@
 /* 料金シミュレーター。
    「お客様にどの組み合わせを選ばせても採算が崩れない」ことの担保がここ。
    金額・工数のどれかを動かしたら必ずこれを通すこと。 */
-import { check, report, PW, open, pick, setLens, splitSec, setNar, setNarAll, narOf, matsuToNone, priceModes, hoursModes, narFee, reachableNar, reachable, maxPieces, PRICE, HOURS, TIERS, LENGTHS, price, hours, leadWeeks, RATE, MEASURED, REVISION_HOURS, CREDITS_PER_SEC, secFee, listPrice } from './lib.mjs';
+import { check, report, PW, open, pick, setLens, splitSec, setNar, setNarAll, narOf, matsuToNone, priceModes, hoursModes, leadDays, narFee, reachableNar, reachable, maxPieces, PRICE, HOURS, TIERS, LENGTHS, price, hours, leadWeeks, RATE, MEASURED, REVISION_HOURS, CREDITS_PER_SEC, secFee, listPrice } from './lib.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
@@ -280,8 +280,13 @@ check('修正1往復の係数が実測と合っている', Math.abs(REVISION_HOU
     `実測 ${REVISION_HOURS}h / モデル 0.62h`);
 
 /* ---- 納期の形 ---- */
-check('15秒は据え置きで2週間', leadWeeks(TIERS[0], 15) === 2 && leadWeeks(TIERS[2], 15) === 2);
-check('尺が伸びても納期が跳ねない', leadWeeks(TIERS[0], 300) <= 4, `5分梅 ${leadWeeks(TIERS[0], 300)}週`);
+/* 2026-11-25 に本人と決めた値（ご確認1回3営業日・1日5h・修正は上限まで） */
+check('15秒は梅4週・松5週', leadWeeks(TIERS[0], 15) === 4 && leadWeeks(TIERS[2], 15) === 5,
+    `梅 ${leadWeeks(TIERS[0], 15)} / 松 ${leadWeeks(TIERS[2], 15)}`);
+check('60秒竹は24営業日', leadDays(TIERS[1], 60) === 24, `${leadDays(TIERS[1], 60)}日`);
+check('尺が伸びても納期が跳ねない', leadWeeks(TIERS[2], 300) <= 8, `5分松 ${leadWeeks(TIERS[2], 300)}週`);
+check('お客様のご確認の日数が入っている（どの組み合わせも3週以上）',
+    TIERS.every((t) => LENGTHS.every((sec) => leadWeeks(t, sec) >= 3)));
 check('納期は尺について単調に増える',
     TIERS.every((t) => LENGTHS.every((s, i) => i === 0 || leadWeeks(t, s) >= leadWeeks(t, LENGTHS[i - 1]))));
 check('段が上がると納期も延びるか同じ',

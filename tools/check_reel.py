@@ -38,6 +38,28 @@ def font(size):
     return ImageFont.load_default()
 
 
+def stray_frames(src: str) -> list:
+    """1コマだけ浮いているコマ（前後どちらとも大きく違う）を全コマから探す。
+
+    2026-11-23、切り出しの1コマ目に別の場面が1枚混ざったまま渡した事故の再発防止。
+    「前後のコマどうしは似ている」を条件にすると、場面の切り替わりに挟まった
+    1コマを取りこぼすので、条件は「前後両方と差が大きい」だけにする。
+    白フェードのような意図した演出も引っかかるので、出たものは画で確かめる。
+    """
+    W, H, TH = 64, 36, 12
+    fps = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries',
+                          'stream=r_frame_rate', '-of', 'csv=p=0', src],
+                         capture_output=True, text=True).stdout.strip()
+    num, _, den = fps.partition('/')
+    rate = float(num) / float(den or 1)
+    raw = subprocess.run(['ffmpeg', '-v', 'error', '-i', src, '-vf', f'scale={W}:{H},format=gray',
+                          '-f', 'rawvideo', '-'], capture_output=True, check=True).stdout
+    size = W * H
+    fr = [Image.frombytes('L', (W, H), raw[i * size:(i + 1) * size]) for i in range(len(raw) // size)]
+    d = [ImageStat.Stat(ImageChops.difference(fr[i], fr[i + 1])).mean[0] for i in range(len(fr) - 1)]
+    return [(i, i / rate) for i in range(1, len(fr) - 1) if d[i - 1] > TH and d[i] > TH]
+
+
 def main() -> int:
     src = sys.argv[1] if len(sys.argv) > 1 else 'assets/works/hero-reel.mp4'
     cut = float(sys.argv[2]) if len(sys.argv) > 2 else 3.0
@@ -81,6 +103,14 @@ def main() -> int:
         out = '/tmp/reel_similar.png'
         sheet.save(out)
         print(f'→ 上位{len(rows)}組を {out} に並べた。これを見て重複を判断すること')
+
+        stray = stray_frames(src)
+        if stray:
+            print('⚠️ 1コマだけ浮いているコマ（画で確かめること）:')
+            for i, t in stray:
+                print(f'   {i}コマ目（{t:.2f}秒）')
+            return 1
+        print('1コマだけ浮いているコマ：なし')
         return 0
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

@@ -1,7 +1,7 @@
 /* 文言と実装がズレていないか。
    同じことを複数箇所に書いているので、片方だけ直すと嘘になる。
    ここはその突き合わせ専用。 */
-import { check, report, open, BASE, PW, TIERS, LENGTHS, leadWeeks, RATE, PRICE, price, hours, listPrice, secFee } from './lib.mjs';
+import { check, report, open, BASE, PW, TIERS, LENGTHS, leadWeeks, FASTEST_WEEKS, RATE, PRICE, price, hours, listPrice, secFee } from './lib.mjs';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -391,8 +391,13 @@ check('金額の表示は税込で揃っている',
        明記してあること（これが売り文句であり、嘘をつかないための断りでもある） */
     {
         const an = await wp.locator('#genre-animation').innerText();
-        check('アニメーションのカードにサンプルがある',
-            await wp.locator('#genre-animation .sample-video').count() === 1);
+        /* 2026-11-25：自主制作の欄をなくし「ふたつの目」をここへ移したので2本。
+           2本目は歴史の場面が生成AIなので、1本目とは作り方が違うと書いてあること */
+        check('アニメーションのカードにサンプルが2本ある',
+            await wp.locator('#genre-animation .sample-video').count() === 2);
+        check('ふたつの目は生成AIの場面があると断っている', /歴史の場面8カットだけは日本画風の絵を生成AI/.test(an));
+        check('地図の出典を出している', /国土数値情報（行政区域データ・2021年）国土交通省 を加工して作成/.test(an));
+        check('自主制作の欄が残っていない', await wp.locator('#original').count() === 0);
         check('プログラム描画だと明記している', /すべてプログラムで描いています/.test(an), an.slice(0, 60));
         check('架空の題材だと断っている', /架空の健康保険組合/.test(an));
         check('尺違いに触れている', /尺違い/.test(an));
@@ -715,8 +720,19 @@ for (const [label, sec] of [['30秒', 30], ['90秒', 90], ['3分', 180], ['5分'
     const want = `${label}で${rng(sec)}`;
     check(`本文の納期が計算結果と一致(${label})`, idx.includes(want), want);
 }
+/* 「最短」は梅・15秒で修正なしで済んだ場合（2026-11-25・本人の決定）。上限まで使う目安の最小より短い */
 check('タイトルの「最短2週間」が実態と合う',
-    /最短2週間/.test(idx) && Math.min(...TIERS.flatMap(t => LENGTHS.map(s => leadWeeks(t, s)))) === 2);
+    /最短2週間/.test(idx) && FASTEST_WEEKS === 2
+    && FASTEST_WEEKS <= Math.min(...TIERS.flatMap(t => LENGTHS.map(s => leadWeeks(t, s)))));
+check('「最短」の数字がどのページでも同じ',
+    ['index.html', 'works.html', 'company-video.html', 'pricing.html'].every((f) => [...readFileSync(`${ROOT}/${f}`, 'utf8').matchAll(/最短(\d+)週間/g)].every((m) => +m[1] === FASTEST_WEEKS)));
+check('「最短」に修正なしの条件が書いてある', /最短2週間<\/strong>です（15秒・修正なしで済んだ場合）/.test(idx));
+/* ジャンルページの納期の一文は、梅〜松の幅と一致させる */
+for (const [f, sec] of [['ad-video.html', 15], ['animation-video.html', 60], ['exhibition-video.html', 15], ['internal-video.html', 15],
+                        ['recruit-video.html', 90], ['service-video.html', 15], ['sns-video.html', 15], ['company-video.html', 60]]) {
+    const want = `納期は${sec}秒で${rng(sec)}`;
+    check(`${f} の納期が計算結果と一致`, readFileSync(`${ROOT}/${f}`, 'utf8').includes(want), want);
+}
 
 /* ---- <b> を入れ子にしない（2026-09-26） ----
    料金の文を差し替えたとき、既にある <b>…</b> の中に書き足してしまい、
@@ -1089,7 +1105,7 @@ check('タイトルの「最短2週間」が実態と合う',
 
 /* ---- 「3日」を納期と読ませない（2026-09-26） ----
    3日は、自社サンプルを確認の往復なしで仕上げたときの制作工程だけの数字。
-   工程表を足すと 9〜20営業日、FAQ も「30秒で約2週間」と書いてある。
+   工程表とFAQの納期（2026-11-25 から、ご確認の日数を含めて約4〜7週間）と食い違う。
    ヒーローに「3日で1本できる」とだけ出していたので、
    納品が3日だと読めた。数字を出すなら、条件も同じ場所に置く */
 {
@@ -1103,7 +1119,7 @@ check('タイトルの「最短2週間」が実態と合う',
         }
         check(`${f} の「3日」に自社制作だと分かる条件が付いている`, bad.length === 0, bad.slice(0, 2).join(' / '));
     }
-    /* 看板の速さは、工程表から出した数字（leadWeeks の最小＝2週間）とだけ言う */
+    /* 看板の速さは、工程表から出した数字（FASTEST_WEEKS＝2週間）とだけ言う */
     check('ヒーローの速さがタイトルと同じ数字', /最短2週間/.test(idx.split('<ul class="hero-chips">')[1] || ''));
     /* 「その週のうちに」「数日で公開」は、納品までの日数と矛盾する */
     check('納品が数日だと読める言い方をしていない',
