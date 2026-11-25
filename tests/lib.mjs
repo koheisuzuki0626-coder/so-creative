@@ -191,7 +191,7 @@ export const hours = (t, sec, n, nar = 'ai') => hoursModes(t, sec, sameModes(n, 
      納品       1日
    以前は「工数 ÷ 週25h ＋ 確認1週（最低2週）」で、お客様のご確認を待つ日数が
    1週ぶんしか入っておらず、ほぼすべてが「約2週間」になっていた。
-   rounds を渡すと修正の回数を変えられる（「最短」は梅・15秒・修正1回で出す） */
+   rounds を渡すと修正の回数を変えられる（「最短」は梅・15秒・修正なしで出す） */
 export const LEAD = { plan: 1, conte: 1, review: 3, dayHours: 5, deliver: 1, fixShort: 1, fixLong: 2, longOver: 90 };
 export const revisions = (t) => (t.id === 'ume' ? 2 : 3);
 export const leadDays = (t, sec, nar = 'ai', n = 1, rounds = revisions(t)) => {
@@ -201,8 +201,8 @@ export const leadDays = (t, sec, nar = 'ai', n = 1, rounds = revisions(t)) => {
 };
 export const leadWeeks = (t, sec, nar = 'ai', n = 1, rounds) =>
     Math.round(leadDays(t, sec, nar, n, rounds) / 5);
-/* 「最短」：梅・15秒・修正1回で済んだ場合 */
-export const FASTEST_WEEKS = Math.round(leadDays(TIERS[0], 15, 'ai', 1, 1) / 5);
+/* 「最短」：梅・15秒で、編集チェックの修正なしで済んだ場合（11営業日）。2026-11-25 に本人が決定 */
+export const FASTEST_WEEKS = Math.round(leadDays(TIERS[0], 15, 'ai', 1, 0) / 5);
 /* 目標の時間単価。以前の ¥14,900 は「60秒の松が32h かかる」という重いモデルからの
    逆算だった。モデルを実測に合わせた結果 ¥23,000/h まで上がったが、
    2026-10-13 の料金改定（短尺と長尺の値下げ）に合わせて本人の判断で ¥20,000 にした。

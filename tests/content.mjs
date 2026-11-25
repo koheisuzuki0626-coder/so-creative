@@ -618,7 +618,7 @@ check('金額の表示は税込で揃っている',
         !/年に1本|年1本|どこの会社も|みなさん/.test(svc), svc.slice(0, 60));
     const hero = await page.locator('.hero-inner').innerText();
     check('ヒーローもできることで書いている',
-        /最短3週間で納品/.test(hero) && /訴求違い/.test(hero));
+        /最短2週間で納品/.test(hero) && /訴求違い/.test(hero));
 }
 check('人物ナレーションの追加料金が FAQ と計算機で同じ',
     /1名 ¥70,000〜/.test(idx) && /narrationHuman: 70000/.test(calcSrc));
@@ -720,12 +720,13 @@ for (const [label, sec] of [['30秒', 30], ['90秒', 90], ['3分', 180], ['5分'
     const want = `${label}で${rng(sec)}`;
     check(`本文の納期が計算結果と一致(${label})`, idx.includes(want), want);
 }
-/* 「最短」は梅・15秒で修正1回で済んだ場合（2026-11-25）。上限まで使う目安の最小より短い */
-check('タイトルの「最短3週間」が実態と合う',
-    /最短3週間/.test(idx) && FASTEST_WEEKS === 3
+/* 「最短」は梅・15秒で修正なしで済んだ場合（2026-11-25・本人の決定）。上限まで使う目安の最小より短い */
+check('タイトルの「最短2週間」が実態と合う',
+    /最短2週間/.test(idx) && FASTEST_WEEKS === 2
     && FASTEST_WEEKS <= Math.min(...TIERS.flatMap(t => LENGTHS.map(s => leadWeeks(t, s)))));
-check('「最短2週間」がどのページにも残っていない',
-    ['index.html', 'works.html', 'company-video.html', 'pricing.html'].every((f) => !/最短2週間/.test(readFileSync(`${ROOT}/${f}`, 'utf8'))));
+check('「最短」の数字がどのページでも同じ',
+    ['index.html', 'works.html', 'company-video.html', 'pricing.html'].every((f) => [...readFileSync(`${ROOT}/${f}`, 'utf8').matchAll(/最短(\d+)週間/g)].every((m) => +m[1] === FASTEST_WEEKS)));
+check('「最短」に修正なしの条件が書いてある', /最短2週間<\/strong>です（15秒・修正なしで済んだ場合）/.test(idx));
 /* ジャンルページの納期の一文は、梅〜松の幅と一致させる */
 for (const [f, sec] of [['ad-video.html', 15], ['animation-video.html', 60], ['exhibition-video.html', 15], ['internal-video.html', 15],
                         ['recruit-video.html', 90], ['service-video.html', 15], ['sns-video.html', 15], ['company-video.html', 60]]) {
@@ -1118,8 +1119,8 @@ for (const [f, sec] of [['ad-video.html', 15], ['animation-video.html', 60], ['e
         }
         check(`${f} の「3日」に自社制作だと分かる条件が付いている`, bad.length === 0, bad.slice(0, 2).join(' / '));
     }
-    /* 看板の速さは、工程表から出した数字（FASTEST_WEEKS＝3週間）とだけ言う */
-    check('ヒーローの速さがタイトルと同じ数字', /最短3週間/.test(idx.split('<ul class="hero-chips">')[1] || ''));
+    /* 看板の速さは、工程表から出した数字（FASTEST_WEEKS＝2週間）とだけ言う */
+    check('ヒーローの速さがタイトルと同じ数字', /最短2週間/.test(idx.split('<ul class="hero-chips">')[1] || ''));
     /* 「その週のうちに」「数日で公開」は、納品までの日数と矛盾する */
     check('納品が数日だと読める言い方をしていない',
         !/その週のうちに|数日で公開|数日で納品|3日で1本/.test(idx), idx.match(/その週のうちに|数日で公開|数日で納品|3日で1本/)?.[0] || '');
