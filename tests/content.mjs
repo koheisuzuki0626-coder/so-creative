@@ -391,8 +391,13 @@ check('金額の表示は税込で揃っている',
        明記してあること（これが売り文句であり、嘘をつかないための断りでもある） */
     {
         const an = await wp.locator('#genre-animation').innerText();
-        check('アニメーションのカードにサンプルがある',
-            await wp.locator('#genre-animation .sample-video').count() === 1);
+        /* 2026-11-25：自主制作の欄をなくし「ふたつの目」をここへ移したので2本。
+           2本目は歴史の場面が生成AIなので、1本目とは作り方が違うと書いてあること */
+        check('アニメーションのカードにサンプルが2本ある',
+            await wp.locator('#genre-animation .sample-video').count() === 2);
+        check('ふたつの目は生成AIの場面があると断っている', /歴史の場面8カットだけは日本画風の絵を生成AI/.test(an));
+        check('地図の出典を出している', /国土数値情報（行政区域データ・2021年）国土交通省 を加工して作成/.test(an));
+        check('自主制作の欄が残っていない', await wp.locator('#original').count() === 0);
         check('プログラム描画だと明記している', /すべてプログラムで描いています/.test(an), an.slice(0, 60));
         check('架空の題材だと断っている', /架空の健康保険組合/.test(an));
         check('尺違いに触れている', /尺違い/.test(an));
