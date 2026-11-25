@@ -1914,10 +1914,16 @@ def run():
     # 差が出るのは当たり1〜2本の帯だけで、稼働9ジャンルでは2回・7本しかない。
     # 同じ期間の引退ジャンルまで入れると向きが逆になるので、この材料では
     # 決められない。変えるときは【両方の切り口を測り直してから】。
-    check("語の一致で視聴前に本数を削っていない（しきい値は3本のまま）",
-          "if len(_hits) < min(TREND_DEEP_COUNT, 3):" in _srcC5, True)
-    check("帯の外は当たりだけを見る形が残っている",
-          "_pool, _n = _hits, min(TREND_DEEP_COUNT, len(_hits))" in _srcC5, True)
+    # 2026-11-26：本人「関係の薄い動画を見ている」で上の見送りを覆した。
+    # 自己判定の実物率がマニュアル32%・展示会34%。本数より関連を取る。
+    check("題名にお題の語がある動画が3本以上あれば、その中だけから選ぶ",
+          "_title_pool = [v for v in _hits if _query_hit_title(v, query)]" in _srcC5
+          and "_pool, _n = _title_pool, min(TREND_DEEP_COUNT, len(_title_pool))" in _srcC5, True)
+    check("当たりが3本未満でも候補全体で枠を埋めない（当たりだけを見る）",
+          "elif _hits:\n        _pool, _n = _hits, min(TREND_DEEP_COUNT, len(_hits))" in _srcC5, True)
+    check("候補全体から選ぶのは当たり0本（_no_hit＝視聴しない回）だけ",
+          "    else:\n        _pool, _n = candidates, TREND_DEEP_COUNT" in _srcC5
+          and "if len(_hits) < min(TREND_DEEP_COUNT, 3):" not in _srcC5, True)
     # 固定するのは【測った数字】だけにする。結論の言い回しを固定すると、
     # あとで根拠を正しく直すときにテストが邪魔をする。
     check("見送った根拠の数字が検算できる形で残っている",
@@ -6807,9 +6813,24 @@ def run():
     check("各お題のチャンネルに重複が無い",
           all(len(v) == len(set(v)) for v in bot.TREND_CHANNEL_SOURCES.values()), True)
     check("関係ないお題には足さない", bot._channel_sources_for("MV 公式"), [])
-    check("採用・SNSのお題は今まで通り（検索で足りている）",
-          (bot._channel_sources_for("採用動画 制作事例"),
-           bot._channel_sources_for("SNS広告 縦型 事例")), ([], []))
+    # 2026-11-26：採用は検索の候補が1〜2本まで枯れたので足した（未見の実物で選んだ）
+    check("採用のお題に投稿一覧がある",
+          len(bot._channel_sources_for("採用動画 制作事例")) >= 3, True)
+    check("SNSのお題は今まで通り（検索で足りている）",
+          bot._channel_sources_for("SNS広告 縦型 事例"), [])
+    # 2026-11-26：指定した制作会社の投稿は、株式会社・様が題名に無くても門で落とさない。
+    # 「〇〇の研修動画｜動画制作・映像制作会社なら【ムビサク】」が0点で落ちていた
+    # （未見の実物：マニュアル9本→門の後1本・展示会9本→2本）。
+    _ch = bot._channel_sources_for("マニュアル動画 制作事例")[0]
+    _trusted = {"id": "t1", "title": "予約とスマホ操作手順の解説動画｜動画制作会社なら",
+                "channel": "あるチャンネル", "channel_id": _ch, "desc": "", "tags": []}
+    _corpv = {"id": "t2", "title": "【制作事例】株式会社テスト様 会社紹介",
+              "channel": "テスト株式会社", "channel_id": "UCx", "desc": "", "tags": []}
+    _junkv = {"id": "t3", "title": "雑談してみた", "channel": "個人",
+              "channel_id": "UCy", "desc": "", "tags": []}
+    _kept, _ = bot._corp_gate([_trusted, _corpv, _junkv], "マニュアル動画 制作事例")
+    check("指定した制作会社の投稿は門で落とさない", "t1" in [v["id"] for v in _kept], True)
+    check("指定外の企業らしくない動画は今まで通り落とす", "t3" in [v["id"] for v in _kept], False)
 
     print("■ 制作の前に知見を読む（tools/insights_brief.py）")
     # 本人の指示（2026-11-23）「貯めた知見ファイルは今後の制作の参考にして」
