@@ -1,0 +1,168 @@
+<!doctype html>
+<!-- 縦型SNS版（20秒・1080x1920・24fps）の画面。sns_render.mjs が1コマずつ撮る（作り直しは sns_build.sh）。
+     絵はコマ画像 fr/{oil,yin,kin,ezu}/NNNN.jpg を差し替え、動きは Web Animations の currentTime で進める。
+     金鯱×地図と絵地図は同じ窓（元の x365〜1485 を幅1080に縮小）で切るので、切り替えても地図が動かない。
+     書体は Mac ならヒラギノ明朝（本編の題字と同じ）、無ければ源ノ明朝。 -->
+<html lang="ja"><head><meta charset="utf-8">
+<style>
+:root{--paper:#efe7da;--ink:#161616;--gold:#b8892d;--glow:rgba(238,230,216,.95)}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1920px;overflow:hidden;background:var(--paper)}
+body{font-family:'Hiragino Mincho ProN','Noto Serif CJK JP',serif;font-weight:600;color:var(--ink);-webkit-font-smoothing:antialiased}
+#tex{position:absolute;inset:0;opacity:.55;mix-blend-mode:multiply}
+.shot{position:absolute;inset:0;opacity:0}
+img{display:block}
+.ch{display:inline-block;will-change:transform,opacity,filter}
+.ch.p{font-feature-settings:'halt' 1}
+
+/* ① 油絵の人物：全面 */
+#s1{background:#111;overflow:hidden}
+#i1{position:absolute;left:-400px;top:0;width:1436px;height:1920px;transform-origin:811px 612px}
+#t1{position:absolute;left:818px;top:300px;writing-mode:vertical-rl;font-size:104px;letter-spacing:.12em;
+    color:#efe8da;text-shadow:0 0 22px rgba(0,0,0,.55),0 0 6px rgba(0,0,0,.4)}
+#t1s{position:absolute;left:752px;top:372px;writing-mode:vertical-rl;font-size:44px;letter-spacing:.22em;
+     color:#d9b25c;text-shadow:0 0 16px rgba(0,0,0,.6)}
+
+/* ② 尾張と三河：円を紙の上に */
+#yinCam{position:absolute;left:30.8px;top:465.8px;width:1018.4px;height:1018.4px;transform-origin:50% 50%}
+#yinShadow{position:absolute;left:79.2px;top:79.2px;width:860px;height:860px;border-radius:50%;
+           box-shadow:0 22px 46px rgba(60,45,25,.28),0 4px 10px rgba(60,45,25,.18)}
+#yinMask{position:absolute;inset:0;
+  -webkit-mask-image:radial-gradient(circle 431px at 50% 50%,#000 429px,rgba(0,0,0,0) 431px);
+          mask-image:radial-gradient(circle 431px at 50% 50%,#000 429px,rgba(0,0,0,0) 431px)}
+#i2{width:100%;height:100%}
+#ink{position:absolute;inset:0;overflow:visible}
+
+/* ③④ 地図の帯：同じ窓で切る（x365〜1485 を 1080 に） */
+#band{position:absolute;left:0;top:470px;width:1080px;height:1041.4px;overflow:hidden;
+  -webkit-mask-image:linear-gradient(to bottom,rgba(0,0,0,0) 0,#000 52px,#000 950px,rgba(0,0,0,0) 984px);
+          mask-image:linear-gradient(to bottom,rgba(0,0,0,0) 0,#000 52px,#000 950px,rgba(0,0,0,0) 984px)}
+#cam34{position:absolute;inset:0;transform-origin:380.9px 433.9px}
+#i3,#i4{position:absolute;left:-352px;top:0;width:1851.4px;height:1041.4px}
+.ring{position:absolute;border-radius:50%;border:4px solid var(--gold);transform:translate(-50%,-50%);opacity:0;
+      box-shadow:0 0 0 2px rgba(239,232,218,.7),inset 0 0 0 2px rgba(239,232,218,.7)}
+.ring.k{border-color:rgba(22,22,22,.9)}
+
+/* テロップ（横組み・上の帯） */
+.tx{position:absolute;left:0;right:0;top:262px;text-align:center;font-size:62px;line-height:1.46;letter-spacing:.04em;
+    text-shadow:0 0 14px var(--glow),0 0 5px var(--glow)}
+.tx .l{display:block;white-space:nowrap}
+.cred{position:absolute;left:0;right:0;text-align:center;font-family:'Hiragino Sans','Noto Sans CJK JP',sans-serif;font-weight:400;
+      font-size:21px;letter-spacing:.02em;color:rgba(22,22,22,.66);line-height:1.6}
+
+/* ⑤ 締め */
+#e1{position:absolute;left:530px;top:392px;writing-mode:vertical-rl;font-size:122px;letter-spacing:.1em}
+#e2{position:absolute;left:428px;top:468px;writing-mode:vertical-rl;font-size:50px;letter-spacing:.22em;color:var(--gold)}
+#logo{position:absolute;left:375px;top:1196px;width:330px;opacity:0}
+</style></head><body>
+<svg id="tex" width="1080" height="1920"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="7"/>
+  <feColorMatrix values="0 0 0 0 .55  0 0 0 0 .5  0 0 0 0 .42  0 0 0 .09 0"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>
+
+<div class="shot" id="s1"><img id="i1">
+  <div id="t1">ふたつの目</div><div id="t1s">愛知の陰陽図</div></div>
+
+<div class="shot" id="s2">
+  <div id="yinCam"><div id="yinShadow"></div><div id="yinMask"><img id="i2"></div>
+    <svg id="ink" viewBox="0 0 1018.4 1018.4"><circle id="inkC" cx="509.2" cy="509.2" r="447" fill="none"
+      stroke="#161616" stroke-opacity=".82" stroke-width="2.6" transform="rotate(-90 509.2 509.2)"/></svg></div>
+  <div class="tx"><span class="l" id="t2a">愛知県の地図に、</span><span class="l" id="t2b">円をひとつ描く。</span></div>
+</div>
+
+<div class="shot" id="s34">
+  <div id="band"><div id="cam34"><img id="i3"><img id="i4" style="opacity:0">
+    <div class="ring" id="r1" style="left:266.1px;top:317.3px"></div><div class="ring" id="r2" style="left:266.1px;top:317.3px"></div>
+    <div class="ring k" id="r3" style="left:486.9px;top:555.4px"></div><div class="ring k" id="r4" style="left:486.9px;top:555.4px"></div>
+  </div></div>
+  <div class="cred" style="top:1524px">地図：国土数値情報（行政区域データ・2021年）国土交通省 を加工して作成</div>
+</div>
+<div class="shot" id="x3"><div class="tx"><span class="l" id="t3a">二つの目は、</span><span class="l" id="t3b">ふたつの城の上に落ちる。</span></div></div>
+<div class="shot" id="x4a"><div class="tx"><span class="l" id="t4a">この土地を</span><span class="l" id="t4b">ひとつの円にしているのは、</span></div></div>
+<div class="shot" id="x4b"><div class="tx"><span class="l" id="t4c">互いの中にいる、</span><span class="l" id="t4d">相手のほうだ。</span></div></div>
+
+<div class="shot" id="s5">
+  <div id="e1">ふたつの目</div><div id="e2">愛知の陰陽図</div>
+  <img id="logo" src="logo-word.svg">
+  <div class="cred" id="ec" style="top:1404px">地図：国土数値情報（行政区域データ・2021年）国土交通省 を加工して作成<br>絵・動画：生成AI（Nano Banana Pro／Kling）</div>
+</div>
+
+<script>
+const TOTAL=20000, FPS=24, A=[];
+const EZ={out:'cubic-bezier(.16,1,.3,1)', io:'cubic-bezier(.65,0,.35,1)', lin:'linear', soft:'cubic-bezier(.33,0,.2,1)'};
+const $=id=>document.getElementById(id);
+function anim(el,kf,o){const a=el.animate(kf,{fill:'both',easing:EZ.out,...o});a.pause();A.push(a);return a;}
+const o=ms=>Math.max(0,Math.min(1,ms/TOTAL));
+/* 不透明度だけを全尺1本に焼く（delay+fill:bothの罠を避ける）。a0→a1で入り、b0→b1で抜ける */
+function vis(el,a0,a1,b0,b1){
+  const k=[{opacity:0,offset:0}];
+  if(a1<=0) k.push({opacity:1,offset:0}); else k.push({opacity:0,offset:o(a0)},{opacity:1,offset:o(a1)});
+  if(b0!=null&&b0<TOTAL) k.push({opacity:1,offset:o(b0)},{opacity:0,offset:o(b1)},{opacity:0,offset:1});
+  else k.push({opacity:1,offset:1});
+  anim(el,k,{duration:TOTAL,easing:EZ.lin});
+}
+function chars(el){const t=el.textContent;el.textContent='';
+  const cs=[...t];
+  return cs.map((c,i)=>{const s=document.createElement('span');s.className=(i===cs.length-1&&'、。'.includes(c)&&!el.closest('[style*=vertical],#t1,#e1'))?'ch p':'ch';s.textContent=c;el.appendChild(s);return s;});}
+/* 1文字ずつ：ぼかし→くっきり、少し動いて定位 */
+function reveal(el,start,{st=55,dur=720,d=16,blur=8,vert=false}={}){
+  chars(el).forEach((s,i)=>anim(s,[{opacity:0,transform:vert?`translateY(${-d}px)`:`translateY(${d}px)`,filter:`blur(${blur}px)`},
+                                   {opacity:1,transform:'translateY(0)',filter:'blur(0px)'}],{duration:dur,delay:start+i*st}));
+}
+
+/* --- 尺（ms）。カットの間は0.5秒の溶け --- */
+vis($('s1'),0,0,3350,3850);
+vis($('s2'),3350,3850,6950,7450);
+vis($('s34'),6950,7450,16050,16550);
+vis($('x3'),6950,7450,10750,11050);
+vis($('x4a'),10900,10900,13150,13450);
+vis($('x4b'),13400,13400,16050,16550);
+vis($('s5'),16050,16550,null,null);
+anim($('i4'),[{opacity:0},{opacity:1}],{duration:500,delay:10750,easing:EZ.lin});   // 金鯱→絵地図（地図は動かない）
+
+/* カメラ */
+anim($('i1'),[{transform:'scale(1)'},{transform:'scale(1.065)'}],{duration:3850,easing:EZ.lin});
+anim($('yinCam'),[{transform:'scale(.965)'},{transform:'scale(1)'}],{duration:3850,delay:3350,easing:EZ.soft});
+anim($('cam34'),[{transform:'scale(1)'},{transform:'scale(1.05)'}],{duration:9600,delay:6950,easing:EZ.lin});
+
+/* ① 題字 */
+reveal($('t1'),120,{st:120,dur:950,d:24,blur:12,vert:true});
+anim($('t1s'),[{opacity:0,filter:'blur(8px)'},{opacity:1,filter:'blur(0px)'}],{duration:900,delay:1050});
+
+/* ② 円をひとつ描く：文に合わせて墨の線が一周する */
+reveal($('t2a'),3700); reveal($('t2b'),4300);
+{const c=$('inkC'),L=2*Math.PI*447; c.style.strokeDasharray=L;
+ anim(c,[{strokeDashoffset:L},{strokeDashoffset:0}],{duration:1700,delay:4550,easing:EZ.io});}
+
+/* ③ 二つの目は、ふたつの城の上に落ちる：城の位置で金の輪 */
+reveal($('t3a'),7300); reveal($('t3b'),7850);
+[['r1',9000],['r2',9380],['r3',9150],['r4',9530]].forEach(([id,at])=>
+  anim($(id),[{width:'14px',height:'14px',borderWidth:'6px',opacity:1},{width:'176px',height:'176px',borderWidth:'1.5px',opacity:0}],
+       {duration:1400,delay:at,easing:'cubic-bezier(.2,.6,.3,1)'}));
+
+/* ④ この土地を…／互いの中にいる、相手のほうだ。 */
+reveal($('t4a'),11050); reveal($('t4b'),11450);
+reveal($('t4c'),13550); reveal($('t4d'),14150);
+
+/* ⑤ 締め */
+reveal($('e1'),16450,{st:110,dur:950,d:22,blur:12,vert:true});
+anim($('e2'),[{opacity:0,filter:'blur(8px)'},{opacity:1,filter:'blur(0px)'}],{duration:900,delay:17150});
+anim($('logo'),[{opacity:0,transform:'translateY(10px)'},{opacity:1,transform:'translateY(0)'}],{duration:800,delay:17500});
+anim($('ec'),[{opacity:0},{opacity:1}],{duration:700,delay:17650});
+
+/* --- コマ差し替え --- */
+const SRC={oil:{n:240,t0:0},yin:{n:240,t0:3350},kin:{n:168,t0:6950},ezu:{n:121,t0:10750,pp:true}};
+const IMG={oil:$('i1'),yin:$('i2'),kin:$('i3'),ezu:$('i4')};
+const RANGE={oil:[0,3850],yin:[3350,7450],kin:[6950,11250],ezu:[10750,16550]};
+function idx(k,t){const s=SRC[k];let g=Math.max(0,Math.round((t-s.t0)*FPS/1000));
+  if(s.pp){g=g%(2*s.n-2);if(g>=s.n)g=2*s.n-2-g;} else g=Math.min(g,s.n-1); return g;}
+const cur={};
+window.__seek=async t=>{
+  for(const a of A) a.currentTime=t;
+  const jobs=[];
+  for(const k in SRC){const [a,b]=RANGE[k]; if(t<a||t>b) continue;
+    const f=`fr/${k}/${String(idx(k,t)).padStart(4,'0')}.jpg`;
+    if(cur[k]!==f){cur[k]=f;IMG[k].src=f;jobs.push(IMG[k].decode());}}
+  await Promise.all(jobs);
+};
+window.__ready=false;
+Promise.all([document.fonts.ready,$('logo').decode()]).then(()=>{window.__seek(0).then(()=>window.__ready=true);});
+</script></body></html>

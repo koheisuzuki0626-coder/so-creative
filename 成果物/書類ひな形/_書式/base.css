@@ -1,0 +1,75 @@
+/* A4・印刷用。ブラウザからPDFに書き出す前提で組んである。
+   画面で見るためのCSSは使わない（余白と改ページが狂うため）。 */
+@page { size: A4; margin: 18mm 16mm 16mm; }
+* { box-sizing: border-box; margin: 0; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+    font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+    font-size: 10.2pt; line-height: 1.75; color: #1d1d1f;
+    font-feature-settings: "palt";
+}
+.head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.doc-title { font-size: 21pt; font-weight: 600; letter-spacing: .22em; }
+.issuer { text-align: right; font-size: 9pt; line-height: 1.85; }
+.issuer .logo { width: 132px; margin-left: auto; margin-bottom: 6px; display: block; }
+.issuer b { font-size: 10.5pt; }
+.to { margin-top: 26px; font-size: 13pt; font-weight: 500; border-bottom: 1px solid #1d1d1f;
+      padding-bottom: 6px; display: inline-block; min-width: 56%; }
+.meta { margin-top: 16px; font-size: 9pt; }
+.meta td { padding: 2px 0; }
+.meta td:first-child { color: #6e6e73; padding-right: 18px; white-space: nowrap; }
+.lead { margin-top: 18px; }
+.total-band {
+    margin-top: 14px; padding: 14px 18px; background: #f5f5f7;
+    border-left: 3px solid #b08733; display: flex; align-items: baseline; gap: 16px;
+}
+.total-band .label { font-size: 10pt; color: #6e6e73; white-space: nowrap; flex: none; }
+.total-band .yen { font-size: 19pt; font-weight: 600; letter-spacing: .01em; }
+.total-band .note { font-size: 8.6pt; color: #6e6e73; line-height: 1.7; }
+table.grid { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 9.6pt; }
+table.grid th, table.grid td { border: 1px solid #d8d8dc; padding: 7px 10px; vertical-align: top; }
+table.grid thead th { background: #f5f5f7; font-weight: 500; font-size: 9pt; }
+table.grid td.num, table.grid th.num { text-align: right; white-space: nowrap; }
+table.grid tr.sum td { background: #fafafa; font-weight: 600; }
+h2.sec { font-size: 11pt; font-weight: 600; margin-top: 22px; padding-bottom: 4px;
+         border-bottom: 1px solid #d8d8dc; }
+ul.notes { margin: 10px 0 0; padding-left: 1.1em; font-size: 9.4pt; }
+ul.notes li { margin-bottom: 4px; }
+.fine { font-size: 8.6pt; color: #6e6e73; line-height: 1.8; margin-top: 8px; }
+.pagebreak { break-before: page; }
+/* 改ページが見出しと中身を割らないようにする。2026-10-18 に見積書へ工程表を
+   足して3ページになったとき、表が途中で切れる余地ができたため入れた。
+   1ページに収まらない表では break-inside はブラウザが無視するので、
+   契約書のような長い表が詰まることはない。 */
+h2.sec { break-after: avoid; }
+table.grid { break-inside: avoid; }
+ul.notes, .fine { break-inside: avoid; }
+/* ⚠️ ここに「表と注釈を離すな（table.grid + .fine { break-before: avoid }）」を
+   足さないこと。「途中で割るな」と両立できず、ブラウザが【割る方】を選ぶ。
+   実際に注釈の最後の1行だけが次ページへこぼれた（2026-10-18）。 */
+
+/* ---------- 契約書 ---------- */
+.contract h1 { font-size: 15pt; font-weight: 600; letter-spacing: .3em;
+    text-align: center; margin-bottom: 20px; }
+.contract .party { font-size: 10pt; line-height: 1.9; margin-bottom: 16px; }
+.contract h2 { font-size: 10.6pt; font-weight: 600; margin-top: 15px; margin-bottom: 3px;
+    break-after: avoid; }
+.contract ol { margin: 0; padding-left: 1.5em; }
+.contract ol li { margin-bottom: 3px; }
+.contract p { margin-bottom: 3px; }
+.contract table.grid { margin-top: 8px; margin-bottom: 8px; font-size: 9.2pt; }
+.contract table.grid td { padding: 5px 9px; }
+.sign { margin-top: 26px; break-inside: avoid; }
+.sign .row { display: flex; gap: 14px; margin-top: 16px; align-items: flex-start; }
+.sign .who { flex: none; width: 2.4em; font-weight: 600; }
+.sign .body { flex: 1; line-height: 2.1; }
+.sign .seal { display: inline-block; width: 46px; height: 46px; border: 1px solid #c8c8cc;
+    border-radius: 50%; text-align: center; line-height: 46px; font-size: 8pt;
+    color: #b0b0b5; margin-left: 10px; vertical-align: middle; }
+.sign .logo { width: 116px; display: block; margin: 4px 0 2px; }
+.checkbox { font-size: 9.6pt; letter-spacing: .04em; }
+
+/* 明細の中の小さな補足（尺の段の内訳など）。2026-10-14：
+   段ごとに金額の行を分けていたが、お客様には「なぜ2行あるか」が
+   分からない。金額は1行にして、内訳はここで小さく添える。 */
+.sub { font-size: 0.86em; color: #666; }

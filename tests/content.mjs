@@ -1,7 +1,7 @@
 /* 文言と実装がズレていないか。
    同じことを複数箇所に書いているので、片方だけ直すと嘘になる。
    ここはその突き合わせ専用。 */
-import { check, report, open, BASE, PW, TIERS, LENGTHS, leadWeeks, RATE, PRICE, price, hours, listPrice, secFee } from './lib.mjs';
+import { check, report, open, BASE, PW, TIERS, LENGTHS, leadWeeks, FASTEST_WEEKS, RATE, PRICE, price, hours, listPrice, secFee } from './lib.mjs';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -391,8 +391,13 @@ check('金額の表示は税込で揃っている',
        明記してあること（これが売り文句であり、嘘をつかないための断りでもある） */
     {
         const an = await wp.locator('#genre-animation').innerText();
-        check('アニメーションのカードにサンプルがある',
-            await wp.locator('#genre-animation .sample-video').count() === 1);
+        /* 2026-11-25：自主制作の欄をなくし「ふたつの目」をここへ移したので2本。
+           2本目は歴史の場面が生成AIなので、1本目とは作り方が違うと書いてあること */
+        check('アニメーションのカードにサンプルが2本ある',
+            await wp.locator('#genre-animation .sample-video').count() === 2);
+        check('ふたつの目は生成AIの場面があると断っている', /歴史の場面8カットだけは日本画風の絵を生成AI/.test(an));
+        check('地図の出典を出している', /国土数値情報（行政区域データ・2021年）国土交通省 を加工して作成/.test(an));
+        check('自主制作の欄が残っていない', await wp.locator('#original').count() === 0);
         check('プログラム描画だと明記している', /すべてプログラムで描いています/.test(an), an.slice(0, 60));
         check('架空の題材だと断っている', /架空の健康保険組合/.test(an));
         check('尺違いに触れている', /尺違い/.test(an));
@@ -715,91 +720,18 @@ for (const [label, sec] of [['30秒', 30], ['90秒', 90], ['3分', 180], ['5分'
     const want = `${label}で${rng(sec)}`;
     check(`本文の納期が計算結果と一致(${label})`, idx.includes(want), want);
 }
+/* 「最短」は梅・15秒で修正なしで済んだ場合（2026-11-25・本人の決定）。上限まで使う目安の最小より短い */
 check('タイトルの「最短2週間」が実態と合う',
-    /最短2週間/.test(idx) && Math.min(...TIERS.flatMap(t => LENGTHS.map(s => leadWeeks(t, s)))) === 2);
-
-/* ---- 計画の工数を工数モデルから引き直す（2026-09-27） ----
-   record.html の P1〜P3 の工数は、価格がナレーション込みの額を使っているのに
-   工数ではナレーションの 1.0h/本 を数えていなかった（年 463.5h と出て 464h と
-   書いてあった）。正しくは 487.5h・持ち時間の36%。
-   価格と工数で前提を変えると、時間単価がそのぶん高く出る */
-{
-    const U = TIERS.find((t) => t.id === 'ume');
-    const CAP = 1373;                       // 制作に使える時間／年（空き時間の実態）
-    const q = [[3, [90, 30]], [3, [180, 30]], [6, [180, 90]]];
-    const monthly = q.map(([, mix]) => mix.reduce((a, sec) => a + hours(U, sec, 1, 'ai'), 0));
-    const year = q.reduce((a, [m], i) => a + monthly[i] * m, 0);
-    const rec = readFileSync(`${ROOT}/record.html`, 'utf8');
-    const rm = readFileSync(`${ROOT}/roadmap.html`, 'utf8');
-    for (const h of monthly) {
-        check(`受注構成の月の工数が工数モデルと一致（${h.toFixed(1)}h）`,
-            rec.includes(`${h.toFixed(1)}h`), `${h.toFixed(1)}h`);
-    }
-    const yh = `${year.toFixed(1)}h`;
-    check('計画の年間工数が工数モデルと一致', rec.includes(yh) && rm.includes(yh), yh);
-    const pct = `${Math.round(year / CAP * 100)}%`;
-    check('持ち時間に対する割合が計算と一致', rec.includes(`持ち時間の${pct}`), pct);
-    check('空き時間の残りが 1,373h − 計画 と一致',
-        rec.includes(`${(CAP - year).toFixed(1)}h 空く`), `${(CAP - year).toFixed(1)}h`);
-    /* 「この先の伸ばし方」の各行。段階1だけが12ヶ月のならし年で、
-       あとは定常（その組み合わせを12ヶ月続けたとき）。
-       月4件の行は、売上を定常・工数をならし年で出していて基準が混ざっていた */
-    const P = (sec) => price(U, sec, 1, 'ai');
-    const Hh = (sec) => hours(U, sec, 1, 'ai');
-    /* 2026-09-30 訂正：Claude Max は 20x（$200・¥30,680）ではなく 5x（$100・¥15,340）
-       だった。ツール代の実額は 月¥42,495＝年¥509,940。ここを間違えると
-       段階別の年収・現実的な上限の金額が全部ずれる */
-    const TOOLS = 509940;
-    const yenStr = (n) => `¥${Math.round(n).toLocaleString('en-US')}`;
-    const rows = [
-        ['段階2（梅3分×月2件）', P(180) * 2 * 12, Hh(180) * 2 * 12],
-        ['月4件（P3 を2セット）', (P(180) + P(90)) * 2 * 12, (Hh(180) + Hh(90)) * 2 * 12],
-    ];
-    for (const [lab, sales, h] of rows) {
-        check(`${lab} の年収が式と一致`, rec.includes(yenStr(sales - TOOLS)), yenStr(sales - TOOLS));
-        check(`${lab} の工数が式と一致`, rec.includes(`${Math.round(h).toLocaleString('en-US')}h`),
-            `${Math.round(h)}h`);
-    }
-    /* 天井は 1,373h を梅3分で埋められるだけ */
-    {
-        const n = Math.floor(CAP / Hh(180));
-        check('天井の稼働が 1,373h に収まる本数から出ている',
-            rec.includes(`${(n * Hh(180)).toLocaleString('en-US')}h`), `${n}本 ${n * Hh(180)}h`);
-    }
-    /* 現実的な上限＝稼働70%（余白3割）。天井（99%）を計画に使わせない。
-       段別の本数と金額を、料金モデルから計算し直して突き合わせる */
-    {
-        const REAL = 0.70;
-        for (const t of TIERS) {
-            const nar = t.id === 'matsu' ? 'human' : 'ai';
-            const h = hours(t, 180, 1, nar), p = price(t, 180, 1, nar);
-            const n = Math.floor(CAP * REAL / h);
-            const man = Math.round((n * p - TOOLS) / 10000).toLocaleString('en-US');
-            check(`現実的な上限（${t.label}3分）の本数が計算と一致`, rec.includes(`年${n}本`), `年${n}本`);
-            check(`現実的な上限（${t.label}3分）の金額が計算と一致`, rec.includes(`${man}万`), `${man}万`);
-        }
-        check('稼働上限を70%と書いている', /稼働上限を70%＝961h/.test(rec), '70%＝961h');
-        check('天井を計画に使わないと書いている', /天井は余白ゼロの数字なので、計画に使わないこと/.test(rec));
-    }
-    /* クレジットの買い足しは、古い 33/秒 の数字だと断ってから出す */
-    check('買い足しの額が古い単価のものだと断ってある',
-        /古い 33クレジット\/秒（Seedance）での見積り/.test(rec));
-    check('いまの単価での枠の使用率も併記してある',
-        /枠の20%/.test(rec) && /枠の37%/.test(rec));
-
-    /* 古いツール代（月5万＝年60万）で引いた額に戻っていないか */
-    check('年収を古いツール代で引いていない',
-        !/¥16,680,000|¥26,400,000|¥32,400,000/.test(rec), '月5万の前提');
-
-    /* ナレーションを数えない古い値に戻っていないか。
-       訂正の経緯として本文に「464h」と書いてあるので、prose は見ない。
-       戻るとしたら数字のセルと roadmap の稼働の一文なので、そこだけ見る */
-    const old = `${Math.round(q.reduce((a, [m, mix]) =>
-        a + mix.reduce((x, sec) => x + hours(U, sec, 1, 'none'), 0) * m, 0))}h`;
-    const cells = [...rec.matchAll(/<td class="num">(?:<b>)?([^<]*)/g)].map((m) => m[1].trim());
-    check('ナレーションを数えない工数に戻っていない（表の数字）', !cells.includes(old), old);
-    check('ナレーションを数えない工数に戻っていない（roadmap の一文）',
-        !new RegExp(`年${old}`).test(rm), old);
+    /最短2週間/.test(idx) && FASTEST_WEEKS === 2
+    && FASTEST_WEEKS <= Math.min(...TIERS.flatMap(t => LENGTHS.map(s => leadWeeks(t, s)))));
+check('「最短」の数字がどのページでも同じ',
+    ['index.html', 'works.html', 'company-video.html', 'pricing.html'].every((f) => [...readFileSync(`${ROOT}/${f}`, 'utf8').matchAll(/最短(\d+)週間/g)].every((m) => +m[1] === FASTEST_WEEKS)));
+check('「最短」に修正なしの条件が書いてある', /最短2週間<\/strong>です（15秒・修正なしで済んだ場合）/.test(idx));
+/* ジャンルページの納期の一文は、梅〜松の幅と一致させる */
+for (const [f, sec] of [['ad-video.html', 15], ['animation-video.html', 60], ['exhibition-video.html', 15], ['internal-video.html', 15],
+                        ['recruit-video.html', 90], ['service-video.html', 15], ['sns-video.html', 15], ['company-video.html', 60]]) {
+    const want = `納期は${sec}秒で${rng(sec)}`;
+    check(`${f} の納期が計算結果と一致`, readFileSync(`${ROOT}/${f}`, 'utf8').includes(want), want);
 }
 
 /* ---- <b> を入れ子にしない（2026-09-26） ----
@@ -808,7 +740,7 @@ check('タイトルの「最短2週間」が実態と合う',
    深さを見る。<style> と <script> の中の文字（CSS のコメントに <b> と
    書いてある）は数えない */
 {
-    const FILES = [...PUBLIC_PAGES, 'funnel.html', 'roadmap.html', 'record.html'];
+    const FILES = [...PUBLIC_PAGES, 'funnel.html'];
     for (const f of FILES) {
         const html = readFileSync(`${ROOT}/${f}`, 'utf8')
             .replace(/<style[\s\S]*?<\/style>/g, '')
@@ -1102,7 +1034,7 @@ check('タイトルの「最短2週間」が実態と合う',
 {
     const PAGES = ['index.html', 'company-video.html', 'recruit-video.html', 'service-video.html',
         'ad-video.html', 'sns-video.html', 'exhibition-video.html', 'internal-video.html',
-        'animation-video.html', 'record.html'];
+        'animation-video.html'];
     /* 2本目を ¥65,000 だと言い切る形。式の一部として出すぶんには問題ない */
     const WRONG = [
         /2本目[^。<]{0,12}は\s*(?:1本\s*)?¥65,000\s*(?:です|。|<)/,
@@ -1173,7 +1105,7 @@ check('タイトルの「最短2週間」が実態と合う',
 
 /* ---- 「3日」を納期と読ませない（2026-09-26） ----
    3日は、自社サンプルを確認の往復なしで仕上げたときの制作工程だけの数字。
-   工程表を足すと 9〜20営業日、FAQ も「30秒で約2週間」と書いてある。
+   工程表とFAQの納期（2026-11-25 から、ご確認の日数を含めて約4〜7週間）と食い違う。
    ヒーローに「3日で1本できる」とだけ出していたので、
    納品が3日だと読めた。数字を出すなら、条件も同じ場所に置く */
 {
@@ -1187,7 +1119,7 @@ check('タイトルの「最短2週間」が実態と合う',
         }
         check(`${f} の「3日」に自社制作だと分かる条件が付いている`, bad.length === 0, bad.slice(0, 2).join(' / '));
     }
-    /* 看板の速さは、工程表から出した数字（leadWeeks の最小＝2週間）とだけ言う */
+    /* 看板の速さは、工程表から出した数字（FASTEST_WEEKS＝2週間）とだけ言う */
     check('ヒーローの速さがタイトルと同じ数字', /最短2週間/.test(idx.split('<ul class="hero-chips">')[1] || ''));
     /* 「その週のうちに」「数日で公開」は、納品までの日数と矛盾する */
     check('納品が数日だと読める言い方をしていない',
@@ -1241,7 +1173,7 @@ const rb = await (await page.request.get(`${BASE}/robots.txt`)).text();
 check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) && !/Disallow: \//.test(rb));
 
 /* ---- 色のトークンが4か所でズレていないか（2026-09-25） ----
-   assets/site.css と、社内用3ページの中に書いた :root が別々に存在する。
+   assets/site.css と、社内用ページ（いまは funnel.html だけ）の中に書いた :root が別々に存在する。
    地の色を薄い緑に変えたとき、片方だけ直すと同じ「社内用」の紙なのに
    色が違って見える。まとめて動かすために突き合わせる */
 {
@@ -1251,7 +1183,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     const base = Object.fromEntries(WANT.map((k) => [k, tok(css, k)]));
     check('site.css に色のトークンが揃っている',
         WANT.every((k) => base[k]), JSON.stringify(base));
-    for (const f of ['roadmap.html', 'record.html', 'funnel.html']) {
+    for (const f of ['funnel.html']) {
         const h = readFileSync(`${ROOT}/${f}`, 'utf8');
         const root = (h.match(/:root\s*\{([\s\S]*?)\}/) || [])[1] || '';
         const diff = WANT.filter((k) => {
@@ -1284,7 +1216,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     /* select・スクロールバー・動画の操作部をブラウザ既定の白で描かせない。
        これが無いと計算機の select だけが白く浮く（2026-09-25 に実際に出た） */
     check('site.css が color-scheme: dark を宣言している', /color-scheme:\s*dark/.test(css));
-    for (const f of ['roadmap.html', 'record.html', 'funnel.html']) {
+    for (const f of ['funnel.html']) {
         const h = readFileSync(`${ROOT}/${f}`, 'utf8');
         check(`${f} が color-scheme: dark を宣言している`, /color-scheme:\s*dark/.test(h));
     }
@@ -1391,7 +1323,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         'company-video.html', 'recruit-video.html', 'service-video.html', 'ad-video.html',
         'sns-video.html', 'exhibition-video.html', 'internal-video.html',
         'animation-video.html', 'music-video.html'];
-    const INTERNAL = ['funnel.html', 'roadmap.html', 'record.html'];
+    const INTERNAL = ['funnel.html'];
     const robotsOf = async (f) => {
         const h = await (await page.request.get(`${BASE}/${f}`)).text();
         return (h.match(/name="robots" content="([^"]*)"/) || [])[1] ?? '';
@@ -1422,19 +1354,6 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
             if (o !== c) check(`${f} の <${t}> が釣り合っている`, false, `開 ${o} / 閉 ${c}`);
         }
         check(`${f} のタグが釣り合っている`, true);
-    }
-
-    /* ---- 開業日の切り替え手順に書いてある枚数（2026-09-26） ----
-       ロードマップの「サイトを検索に出す」に「公開◯ページの noindex を外す」と
-       書いてある。ページを足したときにここを直し忘れると、当日その枚数だけ外して
-       残りが noindex のまま取り残される。実際 6 のまま 15 まで増えていた。
-       文章のほうを正とせず、PUBLIC の数と突き合わせる */
-    {
-        const rm = readFileSync(`${ROOT}/roadmap.html`, 'utf8');
-        /* 太字の位置が動いても読めるよう、タグを落としてから数える */
-        const n = Number((rm.replace(/<[^>]+>/g, '').match(/公開(\d+)ページの noindex/) || [])[1]);
-        check('ロードマップの切り替え枚数が公開ページ数と合っている',
-            n === PUBLIC.length, `ロードマップ ${n} / 実際 ${PUBLIC.length}`);
     }
 
     for (const f of INTERNAL) {
@@ -1602,494 +1521,13 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         /noindex, nofollow を外す/.test(sm) && /Sitemap: の行を足す/.test(sm));
 }
 
-/* ---- ロードマップ(社内用・要約版) ----
-   9/17 に2ページに割った。roadmap.html は判断だけを短く置き、
-   根拠（各段階の中身・松2本の実測・12ヶ月の計算）は record.html に移した。
-   折りたたみを開かないと読めない資料だったのが「分かりづらい」の中身だったので、
-   要約版には fold を1つも置かない。ここではそれを検査する */
-{
-    const rm = await open(browser, { page: 'roadmap.html' });
-    const t = await rm.locator('body').innerText();
-    /* 計画は梅だけで組む（P1＝90秒＋30秒、P2＝3分＋30秒、P3＝3分＋90秒、各3・3・6ヶ月）。
-       9/29 に価格を改定したので、数字は書き写さず料金モデルから出す */
-    const U = TIERS[0], pu = (sec) => price(U, sec, 1, 'ai');
-    const PLAN = { P1: pu(90) + pu(30), P2: pu(180) + pu(30), P3: pu(180) + pu(90) };
-    PLAN.sales = 3 * PLAN.P1 + 3 * PLAN.P2 + 6 * PLAN.P3;
-    PLAN.net = PLAN.sales - 509940 - 192375;   // ツール代 年¥509,940（9/30 訂正）
-    const yj = (n) => `¥${n.toLocaleString('en-US')}`;
-    /* 手元の推移（実額の列）。M+2 まで入金なし、M+3 に30秒1件、M+4 から P1 のペース */
-    /* 開業後の月次支出。生活費8万＋ツール代4.25万（Higgsfield Max ¥27,155 ＋
-       Claude 5x ¥15,340 ＝ ¥42,495）＝ ¥122,495。表は 12.2万 で組む
-       （9/30 訂正。それまで Claude を $200 で見ていて 13.8万 だった） */
-    /* 2026-10-02：前提が変わったのでモデルごと置き直した。
-       開業時の手元は41.9万（借入30万を完済したうえで）。入金が無いのは M+0・M+1 の2ヶ月で、
-       M+2 に再就職手当129.6万が入る（保守側の想定）。底は M+1 の17.4万 */
-    /* 表の支出欄は 12.2万 と1桁で出すが、積み上げは実額 ¥122,495 で計算している
-       （生活費8.0万 ＋ ツール代¥42,495）。モデルも実額に合わせる */
-    /* M+0・M+1 は制作が無いので Higgsfield を Plus のまま据え置く（月¥99,940）。
-       受注する M+2 から Max へ戻す（月¥122,495）。「受注が決まったら、その日に
-       Max へ戻す」という下の節のルールに表を合わせたもので、底が4.5万厚くなる */
-    const EXP = 122495;
-    const EXP_PLUS = 99940;
-    const SAIS = 1296000;
-    const cash = { 'M+0': 418600 - EXP_PLUS };
-    cash['M+1'] = cash['M+0'] - EXP_PLUS;             // 底
-    cash['M+2'] = cash['M+1'] - EXP + SAIS;
-    cash['M+3'] = cash['M+2'] + pu(30) - EXP;
-    for (let m = 4; m <= 11; m++) cash[`M+${m}`] = cash[`M+${m - 1}`] + PLAN.P1 - EXP;
-    const man = (n) => `${(n / 10000).toFixed(1)}万`;
-
-    check('目標が計画と一致', t.includes(yj(PLAN.sales)) && t.includes(yj(PLAN.net)), `${yj(PLAN.sales)} ${yj(PLAN.net)}`);
-    check('要約版に折りたたみを置いていない',
-        await rm.locator('details').count() === 0);
-    check('裏づけのページへ導線がある',
-        await rm.locator('a[href^="record.html"]').count() >= 2);
-
-    /* いまの位置。4つのタイルで、営業を始める前に押さえる数字が読める */
-    const now = await rm.locator('.now .stop b').allInnerTexts();
-    check('いまの位置が4つのタイルで読める', now.length === 4, now.join('/'));
-    /* 初入金までの期間は2度動いた。9/22 に着手金を外して「約1ヶ月」→「約2ヶ月」、
-       9/24 にインボイスの登録を先に通すと決めて「約4ヶ月」（M+3）。
-       収支の推移の表と同じ月数を指していること */
-    check('未開業・クレジット残・事例0本・初入金までが出ている',
-        now.join('/') === '未開業/246.84/0本/約4ヶ月', now.join('/'));
-    /* 2026-09-25：お金の表を1本に畳んだとき、時期とやることを別の列に分けた。
-       全角スペース決め打ちだと、セルの区切りが変わっただけで落ちる。
-       見たい事実は「初入金が M+3 にある」ことなので、間の空白は問わない */
-    check('初入金までがM+3と揃っている',
-        /M\+3\s*初入金/.test(t) && /初受注は M\+2/.test(
-            readFileSync(`${ROOT}/record.html`, 'utf8')));
-
-    /* 2026-09-20：保険者に確認した結果、営業活動も労務にあたると分かった。
-       手当（月17万・2027年12月まで）を受けている間は受注できないので、
-       「収入ゼロ・生活費20〜30万・必要な貯蓄40〜60万」の表は実態と合わず外した。
-       いまは実数（手当17万 − 生活費8万 − ツール代3.5万 ＝ ＋5.5万）で書く */
-    check('営業ができない制約を書いている',
-        /営業活動も労務にあたる/.test(t) && /2027年12月まで/.test(t));
-    check('月次を実数で出している',
-        /¥170,000/.test(t) && /¥80,000/.test(t) && /¥70,060/.test(t));
-    check('開業後にもつ期間を出している', /約14ヶ月/.test(t) && /約17ヶ月/.test(t));
-    /* 収支の推移。開業日が未定なので M+0 からの相対で置く。
-       9/21：要点だけを置いて表は record.html に分けていたが、開業の可否を決める数字なので
-       月ごとの表そのものを要約版に載せた。要点も表も両方あることを見る */
-    /* 9/24：インボイスの登録が通ってから声かけを始めると決めたので、
-       「開業月に受注して納品、翌月入金」では成り立たなくなった。
-       2026-10-02：M+0・M+1 は Higgsfield を Plus に据え置くので入金の無い月は2つ、
-       底は M+1。冒頭の要約も現状に合わせて書き直した */
-    check('要約版に収支の推移の要点がある',
-        /収支の推移/.test(t) && /入金のない月は2つ/.test(t));
-    /* 冒頭の要約。ここだけ読んで現状が分かること（古い数字が残ると判断を誤る） */
-    check('冒頭に開業月と判定条件が書いてある',
-        /開業は 2027-08/.test(t) && /最悪10万/.test(t));
-    check('冒頭に借入と純資産が書いてある',
-        /いまの純資産/.test(t) && /−28\.2万/.test(t) && /親からの借入30万/.test(t));
-    check('冒頭に残る問いが2つだけだと書いてある',
-        /残っている問いは2つだけ/.test(t)
-        && /いつ働ける状態になるか/.test(t) && /障害年金の請求/.test(t));
-    check('冒頭に古い必要額が残っていない',
-        !/開業の時点で約37万/.test(t) && !/入金のない月が3つ続くため/.test(t));
-    check('要約版に月ごとの表が載っている',
-        /M\+0/.test(t) && /M\+11/.test(t) && t.includes(man(cash['M+11'])), man(cash['M+11']));
-    check('底が M+1 で、入金の無い月は2つ',
-        t.includes(man(cash['M+1'])) && /入金のない月は2つ/.test(t), man(cash['M+1']));
-    check('置き直した理由が書いてある',
-        /「インボイスの登録が通ってから声かけを始める」/.test(t)
-        && /入金のない月は2つ/.test(t) && /底は M\+1 の 21\.9万/.test(t));
-    check('月数が前提であって実績でないと断っている',
-        /前提であって実績ではない/.test(t) && /実数で置き直すこと/.test(t));
-    check('推移の前提を書いている',
-        /支出 月12\.2万/.test(t) && /全額を納品後に請求/.test(t));
-    /* 9/22 に着手金を外し、9/24 に登録を先に通す順番へ置き直した。
-       表の数字が古いままだと判断を誤るので、底（M+2 −41.4万）と
-       手元が戻る月（M+4 ＋10.5万）を見る */
-    check('着手金なしの数字に直っている',
-        /−12\.2万/.test(t) && !/484\.1万/.test(t));
-    check('底と回復の月が新しい順番になっている',
-        /21.9万（底）/.test(t) && t.includes(man(cash['M+4'])) && !/38\.1万/.test(t), man(cash['M+4']));
-    /* 必要な貯えは2度動いた。9/22 まで 14万（開業月に受注できる前提）→
-       9/24 にインボイスの登録を先に通すと決めて 42万 →
-       9/30 に Claude が 5x だと分かってツール代が下がり 約37万。
-       古い数字が残っていると開業日を誤るので、両方の古い値を弾く */
-    check('開業前に残す額が置き直されている',
-        /開業時点で 41\.9万/.test(t) && /借入30万を完済したうえで/.test(t)
-        && !/開業時点で 約37万/.test(t) && !/開業時点で <b>42万<\/b>/.test(t));
-    check('待つことが前進ではないと書いている', /事業の前進ではない/.test(t));
-
-    /* 2026-10-02：前提が3つ変わったので、この節ごと置き直した。
-       ①親から30万を借りている（生活費の補填・月2万返済）。本人の決定で
-         【完済してから開業する】→ 開業は2027-08（10ヶ月目）が最速
-       ②障害年金は審査中ではなく【2026年11月に請求予定】。決定は2027年2〜5月
-       ③失業手当の受給期間延長は手続き済み。基本手当日額は約6,170円＝月18.5万で
-         傷病手当金（月17.0万）より多い。再就職手当は残300日×70%＝129.6万
-       図と表は【純資産（手元 − 残債）】で揃えた。借入を見ない「手元」だけだと
-       −28.2万から始まっている事実が消える */
-    for (let m = 0; m <= 11; m++) {
-        check(`収支の表に M+${m} がある（毎月ぶん）`, new RegExp(`M\\+${m}\\b`).test(t));
-    }
-    check('保守側の固定ペースが P1 と一致している',
-        new RegExp(`${(PLAN.P1 / 10000).toFixed(1)}万（P1のペース）で固定した【保守側】`).test(t)
-        && t.includes(`年商 ${yj(PLAN.sales)} の半分以下`),
-        `${(PLAN.P1 / 10000).toFixed(1)}万 / ${yj(PLAN.sales)}`);
-    /* 段階どおり（P1→P2→P3 で尺を伸ばす）に置き直した手元。
-       制作の翌月に入金・P1 が M+3〜5 の制作、という前提で積んだ別系列で、
-       上の cash（M+4 以降を P1 で固定した保守側）とは違う。
-       2026-10-14 の料金改定で 646.4／893.5 → 617.5／857.0 */
-    check('段階どおりに置き直した値も書いてある',
-        /617.5万/.test(t) && /857.0万/.test(t));
-    check('どちらの表をいつ見るかを書いている',
-        /計画の達成度を見るときは下の段階の表、資金が尽きないかを見るときはこの表/.test(t));
-
-    /* 借入30万。手元の現金（1.8万）と純資産（−28.2万）を混ぜない */
-    check('親からの借入を書いている',
-        /親から30万を借りている/.test(t) && /生活費の補填・毎月2万ずつ返済/.test(t));
-    check('純資産がマイナスから始まると書いている',
-        /純資産は −28\.2万/.test(t) && /手元の現金1\.8万/.test(t));
-    check('完済してから開業する方針が書いてある',
-        /返し切ってから開業する/.test(t));
-    /* 月いくら返すかは完済の時期を変えるだけで、開業の時期を変えない。
-       総額（借入30万＋入金の無い期間を越える手元）が同じだから */
-    check('返済額が開業時期を変えないと書いている',
-        /月いくら返すかは完済の時期を変えるだけで、開業の時期を変えない/.test(t));
-    check('開業までの表が純資産で書いてある',
-        /開業までの毎月（純資産/.test(t) && /手元−残債・年金なし/.test(t));
-    check('開業月が書いてある', /開業は2027-08/.test(t));
-    check('借金ゼロを越える月が書いてある', /借金ゼロを越える/.test(t));
-
-    /* 失業給付。3つは同時に使えず、順番でしか取れない */
-    check('基本手当の日額が書いてある',
-        /日額6,170円＝月18\.5万/.test(t) && /就職困難者で300日/.test(t));
-    /* 2026-10-02：制度の根拠は record.html へ移した（9/17 の設計＝
-       roadmap は判断・record は根拠、に戻した）。守りも移した先を見る */
-    check('傷病手当金より多いことが根拠側に残っている',
-        /月1\.5万多い/.test(readFileSync(`${ROOT}/record.html`, 'utf8')));
-    check('受給期間延長が済んでいる',
-        /失業保険の受給期間延長を申請する\s*10\/02 済/.test(t));
-    check('3つが同時に使えないと書いてある',
-        /失業給付は3つが同時には使えない/.test(t) && /残日数を分け合う/.test(t));
-    check('再就職手当の額と根拠が書いてある',
-        /129\.6万/.test(t) && /残300日 × 日額6,170円 × 70%/.test(t));
-    check('待期7日の順序を書いている',
-        /求職申込 →\s*待期7日\s*→ そのあとに開業届/.test(t));
-    /* 2026-10-02：この論点は閉じた。計画は基本手当を1円も受け取らない設計なので
-       （受け取るほど再就職手当が減る）、失業手当中の営業は問題にならない。
-       代わりに「開業前に需要を確かめる手段が無い」ことを認めて書く */
-    check('失業手当中の営業を論点として残していない',
-        !/未確認：失業手当を受けながら開業準備の営業ができるか/.test(t));
-
-    /* 障害年金は入れない。請求は11月で、決定は開業の判断に間に合わない */
-    check('年金をまだ請求していないと書いている',
-        /2026年11月に請求する予定で、まだ出していない/.test(t));
-    check('年金を開業の判断に使わないと書いている',
-        /開業の判断には使わない/.test(t));
-
-    /* グラフ。2つ（全期間＋前半の拡大）で、主線は純資産の実額 */
-    const figs = await rm.locator('figure.c-fig').count();
-    check('グラフが2つある（全期間＋前半の拡大）', figs === 2, String(figs));
-    check('主線が純資産の実額（年金を入れていない）',
-        /純資産（手元 − 残債）\s*・実額（\s*障害年金を入れていない\s*）/.test(t));
-    check('年金の線は見込みだと断っている',
-        /年金が2級で通った場合\s*※まだ請求していない・見込み/.test(t));
-    check('いまから開業後まで1本につないでいる',
-        /−28\.2万から始まる/.test(t) && /完済してから開業する/.test(t));
-    check('開業できる額が図にある', /完済して開業 41\.9万/.test(t));
-    check('底が図にある', /底 21.9万/.test(t));
-    check('12ヶ月目の実額が図にある', /629.0万/.test(t));
-    check('年金が通った場合の12ヶ月目も出ている', /926.3万/.test(t));
-    /* 再就職手当がいつ入るかで底が変わる。保守側に置いたことを明記する */
-    /* 2026-10-02：振込時期は人によって違うので聞いても分からない、と本人から。
-       1点で置かず【範囲】で書く。M+4 以降にずれても底は下がらない
-       （M+3 の初入金30万と M+4 の84万が先に来るため）＝「M+3 想定」が最悪値 */
-    check('再就職手当の時期を範囲で書いている',
-        /入る時期は人によって変わるので、聞いても分からない/.test(t)
-        && /M\+1 なら31\.9万／M\+2 なら21\.9万／M\+3 以降なら9\.6万/.test(t));
-    check('最悪値がどこで止まるかを書いている',
-        /M\+4 以降にずれても9\.6万より下がらない/.test(t)
-        && /最悪値は「M\+3 想定」で見ておけば足りる/.test(t));
-    check('開業月ごとの最悪値を並べている',
-        /16\.6万/.test(t) && /23\.6万/.test(t) && /30\.6万/.test(t));
-    check('こちらでできることを1つに絞って書いている',
-        /開業届を出した日に、再就職手当の申請まで済ませること/.test(t));
-    /* 2026-10-02：開業の判定条件を「最悪値で10万を下回らないこと」に決めた。
-       2027-08 は9.62万で3,775円足りないが、生活費8万の丸めより小さい差なので
-       実質満たしているとして進める。そのかわり未着のときの手当を先に決めてある */
-    check('開業の判定条件が数字で書いてある',
-        /最悪値で 10万 を下回らないこと/.test(t) && /2027-08 開業の最悪値は 9\.62万/.test(t));
-    check('線に届かないぶんをごまかしていない',
-        /線まで 3,775円足りない/.test(t) && /実質は満たしていると見て 2027-08 で進める/.test(t));
-    check('未着のときの手当が手順になっている',
-        /M\+2 の時点で再就職手当が入っていなければ/.test(t)
-        && /Claude を 5x（\$100）から Pro（\$20）へ落とす/.test(t)
-        && /底は10\.86万/.test(t));
-    check('その手当が事前に何も捨てないと書いてある',
-        /この手当は事前に何も捨てない/.test(t));
-    /* 基本手当は1円も受け取らない設計。だから「失業手当中に営業できるか」は論点にならない */
-    check('基本手当を受け取らない設計だと書いてある',
-        /この計画は基本手当を1円も受け取らない/.test(t)
-        && /この計画では論点にならない/.test(t));
-    check('開業前に需要を確かめる手段が無いと認めている',
-        /開業前に需要を確かめる手段は、いまのところ無い/.test(t)
-        && /反応が最初に分かるのは M\+1 の声かけ/.test(t));
-    /* 受注が決まるまで Plus に据え置くルールと、表の支出が一致していること */
-    check('開業後2ヶ月は Plus 据え置きだと書いてある',
-        /Higgsfield を Plus のまま据え置く/.test(t) && /据え置きで4\.5万ぶん厚くなる/.test(t));
-    check('開業前に失業手当へ切り替えるのが損だと書いてある',
-        /開業前に失業手当へ切り替えるのは損/.test(t) && /差し引き約 −11\.4万/.test(t));
-    check('基本手当を受け取らなくても受給資格の決定は要ると書いてある',
-        /受給資格の決定（求職申込＋待期7日）は要る/.test(t));
-    /* 2026-10-02 に保険者へ確認：退職後の継続給付なので、一度支給が止まった時点で
-       受給権が消える。廃業しても戻らない＝開業は片道切符。
-       さらに再就職手当で失業給付の300日も使い切るので、残る受け皿は障害年金だけ。
-       この前提が消えると「受注が来なかったら」の判断がまるごと変わる */
-    check('開業が片道切符だと書いてある',
-        /開業は片道切符/.test(t)
-        && /一度支給が止まった時点で受給権が消える/.test(t)
-        && /廃業して再び労務不能になっても/.test(t));
-    check('残る受け皿が障害年金だけだと書いてある',
-        /開業後に残る受け皿は障害年金だけ/.test(t));
-    /* 2026-10-02 訂正：「2027-12 に開業すればゼロ」は1ヶ月ずれていた。
-       開業月を含めて数えるので、2027-12 開業でも1ヶ月ぶん＝17万は捨てる。ゼロは2028-01 */
-    check('捨てる手当と、待って回収できる額を出している',
-        /2027-08 開業なら5ヶ月ぶん＝85万を捨てる/.test(t)
-        && /2027-12 なら1ヶ月ぶん＝17万だけ/.test(t)
-        && /2028-01 でゼロ/.test(t)
-        && /2028-01 以降は待っても増えない/.test(t));
-    check('撤退する条件を先に決めろと書いてある',
-        /撤退する条件を数字で先に決めておくこと/.test(t)
-        && /M\+5 までに受注0件なら畳む/.test(t));
-    check('拡大図の理由が書いてある',
-        /借入の返済と開業直後が潰れて読めない/.test(t));
-    check('マイナスから始まることを拡大図でも書いている',
-        /マイナスから始まる/.test(t) && /0を越えるのは2027-02/.test(t));
-    /* なぞり読みのデータも2本（実額・年金） */
-    const rmSrc = readFileSync(`${ROOT}/roadmap.html`, 'utf8');
-    check('なぞり読みが実額と年金の2本を持っている',
-        /const VR = \[/.test(rmSrc) && /const VP = \[/.test(rmSrc)
-        && !/const VC = \[/.test(rmSrc));
-    check('なぞり読みがベストの場合だけを出していない', !/ベストの場合/.test(rmSrc));
-    /* 2026-10-02：グラフを作り直したときに #cash-cross を落としていて、
-       「指でなぞると数字が出ます」が嘘になっていた（テスト0件で気づけなかった）。
-       要素の存在だけでなく【実際に数字が変わること】で見る。
-       当たり判定の透明な矩形も要る——SVGは描かれている所にしか当たらないので、
-       これが無いと線の上を通った時しか反応しない */
-    check('なぞる当たり判定がある',
-        await rm.locator('.c-svg rect[pointer-events="all"]').count() >= 1);
-    check('なぞり読みの縦線が実在する',
-        await rm.locator('.c-svg #cash-cross').count() === 1);
-    {
-        const el = rm.locator('.c-svg').first();
-        await el.scrollIntoViewIfNeeded();
-        const box = await el.boundingBox();
-        const tip = rm.locator('#cash-tip');
-        const before = await tip.innerText();
-        await rm.mouse.move(box.x + box.width * 0.9, box.y + box.height * 0.4);
-        const after = await tip.innerText();
-        check('なぞると数字が出る', after !== before && /実額/.test(after), after.slice(0, 40));
-        /* ラベルと値がずれていないこと。右はしは M+11＝695.5万（2026-10-13 の改定後） */
-        check('なぞり読みのラベルと値が合っている',
-            /M\+11/.test(after) && /629\.0万/.test(after), after.slice(0, 50));
-    }
-    /* ラベルは月末基準。index1 は 2026-10末（前は 2026-11 と1ヶ月ずれていた） */
-    check('なぞり読みのラベルが月末基準',
-        /const LABELS = \["いま", "2026-10", "2026-11"/.test(rmSrc));
-    /* ===== 消えると困る記録（2026-10-02 に追加）=====
-       調査で分かったこと：下の13件は【テストが1文字も固定していなかった】。
-       つまり消しても全スイートが通る。今日2回の事故
-       （「インボイスの登録が通ってから声かけ」「求職申込→待期7日→開業届」）は
-       どちらも偶然ほかの検査が拾ったが、下は拾われない。
-       ⚠️ ここは「文言が在ること」を見る。畳むときに消したら落ちる、が目的 */
-
-    /* これが消えると、4つの表に戻した人を止めるものが何も残らない。
-       今日の逆戻り（同じ数字を5箇所に書いた）は、これが読まれなかった結果 */
-    check('1本に畳んだ経緯が残っている',
-        /同じお金を別の切り口で3回書いていた/.test(t) && /お金の話はこの表がすべて/.test(t));
-    /* 開業後に残る唯一の受け皿の根拠。消えると併給の可否を毎回また調べ直す */
-    /* 開業後に残る唯一の受け皿の根拠。roadmap からは移したが、消してはいない */
-    check('障害年金の制度判断が根拠側に残っている', (() => {
-        const rc = readFileSync(`${ROOT}/record.html`, 'utf8');
-        return /初診日は動かない/.test(rc) && /1円も減らない（完全併給）/.test(rc)
-            && /法定免除/.test(rc) && /3級は障害厚生年金だけの枠/.test(rc);
-    })());
-    check('roadmap から根拠側への導線がある',
-        /record\.html#nenkin/.test(readFileSync(`${ROOT}/roadmap.html`, 'utf8')));
-    /* 期限を過ぎたら取り返せない唯一の種類の損失 */
-    check('期限の台帳が残っている',
-        /5年で時効/.test(t) && /延長すれば4年/.test(t)
-        && /待期7日の間に開業すると対象外/.test(t));
-    /* 129.6万（残300日×6,170円×70%）を検算できなくなる。底と判定条件の両方を動かす */
-    check('基本手当日額の導出が残っている',
-        /賃金日額10,333円/.test(t) && /給付率59\.7%/.test(t));
-    /* 開業届を出す日の決め方。これが消えると無収入期間が1ヶ月伸び、底が7万ぶん深くなる */
-    check('開業届を出す日の決め方が残っている',
-        /開業届を出す日は「登録申請をすぐ出せる日」に合わせる/.test(t));
-    /* 5.01万と7.01万をつなぐ1文。消えると2つが矛盾に見えて、どちらかを「直して」しまう。
-       7.01→5.01 にすると開業が2028-02 へずれ、5.01→7.01 にすると借入の返済が消える */
-    check('5.01万と7.01万をつなぐ説明が残っている',
-        /純資産では返済が消えないので、増えるのは月7\.01万/.test(t));
-    /* 残債10万をどこで返すのか。これが無いと表のつなぎ目が説明できない */
-    check('開業月の一括返済が書いてある',
-        /開業する月に残りを手元から一括で返す/.test(t));
-    /* 必要額の経緯。record.html がいまも「約37万」で止まっているので、
-       これが消えると次に見つけた人が「ロードマップが間違っている」と直しに来る */
-    check('必要額が動いた経緯が残っている',
-        /9\/24 まで「14万」/.test(t) && /9\/30 まで「42万」/.test(t)
-        && /10\/02 まで「約37万・5ヶ月」/.test(t));
-    /* 9/24 の誤検知の記録。消えると次に残高を見たときまた1往復使う */
-    check('残高でプランを判定しない記録が残っている',
-        /残高だけでプランを判定しないこと/.test(t));
-
-    check('div の開きと閉じが釣り合っている', (() => {
-        const b = rmSrc.slice(rmSrc.indexOf('<body>'));
-        return (b.match(/<div\b/g) || []).length === (b.match(/<\/div>/g) || []).length;
-    })());
-    /* 営業できない間は Higgsfield を Pro に落としている。戻し忘れると
-       受注した月に90秒1本も作れない（Pro は600クレジット＝約18秒ぶん） */
-    check('受注したら Max に戻すと書いている',
-        /受注が決まったら、その日に Higgsfield を Max へ戻す/.test(t)
-        && /約18秒ぶん/.test(t));
-    check('合わなくなった前提を残していない',
-        !/必要な貯蓄/.test(t) && !/底は10月末/.test(t), t.slice(0, 40));
-    check('支払条件は残っている（決定事項）',
-        /全額を納品後に請求/.test(t) && /納品日から30日以内/.test(t));
-    check('着手金を取らないと書いている', /着手金は取らない/.test(t));
-
-    /* 4段階は1行ずつの表に畳んだ。月商は計画（README の料金の考え方）と同じ */
-    const stages = await rm.locator('table.t-wide tbody tr').count();
-    check('4つの段階が表になっている', stages >= 4, String(stages));
-    check('段階ごとの月商が計画と一致',
-        [PLAN.P1, PLAN.P2, PLAN.P3].every((v) => t.includes(yj(v))), [PLAN.P1, PLAN.P2, PLAN.P3].map(yj).join(' '));
-
-    /* P0 はいま動いている段階なので、要約版に残りタスクを置く */
-    check('P0 の残りタスクが載っている',
-        ['開業届', 'ひな形', 'プロフィール', '主治医'].every((w) => t.includes(w)));
-
-    /* 9/18 にチェックリスト式へ直した。状態は HTML に持たせてブラウザには保存しない
-       （端末ごとに違う状態を持つとリポジトリの記録とズレるため）。
-       残り＝未チェックがページ上部、済＝チェック済みが P0 に並ぶ */
-    const ckAll = await rm.locator('.ck.p0 li').count();
-    const ckDone = await rm.locator('.ck.p0 li.done').count();
-    const ckLeft = await rm.locator('.ck.p0 li:not(.done)').count();
-    check('チェックリストになっている', ckAll >= 12 && ckDone >= 9, `${ckDone}/${ckAll}`);
-    /* 件数を手で書いているので、実際のチェック数とズレたら落とす。
-       数えるのは P0 のぶんだけ（「このあとの宿題」は別勘定） */
-    check('進捗の数字が実際のチェック数と合っている',
-        t.includes(`${ckAll}項目中 ${ckDone}件 完了`), `${ckDone}/${ckAll}`);
-    /* 2026-09-25 に P0 へ2件足した（障害年金の請求・失業保険の受給期間延長）。
-       3 → 5。2026-10-02 に失業保険の受給期間延長が済んだので 5 → 4。
-       ここは手で書いてあるので、増減したら必ず一緒に直す */
-    check('残りは未チェックで置いてある', ckLeft === 4, String(ckLeft));
-
-    /* このあとの宿題。いま動かせないものなので、全部未チェックで始まる。
-       日付ではなく着手条件で書くと決めたので、各項目に条件が要る */
-    const next = await rm.locator('.ck.next li').allInnerTexts();
-    check('このあとの宿題が載っている', next.length >= 5, String(next.length));
-    /* 9/24：宿題が1つ実際に終わった（送り先リスト30件）ので、
-       「全部未チェック」では回らなくなった。守りたいのは
-       「やっていないものを勝手にチェックしない」なので、
-       チェックが付いたものには済んだ日付が入っていること、に変える */
-    const doneNext = await rm.locator('.ck.next li.done').allInnerTexts();
-    check('終わった宿題には済んだ日付が入っている',
-        doneNext.every((x) => /\d+\/\d+/.test(x)),
-        doneNext.find((x) => !/\d+\/\d+/.test(x)) || `${doneNext.length}件`);
-    check('宿題がまだ残っている',
-        (await rm.locator('.ck.next li:not(.done)').count()) >= 4);
-    check('宿題に着手条件が書いてある',
-        next.every((x) => /てから|届いたら|ときに|まで|次号|1本目/.test(x)),
-        next.find((x) => !/てから|届いたら|ときに|まで|次号|1本目/.test(x)) || '');
-    /* 9/23：GA4 を入れたので、自分のアクセスを除外する作業が要る。
-       ただし営業を始める前にやると動作確認ができなくなるので、
-       着手条件（他人のアクセスが混ざり始めてから）とセットで置く */
-    check('GA4 の除外が宿題に入っている',
-        /GA4 から自分のアクセスを除外する/.test(t)
-        && /いまやると動作確認ができなくなる/.test(t));
-    /* 9/23：退職時の書面を確認し、前職の取引先が使えないと確定した。
-       いちばん近い経路が消えたので、紹介以外の経路の重みが上がっている。
-       書面そのものは公開リポジトリに残さない（社名も条文も書かない）ので、
-       ここでは「社名が混ざっていないこと」も見る */
-    check('前職の取引先が使えないと書いてある',
-        /前職の取引先は 9\/23 に使えないと確定している/.test(t));
-    /* 退職合意書で、合意の存在と内容を第三者に開示しないことも約束している。
-       so. としての行動制約だけを残し、条文は引用しない。
-       社名そのものは、この検査に書くと検査ファイルが公開リポジトリに残るので書かない */
-    check('退職時の書面を引用していない',
-        !/誓約いたします|誓約致します|第１条|第4条（引き抜き/.test(idx + t));
-    check('実測と受注経路の宿題が入っている',
-        next.some((x) => /実消費クレジット/.test(x))
-        && next.some((x) => /受注経路/.test(x)), next.join(' | '));
-    /* COLOWORKS（日本コロムビアのAIクリエイター公募）は 9/18 に登録し、同日に取り下げた。
-       宿題として残っていると嘘になるので、載っていないことを見る */
-    check('取り下げた COLOWORKS が残っていない', !/COLOWORKS/i.test(t));
-
-    /* 未チェックのまま「済」と書いていないか（チェック漏れではなく書き間違いを拾う）。
-       宿題の側は「登録済み」のように途中経過を書くので、P0 の残りだけを見る */
-    const leftTxt = await rm.locator('.ck.p0 li:not(.done)').allInnerTexts();
-    check('未チェックの項目を済と書いていない', !leftTxt.some((x) => /済/.test(x)), leftTxt.join(' | '));
-
-    const doneTxt = await rm.locator('.ck.p0 li.done').allInnerTexts();
-    check('決着ぶんが済に入っている',
-        doneTxt.some((d) => /支払条件/.test(d) && /9\/17/.test(d))
-        /* 9/24：インボイスは「登録しない」から「登録する」に変わった。
-           決着の項目としては残るが、中身が逆になったので両方の経緯が書いてあること */
-        && doneTxt.some((d) => /インボイス/.test(d) && /登録しない/.test(d)
-            && /9\/24/.test(d) && /登録する/.test(d)), doneTxt.join(' | '));
-    /* 済の項目はいつ終わったかが分かること。日付のない「済」は後から検算できない */
-    check('済の項目に日付が入っている',
-        doneTxt.every((d) => /\d+\/\d+/.test(d)), doneTxt.find((d) => !/\d+\/\d+/.test(d)) || '');
-    check('崩れるときの表がある', /この計画が崩れるとき/.test(t));
-    check('未開業であることを書いている', /未開業/.test(t));
-
-    /* 9/18 にチェックを押せるようにした。押したぶんはこの端末の localStorage にだけ
-       残り、リポジトリには入らない。だから「何件ズレているか」を必ず画面に出す。
-       確定させるときは HTML を直してコミットする（＝ズレが0に戻る） */
-    check('チェックを押せる',
-        await rm.locator('.ck li .box[role="checkbox"]').count() === ckAll + next.length,
-        String(await rm.locator('.ck li .box[role="checkbox"]').count()));
-    check('押す前はズレの知らせが出ていない', await rm.locator('#ck-local').isVisible() === false);
-    await rm.locator('[data-id="p0-kaigyo"] .box').click();
-    check('押すとチェックが付く',
-        await rm.locator('[data-id="p0-kaigyo"]').evaluate((el) => el.classList.contains('done')));
-    check('押すと件数が増える',
-        (await rm.locator('#ck-count').innerText()).includes(`${ckDone + 1}件`),
-        await rm.locator('#ck-count').innerText());
-    /* 知らせは件数だけでなく、確定のしかた（HTML を直してコミット）まで書く。
-       端末間の同期はしないと決めた（9/18）ので、ここが唯一の確定経路になる */
-    check('押すとズレの知らせが出る',
-        await rm.locator('#ck-local').isVisible()
-        && (await rm.locator('#ck-local').innerText()).includes('1件'));
-    check('知らせに確定のしかたが書いてある',
-        /コミット/.test(await rm.locator('#ck-local').innerText()),
-        await rm.locator('#ck-local').innerText());
-    await rm.reload({ waitUntil: 'networkidle' });
-    check('押した状態が再読込のあとも残る',
-        await rm.locator('[data-id="p0-kaigyo"]').evaluate((el) => el.classList.contains('done')));
-    await rm.locator('#ck-reset').click();
-    check('「記録の状態に戻す」で元に戻る',
-        await rm.locator('#ck-local').isVisible() === false
-        && (await rm.locator('#ck-count').innerText()).includes(`${ckDone}件`));
-    /* プライベートブラウズなどで localStorage が触れないことがある。
-       そこで例外が出るとページ全体が止まるので、落ちずに表示だけ出ることを見る */
-    {
-        const np = await open(browser, { page: 'roadmap.html' });
-        await np.addInitScript(() => {
-            Object.defineProperty(window, 'localStorage', { get() { throw new Error('denied'); } });
-        });
-        await np.reload({ waitUntil: 'networkidle' });
-        check('localStorage が使えなくても表示が壊れない',
-            await np.locator('.ck.p0 li.done').count() === ckDone && np.__errors.length === 0,
-            JSON.stringify(np.__errors));
-        await np.close();
-    }
-
-    check('社内用なので検索に出さない',
-        (await rm.evaluate(() => document.querySelector('meta[name="robots"]')?.content || '')).includes('noindex'));
-    check('ロードマップで横溢れなし',
-        (await rm.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 0);
-    /* 長さの上限は外した（2026-09-23・本人の判断）。
-       4000 →（9/21 入札の宿題）4200 →（9/21 収支の推移の表）4900 と上げてきて、
-       足すたびに上限に当たる状態になっていた。数えるのはやめ、
-       代わりに「折りたたみを置いていない」（下の検査）で読みやすさを守る。
-       記録として、外した時点の長さは約4,900字。 */
-    await rm.close();
-}
+/* ---- 退職時の書面を引用していない ----
+   2026-11-23：もとはロードマップ（社内用）の検査の中で、index.html と
+   ロードマップの本文をまとめて見ていた。ロードマップはリポジトリの外へ
+   移したので、公開ページ（index.html）のぶんだけ残す。
+   社名そのものは、この検査に書くと検査ファイルが公開リポジトリに残るので書かない */
+check('退職時の書面を引用していない',
+    !/誓約いたします|誓約致します|第１条|第4条（引き抜き/.test(idx));
 
 /* ---- ヒーローの背景 ----
    YouTube のサムネイルを流していたのを、実際に納品した映像そのものに
@@ -2174,16 +1612,69 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
             return { pos: v.position, z: v.zIndex };
         });
         check('映像がぼかしより前に出る', order.pos !== 'static' && order.z !== 'auto', JSON.stringify(order));
-        const a = Number(await sp.locator('.hero-blur').evaluate((e) => e.dataset.frames || 0));
+        /* ぼかしを描いた枚数と、本編が実際に映したコマ数を同じ2秒で数える */
+        const count = () => sp.evaluate(() => {
+            const q = document.getElementById('hero-video').getVideoPlaybackQuality();
+            return { blur: Number(document.querySelector('.hero-blur').dataset.frames || 0),
+                     shown: q.totalVideoFrames - q.droppedVideoFrames };
+        });
+        const a = await count();
         await sp.waitForTimeout(2000);
-        const b2 = Number(await sp.locator('.hero-blur').evaluate((e) => e.dataset.frames || 0));
-        check('ぼかしが本編と連動して描き変わる', b2 > a, `${a} → ${b2} 枚`);
+        const b2 = await count();
+        check('ぼかしが本編と連動して描き変わる', b2.blur > a.blur, `${a.blur} → ${b2.blur} 枚`);
         /* 2026-10-05：120ms の固定間隔（8fps）だと、40x23 を画面幅まで引き伸ばした
            ぼかしが段差として明滅して見えた（本人の指摘）。映像のコマに1対1で
            合わせる（requestVideoFrameCallback）ことで段差を無くしてある。
-           ⚠️ 固定間隔のタイマーに戻すとチラつきが再発する。 */
-        const fps = (b2 - a) / 2;
-        check('ぼかしが映像のコマに追従している（24fps 前後）', fps >= 18, `${fps.toFixed(1)} fps`);
+           ⚠️ 固定間隔のタイマーに戻すとチラつきが再発する。
+           2026-11-23：前は「2秒で36枚（18fps）以上」と絶対値で見ていたが、
+           全スイートを通しで回すとブラウザが混んで映像そのものが12〜15fpsしか
+           映らず、毎回ここだけ落ちていた（単独なら21〜22fps で通る）。
+           本編が映したコマ数に対する割合で見る。タイマーに戻すと 8/24 ≒ 0.33 になるので
+           0.75 を割れば捕まる。 */
+        const rate = (b2.blur - a.blur) / Math.max(1, b2.shown - a.shown);
+        check('ぼかしが映像のコマに追従している（本編のコマ数の75%以上）', rate >= 0.75,
+            `ぼかし ${b2.blur - a.blur} 枚 / 本編 ${b2.shown - a.shown} コマ（${(rate * 100).toFixed(0)}%）`);
+        /* 枚数が合っていても、別のコマ（遅れたコマや、作り直す前の古い要素）を
+           描いていたら色がずれる。次のコマが出た瞬間に、本編を同じ 40x23 に
+           縮めたものとぼかしの色を比べる（0〜255 の平均差。一致すれば 0） */
+        const diff = () => sp.evaluate(() => new Promise((res) => {
+            const v = document.getElementById('hero-video'), bg = document.querySelector('.hero-blur');
+            /* 本編が止まって次のコマが来ないと永遠に待つので、3秒で「不一致」扱いにする */
+            setTimeout(() => res(999), 3000);
+            v.requestVideoFrameCallback(() => {
+                const c = document.createElement('canvas'); c.width = bg.width; c.height = bg.height;
+                const g = c.getContext('2d'); g.drawImage(v, 0, 0, c.width, c.height);
+                const A = bg.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+                const B = g.getImageData(0, 0, c.width, c.height).data;
+                let d = 0;
+                for (let i = 0; i < A.length; i += 4) {
+                    d += Math.abs(A[i] - B[i]) + Math.abs(A[i + 1] - B[i + 1]) + Math.abs(A[i + 2] - B[i + 2]);
+                }
+                res(d / (A.length / 4) / 3);
+            });
+        }));
+        const d1 = [];
+        for (let i = 0; i < 3; i += 1) { d1.push(await diff()); await sp.waitForTimeout(700); }
+        check('ぼかしは本編と同じコマを描いている', Math.max(...d1) < 4,
+            d1.map((d) => d.toFixed(1)).join(' / '));
+        /* 時間が止まって要素ごと作り直したあとも、新しい要素のコマを描き続けること。
+           古い要素を握ったままだと、手前は動くのに背景だけ止まる */
+        await sp.evaluate(() => {
+            const e = document.getElementById('hero-video');
+            e.__orig = true;
+            Object.defineProperty(e, 'currentTime', { get: () => 5, set: () => {}, configurable: true });
+            Object.defineProperty(e, 'paused', { get: () => false, configurable: true });
+        });
+        await sp.waitForTimeout(6500);
+        const rebuiltM = await sp.evaluate(() => !document.getElementById('hero-video').__orig);
+        check('スマホでも時間が止まったら要素ごと作り直す', rebuiltM, rebuiltM ? '作り直した' : '作り直していない');
+        if (rebuiltM) {
+            await sp.waitForTimeout(1500);
+            const d2 = [];
+            for (let i = 0; i < 3; i += 1) { d2.push(await diff()); await sp.waitForTimeout(700); }
+            check('作り直したあとも、ぼかしは新しい本編と同じコマを描いている', Math.max(...d2) < 4,
+                d2.map((d) => d.toFixed(1)).join(' / '));
+        }
         await sp.close();
     }
     /* PC では画面いっぱいに敷く（横長なので切り取りが浅い） */
@@ -2368,7 +1859,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         check(`${w}×${h}：開いた直後から見出しが見える`, r.op === 1, String(r.op));
         await pg.close();
     }
-    for (const f of ['record.html', 'roadmap.html', 'funnel.html', ...PUBLIC_PAGES]) {
+    for (const f of ['funnel.html', ...PUBLIC_PAGES]) {
         const pg = await open(browser, { page: f, width: 375, height: 560, mobile: true });
         const sw = await pg.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
         check(`375×560：${f} が横にはみ出さない`, sw <= 1, `${sw}px`);
@@ -2421,171 +1912,16 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     }
 }
 
-/* ---- 社内2ページの「前提」に書いた目標時間単価 ----
-   料金と工数のモデルを動かすとここがズレる。9/16 に工数モデルを実測へ
-   合わせたとき、古い ¥14,900（重いモデルからの逆算）が残ったまま 9/19 まで
-   気づかなかった。lib.mjs の RATE を唯一の出どころにして突き合わせる */
-{
-    const want = `¥${RATE.toLocaleString('ja-JP')}`;
-    for (const file of ['roadmap.html', 'record.html']) {
-        const pg = await open(browser, { page: file });
-        const body = await pg.locator('body').innerText();
-        check(`${file} の前提が時間単価と一致`, body.includes(want), want);
-        /* ¥23,000 は価格÷実測工数の結果であって、目標として決めた数字ではない。
-           「目標の時間単価」と書くと、値下げの是非を時給の話にすり替えてしまう
-           （実際は循環している）。言い切りの表現に戻っていないかを見る（9/21） */
-        check(`${file} で時間単価を目標と書いていない`, !/目標の時間単価/.test(body),
-            (body.match(/.{0,20}目標の時間単価.{0,20}/) || [''])[0]);
-        /* 経緯の説明として ¥14,900 に触れるのは構わない（9/21 に追記した）。
-           見るのは「前提」の行で、いまの数字として出ていないこと */
-        /* .note は1枚とは限らない（2026-09-27 に record.html へ出典の行を足して
-           strict mode で落ちた）。見たいのは「前提：」の行なので、それを選ぶ */
-        const notes = await pg.locator('.note').allInnerTexts();
-        const premise = notes.find((t) => t.includes('前提：'));
-        check(`${file} に「前提：」の行がある`, premise !== undefined, `${notes.length} 枚の .note`);
-        check(`${file} に古い時間単価が残っていない`, !/14,900/.test(premise ?? ''),
-            ((premise ?? '').match(/.{0,24}14,900.{0,24}/) || [''])[0]);
-        await pg.close();
-    }
-}
-
 /* ---- 時間単価の位置づけ（9/21）----
    ¥23,000 は価格÷実測工数の結果で、目標として決めた数字ではない。
    ここを取り違えると「時給を下げれば値下げできる」という循環した話になる。
-   record.html と README の両方に、その旨と代わりの判断軸を残してある */
+   README に、その旨と代わりの判断軸を残してある
+   （2026-11-23：record.html 側の検査はページと一緒に外した） */
 {
-    const rc2 = await open(browser, { page: 'record.html' });
-    const t2 = await rc2.locator('body').innerText();
-    check('時間単価が結果の数字だと書いてある',
-        /目標ではなく、結果の数字/.test(t2) && /割り算/.test(t2), t2.slice(0, 40));
-    /* 年収1,000万＋ツール代・クレジット（¥702,315）を時間単価で割った時間。
-       ¥20,000/h なら535h、¥15,000/h なら713h（2026-10-13 に下限を ¥23,000→¥20,000） */
-    check('値下げの判断軸が年収と時間だと書いてある',
-        /535h/.test(t2) && /713h/.test(t2));
-    check('いま値下げの根拠がないと書いてある',
-        /問い合わせが来ない/.test(t2) && /見積0件/.test(t2));
-    await rc2.close();
     const readme2 = readFileSync(`${ROOT}/README.md`, 'utf8');
     check('README にも同じことが書いてある',
         /目標ではなく、価格 ÷ 実測工数の結果/.test(readme2)
         && /循環していて、値下げの根拠にならない/.test(readme2));
-}
-
-/* ---- 実測記録と裏づけ(社内用) ----
-   もとは roadmap.html の中にあった。数字はサイトの料金表・工数モデルから
-   出しているので、料金を動かしたらここもズレる。主要な数字だけ突き合わせる */
-{
-    const rc = await open(browser, { page: 'record.html' });
-
-    /* 折りたたむ前に、たたんだ状態のままで主要な数字が読めるかを見る。
-       たたんだ見出しに数字が出ていないと、開かないと何も分からない資料になる */
-    const folded = await rc.locator('body').innerText();
-    const RPLAN = (() => { const pu = (sec) => price(TIERS[0], sec, 1, 'ai');
-        const P1 = pu(90) + pu(30), P2 = pu(180) + pu(30), P3 = pu(180) + pu(90);
-        return { q: [3 * P1, 3 * P2, 3 * P3], sales: 3 * P1 + 3 * P2 + 6 * P3, net: 3 * P1 + 3 * P2 + 6 * P3 - 509940 - 192375 }; })();
-    const ry = (n) => `¥${n.toLocaleString('en-US')}`;
-    check('たたんだままでも年商・年収が読める',
-        folded.includes(ry(RPLAN.sales)) && folded.includes(ry(RPLAN.net)), `${ry(RPLAN.sales)} ${ry(RPLAN.net)}`);
-    check('たたんだままでも天井と必要な問い合わせ数が読める',
-        /1,950万/.test(folded) && /6\.7件/.test(folded));
-    check('ロードマップへ戻る導線がある',
-        await rc.locator('a[href^="roadmap.html"]').count() >= 1);
-
-    /* 着手金は取らないと決めた（9/22）。ただし危ない相手には個別に前金を相談する、
-       という内部ルールを持っている。受注率に効くのは「サイトに書いてあるか」で、
-       回収リスクに効くのは「実際に取るか」なので、この2つは分けて持つ。
-       ルールが消えると「なし」だけが残って、丸腰になったことに気づけない */
-    check('前金を相談する内部ルールがある',
-        /前金を相談する/.test(folded)
-        && ['紹介ではない初対面', '30万を超える', '会社の実体が確認できない']
-            .every((w) => folded.includes(w)), folded.length);
-    check('未払いが出たら戻すと書いてある',
-        /1件でも起きたら、そのとき条件を戻す/.test(folded));
-
-    /* ロードマップの収支の表は「納品の翌月に入金」で組んである。これは
-       so. の条件がそのまま通った最短の場合で、相手が大きいと相手のサイトになる。
-       表だけ見て「必ずこうなる」と読まないよう、前提と上限（フリーランス法の60日）
-       をここに置いている（9/22） */
-    check('支払サイトは相手が決めると書いてある',
-        /支払条件はこちらが決めるものではない/.test(folded));
-    check('フリーランス法の60日を書いてある',
-        /60日以内/.test(folded) && /起算日は.{0,4}納品日/.test(folded));
-    /* 9/30：ツール代の訂正（Claude 5x）で表を引き直したとき、この節も置き直した。
-       9/24 に「登録が通ってから声かけ」と決めて初入金が M+3 になっているので、
-       60日サイトでは入金が M+4 へずれ、底も1ヶ月ぶん深くなる（−36.6万 → −48.8万）。
-       それまでは「底の深さは変わらない・必要な手元は約22万」と書いてあったが、
-       これは初入金が M+1 だった 9/22 時点のモデルの話だった */
-    /* 2026-10-02：record.html から金額を外した（record 自身の「2か所に同じ数字を
-       置くと片方だけ古くなる」という方針を金額全部に広げた）。
-       数字はロードマップ側で見る。ここは【事実と参照先】が残っていることを見る */
-    check('60日サイトだと表が1ヶ月ずれると書いてある',
-        /初入金が M\+3 → M\+4 へずれる/.test(folded)
-        && /崩れるとき/.test(folded)
-        && !/約22万/.test(folded) && !/約49万/.test(folded));
-    {
-        const recSrc = readFileSync(`${ROOT}/record.html`, 'utf8');
-        check('record に古い金額が残っていない',
-            !/105万/.test(recSrc) && !/−36\.6万/.test(recSrc)
-            && !/約8\.6ヶ月/.test(recSrc));
-        check('record から最新はロードマップだと案内している',
-            /最新は<a href="roadmap\.html">ロードマップ<\/a>の要約表だけを見ること/.test(recSrc));
-    }
-
-    /* 折りたたみを全部開いてから、中身の数字を突き合わせる */
-    const foldCount = await rc.evaluate(() => {
-        const d = document.querySelectorAll('details.fold');
-        d.forEach((x) => { x.open = true; });
-        return d.length;
-    });
-    check('折りたたみが存在する', foldCount >= 5);
-    check('「すべて開く」ボタンがある', await rc.locator('#openall').count() === 1);
-
-    const t = await rc.locator('body').innerText();
-    check('四半期計が計画と一致',
-        [...RPLAN.q, RPLAN.sales].every((v) => t.includes(ry(v))), [...RPLAN.q, RPLAN.sales].map(ry).join(' '));
-    check('P1〜P3 の中身が移っている',
-        /90秒で足場をつくる/.test(t) && /3分を売れるようにする/.test(t) && /年収1,000万に乗せる/.test(t));
-    /* サンプルは 9/17 に5本足して7ジャンル全部に載った。
-       「01と06の2本だけ」が残っていたら実態とズレている */
-    check('サンプルが7ジャンル全部に載ったと書いてある',
-        /7ジャンル全部にサンプルが載った/.test(t) && /719\.30/.test(t));
-    check('サンプルが架空案件だと断ってある', /全部が架空案件のもの/.test(t));
-    /* 実工数は工程別に測り直して 11.5h（本編10.5 ＋ 15秒版1.0）。
-       以前の「17.0h」は内訳を取る前の概算だった（2026-09-16 訂正） */
-    check('松2本の実測が記録されている',
-        /2,442/.test(t) && /1,221/.test(t) && /11\.5時間/.test(t));
-    check('クレジット残高とプランが最新', /246\.84/.test(t) && /Max/.test(t));
-    check('松の4工程を実際に通した記録がある',
-        /4K化/.test(t) && /Reframe 9:16/.test(t) && /Seed Audio/.test(t));
-    check('4工程の原価の内訳が載っている',
-        /138/.test(t) && /1\.2/.test(t) && /0\.4/.test(t) && /277\.6/.test(t));
-    check('原価の大半がリフレームだと書いている', /99\.4%/.test(t));
-    check('プラン上限への影響が載っている', /2\.3本/.test(t) && /5,400/.test(t));
-    check('4工程の出力を検証した記録がある',
-        /3840×2160/.test(t) && /1080×1920/.test(t) && /1440×1440/.test(t));
-    check('縦型リフレームが使えないと結論している',
-        /リフレームはテロップを組み直さない/.test(t) && /使えない/.test(t));
-    check('松から落とす仕様を明示している',
-        /落とす/.test(t) && /4K/.test(t) && /3形式/.test(t));
-    /* 時間単価は ¥80,000/h（実際に出した額 ÷ 1.0h）。2026-09-26 まで ¥65,000/h と
-       書いていたが、これは本数加算だけを2本目の売上と見ていた誤り */
-    check('縦型は追加本数で作ると書いている',
-        /追加の1本|追加本数/.test(t) && t.includes(`制作費 ¥${PRICE.perExtra.toLocaleString('en-US')} ＋ 尺ぶん`));
-    check('1,080クレジットを授業料として記録している', /1,080クレジットは授業料/.test(t));
-    check('実際に納品した2本の尺と時間単価が載っている',
-        /59秒/.test(t) && /15秒/.test(t) && /¥41,905\/h/.test(t) && /¥80,000\/h/.test(t));
-    check('料金表どおりの金額を出している',
-        /¥647,100/.test(t) && /¥520,000/.test(t));
-    check('追加尺が料金表の2本目にあたると書いている',
-        /¥65,000/.test(t) && /¥189,750/.test(t) && /上乗せ/.test(t));
-    check('追加尺がほぼ純利益だと書いている', /純利益/.test(t) && /2時間/.test(t));
-    check('2本・架空案件だけの数字だと断っている', /2本/.test(t) && /架空/.test(t));
-    check('営業ロープレであって実案件でないと明記', /ロープレ/.test(t) && /架空/.test(t));
-    check('社内用なので検索に出さない',
-        (await rc.evaluate(() => document.querySelector('meta[name="robots"]')?.content || '')).includes('noindex'));
-    check('裏づけのページで横溢れなし',
-        (await rc.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 0);
-    await rc.close();
 }
 
 /* ---- 見積書・契約書・請求書のひな形 ----
@@ -2609,59 +1945,12 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
        営業中はスマホで開くので record.html に移した（markdown では読めない）。
        金額と時間単価を本文に書いている以上、モデルとズレたら
        お客様の前で違う数字を言うことになるので、ここで突き合わせる。
-       営業文面.md 側には移した旨のポインタだけを残し、数字は二重に持たない */
+       営業文面.md 側には移した旨のポインタだけを残し、数字は二重に持たない。
+       2026-11-23：record.html はリポジトリの外へ移したので、record 側の突き合わせは外した */
     {
-        const y = (n) => `¥${n.toLocaleString('ja-JP')}`;
-        const rec = readFileSync(`${ROOT}/record.html`, 'utf8');
-        check('営業文面は record.html を指している',
-            /record\.html/.test(eigyo) && /2か所に置かない/.test(eigyo));
         check('営業文面に数字を二重に持っていない',
             !/¥185,725/.test(eigyo) && !/23,143\/h/.test(eigyo));
 
-        check('料金の答え方がある', /料金を聞かれたときの答え方/.test(rec));
-        check('答え方の時間単価がモデルと合っている',
-            TIERS.every((t) => rec.includes(`${y(Math.round(price(t, 90, 1, 'ai') / hours(t, 90, 1, 'ai')))}/h`)),
-            TIERS.map((t) => Math.round(price(t, 90, 1, 'ai') / hours(t, 90, 1, 'ai'))).join());
-        check('答え方の金額がモデルと合っている',
-            rec.includes(y(PRICE.base)) && rec.includes(y(PRICE.noNarration))
-            && rec.includes(y(PRICE.narrationHuman)));
-        check('「工数だからこの値段」と言わない方針が書いてある',
-            /「工数だからこの値段」とは言わない/.test(rec)
-            && /価格は市場を見て決めています/.test(rec));
-        check('2人目がタダなことを取り繕わない方針が書いてある',
-            /段の中では同じです/.test(rec) && /取り繕って/.test(rec));
-
-        /* 下げていい限界を実数で書いている。料金や工数を動かしたらここもズレる。
-           とくに「梅は5〜6%しか下げられない」は、感覚で応じると壊れる線 */
-        const limit = (id, sec) => {
-            const t = TIERS.find((x) => x.id === id);
-            const nar = t.narration ? 'human' : 'ai';
-            return Math.round(RATE * 0.95 * hours(t, sec, 1, nar));
-        };
-        const cases = [['ume', 30], ['ume', 90], ['take', 90], ['matsu', 90]];
-        check('詰められたときの返し方がある', /金額を詰められたときの返し方/.test(rec));
-        check('下げていい限界がモデルと合っている',
-            cases.every(([id, sec]) => rec.includes(y(limit(id, sec)))),
-            cases.map(([i, sc]) => limit(i, sc)).join());
-        check('尺を縮めたときの差額が合っている', rec.includes(y(secFee(TIERS[1], 90) - secFee(TIERS[1], 60))));
-        /* 「構成で落とせる額」の表（2026-10-14 に足した守り手）。
-           段を1つ下げる額は AI ナレーション前提なので、松は matsuToAi に依存する。
-           ¥25,000 → ¥70,000 にしたとき、この表だけ −¥209,000 のまま取り残された。
-           本文は営業中にスマホで読むものなので、ここがずれると
-           お客様の前で違う額を言うことになる。 */
-        for (const [above, below] of [[2, 1], [1, 0]]) {
-            const d = price(TIERS[above], 90, 1, 'ai') - price(TIERS[below], 90, 1, 'ai');
-            check(`段を1つ下げる額が合っている（${TIERS[above].label}→${TIERS[below].label}）`,
-                rec.includes(`−${y(d)}`), `−${y(d)}`);
-        }
-        check('値引きではなく構成で答える方針が書いてある',
-            /値引きで答えない。構成で答える/.test(rec) && /最初の3社に限って/.test(rec));
-        check('引く基準が書いてある', /引くとき/.test(rec) && /当て馬/.test(rec));
-
-        /* 入札参加資格の手順も移した。開業の週にスマホで開くもの */
-        check('入札の手順が record.html にある',
-            /入札に出られるようにする/.test(rec) && /新設のため決算書なし/.test(rec)
-            && /令和10年3月10日/.test(rec));
         const research = readFileSync(`${ROOT}/成果物/リサーチ/2026-09-21_価格の実数.md`, 'utf8');
         check('リサーチ側は移した旨を書いている',
             /record\.html.*に移した/.test(research));
@@ -2808,7 +2097,7 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
 /* ---- 配信できるか ---- */
 for (const f of ['assets/site.css', 'assets/logo-mark.png', 'assets/favicon.png',
                  'assets/apple-touch-icon.png', 'assets/ogp.png', 'privacy.html',
-                 'funnel.html', 'roadmap.html', 'record.html']) {
+                 'funnel.html']) {
     const st = (await page.request.get(`${BASE}/${f}`)).status();
     check(`${f} が配信できる`, st === 200, `HTTP ${st}`);
 }

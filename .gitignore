@@ -8,3 +8,7 @@
 __pycache__/
 *.pyc
 成果物/サンプル映像/scripts/*.mp4
+
+# 公開しないもの（Google ドライブの so-非公開/ に置く。CLAUDE.md 参照）
+成果物/NotebookLM用/
+成果物/事例素材一覧/

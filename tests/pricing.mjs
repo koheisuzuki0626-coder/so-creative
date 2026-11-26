@@ -1,7 +1,7 @@
 /* 料金シミュレーター。
    「お客様にどの組み合わせを選ばせても採算が崩れない」ことの担保がここ。
    金額・工数のどれかを動かしたら必ずこれを通すこと。 */
-import { check, report, PW, open, pick, setLens, splitSec, setNar, setNarAll, narOf, matsuToNone, priceModes, hoursModes, narFee, reachableNar, reachable, maxPieces, PRICE, HOURS, TIERS, LENGTHS, price, hours, leadWeeks, RATE, MEASURED, REVISION_HOURS, CREDITS_PER_SEC, secFee, listPrice } from './lib.mjs';
+import { check, report, PW, open, pick, setLens, splitSec, setNar, setNarAll, narOf, matsuToNone, priceModes, hoursModes, leadDays, narFee, reachableNar, reachable, maxPieces, PRICE, HOURS, TIERS, LENGTHS, price, hours, leadWeeks, RATE, MEASURED, REVISION_HOURS, CREDITS_PER_SEC, secFee, listPrice } from './lib.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
@@ -224,7 +224,7 @@ check('上の段ほど時間単価が実質的に下がらない',
    （松はナレーションを外すと ¥50,000 返すため）。竹を ¥4,050 まで下げる案は、
    竹がどの尺でも梅を下回るので取らなかった。¥4,400 で両方の段差が正になる。
    人に読んでもらうナレーションは除く。足す ¥70,000 が段に関係なく同じなので、
-   短い尺では段の差を薄める（15〜30秒で竹が梅を約 ¥500 下回る。record.html に記載） */
+   短い尺では段の差を薄める（15〜30秒で竹が梅を約 ¥500 下回る。旧 record.html に記載していた。2026-11-23 にリポジトリ外へ移した） */
 /* 2026-10-14：松の「人物→AI」の返しを ¥25,000 → ¥70,000 にした（本人の判断）。
    「人の声は1名 ¥70,000」で梅・竹の足す額とそろえるため。
    代償として、短い尺で松が竹を下回る組み合わせが【7通り】出る。
@@ -280,8 +280,13 @@ check('修正1往復の係数が実測と合っている', Math.abs(REVISION_HOU
     `実測 ${REVISION_HOURS}h / モデル 0.62h`);
 
 /* ---- 納期の形 ---- */
-check('15秒は据え置きで2週間', leadWeeks(TIERS[0], 15) === 2 && leadWeeks(TIERS[2], 15) === 2);
-check('尺が伸びても納期が跳ねない', leadWeeks(TIERS[0], 300) <= 4, `5分梅 ${leadWeeks(TIERS[0], 300)}週`);
+/* 2026-11-25 に本人と決めた値（ご確認1回3営業日・1日5h・修正は上限まで） */
+check('15秒は梅4週・松5週', leadWeeks(TIERS[0], 15) === 4 && leadWeeks(TIERS[2], 15) === 5,
+    `梅 ${leadWeeks(TIERS[0], 15)} / 松 ${leadWeeks(TIERS[2], 15)}`);
+check('60秒竹は24営業日', leadDays(TIERS[1], 60) === 24, `${leadDays(TIERS[1], 60)}日`);
+check('尺が伸びても納期が跳ねない', leadWeeks(TIERS[2], 300) <= 8, `5分松 ${leadWeeks(TIERS[2], 300)}週`);
+check('お客様のご確認の日数が入っている（どの組み合わせも3週以上）',
+    TIERS.every((t) => LENGTHS.every((sec) => leadWeeks(t, sec) >= 3)));
 check('納期は尺について単調に増える',
     TIERS.every((t) => LENGTHS.every((s, i) => i === 0 || leadWeeks(t, s) >= leadWeeks(t, LENGTHS[i - 1]))));
 check('段が上がると納期も延びるか同じ',
@@ -640,6 +645,28 @@ for (const lens of [[15, 30, 45, 60, 90, 300], [15, 45, 90, 120, 180, 300], [30,
 const over = mailLens.filter((x) => x.len >= 1800);
 check('最長の組み合わせでも mailto が収まる', over.length === 0,
     JSON.stringify(mailLens.sort((a, b) => b.len - a.len).slice(0, 3)));
+
+/* 2026-11-23：初回のご依頼は20%引き（2027年8月末まで）。定価の表示は変えず、
+   合計の下に割引後の額を1行添える。期限を過ぎたら行ごと消える */
+const promoOn = Date.now() <= new Date('2027-08-31T23:59:59+09:00').getTime();
+for (const [t, sec, n, nar] of [['ume', 15, 1, 'ai'], ['take', 120, 1, 'ai'], ['matsu', 60, 3, 'none']]) {
+    const ti = TIERS.find((x) => x.id === t);
+    await page.locator(`#calc-tier .calc-opt[data-tier="${t}"]`).click();
+    await page.locator(`#calc-cnt .calc-opt[data-count="${n}"]`).click();
+    await setLens(page, Array(n).fill(sec));
+    await setNarAll(page, nar);
+    await page.waitForTimeout(40);
+    const total = Number((await page.locator('#calc-total').innerText()).replace(/[^\d]/g, ''));
+    const promo = page.locator('#calc-promo');
+    if (promoOn) {
+        const shown = Number((await promo.locator('strong').innerText()).replace(/[^\d]/g, ''));
+        check(`初回割引の行が定価の80%（${ti.label}${sec}秒×${n}本）`,
+            shown === Math.round(total * 0.8) && await promo.isVisible(),
+            `定価 ${total} / 表示 ${shown}`);
+    } else {
+        check(`期限後は初回割引の行が出ない（${ti.label}${sec}秒×${n}本）`, !(await promo.isVisible()));
+    }
+}
 
 check('JS エラーなし', page.__errors.length === 0, JSON.stringify(page.__errors));
 await browser.close();

@@ -21,7 +21,11 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8899';
 const alive = async () => {
     try {
         const c = AbortSignal.timeout(1500);
-        await fetch(`${BASE}/index.html`, { signal: c });
+        /* 本文は最後まで読み切る。読まずに放っておくと、python の http.server が
+           接続を閉じたときに Node 22.23 の fetch（undici）が内部の assert で落ち、
+           テストが1本も始まらないまま終わっていた（2026-11-23） */
+        const r = await fetch(`${BASE}/index.html`, { signal: c });
+        await r.arrayBuffer();
         return true;
     } catch { return false; }
 };

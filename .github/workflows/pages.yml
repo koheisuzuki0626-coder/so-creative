@@ -1,0 +1,38 @@
+# main が変わるたびに GitHub Pages を建て直す（2026-11-25）。
+# それまでは「ブランチから公開」で、Mac から直接 main にプッシュしたときに
+# 建て直しが走らず、古い版が出たままになることがあった（9/16 に半日ずれた）。
+# 使うには Settings → Pages → Source を「GitHub Actions」にしておくこと。
+# 2026-11-25：最初は upload-pages-artifact@v3 + deploy-pages@v4 で組んだが、2回続けて
+# deploy が「No artifacts named github-pages were found」で落ちた（アップロード自体は成功）。
+# 4つとも最新の版（Node 24 対応）にそろえた。
+name: Deploy site to Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/configure-pages@v6
+      # いままでと同じく、リポジトリの中身をそのまま公開する
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v5
