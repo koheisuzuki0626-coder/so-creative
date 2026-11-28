@@ -310,10 +310,14 @@ check('金額の表示は税込で揃っている',
         (await wp.locator('#genre-service .sample-video').count()) === 1);
     check('サービス紹介のサンプルは架空の題材だと書いてある',
         /架空の業務ソフト/.test(await wp.locator('#genre-service').innerText()));
-    check('広告CMのカードにサンプルがある',
-        (await wp.locator('#genre-ad .sample-video').count()) === 1);
+    /* 2026-11-29：2本目に香水の3DCG（Blender で組んだもの）を足して2本になった */
+    check('広告CMのカードにサンプルが2本ある',
+        (await wp.locator('#genre-ad .sample-video').count()) === 2);
     check('広告CMのサンプルは架空の題材だと書いてある',
-        /架空の冷凍餃子/.test(await wp.locator('#genre-ad').innerText()));
+        /架空の冷凍餃子/.test(await wp.locator('#genre-ad').innerText())
+        && /架空の香水/.test(await wp.locator('#genre-ad').innerText()));
+    check('香水のサンプルは生成AIの絵ではなく3DCGで組んだと書いてある',
+        /3DCGソフト（Blender）/.test(await wp.locator('#genre-ad').innerText()));
     check('追加した2本も自前で配信している',
         /assets\/works\/service-15s\.mp4/.test(worksSrc) && /assets\/works\/cm-15s-taste\.mp4/.test(worksSrc));
     /* ⚠️ 2026-10-06：資産には中身から出した版（?v=）を打っている
