@@ -503,7 +503,7 @@ check('金額の表示は税込で揃っている',
     check('人物ナレーションの値段が実績でも料金表と同じ', /1名 ¥70,000〜/.test(works));
 
     /* ---- ジャンルごとの計算機（2026-09-24） ----
-       トップの「つくれる動画」から works.html へ飛ぶと、サンプルは見られるのに
+       トップの「サンプル動画」から works.html へ飛ぶと、サンプルは見られるのに
        いくらかが分からないまま帰る形だった。サンプルを見たその場で出せるように、
        ジャンルごとに計算機を置いた。尺はそのサンプルの実尺で始める。
        ミュージックビデオは料金表の対象外なので置かない */
@@ -993,7 +993,7 @@ for (const [f, sec] of [['ad-video.html', 15], ['animation-video.html', 60], ['e
     }
 }
 
-/* ---- 実測の節（つくれる動画の説明欄）---- 
+/* ---- 実測の節（サンプル動画の説明欄）---- 
    2026-10-13 に足したとき、生成スクリプトの2行が重複していて
    【同じ節が2回出る】状態のまま公開されていた（翌日に発見）。
    出力を見れば分かるのに、テストが節の有無しか見ていなかった。
@@ -1262,14 +1262,14 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
     for (const f of PUB) {
         const h = readFileSync(`${ROOT}/${f}`, 'utf8');
         const bad = [...h.matchAll(/<a[^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/g)]
-            .filter(([, , text]) => text.includes('サンプル') || text.includes('つくれる動画'))
+            .filter(([, , text]) => text.includes('サンプル') || text.includes('サンプル動画'))
             /* works.html 本体か、その中の錨。works.html 自身では #genres */
             /* index と works は自分の中に #genres を持っているので、そこへの錨は正しい */
             .filter(([, href]) => !/^works\.html(#|$)/.test(href)
                                   && !(href === '#genres'
                                        && /id="genres"/.test(readFileSync(`${ROOT}/${f}`, 'utf8'))))
             .map(([, href, text]) => `${text} → ${href}`);
-        check(`${f}「サンプル」「つくれる動画」と書いたリンクは works.html へ行く`, bad.length === 0,
+        check(`${f}「サンプル」「サンプル動画」と書いたリンクは works.html へ行く`, bad.length === 0,
             bad.join(' / '));
     }
 
@@ -1283,15 +1283,15 @@ check('robots.txt でクロールは止めていない', /Allow: \//.test(rb) &&
         const got = (nav.match(/<a[^>]*href="([^"]*)"[^>]*>料金<\/a>/) || [])[1];
         check(`${f} のヘッダーの「料金」が ${want} を指す`, got === want, String(got));
         const wantS = f === 'works.html' ? '#genres' : 'works.html';
-        const gotS = (nav.match(/<a[^>]*href="([^"]*)"[^>]*>つくれる動画<\/a>/) || [])[1];
-        check(`${f} のヘッダーの「つくれる動画」が ${wantS} を指す`, gotS === wantS, String(gotS));
-        /* 呼び名は 2026-09-25 に「サンプル」→「作例」→「つくれる動画」。
-           works.html の見出し「つくれる動画と、そのサンプル。」と揃えた。
+        const gotS = (nav.match(/<a[^>]*href="([^"]*)"[^>]*>サンプル動画<\/a>/) || [])[1];
+        check(`${f} のヘッダーの「サンプル動画」が ${wantS} を指す`, gotS === wantS, String(gotS));
+        /* 呼び名は 2026-09-25 に「サンプル」→「作例」→「つくれる動画」→（2026-11-28）「サンプル動画」。
+           works.html の見出し「用途別の、サンプル動画。」と揃えた。
            「実績」「事例」は使わない——works.html の9本は全部 so-creative が
            自社でつくったもので、受注した仕事ではないため */
         check(`${f} のヘッダーが「実績」「事例」を名乗っていない`,
             !/>(実績|事例)</.test(nav), nav.replace(/\s+/g, ' ').trim());
-        /* How to はトップの Before/After の節（まもりば）。つくれる動画とは別物なので、
+        /* How to はトップの Before/After の節（まもりば）。サンプル動画とは別物なので、
            同じ語が2つの行き先を指さないように固定する */
         const gotH = (nav.match(/<a[^>]*href="([^"]*)"[^>]*>How to<\/a>/) || [])[1];
         check(`${f} のヘッダーの「How to」が index.html#works を指す`,

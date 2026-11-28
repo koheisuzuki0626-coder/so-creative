@@ -73,7 +73,7 @@ for (const w of [1440, 1280, 1000, 900]) {
     check('スマホで横溢れなし', m.overflow <= 0, `${m.overflow}px`);
     /* ハンバーガーは 9/19 に外した。狭い画面で、同じメニューを開く入口が
        2段目のリンク列と並んで2つあったため。メニュー自体は残っていて、
-       「つくれる動画」から開く。ここが開かなくなると、ジャンル一覧と
+       「サンプル動画」から開く。ここが開かなくなると、ジャンル一覧と
        サイト内リンクへの導線がフッターだけになる */
     check('ハンバーガーを置いていない', await page.locator('#burger').count() === 0);
     /* ハンバーガーを外した条件は「行き先がヘッダーに全部ある」こと（9/19）。
@@ -91,11 +91,11 @@ for (const w of [1440, 1280, 1000, 900]) {
     }
     {
         const t = page.locator('#menu-trigger');
-        check('メニューの入口が「つくれる動画」に一本化されている',
+        check('メニューの入口が「サンプル動画」に一本化されている',
             await t.isVisible() && await t.getAttribute('aria-expanded') === 'false');
         await t.click();
         await page.waitForTimeout(120);
-        check('つくれる動画からメニューが開く',
+        check('サンプル動画からメニューが開く',
             await page.locator('#menu.open').count() === 1
             && await t.getAttribute('aria-expanded') === 'true');
         check('開いたメニューにジャンルとサイト内リンクがある',

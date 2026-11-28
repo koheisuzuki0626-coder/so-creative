@@ -94,7 +94,7 @@ for (const [file, w, h, label] of revealCases) {
             const all = [...document.querySelectorAll('.genre')];
             return { n: all.length, hidden: all.filter((e) => Number(getComputedStyle(e).opacity) < 0.5).length };
         });
-        check(`${label} つくれる動画のジャンルが9本とも見える`,
+        check(`${label} サンプル動画のジャンルが9本とも見える`,
             genres.n === 9 && genres.hidden === 0, JSON.stringify(genres));
     }
     await page.close();

@@ -43,7 +43,7 @@ await p.close();
     /* 節の到達はトップの話。計算機だけが pricing.html へ移った（2026-09-23） */
     const q = await open(browser, {});
     const SECTIONS = ['service', 'why', 'genres', 'works', 'process', 'plans', 'faq', 'contact'];
-    /* つくれる動画の節は 4,000px 以上あって画面に 25% 入りきらない。
+    /* サンプル動画の節は 4,000px 以上あって画面に 25% 入りきらない。
        threshold で見ていると一生発火しないので rootMargin で見ている */
     await q.locator('#genres').scrollIntoViewIfNeeded();
     await q.waitForTimeout(400);
@@ -80,7 +80,7 @@ await p.close();
        2か所に置くと片方だけ古くなるので、表は持たない */
     const labels = await q.locator('.step .lbl').allInnerTexts();
     check('節が段として並んでいる',
-        labels.join() === 'サイトに来た,トップを開いた,事業内容,撮影しない理由,つくれる動画,サンプル,制作の流れ,料金,条件を選んだ,相談まで進んだ',
+        labels.join() === 'サイトに来た,トップを開いた,事業内容,撮影しない理由,サンプル動画,サンプル,制作の流れ,料金,条件を選んだ,相談まで進んだ',
         labels.join());
     check('料金より下の到達も出る', /料金より下まで読んだ人/.test(t));
     check('節の別表を持っていない', !/どこまで読んで帰ったか/.test(t));

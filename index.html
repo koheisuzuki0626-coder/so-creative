@@ -212,13 +212,13 @@
 
         <!-- 主要導線は4つに絞り、ジャンルはドロップダウンに格納する -->
         <!-- ハンバーガーを外したので、行き先はここに全部出す（9/19）。
-             メニュー（つくれる動画）を開かないと辿れない項目をつくらない -->
+             メニュー（サンプル動画）を開かないと辿れない項目をつくらない -->
         <div class="nav-main">
             <a class="nav-item" href="#service">事業内容</a>
             <a class="nav-item" href="#why">撮影しない理由</a>
             <button type="button" class="nav-item nav-trigger" id="menu-trigger"
                     aria-expanded="false" aria-controls="menu" data-for="#genres">
-                つくれる動画
+                サンプル動画
             </button>
             <a class="nav-item" href="#works">How to</a>
             <a class="nav-item" href="#process">制作の流れ</a>
@@ -236,7 +236,7 @@
     <div class="menu" id="menu" role="dialog" aria-modal="false" aria-label="メニュー">
         <div class="menu-inner">
             <div class="menu-col menu-col-genres">
-                <p class="menu-head">つくれる動画</p>
+                <p class="menu-head">サンプル動画</p>
                 <!-- Genres セクションのカードから自動生成する -->
                 <ul class="menu-genres" id="menu-genres">
                     <li><a href="company-video.html">会社紹介</a></li>
@@ -348,7 +348,7 @@
             <p class="body-text measure">映像を1本つくるのに、出演者を探し、全員の予定を合わせ、場所と機材を押さえ、当日は現場に立ち会う。この重さがあるほど、本数を増やす判断はしにくくなります。AI でつくれば、同じ予算で本数を増やす、反応を見て言い方を変える、季節ごとに差し替える——そういう使い方が現実的になります。<strong>撮影を省くための手段ではなく、映像の使い方そのものを変える手段として提案しています。</strong></p>
 
             <div class="clink-row">
-                <a class="clink" href="#genres">つくれる動画を見る</a>
+                <a class="clink" href="#genres">サンプル動画を見る</a>
                 <a class="clink" href="#process">制作の流れを見る</a>
             </div>
         </div>
@@ -443,7 +443,7 @@
         <div class="wrap">
             <div class="section-head reveal">
                 <p class="eyebrow">Genres</p>
-                <h2 class="headline">つくれる動画のジャンル。</h2>
+                <h2 class="headline">サンプル動画のジャンル。</h2>
                 <p class="section-lead">用途に合わせて、必要な映像をつくります。いずれも撮影を伴わないため、出演者の手配も撮影日の設定も発生しません。<br><b>9ジャンルすべてにサンプルがあります。</b></p>
             </div>
             <ul class="genre-index reveal">
@@ -752,7 +752,7 @@
                 <ul class="f-list">
                     <li><a href="#service">Service — 事業内容</a></li>
                     <li><a href="#why">Why AI — 撮影しない理由</a></li>
-                    <li><a href="works.html">Genres — つくれる動画とサンプル</a></li>
+                    <li><a href="works.html">Genres — サンプル動画</a></li>
                     <li><a href="#works">How to — 写真1枚から</a></li>
                     <li><a href="quality.html">Quality — AI動画の品質</a></li>
                     <li><a href="#process">Process — 制作の流れ</a></li>
@@ -890,7 +890,7 @@
         /* ---------- ヘッダーのメニュー ---------- */
         const menu = document.getElementById('menu');
         const scrim = document.getElementById('menu-scrim');
-        /* 開け閉めは「つくれる動画」の1か所だけ。以前はハンバーガーも同じ
+        /* 開け閉めは「サンプル動画」の1か所だけ。以前はハンバーガーも同じ
            メニューを開いていたが、狭い画面で入口が2つ並ぶのをやめた（9/19） */
         const trigger = document.getElementById('menu-trigger');
         const menuButtons = [trigger].filter(Boolean);
